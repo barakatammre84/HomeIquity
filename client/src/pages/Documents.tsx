@@ -46,7 +46,7 @@ const sidebarItems = [
   },
   {
     label: "Resources",
-    href: "/dashboard",
+    href: "/resources",
     icon: BookOpen,
   },
   {
