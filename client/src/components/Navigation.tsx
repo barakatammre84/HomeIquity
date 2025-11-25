@@ -9,7 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Home, FileText, Building2, LayoutDashboard, Users, Menu, X } from "lucide-react";
+import { Home, LayoutDashboard, Users, Menu, X, Phone } from "lucide-react";
 import { useState } from "react";
 
 export function Navigation() {
@@ -17,51 +17,72 @@ export function Navigation() {
   const [location] = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const navLinks = isAuthenticated
-    ? [
-        { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-        { href: "/apply", label: "Apply", icon: FileText },
-        { href: "/properties", label: "Properties", icon: Building2 },
-      ]
-    : [];
+  const publicLinks = [
+    { href: "/apply", label: "Buy" },
+    { href: "/apply", label: "Refinance" },
+    { href: "/apply", label: "HELOC" },
+    { href: "/apply", label: "Rates" },
+    { href: "/resources", label: "Better+" },
+  ];
+
+  const authenticatedLinks = [
+    { href: "/dashboard", label: "Dashboard" },
+    { href: "/apply", label: "Buy" },
+    { href: "/apply", label: "Refinance" },
+    { href: "/properties", label: "Properties" },
+  ];
+
+  const navLinks = isAuthenticated ? authenticatedLinks : publicLinks;
 
   const isActive = (path: string) => location === path;
 
   return (
-    <nav className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <nav className="sticky top-0 z-50 w-full bg-green-900">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between gap-4">
-          <Link href="/" className="flex items-center gap-2">
-            <Home className="h-6 w-6 text-primary" />
-            <span className="text-xl font-semibold tracking-tight">MortgageAI</span>
-          </Link>
+          <div className="flex items-center gap-8">
+            <Link href="/" className="flex items-center gap-2">
+              <Home className="h-6 w-6 text-white" />
+              <span className="text-xl font-bold text-white">MortgageAI</span>
+            </Link>
 
-          <div className="hidden md:flex md:items-center md:gap-1">
-            {navLinks.map((link) => (
-              <Link key={link.href} href={link.href}>
-                <Button
-                  variant={isActive(link.href) ? "secondary" : "ghost"}
-                  size="sm"
-                  className="gap-2"
-                  data-testid={`nav-link-${link.label.toLowerCase()}`}
-                >
-                  <link.icon className="h-4 w-4" />
-                  {link.label}
-                </Button>
-              </Link>
-            ))}
+            <div className="hidden lg:flex lg:items-center lg:gap-1">
+              {navLinks.map((link, index) => (
+                <Link key={`${link.href}-${index}`} href={link.href}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className={`text-green-100 hover:text-white hover:bg-green-800 ${
+                      isActive(link.href) ? "bg-green-800 text-white" : ""
+                    }`}
+                    data-testid={`nav-link-${link.label.toLowerCase()}`}
+                  >
+                    {link.label}
+                  </Button>
+                </Link>
+              ))}
+            </div>
           </div>
 
           <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="hidden text-green-100 hover:text-white hover:bg-green-800 sm:flex"
+              data-testid="button-phone"
+            >
+              <Phone className="h-5 w-5" />
+            </Button>
+
             {isLoading ? (
-              <div className="h-9 w-24 animate-pulse rounded-md bg-muted" />
+              <div className="h-9 w-24 animate-pulse rounded-md bg-green-800" />
             ) : isAuthenticated && user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-9 w-9 rounded-full" data-testid="user-menu-button">
                     <Avatar className="h-9 w-9">
                       <AvatarImage src={user.profileImageUrl || undefined} alt={user.firstName || "User"} />
-                      <AvatarFallback className="bg-primary text-primary-foreground">
+                      <AvatarFallback className="bg-green-700 text-white">
                         {user.firstName?.[0] || user.email?.[0]?.toUpperCase() || "U"}
                       </AvatarFallback>
                     </Avatar>
@@ -108,13 +129,22 @@ export function Navigation() {
             ) : (
               <div className="flex items-center gap-2">
                 <a href="/api/login">
-                  <Button variant="ghost" size="sm" data-testid="button-login">
-                    Log in
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-green-100 hover:text-white hover:bg-green-800"
+                    data-testid="button-login"
+                  >
+                    Sign in
                   </Button>
                 </a>
-                <Link href="/apply">
-                  <Button size="sm" data-testid="button-get-started">
-                    Get Pre-Approved
+                <Link href="/dashboard">
+                  <Button
+                    size="sm"
+                    className="bg-green-500 text-white hover:bg-green-600"
+                    data-testid="button-dashboard"
+                  >
+                    Dashboard
                   </Button>
                 </Link>
               </div>
@@ -123,7 +153,7 @@ export function Navigation() {
             <Button
               variant="ghost"
               size="icon"
-              className="md:hidden"
+              className="text-green-100 hover:text-white hover:bg-green-800 lg:hidden"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               data-testid="button-mobile-menu"
             >
@@ -132,17 +162,18 @@ export function Navigation() {
           </div>
         </div>
 
-        {mobileMenuOpen && isAuthenticated && (
-          <div className="border-t py-4 md:hidden">
+        {mobileMenuOpen && (
+          <div className="border-t border-green-800 py-4 lg:hidden">
             <div className="flex flex-col gap-2">
-              {navLinks.map((link) => (
-                <Link key={link.href} href={link.href}>
+              {navLinks.map((link, index) => (
+                <Link key={`${link.href}-${index}`} href={link.href}>
                   <Button
-                    variant={isActive(link.href) ? "secondary" : "ghost"}
-                    className="w-full justify-start gap-2"
+                    variant="ghost"
+                    className={`w-full justify-start text-green-100 hover:text-white hover:bg-green-800 ${
+                      isActive(link.href) ? "bg-green-800 text-white" : ""
+                    }`}
                     onClick={() => setMobileMenuOpen(false)}
                   >
-                    <link.icon className="h-4 w-4" />
                     {link.label}
                   </Button>
                 </Link>

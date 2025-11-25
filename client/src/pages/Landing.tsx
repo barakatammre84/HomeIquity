@@ -98,7 +98,7 @@ export default function Landing() {
             <div className="mt-8 flex items-center gap-2 text-sm">
               <span className="text-muted-foreground">Already have an application?</span>
               <Link href="/dashboard">
-                <Button variant="link" className="h-auto p-0 text-primary">
+                <Button variant="ghost" className="h-auto p-0 text-primary hover:text-primary hover:bg-transparent">
                   Click here <ArrowRight className="ml-1 h-3 w-3" />
                 </Button>
               </Link>

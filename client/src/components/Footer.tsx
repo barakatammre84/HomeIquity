@@ -1,63 +1,75 @@
 import { Link } from "wouter";
-import { Home, Shield, Clock, Award } from "lucide-react";
+import { Home, Phone, Mail } from "lucide-react";
 
 export function Footer() {
   return (
-    <footer className="border-t bg-card">
+    <footer className="border-t bg-background">
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
         <div className="grid gap-8 md:grid-cols-4">
-          <div className="md:col-span-2">
+          <div>
             <Link href="/" className="flex items-center gap-2">
-              <Home className="h-6 w-6 text-primary" />
-              <span className="text-xl font-semibold">MortgageAI</span>
+              <Home className="h-6 w-6 text-green-700" />
+              <span className="text-xl font-bold text-green-700">MortgageAI</span>
             </Link>
-            <p className="mt-4 max-w-md text-sm text-muted-foreground">
-              Revolutionizing home lending with AI-powered automated underwriting. 
-              Get pre-approved in minutes, not weeks.
+            <p className="mt-4 max-w-xs text-sm text-muted-foreground">
+              MortgageAI is a direct lender dedicated to providing a fast, transparent digital mortgage experience backed by superior customer support.
             </p>
-            <div className="mt-6 flex items-center gap-6">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Shield className="h-4 w-4" />
-                <span>Bank-level security</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Clock className="h-4 w-4" />
-                <span>24/7 service</span>
-              </div>
-            </div>
+          </div>
+
+          <div>
+            <h3 className="text-sm font-semibold">Contact Us</h3>
+            <ul className="mt-4 space-y-3 text-sm text-muted-foreground">
+              <li>
+                <a href="mailto:hello@mortgageai.com" className="flex items-center gap-2 hover:text-foreground transition-colors">
+                  <Mail className="h-4 w-4" />
+                  hello@mortgageai.com
+                </a>
+              </li>
+              <li>
+                <a href="tel:1-800-MORTGAGE" className="flex items-center gap-2 hover:text-foreground transition-colors">
+                  <Phone className="h-4 w-4" />
+                  1-800-MORTGAGE
+                </a>
+              </li>
+              <li><span className="hover:text-foreground transition-colors cursor-pointer">FAQ</span></li>
+              <li><Link href="/resources" className="hover:text-foreground transition-colors">Resources</Link></li>
+            </ul>
+          </div>
+
+          <div>
+            <h3 className="text-sm font-semibold">Legal</h3>
+            <ul className="mt-4 space-y-3 text-sm text-muted-foreground">
+              <li><span className="hover:text-foreground transition-colors cursor-pointer">NMLS Consumer Access</span></li>
+              <li><span className="hover:text-foreground transition-colors cursor-pointer">Privacy Policy</span></li>
+              <li><span className="hover:text-foreground transition-colors cursor-pointer">Terms of Use</span></li>
+              <li><span className="hover:text-foreground transition-colors cursor-pointer">Disclosures & Licensing</span></li>
+              <li><span className="hover:text-foreground transition-colors cursor-pointer">Affiliated Business</span></li>
+            </ul>
           </div>
 
           <div>
             <h3 className="text-sm font-semibold">Products</h3>
             <ul className="mt-4 space-y-3 text-sm text-muted-foreground">
-              <li><Link href="/apply" className="hover:text-foreground transition-colors">Purchase Loan</Link></li>
+              <li><Link href="/apply" className="hover:text-foreground transition-colors">Buy a home</Link></li>
               <li><Link href="/apply" className="hover:text-foreground transition-colors">Refinance</Link></li>
-              <li><Link href="/apply" className="hover:text-foreground transition-colors">FHA Loans</Link></li>
-              <li><Link href="/apply" className="hover:text-foreground transition-colors">VA Loans</Link></li>
-            </ul>
-          </div>
-
-          <div>
-            <h3 className="text-sm font-semibold">Company</h3>
-            <ul className="mt-4 space-y-3 text-sm text-muted-foreground">
-              <li><span className="hover:text-foreground transition-colors cursor-pointer">About Us</span></li>
-              <li><span className="hover:text-foreground transition-colors cursor-pointer">For Brokers</span></li>
-              <li><span className="hover:text-foreground transition-colors cursor-pointer">Privacy Policy</span></li>
-              <li><span className="hover:text-foreground transition-colors cursor-pointer">Terms of Service</span></li>
+              <li><Link href="/apply" className="hover:text-foreground transition-colors">HELOC</Link></li>
+              <li><Link href="/apply" className="hover:text-foreground transition-colors">Rates</Link></li>
+              <li><Link href="/resources" className="hover:text-foreground transition-colors">Better+</Link></li>
             </ul>
           </div>
         </div>
 
-        <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t pt-8 sm:flex-row">
-          <p className="text-xs text-muted-foreground">
-            © {new Date().getFullYear()} MortgageAI. All rights reserved. NMLS #123456
+        <div className="mt-12 border-t pt-8">
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            © {new Date().getFullYear()} MortgageAI Corporation is a direct lender. NMLS #123456. 
+            World Trade Center, 200 State Street, New York, NY 10000. Loans made or arranged pursuant to a California Finance Lenders Law License. 
+            Not available in all states. Equal Housing Lender.
           </p>
-          <div className="flex items-center gap-2">
-            <Award className="h-5 w-5 text-muted-foreground" />
-            <span className="text-xs text-muted-foreground">
-              Equal Housing Lender
-            </span>
-          </div>
+          <p className="mt-4 text-xs text-muted-foreground leading-relaxed">
+            Home lending products offered by MortgageAI Corporation are direct loans. MortgageAI is a licensed lender (NMLS #123456). 
+            Loans made or arranged pursuant to a California Finance Lenders Law License. Not available in all states. Equal Housing Lender. 
+            NMLS Consumer Access.
+          </p>
         </div>
       </div>
     </footer>
