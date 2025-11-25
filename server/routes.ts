@@ -338,6 +338,246 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // URLA Data Routes
+  app.get("/api/urla/:applicationId", isAuthenticated, async (req, res) => {
+    try {
+      const { applicationId } = req.params;
+      const application = await storage.getLoanApplication(applicationId);
+      if (!application) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+      const urlaData = await storage.getCompleteUrlaData(applicationId);
+      res.json({ application, ...urlaData });
+    } catch (error) {
+      console.error("Get URLA data error:", error);
+      res.status(500).json({ error: "Failed to get URLA data" });
+    }
+  });
+
+  app.post("/api/urla/:applicationId/personal-info", isAuthenticated, async (req, res) => {
+    try {
+      const { applicationId } = req.params;
+      const data = { ...req.body, applicationId };
+      const result = await storage.upsertUrlaPersonalInfo(data);
+      res.json(result);
+    } catch (error) {
+      console.error("Save personal info error:", error);
+      res.status(500).json({ error: "Failed to save personal info" });
+    }
+  });
+
+  app.post("/api/urla/:applicationId/employment", isAuthenticated, async (req, res) => {
+    try {
+      const { applicationId } = req.params;
+      const data = { ...req.body, applicationId };
+      const result = await storage.createEmploymentHistory(data);
+      res.status(201).json(result);
+    } catch (error) {
+      console.error("Create employment error:", error);
+      res.status(500).json({ error: "Failed to create employment record" });
+    }
+  });
+
+  app.patch("/api/urla/employment/:id", isAuthenticated, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const result = await storage.updateEmploymentHistory(id, req.body);
+      if (!result) {
+        return res.status(404).json({ error: "Employment record not found" });
+      }
+      res.json(result);
+    } catch (error) {
+      console.error("Update employment error:", error);
+      res.status(500).json({ error: "Failed to update employment record" });
+    }
+  });
+
+  app.delete("/api/urla/employment/:id", isAuthenticated, async (req, res) => {
+    try {
+      await storage.deleteEmploymentHistory(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Delete employment error:", error);
+      res.status(500).json({ error: "Failed to delete employment record" });
+    }
+  });
+
+  app.post("/api/urla/:applicationId/other-income", isAuthenticated, async (req, res) => {
+    try {
+      const { applicationId } = req.params;
+      const data = { ...req.body, applicationId };
+      const result = await storage.createOtherIncomeSource(data);
+      res.status(201).json(result);
+    } catch (error) {
+      console.error("Create other income error:", error);
+      res.status(500).json({ error: "Failed to create other income source" });
+    }
+  });
+
+  app.delete("/api/urla/other-income/:id", isAuthenticated, async (req, res) => {
+    try {
+      await storage.deleteOtherIncomeSource(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Delete other income error:", error);
+      res.status(500).json({ error: "Failed to delete other income source" });
+    }
+  });
+
+  app.post("/api/urla/:applicationId/assets", isAuthenticated, async (req, res) => {
+    try {
+      const { applicationId } = req.params;
+      const data = { ...req.body, applicationId };
+      const result = await storage.createUrlaAsset(data);
+      res.status(201).json(result);
+    } catch (error) {
+      console.error("Create asset error:", error);
+      res.status(500).json({ error: "Failed to create asset" });
+    }
+  });
+
+  app.patch("/api/urla/assets/:id", isAuthenticated, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const result = await storage.updateUrlaAsset(id, req.body);
+      if (!result) {
+        return res.status(404).json({ error: "Asset not found" });
+      }
+      res.json(result);
+    } catch (error) {
+      console.error("Update asset error:", error);
+      res.status(500).json({ error: "Failed to update asset" });
+    }
+  });
+
+  app.delete("/api/urla/assets/:id", isAuthenticated, async (req, res) => {
+    try {
+      await storage.deleteUrlaAsset(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Delete asset error:", error);
+      res.status(500).json({ error: "Failed to delete asset" });
+    }
+  });
+
+  app.post("/api/urla/:applicationId/liabilities", isAuthenticated, async (req, res) => {
+    try {
+      const { applicationId } = req.params;
+      const data = { ...req.body, applicationId };
+      const result = await storage.createUrlaLiability(data);
+      res.status(201).json(result);
+    } catch (error) {
+      console.error("Create liability error:", error);
+      res.status(500).json({ error: "Failed to create liability" });
+    }
+  });
+
+  app.patch("/api/urla/liabilities/:id", isAuthenticated, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const result = await storage.updateUrlaLiability(id, req.body);
+      if (!result) {
+        return res.status(404).json({ error: "Liability not found" });
+      }
+      res.json(result);
+    } catch (error) {
+      console.error("Update liability error:", error);
+      res.status(500).json({ error: "Failed to update liability" });
+    }
+  });
+
+  app.delete("/api/urla/liabilities/:id", isAuthenticated, async (req, res) => {
+    try {
+      await storage.deleteUrlaLiability(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Delete liability error:", error);
+      res.status(500).json({ error: "Failed to delete liability" });
+    }
+  });
+
+  app.post("/api/urla/:applicationId/property-info", isAuthenticated, async (req, res) => {
+    try {
+      const { applicationId } = req.params;
+      const data = { ...req.body, applicationId };
+      const result = await storage.upsertUrlaPropertyInfo(data);
+      res.json(result);
+    } catch (error) {
+      console.error("Save property info error:", error);
+      res.status(500).json({ error: "Failed to save property info" });
+    }
+  });
+
+  // Bulk save URLA data
+  app.post("/api/urla/:applicationId/save", isAuthenticated, async (req, res) => {
+    try {
+      const { applicationId } = req.params;
+      const { personalInfo, employmentHistory, otherIncomeSources, assets, liabilities, propertyInfo } = req.body;
+
+      const results: any = {};
+
+      if (personalInfo) {
+        results.personalInfo = await storage.upsertUrlaPersonalInfo({ ...personalInfo, applicationId });
+      }
+
+      if (propertyInfo) {
+        results.propertyInfo = await storage.upsertUrlaPropertyInfo({ ...propertyInfo, applicationId });
+      }
+
+      if (employmentHistory && Array.isArray(employmentHistory)) {
+        results.employmentHistory = [];
+        for (const emp of employmentHistory) {
+          if (emp.id) {
+            const updated = await storage.updateEmploymentHistory(emp.id, emp);
+            if (updated) results.employmentHistory.push(updated);
+          } else {
+            const created = await storage.createEmploymentHistory({ ...emp, applicationId });
+            results.employmentHistory.push(created);
+          }
+        }
+      }
+
+      if (assets && Array.isArray(assets)) {
+        results.assets = [];
+        for (const asset of assets) {
+          if (asset.id) {
+            const updated = await storage.updateUrlaAsset(asset.id, asset);
+            if (updated) results.assets.push(updated);
+          } else {
+            const created = await storage.createUrlaAsset({ ...asset, applicationId });
+            results.assets.push(created);
+          }
+        }
+      }
+
+      if (liabilities && Array.isArray(liabilities)) {
+        results.liabilities = [];
+        for (const liability of liabilities) {
+          if (liability.id) {
+            const updated = await storage.updateUrlaLiability(liability.id, liability);
+            if (updated) results.liabilities.push(updated);
+          } else {
+            const created = await storage.createUrlaLiability({ ...liability, applicationId });
+            results.liabilities.push(created);
+          }
+        }
+      }
+
+      if (otherIncomeSources && Array.isArray(otherIncomeSources)) {
+        results.otherIncomeSources = [];
+        for (const income of otherIncomeSources) {
+          const created = await storage.createOtherIncomeSource({ ...income, applicationId });
+          results.otherIncomeSources.push(created);
+        }
+      }
+
+      res.json(results);
+    } catch (error) {
+      console.error("Save URLA data error:", error);
+      res.status(500).json({ error: "Failed to save URLA data" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;

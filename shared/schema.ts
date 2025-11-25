@@ -304,6 +304,285 @@ export const savedPropertiesRelations = relations(savedProperties, ({ one }) => 
   }),
 }));
 
+// URLA Personal Information (Section 1a)
+export const urlaPersonalInfo = pgTable("urla_personal_info", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  applicationId: varchar("application_id").references(() => loanApplications.id).notNull(),
+  
+  // Borrower Identity
+  ssn: varchar("ssn", { length: 11 }),
+  dateOfBirth: varchar("date_of_birth", { length: 10 }),
+  citizenship: varchar("citizenship", { length: 50 }), // us_citizen, permanent_resident, non_permanent_resident
+  
+  // Alternate Names
+  alternateNames: text("alternate_names"),
+  
+  // Credit Type
+  creditType: varchar("credit_type", { length: 50 }), // individual, joint
+  totalBorrowers: integer("total_borrowers"),
+  coBorrowerNames: text("co_borrower_names"),
+  
+  // Marital Status & Dependents
+  maritalStatus: varchar("marital_status", { length: 50 }), // married, separated, unmarried
+  numberOfDependents: integer("number_of_dependents"),
+  dependentAges: text("dependent_ages"),
+  
+  // Contact Information
+  homePhone: varchar("home_phone", { length: 20 }),
+  cellPhone: varchar("cell_phone", { length: 20 }),
+  workPhone: varchar("work_phone", { length: 20 }),
+  workPhoneExt: varchar("work_phone_ext", { length: 10 }),
+  email: varchar("email", { length: 255 }),
+  
+  // Current Address
+  currentStreet: text("current_street"),
+  currentUnit: varchar("current_unit", { length: 20 }),
+  currentCity: varchar("current_city", { length: 100 }),
+  currentState: varchar("current_state", { length: 50 }),
+  currentZip: varchar("current_zip", { length: 20 }),
+  currentCountry: varchar("current_country", { length: 100 }),
+  currentAddressYears: integer("current_address_years"),
+  currentAddressMonths: integer("current_address_months"),
+  currentHousingType: varchar("current_housing_type", { length: 50 }), // own, rent, no_expense
+  currentRentAmount: decimal("current_rent_amount", { precision: 10, scale: 2 }),
+  
+  // Former Address
+  formerStreet: text("former_street"),
+  formerUnit: varchar("former_unit", { length: 20 }),
+  formerCity: varchar("former_city", { length: 100 }),
+  formerState: varchar("former_state", { length: 50 }),
+  formerZip: varchar("former_zip", { length: 20 }),
+  formerCountry: varchar("former_country", { length: 100 }),
+  formerAddressYears: integer("former_address_years"),
+  formerAddressMonths: integer("former_address_months"),
+  formerHousingType: varchar("former_housing_type", { length: 50 }),
+  formerRentAmount: decimal("former_rent_amount", { precision: 10, scale: 2 }),
+  
+  // Mailing Address
+  mailingDifferent: boolean("mailing_different").default(false),
+  mailingStreet: text("mailing_street"),
+  mailingUnit: varchar("mailing_unit", { length: 20 }),
+  mailingCity: varchar("mailing_city", { length: 100 }),
+  mailingState: varchar("mailing_state", { length: 50 }),
+  mailingZip: varchar("mailing_zip", { length: 20 }),
+  mailingCountry: varchar("mailing_country", { length: 100 }),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const urlaPersonalInfoRelations = relations(urlaPersonalInfo, ({ one }) => ({
+  application: one(loanApplications, {
+    fields: [urlaPersonalInfo.applicationId],
+    references: [loanApplications.id],
+  }),
+}));
+
+export const insertUrlaPersonalInfoSchema = createInsertSchema(urlaPersonalInfo).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertUrlaPersonalInfo = z.infer<typeof insertUrlaPersonalInfoSchema>;
+export type UrlaPersonalInfo = typeof urlaPersonalInfo.$inferSelect;
+
+// Employment History (Sections 1b, 1c, 1d)
+export const employmentHistory = pgTable("employment_history", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  applicationId: varchar("application_id").references(() => loanApplications.id).notNull(),
+  
+  employmentType: varchar("employment_type", { length: 50 }).notNull(), // current, additional, previous
+  
+  // Employer Information
+  employerName: varchar("employer_name", { length: 255 }),
+  employerPhone: varchar("employer_phone", { length: 20 }),
+  employerStreet: text("employer_street"),
+  employerUnit: varchar("employer_unit", { length: 20 }),
+  employerCity: varchar("employer_city", { length: 100 }),
+  employerState: varchar("employer_state", { length: 50 }),
+  employerZip: varchar("employer_zip", { length: 20 }),
+  employerCountry: varchar("employer_country", { length: 100 }),
+  
+  // Position Details
+  positionTitle: varchar("position_title", { length: 255 }),
+  startDate: varchar("start_date", { length: 10 }),
+  endDate: varchar("end_date", { length: 10 }),
+  yearsInLineOfWork: integer("years_in_line_of_work"),
+  monthsInLineOfWork: integer("months_in_line_of_work"),
+  
+  // Special Employment Status
+  isSelfEmployed: boolean("is_self_employed").default(false),
+  ownershipShareLessThan25: boolean("ownership_share_less_than_25"),
+  ownershipShare25OrMore: boolean("ownership_share_25_or_more"),
+  isEmployedByFamilyMember: boolean("is_employed_by_family_member").default(false),
+  isEmployedByPropertySeller: boolean("is_employed_by_property_seller").default(false),
+  
+  // Gross Monthly Income
+  baseIncome: decimal("base_income", { precision: 12, scale: 2 }),
+  overtimeIncome: decimal("overtime_income", { precision: 12, scale: 2 }),
+  bonusIncome: decimal("bonus_income", { precision: 12, scale: 2 }),
+  commissionIncome: decimal("commission_income", { precision: 12, scale: 2 }),
+  militaryEntitlements: decimal("military_entitlements", { precision: 12, scale: 2 }),
+  otherIncome: decimal("other_income", { precision: 12, scale: 2 }),
+  totalMonthlyIncome: decimal("total_monthly_income", { precision: 12, scale: 2 }),
+  
+  // Self-employed income
+  monthlyIncomeOrLoss: decimal("monthly_income_or_loss", { precision: 12, scale: 2 }),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const employmentHistoryRelations = relations(employmentHistory, ({ one }) => ({
+  application: one(loanApplications, {
+    fields: [employmentHistory.applicationId],
+    references: [loanApplications.id],
+  }),
+}));
+
+export const insertEmploymentHistorySchema = createInsertSchema(employmentHistory).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertEmploymentHistory = z.infer<typeof insertEmploymentHistorySchema>;
+export type EmploymentHistory = typeof employmentHistory.$inferSelect;
+
+// Other Income Sources (Section 1e)
+export const otherIncomeSources = pgTable("other_income_sources", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  applicationId: varchar("application_id").references(() => loanApplications.id).notNull(),
+  
+  incomeSource: varchar("income_source", { length: 100 }).notNull(),
+  monthlyAmount: decimal("monthly_amount", { precision: 12, scale: 2 }).notNull(),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const otherIncomeSourcesRelations = relations(otherIncomeSources, ({ one }) => ({
+  application: one(loanApplications, {
+    fields: [otherIncomeSources.applicationId],
+    references: [loanApplications.id],
+  }),
+}));
+
+export const insertOtherIncomeSourceSchema = createInsertSchema(otherIncomeSources).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertOtherIncomeSource = z.infer<typeof insertOtherIncomeSourceSchema>;
+export type OtherIncomeSource = typeof otherIncomeSources.$inferSelect;
+
+// Assets (Section 2a)
+export const urlaAssets = pgTable("urla_assets", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  applicationId: varchar("application_id").references(() => loanApplications.id).notNull(),
+  
+  accountType: varchar("account_type", { length: 100 }).notNull(),
+  financialInstitution: varchar("financial_institution", { length: 255 }),
+  accountNumber: varchar("account_number", { length: 100 }),
+  cashOrMarketValue: decimal("cash_or_market_value", { precision: 12, scale: 2 }),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const urlaAssetsRelations = relations(urlaAssets, ({ one }) => ({
+  application: one(loanApplications, {
+    fields: [urlaAssets.applicationId],
+    references: [loanApplications.id],
+  }),
+}));
+
+export const insertUrlaAssetSchema = createInsertSchema(urlaAssets).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertUrlaAsset = z.infer<typeof insertUrlaAssetSchema>;
+export type UrlaAsset = typeof urlaAssets.$inferSelect;
+
+// Liabilities (Section 2)
+export const urlaLiabilities = pgTable("urla_liabilities", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  applicationId: varchar("application_id").references(() => loanApplications.id).notNull(),
+  
+  liabilityType: varchar("liability_type", { length: 100 }).notNull(),
+  creditorName: varchar("creditor_name", { length: 255 }),
+  accountNumber: varchar("account_number", { length: 100 }),
+  unpaidBalance: decimal("unpaid_balance", { precision: 12, scale: 2 }),
+  monthlyPayment: decimal("monthly_payment", { precision: 10, scale: 2 }),
+  toBePaidOff: boolean("to_be_paid_off").default(false),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const urlaLiabilitiesRelations = relations(urlaLiabilities, ({ one }) => ({
+  application: one(loanApplications, {
+    fields: [urlaLiabilities.applicationId],
+    references: [loanApplications.id],
+  }),
+}));
+
+export const insertUrlaLiabilitySchema = createInsertSchema(urlaLiabilities).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertUrlaLiability = z.infer<typeof insertUrlaLiabilitySchema>;
+export type UrlaLiability = typeof urlaLiabilities.$inferSelect;
+
+// URLA Property Information (Section for Property and Loan details)
+export const urlaPropertyInfo = pgTable("urla_property_info", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  applicationId: varchar("application_id").references(() => loanApplications.id).notNull(),
+  
+  // Property Address
+  propertyStreet: text("property_street"),
+  propertyUnit: varchar("property_unit", { length: 20 }),
+  propertyCity: varchar("property_city", { length: 100 }),
+  propertyState: varchar("property_state", { length: 50 }),
+  propertyZip: varchar("property_zip", { length: 20 }),
+  propertyCountry: varchar("property_country", { length: 100 }),
+  
+  // Property Details
+  numberOfUnits: integer("number_of_units"),
+  propertyValue: decimal("property_value", { precision: 12, scale: 2 }),
+  occupancyType: varchar("occupancy_type", { length: 50 }), // primary_residence, second_home, investment
+  
+  // Mixed Use
+  isMixedUse: boolean("is_mixed_use").default(false),
+  mixedUseDescription: text("mixed_use_description"),
+  
+  // Manufactured Home
+  isManufacturedHome: boolean("is_manufactured_home").default(false),
+  manufacturedWidth: varchar("manufactured_width", { length: 50 }),
+  
+  // Legal Description
+  legalDescription: text("legal_description"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const urlaPropertyInfoRelations = relations(urlaPropertyInfo, ({ one }) => ({
+  application: one(loanApplications, {
+    fields: [urlaPropertyInfo.applicationId],
+    references: [loanApplications.id],
+  }),
+}));
+
+export const insertUrlaPropertyInfoSchema = createInsertSchema(urlaPropertyInfo).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertUrlaPropertyInfo = z.infer<typeof insertUrlaPropertyInfoSchema>;
+export type UrlaPropertyInfo = typeof urlaPropertyInfo.$inferSelect;
+
 // Pre-approval form validation schema
 export const preApprovalFormSchema = z.object({
   // Step 1: Basic Info

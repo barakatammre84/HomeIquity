@@ -8,6 +8,12 @@ import {
   dealActivities,
   properties,
   savedProperties,
+  urlaPersonalInfo,
+  employmentHistory,
+  otherIncomeSources,
+  urlaAssets,
+  urlaLiabilities,
+  urlaPropertyInfo,
   type User,
   type UpsertUser,
   type LoanApplication,
@@ -20,6 +26,18 @@ import {
   type InsertDealActivity,
   type Property,
   type InsertProperty,
+  type UrlaPersonalInfo,
+  type InsertUrlaPersonalInfo,
+  type EmploymentHistory,
+  type InsertEmploymentHistory,
+  type OtherIncomeSource,
+  type InsertOtherIncomeSource,
+  type UrlaAsset,
+  type InsertUrlaAsset,
+  type UrlaLiability,
+  type InsertUrlaLiability,
+  type UrlaPropertyInfo,
+  type InsertUrlaPropertyInfo,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -79,6 +97,41 @@ export interface IStorage {
     totalApplications: number;
     preApprovedAmount: string;
     pendingDocuments: number;
+  }>;
+
+  // URLA Data
+  getUrlaPersonalInfo(applicationId: string): Promise<UrlaPersonalInfo | undefined>;
+  upsertUrlaPersonalInfo(data: InsertUrlaPersonalInfo): Promise<UrlaPersonalInfo>;
+  
+  getEmploymentHistory(applicationId: string): Promise<EmploymentHistory[]>;
+  createEmploymentHistory(data: InsertEmploymentHistory): Promise<EmploymentHistory>;
+  updateEmploymentHistory(id: string, data: Partial<EmploymentHistory>): Promise<EmploymentHistory | undefined>;
+  deleteEmploymentHistory(id: string): Promise<void>;
+  
+  getOtherIncomeSources(applicationId: string): Promise<OtherIncomeSource[]>;
+  createOtherIncomeSource(data: InsertOtherIncomeSource): Promise<OtherIncomeSource>;
+  deleteOtherIncomeSource(id: string): Promise<void>;
+  
+  getUrlaAssets(applicationId: string): Promise<UrlaAsset[]>;
+  createUrlaAsset(data: InsertUrlaAsset): Promise<UrlaAsset>;
+  updateUrlaAsset(id: string, data: Partial<UrlaAsset>): Promise<UrlaAsset | undefined>;
+  deleteUrlaAsset(id: string): Promise<void>;
+  
+  getUrlaLiabilities(applicationId: string): Promise<UrlaLiability[]>;
+  createUrlaLiability(data: InsertUrlaLiability): Promise<UrlaLiability>;
+  updateUrlaLiability(id: string, data: Partial<UrlaLiability>): Promise<UrlaLiability | undefined>;
+  deleteUrlaLiability(id: string): Promise<void>;
+  
+  getUrlaPropertyInfo(applicationId: string): Promise<UrlaPropertyInfo | undefined>;
+  upsertUrlaPropertyInfo(data: InsertUrlaPropertyInfo): Promise<UrlaPropertyInfo>;
+  
+  getCompleteUrlaData(applicationId: string): Promise<{
+    personalInfo: UrlaPersonalInfo | undefined;
+    employmentHistory: EmploymentHistory[];
+    otherIncomeSources: OtherIncomeSource[];
+    assets: UrlaAsset[];
+    liabilities: UrlaLiability[];
+    propertyInfo: UrlaPropertyInfo | undefined;
   }>;
 }
 
@@ -409,6 +462,174 @@ export class DatabaseStorage implements IStorage {
       totalApplications: appCount.count,
       preApprovedAmount: preApproved.total,
       pendingDocuments: pendingDocs.count,
+    };
+  }
+
+  // URLA Personal Info
+  async getUrlaPersonalInfo(applicationId: string): Promise<UrlaPersonalInfo | undefined> {
+    const [info] = await db
+      .select()
+      .from(urlaPersonalInfo)
+      .where(eq(urlaPersonalInfo.applicationId, applicationId))
+      .limit(1);
+    return info;
+  }
+
+  async upsertUrlaPersonalInfo(data: InsertUrlaPersonalInfo): Promise<UrlaPersonalInfo> {
+    const existing = await this.getUrlaPersonalInfo(data.applicationId);
+    if (existing) {
+      const [updated] = await db
+        .update(urlaPersonalInfo)
+        .set({ ...data, updatedAt: new Date() })
+        .where(eq(urlaPersonalInfo.applicationId, data.applicationId))
+        .returning();
+      return updated;
+    }
+    const [created] = await db.insert(urlaPersonalInfo).values(data).returning();
+    return created;
+  }
+
+  // Employment History
+  async getEmploymentHistory(applicationId: string): Promise<EmploymentHistory[]> {
+    return await db
+      .select()
+      .from(employmentHistory)
+      .where(eq(employmentHistory.applicationId, applicationId))
+      .orderBy(desc(employmentHistory.createdAt));
+  }
+
+  async createEmploymentHistory(data: InsertEmploymentHistory): Promise<EmploymentHistory> {
+    const [record] = await db.insert(employmentHistory).values(data).returning();
+    return record;
+  }
+
+  async updateEmploymentHistory(id: string, data: Partial<EmploymentHistory>): Promise<EmploymentHistory | undefined> {
+    const [updated] = await db
+      .update(employmentHistory)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(employmentHistory.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteEmploymentHistory(id: string): Promise<void> {
+    await db.delete(employmentHistory).where(eq(employmentHistory.id, id));
+  }
+
+  // Other Income Sources
+  async getOtherIncomeSources(applicationId: string): Promise<OtherIncomeSource[]> {
+    return await db
+      .select()
+      .from(otherIncomeSources)
+      .where(eq(otherIncomeSources.applicationId, applicationId))
+      .orderBy(desc(otherIncomeSources.createdAt));
+  }
+
+  async createOtherIncomeSource(data: InsertOtherIncomeSource): Promise<OtherIncomeSource> {
+    const [record] = await db.insert(otherIncomeSources).values(data).returning();
+    return record;
+  }
+
+  async deleteOtherIncomeSource(id: string): Promise<void> {
+    await db.delete(otherIncomeSources).where(eq(otherIncomeSources.id, id));
+  }
+
+  // URLA Assets
+  async getUrlaAssets(applicationId: string): Promise<UrlaAsset[]> {
+    return await db
+      .select()
+      .from(urlaAssets)
+      .where(eq(urlaAssets.applicationId, applicationId))
+      .orderBy(desc(urlaAssets.createdAt));
+  }
+
+  async createUrlaAsset(data: InsertUrlaAsset): Promise<UrlaAsset> {
+    const [record] = await db.insert(urlaAssets).values(data).returning();
+    return record;
+  }
+
+  async updateUrlaAsset(id: string, data: Partial<UrlaAsset>): Promise<UrlaAsset | undefined> {
+    const [updated] = await db
+      .update(urlaAssets)
+      .set(data)
+      .where(eq(urlaAssets.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteUrlaAsset(id: string): Promise<void> {
+    await db.delete(urlaAssets).where(eq(urlaAssets.id, id));
+  }
+
+  // URLA Liabilities
+  async getUrlaLiabilities(applicationId: string): Promise<UrlaLiability[]> {
+    return await db
+      .select()
+      .from(urlaLiabilities)
+      .where(eq(urlaLiabilities.applicationId, applicationId))
+      .orderBy(desc(urlaLiabilities.createdAt));
+  }
+
+  async createUrlaLiability(data: InsertUrlaLiability): Promise<UrlaLiability> {
+    const [record] = await db.insert(urlaLiabilities).values(data).returning();
+    return record;
+  }
+
+  async updateUrlaLiability(id: string, data: Partial<UrlaLiability>): Promise<UrlaLiability | undefined> {
+    const [updated] = await db
+      .update(urlaLiabilities)
+      .set(data)
+      .where(eq(urlaLiabilities.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteUrlaLiability(id: string): Promise<void> {
+    await db.delete(urlaLiabilities).where(eq(urlaLiabilities.id, id));
+  }
+
+  // URLA Property Info
+  async getUrlaPropertyInfo(applicationId: string): Promise<UrlaPropertyInfo | undefined> {
+    const [info] = await db
+      .select()
+      .from(urlaPropertyInfo)
+      .where(eq(urlaPropertyInfo.applicationId, applicationId))
+      .limit(1);
+    return info;
+  }
+
+  async upsertUrlaPropertyInfo(data: InsertUrlaPropertyInfo): Promise<UrlaPropertyInfo> {
+    const existing = await this.getUrlaPropertyInfo(data.applicationId);
+    if (existing) {
+      const [updated] = await db
+        .update(urlaPropertyInfo)
+        .set({ ...data, updatedAt: new Date() })
+        .where(eq(urlaPropertyInfo.applicationId, data.applicationId))
+        .returning();
+      return updated;
+    }
+    const [created] = await db.insert(urlaPropertyInfo).values(data).returning();
+    return created;
+  }
+
+  // Get Complete URLA Data
+  async getCompleteUrlaData(applicationId: string) {
+    const [personalInfo, employment, income, assets, liabilities, propertyInfo] = await Promise.all([
+      this.getUrlaPersonalInfo(applicationId),
+      this.getEmploymentHistory(applicationId),
+      this.getOtherIncomeSources(applicationId),
+      this.getUrlaAssets(applicationId),
+      this.getUrlaLiabilities(applicationId),
+      this.getUrlaPropertyInfo(applicationId),
+    ]);
+
+    return {
+      personalInfo,
+      employmentHistory: employment,
+      otherIncomeSources: income,
+      assets,
+      liabilities,
+      propertyInfo,
     };
   }
 }
