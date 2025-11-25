@@ -20,6 +20,7 @@ import {
   Upload,
   Users,
   LogOut,
+  Clipboard,
 } from "lucide-react";
 
 const navigationItems = [
@@ -34,6 +35,7 @@ const navigationItems = [
   {
     section: "Loans & Documents",
     items: [
+      { title: "URLA Form", href: "/urla-form", icon: Clipboard },
       { title: "Documents", href: "/documents", icon: Upload },
     ],
   },

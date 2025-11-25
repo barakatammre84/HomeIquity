@@ -16,6 +16,7 @@ import Staff from "@/pages/Staff";
 import AdminDashboard from "@/pages/AdminDashboard";
 import ApplicationSummary from "@/pages/ApplicationSummary";
 import Tasks from "@/pages/Tasks";
+import URLAForm from "@/pages/URLAForm";
 
 function Router() {
   return (
@@ -27,6 +28,7 @@ function Router() {
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/application-summary" component={ApplicationSummary} />
       <Route path="/tasks" component={Tasks} />
+      <Route path="/urla-form" component={URLAForm} />
       <Route path="/documents" component={Documents} />
       <Route path="/resources" component={Resources} />
       <Route path="/staff" component={Staff} />
