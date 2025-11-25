@@ -13,6 +13,7 @@ import Dashboard from "@/pages/Dashboard";
 import Properties from "@/pages/Properties";
 import Documents from "@/pages/Documents";
 import Resources from "@/pages/Resources";
+import Staff from "@/pages/Staff";
 import AdminDashboard from "@/pages/AdminDashboard";
 
 function Router() {
@@ -33,6 +34,7 @@ function Router() {
           <Route path="/dashboard" component={Dashboard} />
           <Route path="/documents" component={Documents} />
           <Route path="/resources" component={Resources} />
+          <Route path="/staff" component={Staff} />
           <Route path="/apply" component={PreApproval} />
           <Route path="/properties" component={Properties} />
           <Route path="/loan-options/:id" component={LoanOptions} />

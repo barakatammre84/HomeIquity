@@ -50,6 +50,11 @@ const sidebarItems = [
     href: "/documents",
     icon: FileCheck,
   },
+  {
+    label: "Staff",
+    href: "/staff",
+    icon: LayoutDashboard,
+  },
 ];
 
 const resources = [

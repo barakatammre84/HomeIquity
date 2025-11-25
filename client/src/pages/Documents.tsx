@@ -55,6 +55,11 @@ const sidebarItems = [
     icon: FileCheck,
     active: true,
   },
+  {
+    label: "Staff",
+    href: "/staff",
+    icon: LayoutDashboard,
+  },
 ];
 
 interface DashboardData {
