@@ -1,0 +1,148 @@
+import passport from "passport";
+import session from "express-session";
+import type { Express, RequestHandler } from "express";
+import connectPg from "connect-pg-simple";
+import { storage } from "./storage";
+import { pool } from "./db";
+
+declare global {
+  namespace Express {
+    interface User {
+      id: string;
+      email?: string;
+      firstName?: string;
+      lastName?: string;
+      profileImageUrl?: string;
+      role: string;
+    }
+  }
+}
+
+const PgSession = connectPg(session);
+
+export function getSession() {
+  const sessionStore = new PgSession({
+    pool,
+    tableName: "sessions",
+    createTableIfMissing: true,
+  });
+
+  return session({
+    store: sessionStore,
+    secret: process.env.SESSION_SECRET || "mortgage-ai-secret-key",
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      httpOnly: true,
+      secure: false,
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    },
+  });
+}
+
+async function setupLocalAuth() {
+  passport.serializeUser((user: Express.User, done) => {
+    done(null, user.id);
+  });
+
+  passport.deserializeUser(async (id: string, done) => {
+    try {
+      const user = await storage.getUser(id);
+      if (!user) {
+        return done(null, false);
+      }
+      done(null, {
+        id: user.id,
+        email: user.email || undefined,
+        firstName: user.firstName || undefined,
+        lastName: user.lastName || undefined,
+        profileImageUrl: user.profileImageUrl || undefined,
+        role: user.role,
+      });
+    } catch (error) {
+      done(error);
+    }
+  });
+}
+
+async function upsertUser(userData: {
+  id: string;
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+  profileImageUrl?: string;
+}) {
+  return await storage.upsertUser({
+    id: userData.id,
+    email: userData.email ?? null,
+    firstName: userData.firstName ?? null,
+    lastName: userData.lastName ?? null,
+    profileImageUrl: userData.profileImageUrl ?? null,
+    role: "borrower",
+  });
+}
+
+export async function setupAuth(app: Express) {
+  await setupLocalAuth();
+
+  app.use(getSession());
+  app.use(passport.initialize());
+  app.use(passport.session());
+
+  app.get("/api/auth/user", (req, res) => {
+    if (req.isAuthenticated()) {
+      res.json(req.user);
+    } else {
+      res.status(401).json({ error: "Not authenticated" });
+    }
+  });
+
+  app.get("/api/login", async (req, res) => {
+    const demoUser = await upsertUser({
+      id: "demo-user-1",
+      email: "demo@mortgageai.com",
+      firstName: "Demo",
+      lastName: "User",
+    });
+
+    req.login(
+      {
+        id: demoUser.id,
+        email: demoUser.email || undefined,
+        firstName: demoUser.firstName || undefined,
+        lastName: demoUser.lastName || undefined,
+        profileImageUrl: demoUser.profileImageUrl || undefined,
+        role: demoUser.role,
+      },
+      (err) => {
+        if (err) {
+          return res.status(500).json({ error: "Login failed" });
+        }
+        res.redirect("/dashboard");
+      }
+    );
+  });
+
+  app.get("/api/logout", (req, res) => {
+    req.logout((err) => {
+      if (err) {
+        return res.status(500).json({ error: "Logout failed" });
+      }
+      res.redirect("/");
+    });
+  });
+}
+
+export const isAuthenticated: RequestHandler = (req, res, next) => {
+  if (req.isAuthenticated()) {
+    return next();
+  }
+  res.status(401).json({ error: "Unauthorized" });
+};
+
+export const isAdmin: RequestHandler = (req, res, next) => {
+  if (req.isAuthenticated() && req.user?.role === "admin") {
+    return next();
+  }
+  res.status(403).json({ error: "Forbidden" });
+};

@@ -1,38 +1,416 @@
-import { type User, type InsertUser } from "@shared/schema";
-import { randomUUID } from "crypto";
-
-// modify the interface with any CRUD methods
-// you might need
+import { db } from "./db";
+import { eq, desc, and, gte, lte, sql, or, ilike } from "drizzle-orm";
+import {
+  users,
+  loanApplications,
+  loanOptions,
+  documents,
+  dealActivities,
+  properties,
+  savedProperties,
+  type User,
+  type UpsertUser,
+  type LoanApplication,
+  type InsertLoanApplication,
+  type LoanOption,
+  type InsertLoanOption,
+  type Document,
+  type InsertDocument,
+  type DealActivity,
+  type InsertDealActivity,
+  type Property,
+  type InsertProperty,
+} from "@shared/schema";
 
 export interface IStorage {
+  // Users
   getUser(id: string): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+  getUserByEmail(email: string): Promise<User | undefined>;
+  upsertUser(user: UpsertUser): Promise<User>;
+  getAllUsers(): Promise<User[]>;
+  updateUserRole(id: string, role: string): Promise<User | undefined>;
+
+  // Loan Applications
+  createLoanApplication(data: InsertLoanApplication): Promise<LoanApplication>;
+  getLoanApplication(id: string): Promise<LoanApplication | undefined>;
+  getLoanApplicationsByUser(userId: string): Promise<LoanApplication[]>;
+  getAllLoanApplications(): Promise<LoanApplication[]>;
+  updateLoanApplication(id: string, data: Partial<LoanApplication>): Promise<LoanApplication | undefined>;
+
+  // Loan Options
+  createLoanOption(data: InsertLoanOption): Promise<LoanOption>;
+  getLoanOptionsByApplication(applicationId: string): Promise<LoanOption[]>;
+  updateLoanOption(id: string, data: Partial<LoanOption>): Promise<LoanOption | undefined>;
+  lockLoanOption(id: string): Promise<LoanOption | undefined>;
+
+  // Documents
+  createDocument(data: InsertDocument): Promise<Document>;
+  getDocumentsByUser(userId: string): Promise<Document[]>;
+  getDocumentsByApplication(applicationId: string): Promise<Document[]>;
+  updateDocument(id: string, data: Partial<Document>): Promise<Document | undefined>;
+
+  // Deal Activities
+  createDealActivity(data: InsertDealActivity): Promise<DealActivity>;
+  getDealActivitiesByApplication(applicationId: string): Promise<DealActivity[]>;
+
+  // Properties
+  createProperty(data: InsertProperty): Promise<Property>;
+  getProperty(id: string): Promise<Property | undefined>;
+  getAllProperties(filters?: {
+    search?: string;
+    type?: string;
+    minPrice?: number;
+    maxPrice?: number;
+  }): Promise<Property[]>;
+  saveProperty(userId: string, propertyId: string): Promise<void>;
+  getSavedProperties(userId: string): Promise<Property[]>;
+
+  // Stats
+  getAdminStats(): Promise<{
+    totalUsers: number;
+    totalApplications: number;
+    totalLoanVolume: string;
+    approvalRate: number;
+    applicationsByStatus: { status: string; count: number }[];
+    loansByType: { type: string; count: number; volume: string }[];
+    recentApplications: (LoanApplication & { user: User })[];
+  }>;
+  getDashboardStats(userId: string): Promise<{
+    totalApplications: number;
+    preApprovedAmount: string;
+    pendingDocuments: number;
+  }>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<string, User>;
-
-  constructor() {
-    this.users = new Map();
-  }
-
+export class DatabaseStorage implements IStorage {
+  // Users
   async getUser(id: string): Promise<User | undefined> {
-    return this.users.get(id);
-  }
-
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
-  }
-
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const id = randomUUID();
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
+    const [user] = await db.select().from(users).where(eq(users.id, id)).limit(1);
     return user;
   }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email)).limit(1);
+    return user;
+  }
+
+  async upsertUser(userData: UpsertUser): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values(userData)
+      .onConflictDoUpdate({
+        target: users.id,
+        set: {
+          email: userData.email,
+          firstName: userData.firstName,
+          lastName: userData.lastName,
+          profileImageUrl: userData.profileImageUrl,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return user;
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    return await db.select().from(users).orderBy(desc(users.createdAt));
+  }
+
+  async updateUserRole(id: string, role: string): Promise<User | undefined> {
+    const [user] = await db
+      .update(users)
+      .set({ role, updatedAt: new Date() })
+      .where(eq(users.id, id))
+      .returning();
+    return user;
+  }
+
+  // Loan Applications
+  async createLoanApplication(data: InsertLoanApplication): Promise<LoanApplication> {
+    const [application] = await db.insert(loanApplications).values(data).returning();
+    return application;
+  }
+
+  async getLoanApplication(id: string): Promise<LoanApplication | undefined> {
+    const [application] = await db
+      .select()
+      .from(loanApplications)
+      .where(eq(loanApplications.id, id))
+      .limit(1);
+    return application;
+  }
+
+  async getLoanApplicationsByUser(userId: string): Promise<LoanApplication[]> {
+    return await db
+      .select()
+      .from(loanApplications)
+      .where(eq(loanApplications.userId, userId))
+      .orderBy(desc(loanApplications.createdAt));
+  }
+
+  async getAllLoanApplications(): Promise<LoanApplication[]> {
+    return await db
+      .select()
+      .from(loanApplications)
+      .orderBy(desc(loanApplications.createdAt));
+  }
+
+  async updateLoanApplication(
+    id: string,
+    data: Partial<LoanApplication>
+  ): Promise<LoanApplication | undefined> {
+    const [application] = await db
+      .update(loanApplications)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(loanApplications.id, id))
+      .returning();
+    return application;
+  }
+
+  // Loan Options
+  async createLoanOption(data: InsertLoanOption): Promise<LoanOption> {
+    const [option] = await db.insert(loanOptions).values(data).returning();
+    return option;
+  }
+
+  async getLoanOptionsByApplication(applicationId: string): Promise<LoanOption[]> {
+    return await db
+      .select()
+      .from(loanOptions)
+      .where(eq(loanOptions.applicationId, applicationId))
+      .orderBy(loanOptions.isRecommended);
+  }
+
+  async updateLoanOption(id: string, data: Partial<LoanOption>): Promise<LoanOption | undefined> {
+    const [option] = await db
+      .update(loanOptions)
+      .set(data)
+      .where(eq(loanOptions.id, id))
+      .returning();
+    return option;
+  }
+
+  async lockLoanOption(id: string): Promise<LoanOption | undefined> {
+    const lockExpiry = new Date();
+    lockExpiry.setDate(lockExpiry.getDate() + 30);
+
+    const [option] = await db
+      .update(loanOptions)
+      .set({
+        isLocked: true,
+        lockedAt: new Date(),
+        lockExpiresAt: lockExpiry,
+      })
+      .where(eq(loanOptions.id, id))
+      .returning();
+    return option;
+  }
+
+  // Documents
+  async createDocument(data: InsertDocument): Promise<Document> {
+    const [doc] = await db.insert(documents).values(data).returning();
+    return doc;
+  }
+
+  async getDocumentsByUser(userId: string): Promise<Document[]> {
+    return await db
+      .select()
+      .from(documents)
+      .where(eq(documents.userId, userId))
+      .orderBy(desc(documents.createdAt));
+  }
+
+  async getDocumentsByApplication(applicationId: string): Promise<Document[]> {
+    return await db
+      .select()
+      .from(documents)
+      .where(eq(documents.applicationId, applicationId))
+      .orderBy(desc(documents.createdAt));
+  }
+
+  async updateDocument(id: string, data: Partial<Document>): Promise<Document | undefined> {
+    const [doc] = await db
+      .update(documents)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(documents.id, id))
+      .returning();
+    return doc;
+  }
+
+  // Deal Activities
+  async createDealActivity(data: InsertDealActivity): Promise<DealActivity> {
+    const [activity] = await db.insert(dealActivities).values(data).returning();
+    return activity;
+  }
+
+  async getDealActivitiesByApplication(applicationId: string): Promise<DealActivity[]> {
+    return await db
+      .select()
+      .from(dealActivities)
+      .where(eq(dealActivities.applicationId, applicationId))
+      .orderBy(desc(dealActivities.createdAt));
+  }
+
+  // Properties
+  async createProperty(data: InsertProperty): Promise<Property> {
+    const [property] = await db.insert(properties).values(data).returning();
+    return property;
+  }
+
+  async getProperty(id: string): Promise<Property | undefined> {
+    const [property] = await db
+      .select()
+      .from(properties)
+      .where(eq(properties.id, id))
+      .limit(1);
+    return property;
+  }
+
+  async getAllProperties(filters?: {
+    search?: string;
+    type?: string;
+    minPrice?: number;
+    maxPrice?: number;
+  }): Promise<Property[]> {
+    let query = db.select().from(properties);
+    const conditions = [];
+
+    if (filters?.type && filters.type !== "all") {
+      conditions.push(eq(properties.propertyType, filters.type));
+    }
+
+    if (filters?.minPrice !== undefined) {
+      conditions.push(gte(properties.price, filters.minPrice.toString()));
+    }
+
+    if (filters?.maxPrice !== undefined) {
+      conditions.push(lte(properties.price, filters.maxPrice.toString()));
+    }
+
+    if (filters?.search) {
+      conditions.push(
+        or(
+          ilike(properties.address, `%${filters.search}%`),
+          ilike(properties.city, `%${filters.search}%`),
+          ilike(properties.state, `%${filters.search}%`)
+        )
+      );
+    }
+
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as any;
+    }
+
+    return await query.orderBy(desc(properties.createdAt));
+  }
+
+  async saveProperty(userId: string, propertyId: string): Promise<void> {
+    await db.insert(savedProperties).values({ userId, propertyId });
+  }
+
+  async getSavedProperties(userId: string): Promise<Property[]> {
+    const saved = await db
+      .select({ property: properties })
+      .from(savedProperties)
+      .innerJoin(properties, eq(savedProperties.propertyId, properties.id))
+      .where(eq(savedProperties.userId, userId));
+    return saved.map((s) => s.property);
+  }
+
+  // Stats
+  async getAdminStats() {
+    const [userCount] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(users);
+
+    const [appCount] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(loanApplications);
+
+    const [volumeResult] = await db
+      .select({ total: sql<string>`coalesce(sum(purchase_price::numeric), 0)::text` })
+      .from(loanApplications)
+      .where(eq(loanApplications.status, "approved"));
+
+    const [approvedCount] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(loanApplications)
+      .where(eq(loanApplications.status, "approved"));
+
+    const statusCounts = await db
+      .select({
+        status: loanApplications.status,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(loanApplications)
+      .groupBy(loanApplications.status);
+
+    const recentApps = await db
+      .select()
+      .from(loanApplications)
+      .orderBy(desc(loanApplications.createdAt))
+      .limit(10);
+
+    const appsWithUsers = await Promise.all(
+      recentApps.map(async (app) => {
+        const [user] = await db
+          .select()
+          .from(users)
+          .where(eq(users.id, app.userId))
+          .limit(1);
+        return { ...app, user };
+      })
+    );
+
+    const approvalRate =
+      appCount.count > 0
+        ? Math.round((approvedCount.count / appCount.count) * 100)
+        : 0;
+
+    return {
+      totalUsers: userCount.count,
+      totalApplications: appCount.count,
+      totalLoanVolume: volumeResult.total,
+      approvalRate,
+      applicationsByStatus: statusCounts,
+      loansByType: [
+        { type: "conventional", count: 0, volume: "0" },
+        { type: "fha", count: 0, volume: "0" },
+        { type: "va", count: 0, volume: "0" },
+      ],
+      recentApplications: appsWithUsers,
+    };
+  }
+
+  async getDashboardStats(userId: string) {
+    const [appCount] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(loanApplications)
+      .where(eq(loanApplications.userId, userId));
+
+    const [preApproved] = await db
+      .select({ total: sql<string>`coalesce(max(pre_approval_amount::numeric), 0)::text` })
+      .from(loanApplications)
+      .where(
+        and(
+          eq(loanApplications.userId, userId),
+          eq(loanApplications.status, "pre_approved")
+        )
+      );
+
+    const [pendingDocs] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(documents)
+      .where(
+        and(eq(documents.userId, userId), eq(documents.status, "uploaded"))
+      );
+
+    return {
+      totalApplications: appCount.count,
+      preApprovedAmount: preApproved.total,
+      pendingDocuments: pendingDocs.count,
+    };
+  }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();
