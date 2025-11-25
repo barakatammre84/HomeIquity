@@ -4,163 +4,247 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
 import { 
-  Home,
-  RefreshCw,
-  Banknote,
-  ArrowRight,
-  BarChart3,
+  CheckCircle2,
   Sparkles,
-  LayoutDashboard,
-  Phone
+  Clock,
+  Star,
+  ArrowRight
 } from "lucide-react";
 
-const loanOptions = [
-  {
-    icon: Home,
-    title: "Buy a home",
-    description: "Get pre-approved for a home purchase",
-    href: "/apply",
-  },
-  {
-    icon: RefreshCw,
-    title: "Refinance my mortgage",
-    description: "Lower your rate or change your term",
-    href: "/apply",
-  },
-  {
-    icon: Banknote,
-    title: "Get cash from my home",
-    description: "Access your home equity",
-    href: "/apply",
-  },
-];
-
-const stats = [
-  { value: "$50B", label: "home loans funded entirely online" },
-  { value: "200K", label: "customers who chose MortgageAI" },
-];
-
-const benefits = [
-  {
-    icon: BarChart3,
-    text: "Custom mortgage rates",
-  },
-  {
-    icon: Sparkles,
-    text: "Exclusive offers",
-  },
-  {
-    icon: LayoutDashboard,
-    text: "A personalized dashboard",
-  },
+const testimonials = [
+  { name: "Paul", active: true },
+  { name: "Amanda", active: false },
+  { name: "Tiara", active: false },
 ];
 
 export default function Landing() {
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
-      
-      <section className="py-12 sm:py-20">
-        <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
+
+      {/* Hero Section - Light Green */}
+      <section className="relative bg-green-100 px-4 py-16 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-6xl">
           <div className="flex flex-col items-center text-center">
-            <div className="mb-8 flex h-16 w-16 items-center justify-center rounded-full bg-primary">
-              <Home className="h-8 w-8 text-primary-foreground" />
-            </div>
-            
-            <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl lg:text-5xl">
-              Hi, I'm Mia!
+            <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl lg:text-6xl">
+              The first
             </h1>
-            <p className="mt-2 text-xl text-muted-foreground sm:text-2xl">
-              What can I help you with?
+            <h2 className="mt-1 text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
+              <span className="text-green-600">AI-powered</span>{" "}
+              <span className="text-gray-900">Mortgage</span>
+            </h2>
+
+            <p className="mx-auto mt-6 max-w-2xl text-base text-gray-600 sm:text-lg">
+              Our tech unlocks lower rates, higher chances of approval,
+              <br className="hidden sm:block" />
+              and a lightning-fast process from approval to closing. Over $100 billion funded.
             </p>
-            
-            <div className="mt-10 w-full space-y-4">
-              {loanOptions.map((option) => (
-                <Link key={option.title} href={option.href}>
-                  <Card 
-                    className="w-full cursor-pointer border-2 transition-all hover:border-primary hover-elevate"
-                    data-testid={`card-option-${option.title.toLowerCase().replace(/\s+/g, '-')}`}
-                  >
-                    <CardContent className="flex items-center gap-4 p-4 sm:p-5">
-                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10">
-                        <option.icon className="h-6 w-6 text-primary" />
-                      </div>
-                      <div className="flex-1 text-left">
-                        <h3 className="font-semibold text-foreground">{option.title}</h3>
-                      </div>
-                      <ArrowRight className="h-5 w-5 text-muted-foreground" />
-                    </CardContent>
-                  </Card>
-                </Link>
-              ))}
-            </div>
-            
-            <div className="mt-8 flex items-center gap-2 text-sm">
-              <span className="text-muted-foreground">Already have an application?</span>
-              <Link href="/dashboard">
-                <Button variant="ghost" className="h-auto p-0 text-primary hover:text-primary hover:bg-transparent">
-                  Click here <ArrowRight className="ml-1 h-3 w-3" />
+
+            <div className="mt-8 flex flex-col items-center gap-3">
+              <Link href="/apply">
+                <Button
+                  size="lg"
+                  className="gap-2 bg-green-800 px-8 py-6 text-base hover:bg-green-900"
+                  data-testid="button-hero-preapprove"
+                >
+                  Start my pre-approval
                 </Button>
               </Link>
+              <span className="flex items-center gap-2 text-sm text-gray-500">
+                <Clock className="h-4 w-4" />
+                3 min | No hard credit check
+              </span>
+            </div>
+          </div>
+
+          {/* Phone Mockup with Feature Cards */}
+          <div className="relative mt-12 flex justify-center">
+            <div className="relative">
+              {/* Phone Frame */}
+              <div className="relative mx-auto w-64 rounded-3xl border-4 border-gray-800 bg-gray-800 p-2 shadow-2xl sm:w-72">
+                <div className="overflow-hidden rounded-2xl bg-white">
+                  {/* Phone Screen Content */}
+                  <div className="bg-green-600 p-4 text-white">
+                    <div className="flex items-center gap-2">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20">
+                        <span className="text-sm font-bold">680</span>
+                      </div>
+                      <span className="text-sm">Credit score updated</span>
+                    </div>
+                  </div>
+                  <div className="space-y-3 p-4">
+                    <div className="rounded-lg bg-green-50 p-3">
+                      <p className="text-xs text-gray-500">You don't need perfect credit to qualify</p>
+                    </div>
+                    <div className="rounded-lg bg-gray-50 p-3">
+                      <p className="text-xs text-gray-500">Instant answers - smarter, simpler with Betsy AI</p>
+                    </div>
+                    <div className="border-t pt-3">
+                      <p className="text-xs font-medium text-green-700">Congrats, you're pre-approved!</p>
+                      <p className="text-xs text-gray-500">for a loan up to</p>
+                      <p className="text-2xl font-bold text-gray-900">$450,000</p>
+                    </div>
+                    <div className="rounded-lg bg-gray-100 p-3">
+                      <p className="text-xs text-gray-600">See your customized rate options in seconds</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Floating Feature Cards */}
+              <Card className="absolute -right-4 top-8 hidden w-48 border-0 shadow-lg sm:block lg:-right-24">
+                <CardContent className="p-3">
+                  <div className="flex items-start gap-2">
+                    <CheckCircle2 className="h-5 w-5 shrink-0 text-green-600" />
+                    <div>
+                      <p className="text-xs font-medium">You don't need</p>
+                      <p className="text-xs text-gray-500">perfect credit to qualify</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="absolute -left-4 top-32 hidden w-48 border-0 shadow-lg sm:block lg:-left-24">
+                <CardContent className="p-3">
+                  <div className="flex items-start gap-2">
+                    <Sparkles className="h-5 w-5 shrink-0 text-green-600" />
+                    <div>
+                      <p className="text-xs font-medium">Instant answers</p>
+                      <p className="text-xs text-gray-500">smarter, simpler with Betsy AI</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           </div>
         </div>
       </section>
 
-      <section className="border-t bg-background py-12">
-        <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col items-center justify-center gap-8 sm:flex-row sm:gap-16">
-            {stats.map((stat) => (
-              <div key={stat.label} className="text-center">
-                <p className="text-4xl font-bold text-foreground sm:text-5xl">{stat.value}</p>
-                <p className="mt-1 text-sm text-muted-foreground">{stat.label}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="py-12">
-        <div className="mx-auto max-w-2xl px-4 sm:px-6 lg:px-8">
-          <Card className="bg-muted/30">
-            <CardContent className="p-6 sm:p-8">
-              <p className="text-center font-medium text-foreground">
-                After a few questions, you'll unlock:
-              </p>
-              
-              <div className="mt-6 space-y-4">
-                {benefits.map((benefit) => (
-                  <div key={benefit.text} className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
-                      <benefit.icon className="h-4 w-4 text-primary" />
+      {/* Testimonials Section */}
+      <section className="px-4 py-16 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-6xl">
+          <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
+            {/* Video Testimonial */}
+            <div className="flex flex-col items-center">
+              <div className="relative aspect-[3/4] w-full max-w-xs overflow-hidden rounded-2xl bg-gray-900 shadow-xl">
+                <div className="flex h-full flex-col justify-end bg-gradient-to-t from-black/80 to-transparent p-6">
+                  <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white/20 backdrop-blur">
+                      <div className="h-0 w-0 border-l-[20px] border-t-[12px] border-b-[12px] border-l-white border-t-transparent border-b-transparent ml-1"></div>
                     </div>
-                    <span className="text-sm text-foreground">{benefit.text}</span>
                   </div>
+                  <p className="text-sm leading-relaxed text-white">
+                    "I used MortgageAI three years ago for my primary residence and just closed on my vacation home. Very simple process. Each time it took about two weeks to close."
+                  </p>
+                  <p className="mt-3 text-xs text-gray-400">Paul, Mortgage Customer</p>
+                </div>
+              </div>
+
+              {/* Testimonial Tabs */}
+              <div className="mt-6 flex gap-3">
+                {testimonials.map((person) => (
+                  <Button
+                    key={person.name}
+                    variant={person.active ? "default" : "outline"}
+                    size="sm"
+                    className={person.active ? "bg-green-800 hover:bg-green-900" : ""}
+                  >
+                    {person.name}
+                  </Button>
                 ))}
               </div>
-            </CardContent>
-          </Card>
+            </div>
+
+            {/* Text Content */}
+            <div className="text-center lg:text-left">
+              <h2 className="text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
+                Find out why
+                <br />
+                we're better.
+              </h2>
+
+              <Button
+                className="mt-8 gap-2 bg-green-800 hover:bg-green-900"
+                data-testid="button-see-stories"
+              >
+                See all our stories
+              </Button>
+
+              <div className="mt-6 flex items-center justify-center gap-2 lg:justify-start">
+                <div className="flex">
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <Star key={i} className="h-4 w-4 fill-green-600 text-green-600" />
+                  ))}
+                </div>
+                <span className="text-sm font-medium">Excellent</span>
+                <span className="text-sm text-gray-500">4.8 out of 5</span>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
-      <section className="border-t py-12">
-        <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col items-center text-center">
-            <h2 className="text-2xl font-semibold sm:text-3xl">
-              Need help? We're here for you.
-            </h2>
-            <p className="mt-2 text-muted-foreground">
-              Our mortgage experts are available to answer your questions.
-            </p>
-            <div className="mt-6 flex items-center gap-2">
-              <Phone className="h-5 w-5 text-primary" />
-              <span className="font-semibold text-foreground">1-800-MORTGAGE</span>
-            </div>
-            <Link href="/apply" className="mt-6">
-              <Button size="lg" className="gap-2" data-testid="button-get-started">
-                Get Started
-                <ArrowRight className="h-4 w-4" />
-              </Button>
+      {/* Quick Links Section */}
+      <section className="border-t bg-gray-50 px-4 py-16 dark:bg-gray-900/50 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-6xl">
+          <h2 className="text-2xl font-bold tracking-tight">Get started today</h2>
+          <p className="mt-2 text-muted-foreground">
+            Join thousands who've simplified their mortgage journey
+          </p>
+
+          <div className="mt-8 grid gap-6 sm:grid-cols-3">
+            <Link href="/apply">
+              <Card className="h-full cursor-pointer transition-shadow hover:shadow-md">
+                <CardContent className="p-6">
+                  <h3 className="font-semibold">Buy a home</h3>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Get pre-approved for a home purchase in minutes
+                  </p>
+                  <Button
+                    variant="ghost"
+                    className="mt-4 gap-1 p-0 text-green-700 hover:text-green-800 hover:bg-transparent"
+                    data-testid="button-buy-home"
+                  >
+                    Get started <ArrowRight className="h-3 w-3" />
+                  </Button>
+                </CardContent>
+              </Card>
+            </Link>
+
+            <Link href="/apply">
+              <Card className="h-full cursor-pointer transition-shadow hover:shadow-md">
+                <CardContent className="p-6">
+                  <h3 className="font-semibold">Refinance</h3>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Lower your rate or change your loan terms
+                  </p>
+                  <Button
+                    variant="ghost"
+                    className="mt-4 gap-1 p-0 text-green-700 hover:text-green-800 hover:bg-transparent"
+                    data-testid="button-refinance"
+                  >
+                    Get started <ArrowRight className="h-3 w-3" />
+                  </Button>
+                </CardContent>
+              </Card>
+            </Link>
+
+            <Link href="/properties">
+              <Card className="h-full cursor-pointer transition-shadow hover:shadow-md">
+                <CardContent className="p-6">
+                  <h3 className="font-semibold">Browse properties</h3>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Find your dream home with instant pre-approval
+                  </p>
+                  <Button
+                    variant="ghost"
+                    className="mt-4 gap-1 p-0 text-green-700 hover:text-green-800 hover:bg-transparent"
+                    data-testid="button-browse-properties"
+                  >
+                    Browse <ArrowRight className="h-3 w-3" />
+                  </Button>
+                </CardContent>
+              </Card>
             </Link>
           </div>
         </div>
