@@ -257,6 +257,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch("/api/loan-applications/:id", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const { id } = req.params;
+      
+      const application = await storage.getLoanApplication(id);
+      if (!application) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+      
+      if (application.userId !== userId) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+
+      const formData = req.body;
+      const updateData: any = {
+        status: "draft",
+      };
+
+      if (formData.annualIncome !== undefined) updateData.annualIncome = formData.annualIncome?.replace(/[,$]/g, "") || "0";
+      if (formData.monthlyDebts !== undefined) updateData.monthlyDebts = formData.monthlyDebts?.replace(/[,$]/g, "") || "0";
+      if (formData.creditScore !== undefined) updateData.creditScore = parseInt(formData.creditScore) || 700;
+      if (formData.employmentType !== undefined) updateData.employmentType = formData.employmentType;
+      if (formData.employmentYears !== undefined) updateData.employmentYears = parseInt(formData.employmentYears) || 0;
+      if (formData.propertyType !== undefined) updateData.propertyType = formData.propertyType;
+      if (formData.purchasePrice !== undefined) updateData.purchasePrice = formData.purchasePrice?.replace(/[,$]/g, "") || "0";
+      if (formData.downPayment !== undefined) updateData.downPayment = formData.downPayment?.replace(/[,$]/g, "") || "0";
+      if (formData.loanPurpose !== undefined) updateData.loanPurpose = formData.loanPurpose;
+      if (formData.isVeteran !== undefined) updateData.isVeteran = formData.isVeteran;
+      if (formData.isFirstTimeBuyer !== undefined) updateData.isFirstTimeBuyer = formData.isFirstTimeBuyer;
+      if (formData.propertyState !== undefined) updateData.propertyState = formData.propertyState;
+      if (formData.employerName !== undefined) updateData.employerName = formData.employerName;
+      if (formData.propertyAddress !== undefined) updateData.propertyAddress = formData.propertyAddress;
+      if (formData.propertyCity !== undefined) updateData.propertyCity = formData.propertyCity;
+      if (formData.propertyZip !== undefined) updateData.propertyZip = formData.propertyZip;
+
+      const updated = await storage.updateLoanApplication(id, updateData);
+      res.json(updated);
+    } catch (error) {
+      console.error("Update application error:", error);
+      res.status(500).json({ error: "Failed to update application" });
+    }
+  });
+
+  app.get("/api/loan-applications/draft/latest", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const applications = await storage.getLoanApplicationsByUser(userId);
+      
+      const draft = applications.find(app => app.status === "draft");
+      if (draft) {
+        return res.json(draft);
+      }
+      
+      res.json(null);
+    } catch (error) {
+      console.error("Get draft application error:", error);
+      res.status(500).json({ error: "Failed to get draft application" });
+    }
+  });
+
   app.patch("/api/admin/users/:id/role", isAuthenticated, async (req, res) => {
     try {
       if (req.user?.role !== "admin") {
