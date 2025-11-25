@@ -14,6 +14,8 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import {
   LayoutDashboard,
+  FileText,
+  CheckSquare,
   BookOpen,
   Upload,
   Users,
@@ -25,6 +27,8 @@ const navigationItems = [
     section: "Main",
     items: [
       { title: "Overview", href: "/dashboard", icon: LayoutDashboard },
+      { title: "Application Summary", href: "/application-summary", icon: FileText },
+      { title: "Tasks", href: "/tasks", icon: CheckSquare },
     ],
   },
   {

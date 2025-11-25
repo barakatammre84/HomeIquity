@@ -14,6 +14,8 @@ import Documents from "@/pages/Documents";
 import Resources from "@/pages/Resources";
 import Staff from "@/pages/Staff";
 import AdminDashboard from "@/pages/AdminDashboard";
+import ApplicationSummary from "@/pages/ApplicationSummary";
+import Tasks from "@/pages/Tasks";
 
 function Router() {
   return (
@@ -23,6 +25,8 @@ function Router() {
       <Route path="/properties" component={Properties} />
       <Route path="/loan-options/:id" component={LoanOptions} />
       <Route path="/dashboard" component={Dashboard} />
+      <Route path="/application-summary" component={ApplicationSummary} />
+      <Route path="/tasks" component={Tasks} />
       <Route path="/documents" component={Documents} />
       <Route path="/resources" component={Resources} />
       <Route path="/staff" component={Staff} />
