@@ -14,36 +14,30 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import {
   LayoutDashboard,
-  FileText,
-  CheckSquare,
-  Home,
   BookOpen,
   Upload,
   Users,
   LogOut,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 
 const navigationItems = [
   {
     section: "Main",
     items: [
       { title: "Overview", href: "/dashboard", icon: LayoutDashboard },
-      { title: "Application Summary", href: "/application-summary", icon: FileText },
-      { title: "Tasks", href: "/tasks", icon: CheckSquare },
     ],
   },
   {
     section: "Loans & Documents",
     items: [
-      { title: "My Loans", href: "/my-loans", icon: Home },
       { title: "Documents", href: "/documents", icon: Upload },
     ],
   },
   {
-    section: "Resources",
+    section: "Support",
     items: [
       { title: "Resources", href: "/resources", icon: BookOpen },
+      { title: "Staff", href: "/staff", icon: Users },
     ],
   },
 ];
@@ -68,7 +62,7 @@ export function AppSidebar() {
             <SidebarGroupContent>
               <SidebarMenu>
                 {section.items.map((item) => (
-                  <SidebarMenuItem key={item.href}>
+                  <SidebarMenuItem key={`${section.section}-${item.title}`}>
                     <SidebarMenuButton asChild isActive={isActive(item.href)}>
                       <Link href={item.href} className="cursor-pointer">
                         <item.icon className="h-4 w-4" />

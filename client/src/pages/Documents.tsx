@@ -1,66 +1,18 @@
 import { useQuery } from "@tanstack/react-query";
-import { Link, useLocation } from "wouter";
-import { Navigation } from "@/components/Navigation";
-import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/useAuth";
+import { SidebarProvider } from "@/components/ui/sidebar";
+import { AppSidebar } from "@/components/app-sidebar";
 import type { Document } from "@shared/schema";
 import {
-  LayoutDashboard,
   FileText,
-  CheckCircle2,
-  AlertCircle,
   Download,
   Plus,
-  Settings,
-  BookOpen,
-  CreditCard,
-  Clock,
   FileCheck,
-  ChevronRight,
 } from "lucide-react";
-
-const sidebarItems = [
-  {
-    label: "Overview",
-    href: "/dashboard",
-    icon: LayoutDashboard,
-  },
-  {
-    label: "Application Summary",
-    href: "/dashboard",
-    icon: FileText,
-  },
-  {
-    label: "Tasks",
-    href: "/dashboard",
-    icon: CheckCircle2,
-  },
-  {
-    label: "My loans",
-    href: "/dashboard",
-    icon: CreditCard,
-  },
-  {
-    label: "Resources",
-    href: "/resources",
-    icon: BookOpen,
-  },
-  {
-    label: "Documents",
-    href: "/documents",
-    icon: FileCheck,
-    active: true,
-  },
-  {
-    label: "Staff",
-    href: "/staff",
-    icon: LayoutDashboard,
-  },
-];
 
 interface DashboardData {
   documents: Document[];
@@ -92,7 +44,6 @@ function formatDate(date: string | Date | null | undefined): string {
 
 export default function Documents() {
   const { isLoading: authLoading } = useAuth();
-  const [location] = useLocation();
 
   const { data, isLoading } = useQuery<DashboardData>({
     queryKey: ["/api/dashboard"],
@@ -101,51 +52,25 @@ export default function Documents() {
 
   if (authLoading || isLoading) {
     return (
-      <div className="min-h-screen bg-background">
-        <Navigation />
-        <div className="flex">
-          <div className="w-60 border-r p-6">
-            {[1, 2, 3, 4, 5, 6].map((i) => (
-              <Skeleton key={i} className="mb-3 h-4 w-32" />
-            ))}
-          </div>
+      <SidebarProvider>
+        <div className="flex h-screen w-full">
+          <AppSidebar />
           <div className="flex-1 p-8">
             <Skeleton className="mb-8 h-8 w-48" />
             <Skeleton className="h-64" />
           </div>
         </div>
-      </div>
+      </SidebarProvider>
     );
   }
 
   const documents = data?.documents || [];
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navigation />
-
-      <div className="flex min-h-screen flex-col lg:flex-row">
-        <aside className="w-full border-b bg-background p-4 sm:p-6 lg:w-60 lg:border-b-0 lg:border-r lg:p-6">
-          <div className="mb-6 hidden lg:block">
-            <h2 className="text-lg font-semibold">Menu</h2>
-          </div>
-          <nav className="space-y-1">
-            {sidebarItems.map((item) => (
-              <Link key={item.href} href={item.href}>
-                <Button
-                  variant={item.active ? "default" : "ghost"}
-                  className="w-full justify-start gap-3"
-                  data-testid={`button-nav-${item.label.toLowerCase().replace(/\s+/g, '-')}`}
-                >
-                  <item.icon className="h-5 w-5" />
-                  <span className="hidden sm:inline">{item.label}</span>
-                </Button>
-              </Link>
-            ))}
-          </nav>
-        </aside>
-
-        <main className="flex-1">
+    <SidebarProvider>
+      <div className="flex h-screen w-full">
+        <AppSidebar />
+        <div className="flex-1 overflow-y-auto bg-background">
           <div className="border-b p-4 sm:p-6 lg:p-8">
             <div className="flex items-center justify-between">
               <div>
@@ -252,10 +177,8 @@ export default function Documents() {
               </Card>
             )}
           </div>
-        </main>
+        </div>
       </div>
-
-      <Footer />
-    </div>
+    </SidebarProvider>
   );
 }
