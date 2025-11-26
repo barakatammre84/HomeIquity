@@ -836,6 +836,74 @@ function buildLiabilitiesNode(dto: MISMOLoanDTO): XMLNode | null {
   return { tag: "LIABILITIES", children: liabilityNodes };
 }
 
+// ============================================================================
+// XLINK RELATIONSHIP GENERATION (Graph-based data model)
+// ============================================================================
+
+function buildRelationshipsNode(dto: MISMOLoanDTO): XMLNode | null {
+  const { user, employment, assets, liabilities } = dto;
+  if (!user) return null;
+
+  const relationshipNodes: XMLNode[] = [];
+  const borrowerId = `Party_${user.id.substring(0, 8)}`;
+
+  // Asset-to-Borrower relationships
+  for (let i = 0; i < assets.length; i++) {
+    const asset = assets[i];
+    relationshipNodes.push({
+      tag: "RELATIONSHIP",
+      attributes: {
+        "xlink:arcrole": "urn:mismo.org:3.4:Asset_Associated_With_Party",
+        "xlink:href": `#Asset_${i}`,
+        "xlink:title": "Asset Associated With Party",
+      },
+      children: [
+        { tag: "RelationshipType", text: "Asset_Associated_With_Party" },
+        { tag: "RelatedParty", text: borrowerId },
+      ],
+    });
+  }
+
+  // Liability-to-Borrower relationships
+  for (let i = 0; i < liabilities.length; i++) {
+    const liability = liabilities[i];
+    relationshipNodes.push({
+      tag: "RELATIONSHIP",
+      attributes: {
+        "xlink:arcrole": "urn:mismo.org:3.4:Liability_Associated_With_Party",
+        "xlink:href": `#Liability_${i}`,
+        "xlink:title": "Liability Associated With Party",
+      },
+      children: [
+        { tag: "RelationshipType", text: "Liability_Associated_With_Party" },
+        { tag: "RelatedParty", text: borrowerId },
+      ],
+    });
+  }
+
+  // Employment/Income-to-Borrower relationships
+  for (let i = 0; i < employment.length; i++) {
+    const emp = employment[i];
+    relationshipNodes.push({
+      tag: "RELATIONSHIP",
+      attributes: {
+        "xlink:arcrole": "urn:mismo.org:3.4:Income_Associated_With_Party",
+        "xlink:href": `#Employment_${i}`,
+        "xlink:title": "Income Associated With Party",
+      },
+      children: [
+        { tag: "RelationshipType", text: "Income_Associated_With_Party" },
+        { tag: "IncomeSource", text: emp.employmentType || "salaried" },
+        { tag: "RelatedParty", text: borrowerId },
+      ],
+    });
+  }
+
+  if (relationshipNodes.length === 0) return null;
+
+  return { tag: "RELATIONSHIPS", children: relationshipNodes };
+}
+
 export interface MISMOGenerationOptions {
   includeAboutVersions?: boolean;
   mersOrgId?: string;
@@ -883,6 +951,11 @@ export function generateMISMO34XML(
   const liabilitiesNode = buildLiabilitiesNode(dto);
   if (liabilitiesNode) {
     dealChildren.push(liabilitiesNode);
+  }
+
+  const relationshipsNode = buildRelationshipsNode(dto);
+  if (relationshipsNode) {
+    dealChildren.push(relationshipsNode);
   }
 
   const messageChildren: XMLNode[] = [];
