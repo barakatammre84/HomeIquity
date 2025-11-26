@@ -3,70 +3,215 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocation } from "wouter";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Navigation } from "@/components/Navigation";
+import { motion, AnimatePresence } from "framer-motion";
+import { preApprovalFormSchema, type PreApprovalFormData } from "@shared/schema";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Progress } from "@/components/ui/progress";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { preApprovalFormSchema, type PreApprovalFormData } from "@shared/schema";
+import { useAuth } from "@/hooks/useAuth";
 import { 
-  ArrowLeft, 
   ArrowRight, 
+  ChevronLeft, 
   DollarSign, 
-  Briefcase, 
-  Home, 
-  User,
+  Home,
+  Briefcase,
+  Building2,
+  TrendingUp,
   Clock,
+  CreditCard,
+  MapPin,
   Shield,
-  CheckCircle2,
-  AlertCircle,
-  Loader
+  Users,
+  Loader2,
+  Check
 } from "lucide-react";
 
 const US_STATES = [
-  "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado", "Connecticut",
-  "Delaware", "Florida", "Georgia", "Hawaii", "Idaho", "Illinois", "Indiana", "Iowa",
-  "Kansas", "Kentucky", "Louisiana", "Maine", "Maryland", "Massachusetts", "Michigan",
-  "Minnesota", "Mississippi", "Missouri", "Montana", "Nebraska", "Nevada", "New Hampshire",
-  "New Jersey", "New Mexico", "New York", "North Carolina", "North Dakota", "Ohio",
-  "Oklahoma", "Oregon", "Pennsylvania", "Rhode Island", "South Carolina", "South Dakota",
-  "Tennessee", "Texas", "Utah", "Vermont", "Virginia", "Washington", "West Virginia",
-  "Wisconsin", "Wyoming"
+  { value: "AL", label: "Alabama" }, { value: "AK", label: "Alaska" }, { value: "AZ", label: "Arizona" },
+  { value: "AR", label: "Arkansas" }, { value: "CA", label: "California" }, { value: "CO", label: "Colorado" },
+  { value: "CT", label: "Connecticut" }, { value: "DE", label: "Delaware" }, { value: "FL", label: "Florida" },
+  { value: "GA", label: "Georgia" }, { value: "HI", label: "Hawaii" }, { value: "ID", label: "Idaho" },
+  { value: "IL", label: "Illinois" }, { value: "IN", label: "Indiana" }, { value: "IA", label: "Iowa" },
+  { value: "KS", label: "Kansas" }, { value: "KY", label: "Kentucky" }, { value: "LA", label: "Louisiana" },
+  { value: "ME", label: "Maine" }, { value: "MD", label: "Maryland" }, { value: "MA", label: "Massachusetts" },
+  { value: "MI", label: "Michigan" }, { value: "MN", label: "Minnesota" }, { value: "MS", label: "Mississippi" },
+  { value: "MO", label: "Missouri" }, { value: "MT", label: "Montana" }, { value: "NE", label: "Nebraska" },
+  { value: "NV", label: "Nevada" }, { value: "NH", label: "New Hampshire" }, { value: "NJ", label: "New Jersey" },
+  { value: "NM", label: "New Mexico" }, { value: "NY", label: "New York" }, { value: "NC", label: "North Carolina" },
+  { value: "ND", label: "North Dakota" }, { value: "OH", label: "Ohio" }, { value: "OK", label: "Oklahoma" },
+  { value: "OR", label: "Oregon" }, { value: "PA", label: "Pennsylvania" }, { value: "RI", label: "Rhode Island" },
+  { value: "SC", label: "South Carolina" }, { value: "SD", label: "South Dakota" }, { value: "TN", label: "Tennessee" },
+  { value: "TX", label: "Texas" }, { value: "UT", label: "Utah" }, { value: "VT", label: "Vermont" },
+  { value: "VA", label: "Virginia" }, { value: "WA", label: "Washington" }, { value: "WV", label: "West Virginia" },
+  { value: "WI", label: "Wisconsin" }, { value: "WY", label: "Wyoming" }
 ];
 
-const CREDIT_SCORE_RANGES = [
-  { value: "760", label: "Excellent (760+)" },
-  { value: "720", label: "Very Good (720-759)" },
-  { value: "680", label: "Good (680-719)" },
-  { value: "640", label: "Fair (640-679)" },
-  { value: "600", label: "Below Average (600-639)" },
-  { value: "580", label: "Poor (Below 600)" },
-];
+type QuestionType = "intro" | "choice" | "currency" | "number" | "state" | "boolean_pair" | "final";
 
-const steps = [
-  { id: 1, title: "Income", icon: DollarSign, description: "Tell us about your income" },
-  { id: 2, title: "Finances", icon: Briefcase, description: "Your financial situation" },
-  { id: 3, title: "Property", icon: Home, description: "About the property" },
-  { id: 4, title: "Profile", icon: User, description: "A few more details" },
+interface QuestionOption {
+  value: string;
+  label: string;
+  icon?: typeof Home;
+}
+
+interface Question {
+  id: string;
+  field?: keyof PreApprovalFormData;
+  type: QuestionType;
+  question?: string;
+  title?: string;
+  subtitle?: string;
+  buttonText?: string;
+  options?: QuestionOption[];
+  placeholder?: string;
+  subtext?: string;
+  icon?: typeof Home;
+  booleanFields?: { field: keyof PreApprovalFormData; label: string; icon: typeof Home }[];
+}
+
+const QUESTIONS: Question[] = [
+  {
+    id: "intro",
+    type: "intro",
+    title: "Let's get you home.",
+    subtitle: "We'll get you a verified pre-approval letter in about 3 minutes. No impact to your credit score.",
+    buttonText: "Start My Pre-Approval"
+  },
+  {
+    id: "loanPurpose",
+    field: "loanPurpose",
+    type: "choice",
+    question: "First things first, what is your goal?",
+    icon: Home,
+    options: [
+      { value: "purchase", label: "Buying a Home", icon: Home },
+      { value: "refinance", label: "Refinancing My Home", icon: TrendingUp },
+      { value: "cash_out", label: "Cash-Out Refinance", icon: DollarSign }
+    ]
+  },
+  {
+    id: "propertyType",
+    field: "propertyType",
+    type: "choice",
+    question: "What kind of property are we looking at?",
+    icon: Building2,
+    options: [
+      { value: "single_family", label: "Single Family Home", icon: Home },
+      { value: "condo", label: "Condo", icon: Building2 },
+      { value: "townhouse", label: "Townhouse", icon: Building2 },
+      { value: "multi_family", label: "Multi-Family (2-4 Units)", icon: Users }
+    ]
+  },
+  {
+    id: "purchasePrice",
+    field: "purchasePrice",
+    type: "currency",
+    question: "What is the estimated purchase price?",
+    placeholder: "500,000",
+    subtext: "It's okay to estimate if you haven't found 'the one' yet.",
+    icon: DollarSign
+  },
+  {
+    id: "downPayment",
+    field: "downPayment",
+    type: "currency",
+    question: "How much are you planning to put down?",
+    placeholder: "100,000",
+    subtext: "We can adjust this later to fine-tune your monthly payment.",
+    icon: DollarSign
+  },
+  {
+    id: "propertyState",
+    field: "propertyState",
+    type: "state",
+    question: "Which state are you looking to buy in?",
+    icon: MapPin,
+    subtext: "Select from the list below"
+  },
+  {
+    id: "annualIncome",
+    field: "annualIncome",
+    type: "currency",
+    question: "What is your total annual household income?",
+    placeholder: "120,000",
+    subtext: "Gross income before taxes. Include salary, bonuses, etc.",
+    icon: Briefcase
+  },
+  {
+    id: "employmentType",
+    field: "employmentType",
+    type: "choice",
+    question: "How are you employed?",
+    icon: Briefcase,
+    options: [
+      { value: "employed", label: "W-2 Employee", icon: Briefcase },
+      { value: "self_employed", label: "Self-Employed / 1099", icon: Users },
+      { value: "retired", label: "Retired", icon: Clock },
+      { value: "other", label: "Other", icon: Users }
+    ]
+  },
+  {
+    id: "employmentYears",
+    field: "employmentYears",
+    type: "number",
+    question: "How many years have you been at your current job?",
+    placeholder: "5",
+    subtext: "Round to the nearest year",
+    icon: Clock
+  },
+  {
+    id: "monthlyDebts",
+    field: "monthlyDebts",
+    type: "currency",
+    question: "What are your total monthly debt payments?",
+    placeholder: "1,500",
+    subtext: "Include car loans, credit cards, student loans, etc. (not rent/mortgage)",
+    icon: CreditCard
+  },
+  {
+    id: "creditScore",
+    field: "creditScore",
+    type: "choice",
+    question: "Roughly, what is your credit score?",
+    icon: CreditCard,
+    options: [
+      { value: "760", label: "Excellent (760+)", icon: Check },
+      { value: "720", label: "Very Good (720-759)", icon: Check },
+      { value: "680", label: "Good (680-719)", icon: Check },
+      { value: "640", label: "Fair (640-679)", icon: Check },
+      { value: "600", label: "Below Average (Below 640)", icon: Check }
+    ]
+  },
+  {
+    id: "veteranAndFirstTime",
+    type: "boolean_pair",
+    question: "A couple more questions about you",
+    icon: Shield,
+    booleanFields: [
+      { field: "isVeteran", label: "I am a U.S. military veteran or active duty", icon: Shield },
+      { field: "isFirstTimeBuyer", label: "I am a first-time home buyer", icon: Home }
+    ]
+  },
+  {
+    id: "final",
+    type: "final",
+    question: "You're almost there!",
+    subtitle: "Click submit to get your personalized loan options. This will not affect your credit score."
+  }
 ];
 
 export default function PreApproval() {
-  const [currentStep, setCurrentStep] = useState(1);
+  const [currentStep, setCurrentStep] = useState(0);
+  const [direction, setDirection] = useState(1);
   const [applicationId, setApplicationId] = useState<string | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
   const [, navigate] = useLocation();
   const { toast } = useToast();
-  const { isAuthenticated } = useAuthSimple();
+  const { user, isAuthenticated } = useAuth();
 
   const form = useForm<PreApprovalFormData>({
     resolver: zodResolver(preApprovalFormSchema),
+    mode: "onChange",
     defaultValues: {
       annualIncome: "",
       employmentType: "employed",
@@ -83,6 +228,8 @@ export default function PreApproval() {
     },
   });
 
+  const currentQ = QUESTIONS[currentStep];
+
   // Load draft application if user is authenticated
   const { data: draftApp } = useQuery({
     queryKey: ["/api/loan-applications/draft/latest"],
@@ -98,7 +245,7 @@ export default function PreApproval() {
   useEffect(() => {
     if (draftApp) {
       setApplicationId(draftApp.id);
-      const formData: any = {};
+      const formData: Partial<PreApprovalFormData> = {};
       
       if (draftApp.annualIncome) formData.annualIncome = String(draftApp.annualIncome);
       if (draftApp.employmentType) formData.employmentType = draftApp.employmentType;
@@ -113,607 +260,416 @@ export default function PreApproval() {
       formData.isFirstTimeBuyer = draftApp.isFirstTimeBuyer || false;
       if (draftApp.propertyState) formData.propertyState = draftApp.propertyState;
 
-      form.reset(formData);
+      form.reset(formData as PreApprovalFormData);
     }
   }, [draftApp, form]);
 
-  // Create application mutation
-  const createAppMutation = useMutation({
-    mutationFn: async () => {
-      const response = await apiRequest("POST", "/api/loan-applications", {
-        ...form.getValues(),
-      });
-      return response.json();
-    },
-    onSuccess: (data: any) => {
-      setApplicationId(data.id);
-    },
-    onError: (error: Error) => {
-      console.error("Failed to create application:", error);
-    },
-  });
-
-  // Save draft mutation (for auto-save after each step)
-  const saveDraftMutation = useMutation({
-    mutationFn: async (data: Partial<PreApprovalFormData>) => {
-      if (!applicationId) return null;
-      const response = await apiRequest("PATCH", `/api/loan-applications/${applicationId}`, data);
-      return response.json();
-    },
-    onError: (error: Error) => {
-      console.error("Failed to save draft:", error);
-    },
-  });
-
-  // Final submission mutation
+  // Create/update application mutation
   const submitMutation = useMutation({
     mutationFn: async (data: PreApprovalFormData) => {
-      const response = await apiRequest("POST", "/api/loan-applications", data);
-      return response.json();
+      const payload = {
+        ...data,
+        annualIncome: data.annualIncome.replace(/,/g, ""),
+        purchasePrice: data.purchasePrice.replace(/,/g, ""),
+        downPayment: data.downPayment.replace(/,/g, ""),
+        monthlyDebts: data.monthlyDebts.replace(/,/g, ""),
+      };
+
+      if (applicationId) {
+        const response = await apiRequest("PATCH", `/api/loan-applications/${applicationId}`, payload);
+        return response.json();
+      } else {
+        const response = await apiRequest("POST", "/api/loan-applications", payload);
+        return response.json();
+      }
     },
-    onSuccess: (data: any) => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["/api/loan-applications"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
       toast({
-        title: "Application Submitted!",
-        description: "Analyzing your information...",
+        title: "Pre-Approval Complete!",
+        description: "Analyzing your profile with AI...",
       });
-      navigate(`/loan-options/${data.id}`);
+      navigate(`/loan-options/${result.id}`);
     },
     onError: (error: Error) => {
       toast({
         title: "Error",
-        description: error.message || "Failed to submit application",
+        description: error.message || "Failed to submit application. Please try again.",
         variant: "destructive",
       });
     },
   });
 
-  const progress = (currentStep / steps.length) * 100;
-
-  const getFieldsForStep = (step: number): (keyof PreApprovalFormData)[] => {
-    switch (step) {
-      case 1:
-        return ["annualIncome", "employmentType", "employmentYears"];
-      case 2:
-        return ["monthlyDebts", "creditScore"];
-      case 3:
-        return ["loanPurpose", "propertyType", "purchasePrice", "downPayment"];
-      case 4:
-        return ["isVeteran", "isFirstTimeBuyer", "propertyState"];
-      default:
-        return [];
+  const handleNext = async () => {
+    if (currentQ.type === "intro") {
+      setDirection(1);
+      setCurrentStep((prev) => prev + 1);
+      return;
     }
-  };
 
-  const nextStep = async () => {
-    const fieldsToValidate = getFieldsForStep(currentStep);
-    const isValid = await form.trigger(fieldsToValidate as any);
-    
-    if (isValid) {
-      // Auto-save the current step if there's an application ID
-      if (isAuthenticated && applicationId) {
-        setIsSaving(true);
-        const stepData: any = {};
-        fieldsToValidate.forEach((field) => {
-          stepData[field] = form.getValues(field);
-        });
-        
-        await saveDraftMutation.mutateAsync(stepData);
-        setIsSaving(false);
-      } else if (isAuthenticated && !applicationId) {
-        // Create application on first step
-        const app = await createAppMutation.mutateAsync();
-        if (app) {
-          setApplicationId(app.id);
-        }
-      }
-
-      if (currentStep < steps.length) {
-        setCurrentStep(currentStep + 1);
+    if (currentQ.type === "final") {
+      const isValid = await form.trigger();
+      if (isValid) {
+        submitMutation.mutate(form.getValues());
       } else {
-        form.handleSubmit((data) => submitMutation.mutate(data))();
+        toast({ 
+          title: "Please complete all fields", 
+          description: "Some required information is missing.",
+          variant: "destructive" 
+        });
+      }
+      return;
+    }
+
+    if (currentQ.type === "boolean_pair") {
+      setDirection(1);
+      setCurrentStep((prev) => prev + 1);
+      return;
+    }
+
+    // Validate ONLY the current field before moving forward
+    if (currentQ.field) {
+      const isValid = await form.trigger(currentQ.field);
+      if (isValid) {
+        setDirection(1);
+        setCurrentStep((prev) => prev + 1);
+      } else {
+        toast({ 
+          title: "Please fill out this field", 
+          variant: "destructive" 
+        });
       }
     }
   };
 
-  const prevStep = () => {
-    if (currentStep > 1) {
-      setCurrentStep(currentStep - 1);
+  const handleBack = () => {
+    if (currentStep > 0) {
+      setDirection(-1);
+      setCurrentStep((prev) => prev - 1);
     }
   };
 
-  return (
-    <div className="min-h-screen bg-background">
-      <Navigation />
-      
-      <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="mb-8 text-center">
-          <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-green-100 px-4 py-1.5">
-            <Clock className="h-4 w-4 text-green-700" />
-            <span className="text-sm font-medium text-green-900">3-minute pre-approval</span>
-          </div>
-          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl text-gray-900">
-            Get Pre-Approved
-          </h1>
-          <p className="mt-2 text-muted-foreground">
-            Answer a few questions to see your loan options
-          </p>
-          {isAuthenticated && applicationId && (
-            <p className="mt-2 flex items-center justify-center gap-2 text-xs text-green-700">
-              <CheckCircle2 className="h-3 w-3" />
-              Your progress is being saved automatically
-            </p>
-          )}
-        </div>
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && currentQ.type !== "choice" && currentQ.type !== "state") {
+      e.preventDefault();
+      handleNext();
+    }
+  };
 
-        {/* Progress Bar */}
-        <div className="mb-8">
-          <Progress value={progress} className="h-2 bg-gray-200" />
-          <div className="mt-4 flex justify-between">
-            {steps.map((step) => (
-              <div
-                key={step.id}
-                className={`flex flex-col items-center ${
-                  step.id === currentStep
-                    ? "text-green-700"
-                    : step.id < currentStep
-                    ? "text-gray-500"
-                    : "text-gray-300"
-                }`}
-              >
-                <div
-                  className={`flex h-10 w-10 items-center justify-center rounded-full border-2 font-medium ${
-                    step.id === currentStep
-                      ? "border-green-700 bg-green-700 text-white"
-                      : step.id < currentStep
-                      ? "border-green-700 bg-green-100 text-green-700"
-                      : "border-gray-300 bg-gray-100 text-gray-400"
-                  }`}
+  const formatCurrency = (value: string) => {
+    const numbers = value.replace(/\D/g, "");
+    return numbers.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  };
+
+  const renderInput = () => {
+    const IconComponent = currentQ.icon;
+
+    switch (currentQ.type) {
+      case "currency": {
+        const fieldName = currentQ.field as keyof PreApprovalFormData;
+        const watchedValue = form.watch(fieldName);
+        const displayValue = typeof watchedValue === 'string' ? watchedValue : "";
+        return (
+          <div className="relative w-full max-w-md mx-auto">
+            <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 w-8 h-8 text-primary" />
+            <Input
+              key={`currency-${fieldName}`}
+              autoFocus
+              data-testid={`input-${currentQ.field}`}
+              value={displayValue}
+              onChange={(e) => {
+                const formatted = formatCurrency(e.target.value);
+                form.setValue(fieldName, formatted as never, { shouldValidate: true, shouldDirty: true });
+              }}
+              className="pl-16 h-20 text-4xl border-0 border-b-2 border-muted rounded-none focus-visible:ring-0 focus-visible:border-primary bg-transparent placeholder:text-muted-foreground/40"
+              placeholder={currentQ.placeholder}
+              onKeyDown={handleKeyDown}
+            />
+          </div>
+        );
+      }
+
+      case "number": {
+        const fieldName = currentQ.field as keyof PreApprovalFormData;
+        const watchedValue = form.watch(fieldName);
+        const displayValue = typeof watchedValue === 'string' ? watchedValue : "";
+        return (
+          <div className="relative w-full max-w-md mx-auto">
+            {IconComponent && <IconComponent className="absolute left-4 top-1/2 -translate-y-1/2 w-8 h-8 text-primary" />}
+            <Input
+              key={`number-${fieldName}`}
+              autoFocus
+              data-testid={`input-${currentQ.field}`}
+              type="text"
+              inputMode="numeric"
+              value={displayValue}
+              onChange={(e) => {
+                const value = e.target.value.replace(/\D/g, "");
+                form.setValue(fieldName, value as never, { shouldValidate: true, shouldDirty: true });
+              }}
+              className="pl-16 h-20 text-4xl border-0 border-b-2 border-muted rounded-none focus-visible:ring-0 focus-visible:border-primary bg-transparent placeholder:text-muted-foreground/40"
+              placeholder={currentQ.placeholder}
+              onKeyDown={handleKeyDown}
+            />
+          </div>
+        );
+      }
+
+      case "choice":
+        return (
+          <div className="grid gap-3 w-full max-w-lg mx-auto">
+            {currentQ.options?.map((option) => {
+              const OptionIcon = option.icon;
+              const isSelected = form.watch(currentQ.field as keyof PreApprovalFormData) === option.value;
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  data-testid={`option-${currentQ.field}-${option.value}`}
+                  onClick={() => {
+                    form.setValue(currentQ.field as keyof PreApprovalFormData, option.value as never);
+                    setTimeout(() => {
+                      setDirection(1);
+                      setCurrentStep((prev) => prev + 1);
+                    }, 200);
+                  }}
+                  className={`flex items-center gap-4 p-5 text-left text-lg font-medium border-2 rounded-xl transition-all duration-200 group
+                    ${isSelected 
+                      ? "border-primary bg-primary/5" 
+                      : "border-muted hover:border-primary/50 hover:bg-muted/50"
+                    }`}
                 >
-                  {step.id < currentStep ? (
-                    <CheckCircle2 className="h-5 w-5" />
-                  ) : (
-                    <step.icon className="h-5 w-5" />
+                  {OptionIcon && (
+                    <div className={`flex h-10 w-10 items-center justify-center rounded-lg transition-colors
+                      ${isSelected ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary"}`}>
+                      <OptionIcon className="h-5 w-5" />
+                    </div>
                   )}
-                </div>
-                <span className="mt-2 hidden text-xs font-medium sm:block">
-                  {step.title}
-                </span>
-              </div>
-            ))}
+                  <span className={`flex-1 ${isSelected ? "text-primary" : "text-foreground"}`}>
+                    {option.label}
+                  </span>
+                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors
+                    ${isSelected ? "border-primary bg-primary" : "border-muted-foreground/30"}`}>
+                    {isSelected && <Check className="w-3 h-3 text-primary-foreground" />}
+                  </div>
+                </button>
+              );
+            })}
           </div>
-        </div>
+        );
 
-        <Card className="border-gray-200">
-          <CardHeader className="bg-gradient-to-r from-green-50 to-green-50 border-b">
-            <CardTitle className="flex items-center gap-2 text-gray-900">
-              {(() => {
-                const StepIcon = steps[currentStep - 1].icon;
-                return <StepIcon className="h-5 w-5 text-green-700" />;
-              })()}
-              {steps[currentStep - 1].title}
-            </CardTitle>
-            <CardDescription>{steps[currentStep - 1].description}</CardDescription>
-          </CardHeader>
-          <CardContent className="pt-6">
-            <Form {...form}>
-              <form className="space-y-6">
-                {currentStep === 1 && (
-                  <>
-                    <FormField
-                      control={form.control}
-                      name="annualIncome"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-gray-900">Annual Gross Income</FormLabel>
-                          <FormControl>
-                            <div className="relative">
-                              <DollarSign className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                              <Input
-                                placeholder="100,000"
-                                className="pl-10 border-gray-300"
-                                data-testid="input-annual-income"
-                                {...field}
-                              />
-                            </div>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="employmentType"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-gray-900">Employment Type</FormLabel>
-                          <FormControl>
-                            <RadioGroup
-                              onValueChange={field.onChange}
-                              defaultValue={field.value}
-                              className="grid grid-cols-2 gap-4"
-                            >
-                              {[
-                                { value: "employed", label: "Employed" },
-                                { value: "self_employed", label: "Self-Employed" },
-                                { value: "retired", label: "Retired" },
-                                { value: "other", label: "Other" },
-                              ].map((option) => (
-                                <div key={option.value}>
-                                  <RadioGroupItem
-                                    value={option.value}
-                                    id={option.value}
-                                    className="peer sr-only"
-                                  />
-                                  <Label
-                                    htmlFor={option.value}
-                                    className="flex cursor-pointer items-center justify-center rounded-lg border-2 border-gray-200 bg-white p-4 hover:bg-gray-50 peer-data-[state=checked]:border-green-700 peer-data-[state=checked]:bg-green-50 [&:has([data-state=checked])]:border-green-700"
-                                  >
-                                    {option.label}
-                                  </Label>
-                                </div>
-                              ))}
-                            </RadioGroup>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="employmentYears"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-gray-900">Years at Current Job</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              placeholder="5"
-                              className="border-gray-300"
-                              data-testid="input-employment-years"
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </>
-                )}
-
-                {currentStep === 2 && (
-                  <>
-                    <FormField
-                      control={form.control}
-                      name="monthlyDebts"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-gray-900">Total Monthly Debt Payments</FormLabel>
-                          <FormControl>
-                            <div className="relative">
-                              <DollarSign className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                              <Input
-                                placeholder="2,000"
-                                className="pl-10 border-gray-300"
-                                data-testid="input-monthly-debts"
-                                {...field}
-                              />
-                            </div>
-                          </FormControl>
-                          <p className="text-xs text-gray-500">
-                            Include car payments, student loans, credit cards, etc.
-                          </p>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="creditScore"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-gray-900">Estimated Credit Score</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger className="border-gray-300" data-testid="select-credit-score">
-                                <SelectValue placeholder="Select your credit score range" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {CREDIT_SCORE_RANGES.map((range) => (
-                                <SelectItem key={range.value} value={range.value}>
-                                  {range.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </>
-                )}
-
-                {currentStep === 3 && (
-                  <>
-                    <FormField
-                      control={form.control}
-                      name="loanPurpose"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-gray-900">Loan Purpose</FormLabel>
-                          <FormControl>
-                            <RadioGroup
-                              onValueChange={field.onChange}
-                              defaultValue={field.value}
-                              className="grid grid-cols-3 gap-4"
-                            >
-                              {[
-                                { value: "purchase", label: "Purchase" },
-                                { value: "refinance", label: "Refinance" },
-                                { value: "cash_out", label: "Cash-Out" },
-                              ].map((option) => (
-                                <div key={option.value}>
-                                  <RadioGroupItem
-                                    value={option.value}
-                                    id={`purpose-${option.value}`}
-                                    className="peer sr-only"
-                                  />
-                                  <Label
-                                    htmlFor={`purpose-${option.value}`}
-                                    className="flex cursor-pointer items-center justify-center rounded-lg border-2 border-gray-200 bg-white p-4 hover:bg-gray-50 peer-data-[state=checked]:border-green-700 peer-data-[state=checked]:bg-green-50 [&:has([data-state=checked])]:border-green-700"
-                                  >
-                                    {option.label}
-                                  </Label>
-                                </div>
-                              ))}
-                            </RadioGroup>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="propertyType"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-gray-900">Property Type</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger className="border-gray-300" data-testid="select-property-type">
-                                <SelectValue placeholder="Select property type" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="single_family">Single Family Home</SelectItem>
-                              <SelectItem value="condo">Condominium</SelectItem>
-                              <SelectItem value="townhouse">Townhouse</SelectItem>
-                              <SelectItem value="multi_family">Multi-Family (2-4 units)</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <FormField
-                        control={form.control}
-                        name="purchasePrice"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-gray-900">Purchase Price</FormLabel>
-                            <FormControl>
-                              <div className="relative">
-                                <DollarSign className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                                <Input
-                                  placeholder="500,000"
-                                  className="pl-10 border-gray-300"
-                                  data-testid="input-purchase-price"
-                                  {...field}
-                                />
-                              </div>
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="downPayment"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-gray-900">Down Payment</FormLabel>
-                            <FormControl>
-                              <div className="relative">
-                                <DollarSign className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                                <Input
-                                  placeholder="100,000"
-                                  className="pl-10 border-gray-300"
-                                  data-testid="input-down-payment"
-                                  {...field}
-                                />
-                              </div>
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  </>
-                )}
-
-                {currentStep === 4 && (
-                  <>
-                    <FormField
-                      control={form.control}
-                      name="propertyState"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-gray-900">Property Location (State)</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger className="border-gray-300" data-testid="select-property-state">
-                                <SelectValue placeholder="Select state" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {US_STATES.map((state) => (
-                                <SelectItem key={state} value={state}>
-                                  {state}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="isVeteran"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-lg border border-gray-200 bg-gray-50 p-4">
-                          <FormControl>
-                            <Checkbox
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                              data-testid="checkbox-veteran"
-                            />
-                          </FormControl>
-                          <div className="space-y-1 leading-none">
-                            <FormLabel className="cursor-pointer text-gray-900">
-                              I am a veteran or active military
-                            </FormLabel>
-                            <p className="text-sm text-gray-600">
-                              VA loans offer 0% down payment and no PMI
-                            </p>
-                          </div>
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="isFirstTimeBuyer"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-lg border border-gray-200 bg-gray-50 p-4">
-                          <FormControl>
-                            <Checkbox
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                              data-testid="checkbox-first-time"
-                            />
-                          </FormControl>
-                          <div className="space-y-1 leading-none">
-                            <FormLabel className="cursor-pointer text-gray-900">
-                              I am a first-time homebuyer
-                            </FormLabel>
-                            <p className="text-sm text-gray-600">
-                              You may qualify for special programs with lower down payments
-                            </p>
-                          </div>
-                        </FormItem>
-                      )}
-                    />
-
-                    <div className="rounded-lg border border-green-200 bg-green-50 p-4">
-                      <div className="flex items-center gap-2 text-sm">
-                        <Shield className="h-4 w-4 text-green-700" />
-                        <span className="font-medium text-green-900">Your information is secure</span>
-                      </div>
-                      <p className="mt-1 text-xs text-green-800">
-                        We use bank-level encryption to protect your data. This is a soft credit check that won't affect your credit score.
-                      </p>
-                    </div>
-                  </>
-                )}
-
-                <div className="flex justify-between gap-4 pt-6">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={prevStep}
-                    disabled={currentStep === 1}
-                    data-testid="button-prev-step"
-                    className="border-gray-300"
-                  >
-                    <ArrowLeft className="mr-2 h-4 w-4" />
-                    Back
-                  </Button>
-                  
-                  <Button
-                    type="button"
-                    onClick={nextStep}
-                    disabled={submitMutation.isPending || saveDraftMutation.isPending || isSaving}
-                    data-testid="button-next-step"
-                    className="gap-2 bg-green-700 hover:bg-green-800"
-                  >
-                    {submitMutation.isPending ? (
-                      <>
-                        <Loader className="h-4 w-4 animate-spin" />
-                        Analyzing...
-                      </>
-                    ) : isSaving ? (
-                      <>
-                        <Loader className="h-4 w-4 animate-spin" />
-                        Saving...
-                      </>
-                    ) : currentStep === steps.length ? (
-                      <>
-                        Get My Results
-                        <ArrowRight className="h-4 w-4" />
-                      </>
-                    ) : (
-                      <>
-                        Continue
-                        <ArrowRight className="h-4 w-4" />
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </form>
-            </Form>
-          </CardContent>
-        </Card>
-
-        <div className="mt-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-center">
-          <div className="flex items-center justify-center gap-2 mb-2">
-            <AlertCircle className="h-4 w-4 text-amber-700" />
-            <span className="text-sm font-medium text-amber-900">Soft Credit Inquiry</span>
+      case "state":
+        const selectedState = form.watch("propertyState");
+        return (
+          <div className="w-full max-w-lg mx-auto">
+            <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-2">
+              {US_STATES.map((state) => (
+                <button
+                  key={state.value}
+                  type="button"
+                  data-testid={`option-state-${state.value}`}
+                  onClick={() => {
+                    form.setValue("propertyState", state.value, { shouldValidate: true });
+                    setTimeout(() => {
+                      setDirection(1);
+                      setCurrentStep((prev) => prev + 1);
+                    }, 200);
+                  }}
+                  className={`p-3 text-center font-medium border-2 rounded-lg transition-all duration-150
+                    ${selectedState === state.value 
+                      ? "border-primary bg-primary text-primary-foreground" 
+                      : "border-muted hover:border-primary/50 hover:bg-muted/50"
+                    }`}
+                >
+                  {state.value}
+                </button>
+              ))}
+            </div>
           </div>
-          <p className="text-xs text-amber-800">
-            This pre-approval inquiry will not affect your credit score. By continuing, you agree to our Terms of Service and Privacy Policy.
+        );
+
+      case "boolean_pair":
+        return (
+          <div className="grid gap-4 w-full max-w-lg mx-auto">
+            {currentQ.booleanFields?.map((field) => {
+              const FieldIcon = field.icon;
+              const isChecked = form.watch(field.field) as boolean;
+              return (
+                <button
+                  key={field.field}
+                  type="button"
+                  data-testid={`toggle-${field.field}`}
+                  onClick={() => {
+                    form.setValue(field.field, !isChecked as never);
+                  }}
+                  className={`flex items-center gap-4 p-5 text-left text-lg font-medium border-2 rounded-xl transition-all duration-200
+                    ${isChecked 
+                      ? "border-primary bg-primary/5" 
+                      : "border-muted hover:border-primary/50"
+                    }`}
+                >
+                  <div className={`flex h-10 w-10 items-center justify-center rounded-lg transition-colors
+                    ${isChecked ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
+                    <FieldIcon className="h-5 w-5" />
+                  </div>
+                  <span className={`flex-1 ${isChecked ? "text-primary" : "text-foreground"}`}>
+                    {field.label}
+                  </span>
+                  <div className={`w-6 h-6 rounded border-2 flex items-center justify-center transition-colors
+                    ${isChecked ? "border-primary bg-primary" : "border-muted-foreground/30"}`}>
+                    {isChecked && <Check className="w-4 h-4 text-primary-foreground" />}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        );
+        
+      default:
+        return null;
+    }
+  };
+
+  // Intro Screen
+  if (currentQ.type === "intro") {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-background text-center">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }} 
+          animate={{ opacity: 1, y: 0 }}
+          className="max-w-2xl"
+        >
+          <div className="mb-8 flex justify-center">
+            <div className="h-20 w-20 bg-primary/10 rounded-full flex items-center justify-center">
+              <Home className="h-10 w-10 text-primary" />
+            </div>
+          </div>
+          <h1 
+            className="text-4xl sm:text-5xl font-bold tracking-tight text-foreground mb-6"
+            data-testid="text-intro-title"
+          >
+            {currentQ.title}
+          </h1>
+          <p className="text-xl text-muted-foreground mb-12">{currentQ.subtitle}</p>
+          <Button 
+            onClick={handleNext} 
+            size="lg" 
+            className="text-lg px-8 py-6 h-auto rounded-full"
+            data-testid="button-start-preapproval"
+          >
+            {currentQ.buttonText} <ArrowRight className="ml-2" />
+          </Button>
+          <p className="mt-8 text-sm text-muted-foreground">
+            Already have an account?{" "}
+            <a href="/api/login" className="text-primary hover:underline">
+              Sign in
+            </a>
           </p>
+        </motion.div>
+      </div>
+    );
+  }
+
+  // The Conversational Form Steps
+  return (
+    <div className="min-h-screen flex flex-col bg-background overflow-hidden">
+      
+      {/* Progress Bar */}
+      <div className="fixed top-0 left-0 w-full h-1 bg-muted z-50">
+        <motion.div 
+          className="h-full bg-primary"
+          initial={{ width: 0 }}
+          animate={{ width: `${(currentStep / (QUESTIONS.length - 1)) * 100}%` }}
+          transition={{ duration: 0.4 }}
+        />
+      </div>
+
+      {/* Navigation Header */}
+      <div className="fixed top-0 w-full p-4 sm:p-6 flex justify-between items-center z-40 bg-background/80 backdrop-blur-sm">
+        <button 
+          onClick={handleBack}
+          disabled={currentStep === 0}
+          className={`p-2 rounded-full hover:bg-muted transition-all ${currentStep === 0 ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
+          data-testid="button-back"
+        >
+          <ChevronLeft className="w-6 h-6 text-muted-foreground" />
+        </button>
+        <span className="text-sm font-medium text-muted-foreground" data-testid="text-step-counter">
+          Step {currentStep} of {QUESTIONS.length - 1}
+        </span>
+        <div className="w-10" />
+      </div>
+
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col items-center justify-center p-6 pt-20 w-full max-w-4xl mx-auto relative">
+        <AnimatePresence mode="wait" custom={direction}>
+          <motion.div
+            key={currentStep}
+            custom={direction}
+            initial={{ x: direction * 50, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: direction * -50, opacity: 0 }}
+            transition={{ duration: 0.25, ease: "easeOut" }}
+            className="w-full text-center"
+          >
+            {/* Question Title */}
+            <h2 
+              className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-4 leading-tight"
+              data-testid="text-question"
+            >
+              {currentQ.question}
+            </h2>
+            
+            {currentQ.subtitle && (
+              <p className="text-lg text-muted-foreground mb-8">{currentQ.subtitle}</p>
+            )}
+
+            {currentQ.subtext && (
+               <p className="text-base text-muted-foreground/70 mb-8 max-w-lg mx-auto">{currentQ.subtext}</p>
+            )}
+
+            {/* Input Area */}
+            <div className="mb-10">
+              {renderInput()}
+            </div>
+
+            {/* Continue Button (for non-choice inputs) */}
+            {(currentQ.type === "currency" || currentQ.type === "number" || currentQ.type === "boolean_pair" || currentQ.type === "final") && (
+              <Button 
+                onClick={handleNext} 
+                size="lg" 
+                disabled={submitMutation.isPending}
+                className="text-lg px-10 py-6 h-auto rounded-full shadow-lg hover:shadow-xl transition-all"
+                data-testid={currentQ.type === "final" ? "button-submit" : "button-continue"}
+              >
+                {submitMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    Analyzing...
+                  </>
+                ) : currentQ.type === "final" ? (
+                  "Get My Loan Options"
+                ) : (
+                  <>
+                    Continue
+                    <ArrowRight className="ml-2 w-5 h-5" />
+                  </>
+                )}
+              </Button>
+            )}
+
+          </motion.div>
+        </AnimatePresence>
+      </div>
+
+      {/* Footer */}
+      <div className="p-4 sm:p-6 text-center border-t border-muted">
+        <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+          <Shield className="h-4 w-4" />
+          <span>Soft credit check only - won't affect your credit score</span>
         </div>
       </div>
     </div>
   );
-}
-
-// Simple hook for checking authentication
-function useAuthSimple() {
-  const { data: user } = useQuery({
-    queryKey: ["/api/user"],
-    queryFn: async () => {
-      try {
-        const response = await fetch("/api/user", { credentials: "include" });
-        if (!response.ok) return null;
-        return response.json();
-      } catch {
-        return null;
-      }
-    },
-  });
-
-  return {
-    isAuthenticated: !!user,
-  };
 }

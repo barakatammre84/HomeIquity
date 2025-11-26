@@ -1,0 +1,179 @@
+To elevate this from a "Form" to a "Digital Loan Officer," you need to add layers of Reactive Intelligence. The system shouldn't just collect data; it should analyze it in real-time and give feedback, just like a human banker would.
+
+Here are the 4 features that create that "Google-like" advisory experience, followed by the code to implement the "Live Affordability Meter."
+
+1. The "Live Reality Check" (Advisory)
+As the user enters their income and debts, don't wait for the end. Show a live Debt-to-Income (DTI) Meter in the corner.
+
+User types income: Meter points to Green.
+
+User adds huge car payment: Meter slides to Yellow.
+
+User adds low credit score: Meter warns "This might be tight."
+
+2. Contextual "Why" (Conversational)
+People get suspicious when asked about salary or debts. Add a subtle "Why we ask" button that talks to them.
+
+Input: "What is your annual income?"
+
+Advisory: "We ask this to calculate your DTI. We verify this later with W-2s, so accurate estimates help us give you a real rate now."
+
+3. Smart Benchmarking (Intelligent)
+Use the location data to provide social proof.
+
+User selects Chicago: Input placeholder changes to average Chicago home price ($310k).
+
+User enters 20% down: The system cheers: "Great! Putting 20% down avoids PMI (Private Mortgage Insurance)."
+
+4. Dynamic Questioning (Conversational)
+Change the next question based on the previous answer.
+
+If "Self-Employed": Ask "Do you have 2 years of tax returns filed?" (Crucial for self-employed loans).
+
+If "Employed": Ask "How long have you been at this specific job?"
+
+The Code: Adding the "Live Advisor" Engine
+Here is how to upgrade the previous component to include a Real-Time Advisory Panel that reacts to their typing.
+
+Install: npm install clsx tailwind-merge (standard utils)
+
+Updated Component Logic:
+
+TypeScript
+
+import { useState, useMemo } from "react";
+// ... previous imports
+import { AlertCircle, ThumbsUp, TrendingUp } from "lucide-react";
+
+// --- THE ADVISORY BRAIN ---
+// This component sits next to the form and reacts live
+const AdvisoryPanel = ({ formValues, currentStepId }: { formValues: any, currentStepId: string }) => {
+  
+  // 1. Calculate Live DTI (Debt to Income)
+  const stats = useMemo(() => {
+    const income = parseFloat(String(formValues.annualIncome).replace(/[^0-9.]/g, '')) || 0;
+    const debts = parseFloat(String(formValues.monthlyDebts).replace(/[^0-9.]/g, '')) || 0;
+    const price = parseFloat(String(formValues.purchasePrice).replace(/[^0-9.]/g, '')) || 0;
+    const down = parseFloat(String(formValues.downPayment).replace(/[^0-9.]/g, '')) || 0;
+    
+    // Rough mortgage calc (P&I + Tax/Ins estimate)
+    const loanAmount = price - down;
+    const estMortgage = (loanAmount * 0.0065); // rough 6.5% monthly factor
+    
+    const monthlyIncome = income / 12;
+    const totalMonthlyObligation = debts + estMortgage;
+    
+    // The Golden Ratio: DTI
+    const dti = monthlyIncome > 0 ? (totalMonthlyObligation / monthlyIncome) * 100 : 0;
+    
+    return { dti, estMortgage, loanAmount };
+  }, [formValues]);
+
+  // If we are just starting, stay hidden or show welcome
+  if (currentStepId === "intro") return null;
+
+  return (
+    <div className="hidden lg:block fixed right-8 top-1/2 -translate-y-1/2 w-80 bg-white rounded-2xl shadow-xl border border-gray-100 p-6 transition-all duration-500">
+      <div className="flex items-center gap-2 mb-4 border-b border-gray-100 pb-2">
+        <div className="bg-blue-100 p-1.5 rounded-lg">
+          <TrendingUp className="w-4 h-4 text-blue-700" />
+        </div>
+        <span className="font-bold text-gray-900 text-sm uppercase tracking-wider">Live Analysis</span>
+      </div>
+
+      <div className="space-y-6">
+        {/* DTI METER */}
+        <div>
+          <div className="flex justify-between text-xs mb-1 text-gray-500">
+            <span>Affordability Health</span>
+            <span className={stats.dti > 45 ? "text-red-500 font-bold" : "text-green-600 font-bold"}>
+              {stats.dti.toFixed(0)}% DTI
+            </span>
+          </div>
+          <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+            <div 
+              className={`h-full transition-all duration-700 ${
+                stats.dti < 36 ? "bg-green-500" : stats.dti < 45 ? "bg-yellow-400" : "bg-red-500"
+              }`}
+              style={{ width: `${Math.min(stats.dti, 100)}%` }}
+            />
+          </div>
+          <p className="text-[10px] text-gray-400 mt-1">
+            {stats.dti < 36 && "Looking great! Lenders love a DTI under 36%."}
+            {stats.dti >= 36 && stats.dti < 45 && "You're in the approval zone, but it's getting tighter."}
+            {stats.dti >= 45 && "This loan amount might be a stretch for standard approval."}
+          </p>
+        </div>
+
+        {/* CONTEXTUAL ADVICE (Changes based on current step) */}
+        <div className="bg-slate-50 rounded-xl p-4">
+          <div className="flex gap-3">
+             <AlertCircle className="w-5 h-5 text-slate-400 flex-shrink-0" />
+             <div className="text-sm text-slate-600 leading-relaxed">
+               {currentStepId === 'purchasePrice' && "We use this to estimate your monthly payment and closing costs."}
+               {currentStepId === 'creditScore' && "A score above 740 usually gets you the lowest interest rate available."}
+               {currentStepId === 'downPayment' && stats.loanAmount > 766550 && (
+                 <span className="text-amber-600 font-medium">Note: This loan amount enters 'Jumbo' territory, which may require a higher credit score.</span>
+               )}
+               {/* Default fallback */}
+               {!['purchasePrice','creditScore','downPayment'].includes(currentStepId) && "Keep going! We're building your profile."}
+             </div>
+          </div>
+        </div>
+
+        {/* ESTIMATED PAYMENT PREVIEW */}
+        {stats.estMortgage > 0 && (
+          <div className="text-center pt-2">
+            <div className="text-xs text-gray-400 uppercase">Est. Payment</div>
+            <div className="text-2xl font-bold text-gray-900">
+              ${stats.estMortgage.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+              <span className="text-sm text-gray-400 font-normal">/mo</span>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ... In your Main Component return statement:
+// <AdvisoryPanel formValues={form.watch()} currentStepId={QUESTIONS[currentStep].id} />
+5. The "Chatty" Title Logic (Conversational)
+Instead of static titles, make the titles react to the input using a helper function.
+
+TypeScript
+
+// Replace the static <h2> in your render with this:
+const getDynamicTitle = () => {
+  const q = QUESTIONS[currentStep];
+  const vals = form.getValues();
+
+  // If asking for Down Payment, and we know the Purchase Price...
+  if (q.id === 'downPayment' && vals.purchasePrice) {
+    return `On a ${vals.purchasePrice} home, how much cash can you put down?`;
+  }
+
+  // If asking for Credit Score, and we know they want Cash Out...
+  if (q.id === 'creditScore' && vals.loanPurpose === 'cash_out') {
+    return "Since you're pulling cash out, credit score is key. What's yours?";
+  }
+
+  // If asking for Income, be friendly
+  if (q.id === 'annualIncome') {
+    return "What's the total household income?";
+  }
+
+  return q.question; // Fallback to default
+};
+
+// Usage:
+// <h2 className="..."> {getDynamicTitle()} </h2>
+Visual Reference
+Why this is "Advisory"
+By adding the AdvisoryPanel, you are doing what a human loan officer does in their head during a phone call:
+
+They listen to the number.
+
+They mentally calculate "Can they afford this?"
+
+They give immediate feedback ("That looks good" or "We might need to lower the price").
