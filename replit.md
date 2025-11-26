@@ -92,6 +92,35 @@ The backend is developed with **Node.js, Express.js, and TypeScript**. It uses *
 - Stage advancement with blocker checking
 - Real-time refresh
 
+**MISMO/ULAD Validation Service:** GSE submission readiness checking:
+- URLA section completeness scoring (personal info, employment, assets, liabilities)
+- Field-level validation with specific feedback
+- GSE Ready/ULDD Compliant/Needs Attention categorization
+- Real-time validation on demand via `/api/compliance/dashboard`
+- Routes: `/compliance` (staff-only compliance dashboard)
+
+**Loan Estimate Generator:** TRID-compliant disclosure creation:
+- APR calculation with all-in costs
+- Fee breakdown (origination, appraisal, title, recording, prepaid items)
+- Payment schedule with P&I, taxes, insurance, PMI
+- LLPA pricing engine integration
+- Routes: `/loan-estimate/:id` (staff view)
+
+**Unified Borrower File Workspace:** Single-view borrower profile for staff:
+- Application details with loan metrics
+- Document management with upload/download
+- Condition tracking with status indicators
+- Timeline view with activity history
+- Quick actions for MISMO export and LE generation
+- Routes: `/borrower-file/:id` (staff workspace)
+
+**Broker Compliance Dashboard:** TRID and audit tracking:
+- TRID timing tab with disclosure deadlines
+- MISMO validation tab with GSE readiness scores
+- Audit log tab for activity history
+- Loan status filtering and drill-down
+- Staff-only access with role gating
+
 ## External Dependencies
 
 ### Third-Party Services
