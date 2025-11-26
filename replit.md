@@ -95,6 +95,41 @@ Preferred communication style: Simple, everyday language.
 4. Store results in database linked to loan application
 5. Present options to user with comparison interface
 
+### MISMO 3.4 GSE Compliance
+
+**MISMO 3.4 XML Export:**
+- Generates compliant XML for GSE loan delivery (Fannie Mae, Freddie Mac)
+- Follows MISMO 3.4 hierarchical structure: MESSAGE → DEAL_SETS → DEAL → COLLATERALS/LOANS/PARTIES
+- Supports ULDD Phase 5 requirements effective July 28, 2025
+- MERS MIN generation with Luhn check digit algorithm
+
+**Export API:**
+- Endpoint: `GET /api/loan-applications/:id/mismo-export`
+- Authorization: Staff roles only (admin, lender, broker)
+- Returns: application/xml with properly formatted MISMO 3.4 XML
+- Includes loan identifiers, qualification metrics (DTI/LTV), borrower information, collateral details
+
+**Key Files:**
+- `shared/mismo.ts` - TypeScript types for MISMO containers (XMLNode, generation options)
+- `server/mismo.ts` - XML generation service with MERS utilities
+- `server/storage.ts` - getMISMOLoanData aggregates all loan data for export
+
+### Task Management System
+
+**Document Request Workflow:**
+- Staff can create document request tasks assigned to borrowers
+- Tasks include document category, instructions, due dates, and priority levels
+- Borrowers upload documents which are linked to tasks
+- Staff can verify/reject uploaded documents with notes
+- AI analysis results stored per task for income/asset verification
+
+**API Endpoints:**
+- `POST /api/tasks` - Create task (staff only)
+- `GET /api/tasks` - List tasks (all for staff, assigned only for borrowers)
+- `PATCH /api/tasks/:id` - Update task status
+- `POST /api/tasks/:taskId/documents` - Link document to task
+- `PATCH /api/tasks/:taskId/documents/:docId/verify` - Verify document (staff only)
+
 ## External Dependencies
 
 ### Third-Party Services
