@@ -7,6 +7,14 @@ import { generateMISMO34XML, type MISMOLoanDTO } from "./mismo";
 import { seedDatabase } from "./seed";
 import { insertLoanApplicationSchema, insertBorrowerDeclarationsSchema } from "@shared/schema";
 import { z } from "zod";
+import { 
+  qualifyIncome, 
+  verifyAssets, 
+  assessLiabilities, 
+  calculateDTI, 
+  checkPropertyEligibility 
+} from "./underwriting";
+import { calculateLLPA, getAreaMedianIncome } from "./pricing";
 
 // Validation schema for declarations with boolean coercion
 const declarationsValidationSchema = insertBorrowerDeclarationsSchema.partial().extend({
@@ -1036,6 +1044,185 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Verify task document error:", error);
       res.status(500).json({ error: "Failed to verify document" });
+    }
+  });
+
+  // ========================================================================
+  // UNDERWRITING ENGINE API ENDPOINTS
+  // ========================================================================
+
+  app.post("/api/loan-applications/:id/calculate-income", isAuthenticated, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);
+      if (!application) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+
+      const employment = await storage.getEmploymentHistory(id);
+      const otherIncome = await storage.getOtherIncomeSources(id);
+
+      const result = qualifyIncome(employment, otherIncome, {
+        annualIncome: application.annualIncome || "0",
+        employmentYears: application.employmentYears || 0,
+      });
+
+      res.json(result);
+    } catch (error) {
+      console.error("Calculate income error:", error);
+      res.status(500).json({ error: "Failed to calculate income" });
+    }
+  });
+
+  app.post("/api/loan-applications/:id/calculate-assets", isAuthenticated, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);
+      if (!application) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+
+      const assets = await storage.getUrlaAssets(id);
+      const downPaymentAndClosing = req.body.downPaymentAndClosing ? 
+        parseFloat(req.body.downPaymentAndClosing) : 0;
+
+      const result = verifyAssets(assets, downPaymentAndClosing);
+      res.json(result);
+    } catch (error) {
+      console.error("Calculate assets error:", error);
+      res.status(500).json({ error: "Failed to calculate assets" });
+    }
+  });
+
+  app.post("/api/loan-applications/:id/calculate-liabilities", isAuthenticated, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);
+      if (!application) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+
+      const liabilities = await storage.getUrlaLiabilities(id);
+      const result = assessLiabilities(liabilities);
+      res.json(result);
+    } catch (error) {
+      console.error("Calculate liabilities error:", error);
+      res.status(500).json({ error: "Failed to calculate liabilities" });
+    }
+  });
+
+  app.post("/api/loan-applications/:id/calculate-dti", isAuthenticated, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);
+      if (!application) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+
+      const { qualifyingIncome, housingExpense, nonHousingDebts } = req.body;
+      if (!qualifyingIncome || !housingExpense || nonHousingDebts === undefined) {
+        return res.status(400).json({ error: "Missing required parameters" });
+      }
+
+      const result = calculateDTI(
+        parseFloat(qualifyingIncome),
+        parseFloat(housingExpense),
+        parseFloat(nonHousingDebts)
+      );
+
+      res.json(result);
+    } catch (error) {
+      console.error("Calculate DTI error:", error);
+      res.status(500).json({ error: "Failed to calculate DTI" });
+    }
+  });
+
+  app.post("/api/loan-applications/:id/check-property-eligibility", isAuthenticated, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);
+      if (!application) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+
+      const {
+        borrowerAssets,
+        borrowerIncome,
+        borrowerDebts,
+        propertyPrice,
+        propertyType = "single_family",
+        propertyTaxAnnual,
+        hoaMontly = 0,
+        homeInsuranceEstimate = 150,
+      } = req.body;
+
+      if (!borrowerAssets || !borrowerIncome || borrowerDebts === undefined || !propertyPrice) {
+        return res.status(400).json({ error: "Missing required parameters" });
+      }
+
+      const result = checkPropertyEligibility(
+        parseFloat(borrowerAssets),
+        parseFloat(borrowerIncome),
+        parseFloat(borrowerDebts),
+        parseFloat(propertyPrice),
+        propertyType,
+        propertyTaxAnnual ? parseFloat(propertyTaxAnnual) : undefined,
+        parseFloat(hoaMontly),
+        parseFloat(homeInsuranceEstimate)
+      );
+
+      res.json(result);
+    } catch (error) {
+      console.error("Check property eligibility error:", error);
+      res.status(500).json({ error: "Failed to check property eligibility" });
+    }
+  });
+
+  app.post("/api/loan-applications/:id/calculate-pricing", isAuthenticated, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);
+      if (!application) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+
+      const {
+        loanAmount,
+        creditScore,
+        ltv,
+        propertyType = "single_family",
+        occupancyType = "primary_residence",
+        propertyZip,
+      } = req.body;
+
+      if (!loanAmount || !creditScore || !ltv) {
+        return res.status(400).json({ error: "Missing required parameters" });
+      }
+
+      // Get AMI for FTHB waiver
+      let areaMedianIncome = 0;
+      if (propertyZip) {
+        areaMedianIncome = await getAreaMedianIncome(propertyZip);
+      }
+
+      const borrowerIncome = application.annualIncome ? 
+        parseFloat(application.annualIncome) / 12 : 0;
+
+      const result = calculateLLPA(
+        parseFloat(loanAmount),
+        parseInt(creditScore),
+        parseFloat(ltv),
+        propertyType as any,
+        occupancyType as any,
+        application.isFirstTimeBuyer,
+        borrowerIncome,
+        areaMedianIncome
+      );
+
+      res.json(result);
+    } catch (error) {
+      console.error("Calculate pricing error:", error);
+      res.status(500).json({ error: "Failed to calculate pricing" });
     }
   });
 
