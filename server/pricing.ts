@@ -255,29 +255,8 @@ export async function getAreaMedianIncome(zipCode: string): Promise<number> {
 // ============================================================================
 
 export function lookupPMIRate(creditScore: number, ltv: number): number {
-  // Simplified PMI rates (annual %)
-  // Real implementation would query MGIC or Enact rate cards
-  const rates: Record<string, number> = {
-    "780_plus_95": 0.35,
-    "780_plus_90": 0.25,
-    "760_95": 0.42,
-    "760_90": 0.30,
-    "740_95": 0.50,
-    "740_90": 0.35,
-    "640_95": 1.35,
-    "640_90": 0.65,
-  };
-
-  let key = "default";
-  if (creditScore >= 780) {
-    key = ltv > 90 ? "780_plus_95" : "780_plus_90";
-  } else if (creditScore >= 760) {
-    key = ltv > 90 ? "760_95" : "760_90";
-  } else if (creditScore >= 740) {
-    key = ltv > 90 ? "740_95" : "740_90";
-  } else {
-    key = ltv > 90 ? "640_95" : "640_90";
-  }
-
-  return rates[key] || 0.60;
+  // Use property analyzer's rate card for accurate PMI pricing
+  const { propertyAnalyzer } = require("./propertyAnalyzer");
+  const rateCard = propertyAnalyzer.getPMIRateCard(creditScore, ltv);
+  return rateCard.annualRate;
 }
