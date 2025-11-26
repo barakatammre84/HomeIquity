@@ -25,6 +25,8 @@ import AgentEdit from "@/pages/AgentEdit";
 import PropertyForm from "@/pages/PropertyForm";
 import BuyerProperties from "@/pages/BuyerProperties";
 import PropertyDetail from "@/pages/PropertyDetail";
+import LoanPipeline from "@/pages/LoanPipeline";
+import PipelineQueue from "@/pages/PipelineQueue";
 
 function Router() {
   return (
@@ -40,11 +42,13 @@ function Router() {
       <Route path="/property/new" component={PropertyForm} />
       <Route path="/property/:propertyId/edit" component={PropertyForm} />
       <Route path="/loan-options/:id" component={LoanOptions} />
+      <Route path="/pipeline/:id" component={LoanPipeline} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/application-summary" component={ApplicationSummary} />
       <Route path="/tasks" component={Tasks} />
       <Route path="/task/:id" component={TaskDetail} />
       <Route path="/staff-dashboard" component={StaffDashboard} />
+      <Route path="/pipeline-queue" component={PipelineQueue} />
       <Route path="/urla-form" component={URLAForm} />
       <Route path="/documents" component={Documents} />
       <Route path="/resources" component={Resources} />

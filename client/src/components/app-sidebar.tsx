@@ -21,6 +21,7 @@ import {
   Users,
   LogOut,
   Clipboard,
+  GitBranch,
 } from "lucide-react";
 
 const navigationItems = [
@@ -87,6 +88,14 @@ export function AppSidebar() {
             <SidebarGroupLabel>Staff</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={isActive("/pipeline-queue")}>
+                    <Link href="/pipeline-queue" className="cursor-pointer" data-testid="link-pipeline-queue">
+                      <GitBranch className="h-4 w-4" />
+                      <span>Pipeline Queue</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild isActive={isActive("/staff-dashboard")}>
                     <Link href="/staff-dashboard" className="cursor-pointer" data-testid="link-staff-dashboard">

@@ -70,6 +70,28 @@ The backend is developed with **Node.js, Express.js, and TypeScript**. It uses *
 - Recommended loan terms and rate estimates
 - "Get Pre-Approved" CTA for non-qualified users
 
+**Loan Pipeline Engine:** Rules-driven loan processing pipeline for fastest closing times:
+- **LoanStage Tracking:** 7-stage workflow from Application → Pre-Approval → Processing → Underwriting → Conditional Approval → Clear to Close → Funded
+- **Document Requirements Engine:** Auto-generates required documents based on borrower profile (employment type, loan purpose, property type, veteran status)
+- **Condition/Stips System:** Tracks conditions with priorities (prior_to_approval, prior_to_docs, prior_to_funding) and statuses (outstanding, submitted, cleared, waived)
+- **Milestone Tracking:** Timestamps for each stage transition with SLA monitoring
+- Routes: `/pipeline/:id` (borrower view), `/pipeline-queue` (staff queue)
+- API: `/api/loan-applications/:id/pipeline`, `/api/loan-applications/:id/conditions`, `/api/loan-applications/:id/advance-stage`, `/api/pipeline/queue`
+
+**Borrower Pipeline Dashboard:** Visual progress tracking for borrowers:
+- Stage timeline showing completion progress
+- Outstanding conditions with upload CTAs
+- Document submission tracking
+- Estimated closing timeline
+- Contact loan officer CTA
+
+**Staff Pipeline Queue:** Broker/lender workflow management:
+- Priority-sorted loan queue (urgent/high/normal based on SLA)
+- Stage distribution filters
+- Condition clearing dialog with notes
+- Stage advancement with blocker checking
+- Real-time refresh
+
 ## External Dependencies
 
 ### Third-Party Services

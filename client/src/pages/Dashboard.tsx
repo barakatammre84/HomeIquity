@@ -152,6 +152,16 @@ export default function Dashboard() {
                       </div>
                       <CheckCircle2 className="h-12 w-12 text-green-600 dark:text-green-400" />
                     </div>
+                    {activeApplication && (
+                      <div className="mt-4 pt-4 border-t border-green-200 dark:border-green-800">
+                        <Link href={`/pipeline/${activeApplication.id}`}>
+                          <Button className="w-full gap-2" data-testid="button-view-progress">
+                            View Loan Progress
+                            <ArrowRight className="h-4 w-4" />
+                          </Button>
+                        </Link>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
 

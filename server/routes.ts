@@ -208,22 +208,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/loan-applications/:id", async (req, res) => {
+  app.get("/api/loan-applications/:id", isAuthenticated, async (req, res) => {
     try {
-      const application = await storage.getLoanApplication(req.params.id);
+      const application = await storage.getLoanApplicationWithAccess(
+        req.params.id, 
+        req.user!.id, 
+        req.user!.role
+      );
       if (!application) {
         return res.status(404).json({ error: "Application not found" });
       }
-      res.json(application);
+      
+      const [options, documents, activities] = await Promise.all([
+        storage.getLoanOptionsByApplication(req.params.id),
+        storage.getDocumentsByApplication(req.params.id),
+        storage.getDealActivitiesByApplication(req.params.id),
+      ]);
+
+      res.json({
+        application,
+        options,
+        documents,
+        activities,
+      });
     } catch (error) {
       console.error("Get application error:", error);
       res.status(500).json({ error: "Failed to get application" });
     }
   });
 
-  app.get("/api/loan-applications/:id/options", async (req, res) => {
+  app.get("/api/loan-applications/:id/options", isAuthenticated, async (req, res) => {
     try {
-      const application = await storage.getLoanApplication(req.params.id);
+      const application = await storage.getLoanApplicationWithAccess(
+        req.params.id, 
+        req.user!.id, 
+        req.user!.role
+      );
       if (!application) {
         return res.status(404).json({ error: "Application not found" });
       }
