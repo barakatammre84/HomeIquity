@@ -99,20 +99,25 @@ export function detectMelloRoos(
 
   // Try to extract estimated amount from remarks
   // Pattern: looks for "$XXX" or "XXXX per month/month" or similar
-  const amountPatterns = [
-    /\$(\d+(?:,\d{3})*(?:\.\d{2})?)\s*(?:per month|\/month|monthly)/gi,
-    /(\d+(?:,\d{3})*(?:\.\d{2})?)\s*(?:per month|\/month|annually)/gi,
-  ];
+  const dollarPattern = /\$(\d+(?:,\d{3})*(?:\.\d{2})?)\s*(?:per month|\/month|monthly)/gi;
+  const annualPattern = /(\d+(?:,\d{3})*(?:\.\d{2})?)\s*(?:per month|\/month|annually)/gi;
 
-  for (const pattern of amountPatterns) {
-    const matches = allRemarks.matchAll(pattern);
-    for (const match of matches) {
-      const amount = parseFloat(match[1].replace(/,/g, ""));
-      if (amount > 0) {
-        estimatedMonthlyAmount = amount;
-        detected = true;
-        confidence = "high";
-      }
+  let match;
+  while ((match = dollarPattern.exec(allRemarks)) !== null) {
+    const amount = parseFloat(match[1].replace(/,/g, ""));
+    if (amount > 0) {
+      estimatedMonthlyAmount = amount;
+      detected = true;
+      confidence = "high";
+    }
+  }
+
+  while ((match = annualPattern.exec(allRemarks)) !== null) {
+    const amount = parseFloat(match[1].replace(/,/g, ""));
+    if (amount > 0) {
+      estimatedMonthlyAmount = amount;
+      detected = true;
+      confidence = "high";
     }
   }
 
