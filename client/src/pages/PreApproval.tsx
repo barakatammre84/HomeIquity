@@ -424,6 +424,10 @@ export default function PreApproval() {
   });
 
   const currentQ = QUESTIONS[currentStep];
+  
+  // All hooks must be called at top, before any conditional returns
+  const watchedValues = form.watch();
+  const dynamicTitle = useMemo(() => getDynamicTitle(currentQ, watchedValues), [currentQ, watchedValues]);
 
   // Load draft application if user is authenticated
   const { data: draftApp } = useQuery({
@@ -765,10 +769,6 @@ export default function PreApproval() {
       </div>
     );
   }
-
-  // Watch form values once for performance optimization
-  const watchedValues = form.watch();
-  const dynamicTitle = useMemo(() => getDynamicTitle(currentQ, watchedValues), [currentQ, watchedValues]);
 
   // The Conversational Form Steps
   return (
