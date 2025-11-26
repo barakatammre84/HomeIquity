@@ -99,12 +99,12 @@ export default function LoanPipeline() {
   const { toast } = useToast();
 
   const { data: appData, isLoading: appLoading } = useQuery<ApplicationData>({
-    queryKey: ["/api/loan-applications", applicationId],
+    queryKey: [`/api/loan-applications/${applicationId}`],
     enabled: !!applicationId && !authLoading,
   });
 
   const { data: pipelineData, isLoading: pipelineLoading } = useQuery<PipelineData>({
-    queryKey: ["/api/loan-applications", applicationId, "pipeline"],
+    queryKey: [`/api/loan-applications/${applicationId}/pipeline`],
     enabled: !!applicationId && !authLoading,
   });
 
@@ -159,16 +159,17 @@ export default function LoanPipeline() {
 
   const currentStage = pipeline?.summary?.currentStage || application.status || "application";
   const currentStageIndex = getStageIndex(currentStage);
-  const progress = pipeline?.progress || {
+  const defaultProgress = {
     stageProgress: 0,
     documentsComplete: 0,
     documentsTotal: 0,
     conditionsCleared: 0,
     conditionsTotal: 0,
     readyForNextStage: false,
-    blockers: [],
-    nextSteps: [],
+    blockers: [] as string[],
+    nextSteps: [] as string[],
   };
+  const progress = { ...defaultProgress, ...pipeline?.progress };
   const summary = pipeline?.summary || {
     daysInPipeline: 0,
     estimatedClosingDays: 21,
@@ -331,7 +332,7 @@ export default function LoanPipeline() {
               </Card>
             </div>
 
-            {progress.blockers.length > 0 && (
+            {(progress.blockers?.length || 0) > 0 && (
               <Card className="border-destructive/50" data-testid="card-blockers">
                 <CardHeader className="pb-3">
                   <div className="flex items-center gap-2">
@@ -352,7 +353,7 @@ export default function LoanPipeline() {
               </Card>
             )}
 
-            {progress.nextSteps.length > 0 && progress.blockers.length === 0 && (
+            {(progress.nextSteps?.length || 0) > 0 && (progress.blockers?.length || 0) === 0 && (
               <Card className="border-primary/50" data-testid="card-next-steps">
                 <CardHeader className="pb-3">
                   <div className="flex items-center gap-2">

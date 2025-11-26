@@ -68,7 +68,7 @@ export default function TaskDetail() {
   const [verificationNotes, setVerificationNotes] = useState("");
 
   const { data: task, isLoading } = useQuery<TaskWithDocs>({
-    queryKey: ["/api/tasks", taskId],
+    queryKey: [`/api/tasks/${taskId}`],
     enabled: !authLoading && !!taskId,
   });
 
@@ -98,7 +98,7 @@ export default function TaskDetail() {
       return linkResponse.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId] });
+      queryClient.invalidateQueries({ queryKey: [`/api/tasks/${taskId}`] });
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
       toast({
         title: "Document Uploaded",
@@ -125,7 +125,7 @@ export default function TaskDetail() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId] });
+      queryClient.invalidateQueries({ queryKey: [`/api/tasks/${taskId}`] });
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
       toast({
         title: "Document Updated",

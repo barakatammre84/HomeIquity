@@ -5,11 +5,9 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import Landing from "@/pages/Landing";
-import Home from "@/pages/Home";
 import PreApproval from "@/pages/PreApproval";
 import LoanOptions from "@/pages/LoanOptions";
 import Dashboard from "@/pages/Dashboard";
-import Properties from "@/pages/Properties";
 import Documents from "@/pages/Documents";
 import Resources from "@/pages/Resources";
 import Staff from "@/pages/Staff";
@@ -19,28 +17,17 @@ import Tasks from "@/pages/Tasks";
 import StaffDashboard from "@/pages/StaffDashboard";
 import TaskDetail from "@/pages/TaskDetail";
 import URLAForm from "@/pages/URLAForm";
-import AgentProfile from "@/pages/AgentProfile";
-import AgentDashboard from "@/pages/AgentDashboard";
-import AgentEdit from "@/pages/AgentEdit";
-import PropertyForm from "@/pages/PropertyForm";
-import BuyerProperties from "@/pages/BuyerProperties";
-import PropertyDetail from "@/pages/PropertyDetail";
 import LoanPipeline from "@/pages/LoanPipeline";
 import PipelineQueue from "@/pages/PipelineQueue";
+import BorrowerFile from "@/pages/BorrowerFile";
+import ComplianceDashboard from "@/pages/ComplianceDashboard";
+import LoanEstimate from "@/pages/LoanEstimate";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={Landing} />
       <Route path="/apply" component={PreApproval} />
-      <Route path="/properties" component={Properties} />
-      <Route path="/buy" component={BuyerProperties} />
-      <Route path="/property/:propertyId" component={PropertyDetail} />
-      <Route path="/agent/dashboard" component={AgentDashboard} />
-      <Route path="/agent/edit" component={AgentEdit} />
-      <Route path="/agent/:agentId" component={AgentProfile} />
-      <Route path="/property/new" component={PropertyForm} />
-      <Route path="/property/:propertyId/edit" component={PropertyForm} />
       <Route path="/loan-options/:id" component={LoanOptions} />
       <Route path="/pipeline/:id" component={LoanPipeline} />
       <Route path="/dashboard" component={Dashboard} />
@@ -49,6 +36,9 @@ function Router() {
       <Route path="/task/:id" component={TaskDetail} />
       <Route path="/staff-dashboard" component={StaffDashboard} />
       <Route path="/pipeline-queue" component={PipelineQueue} />
+      <Route path="/borrower-file/:id" component={BorrowerFile} />
+      <Route path="/loan-estimate/:id" component={LoanEstimate} />
+      <Route path="/compliance" component={ComplianceDashboard} />
       <Route path="/urla-form" component={URLAForm} />
       <Route path="/documents" component={Documents} />
       <Route path="/resources" component={Resources} />

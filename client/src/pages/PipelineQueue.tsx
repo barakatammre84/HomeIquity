@@ -136,7 +136,7 @@ export default function PipelineQueue() {
   });
 
   const { data: conditionData, isLoading: conditionsLoading } = useQuery<ConditionData>({
-    queryKey: ["/api/loan-applications", selectedApp, "conditions"],
+    queryKey: [`/api/loan-applications/${selectedApp}/conditions`],
     enabled: !!selectedApp,
   });
 
@@ -149,7 +149,7 @@ export default function PipelineQueue() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/pipeline/queue"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/loan-applications", selectedApp, "conditions"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/loan-applications/${selectedApp}/conditions`] });
       toast({
         title: "Condition Cleared",
         description: "The condition has been cleared successfully.",

@@ -22,6 +22,8 @@ import {
   LogOut,
   Clipboard,
   GitBranch,
+  Shield,
+  FolderOpen,
 } from "lucide-react";
 
 const navigationItems = [
@@ -59,7 +61,8 @@ export function AppSidebar() {
     <Sidebar>
       <SidebarHeader>
         <div className="px-2 py-4">
-          <p className="text-sm font-semibold">Better</p>
+          <p className="text-sm font-semibold">MortgageAI</p>
+          <p className="text-xs text-muted-foreground">Loan Brokerage Platform</p>
         </div>
       </SidebarHeader>
       <SidebarContent>
@@ -84,39 +87,65 @@ export function AppSidebar() {
         ))}
 
         {["admin", "lender", "broker"].includes(user?.role || "") && (
-          <SidebarGroup>
-            <SidebarGroupLabel>Staff</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={isActive("/pipeline-queue")}>
-                    <Link href="/pipeline-queue" className="cursor-pointer" data-testid="link-pipeline-queue">
-                      <GitBranch className="h-4 w-4" />
-                      <span>Pipeline Queue</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={isActive("/staff-dashboard")}>
-                    <Link href="/staff-dashboard" className="cursor-pointer" data-testid="link-staff-dashboard">
-                      <CheckSquare className="h-4 w-4" />
-                      <span>Task Management</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                {user?.role === "admin" && (
+          <>
+            <SidebarGroup>
+              <SidebarGroupLabel>Pipeline</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
                   <SidebarMenuItem>
-                    <SidebarMenuButton asChild isActive={isActive("/admin")}>
-                      <Link href="/admin" className="cursor-pointer">
-                        <Users className="h-4 w-4" />
-                        <span>Admin Panel</span>
+                    <SidebarMenuButton asChild isActive={isActive("/pipeline-queue")}>
+                      <Link href="/pipeline-queue" className="cursor-pointer" data-testid="link-pipeline-queue">
+                        <GitBranch className="h-4 w-4" />
+                        <span>Loan Pipeline</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
-                )}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild isActive={isActive("/staff-dashboard")}>
+                      <Link href="/staff-dashboard" className="cursor-pointer" data-testid="link-staff-dashboard">
+                        <CheckSquare className="h-4 w-4" />
+                        <span>Task Management</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+
+            <SidebarGroup>
+              <SidebarGroupLabel>Compliance</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild isActive={isActive("/compliance")}>
+                      <Link href="/compliance" className="cursor-pointer" data-testid="link-compliance">
+                        <Shield className="h-4 w-4" />
+                        <span>TRID & MISMO</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+
+            {user?.role === "admin" && (
+              <SidebarGroup>
+                <SidebarGroupLabel>Admin</SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton asChild isActive={isActive("/admin")}>
+                        <Link href="/admin" className="cursor-pointer">
+                          <Users className="h-4 w-4" />
+                          <span>Admin Panel</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            )}
+          </>
         )}
       </SidebarContent>
 

@@ -35,7 +35,7 @@ export default function LoanOptions() {
   const { toast } = useToast();
 
   const { data, isLoading, error } = useQuery<LoanOptionsData>({
-    queryKey: ["/api/loan-applications", id, "options"],
+    queryKey: [`/api/loan-applications/${id}/options`],
     enabled: !!id,
   });
 
@@ -44,7 +44,7 @@ export default function LoanOptions() {
       return await apiRequest("POST", `/api/loan-options/${optionId}/lock`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/loan-applications", id, "options"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/loan-applications/${id}/options`] });
       toast({
         title: "Rate Locked!",
         description: "Your rate has been locked for 30 days.",

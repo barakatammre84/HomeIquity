@@ -1998,6 +1998,90 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/loan-applications/:id/mismo-validation", isAuthenticated, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);
+      if (!application) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+
+      const { validateMISMOCompleteness } = await import("./services/mismoValidation");
+      const validation = await validateMISMOCompleteness(id);
+      res.json(validation);
+    } catch (error) {
+      console.error("MISMO validation error:", error);
+      res.status(500).json({ error: "Failed to validate MISMO completeness" });
+    }
+  });
+
+  app.get("/api/loan-applications/:id/loan-estimate", isAuthenticated, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);
+      if (!application) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+
+      const { generateLoanEstimate, formatLoanEstimateForDisplay } = await import("./services/loanEstimate");
+      const le = await generateLoanEstimate(id);
+      const formatted = formatLoanEstimateForDisplay(le);
+      res.json(formatted);
+    } catch (error) {
+      console.error("Loan estimate error:", error);
+      res.status(500).json({ error: "Failed to generate loan estimate" });
+    }
+  });
+
+  app.get("/api/compliance/dashboard", isAuthenticated, async (req, res) => {
+    try {
+      const userRole = req.user?.role;
+      const isStaff = ["admin", "lender", "broker"].includes(userRole || "");
+      
+      if (!isStaff) {
+        return res.status(403).json({ error: "Only staff can view compliance dashboard" });
+      }
+
+      const applications = await storage.getAllLoanApplications();
+      const activeApps = applications.filter(a => 
+        !["draft", "denied"].includes(a.status || "draft")
+      );
+
+      const { getApplicationValidationSummary } = await import("./services/mismoValidation");
+      
+      const validationResults = await Promise.all(
+        activeApps.map(async (app) => {
+          try {
+            const validation = await getApplicationValidationSummary(app.id);
+            return {
+              ...validation,
+              borrowerName: app.propertyAddress ? `Loan - ${app.propertyAddress}` : `Application ${app.id.slice(0, 8)}`,
+              status: app.status,
+              loanAmount: app.purchasePrice && app.downPayment
+                ? Number(app.purchasePrice) - Number(app.downPayment)
+                : null,
+            };
+          } catch {
+            return null;
+          }
+        })
+      );
+
+      const validResults = validationResults.filter((r): r is NonNullable<typeof r> => r !== null);
+
+      res.json({
+        total: validResults.length,
+        gseReady: validResults.filter(r => r.gseReady).length,
+        ulddCompliant: validResults.filter(r => r.ulddCompliant).length,
+        needsAttention: validResults.filter(r => r.criticalCount > 0).length,
+        applications: validResults,
+      });
+    } catch (error) {
+      console.error("Compliance dashboard error:", error);
+      res.status(500).json({ error: "Failed to load compliance dashboard" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;
