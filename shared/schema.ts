@@ -613,3 +613,105 @@ export const preApprovalFormSchema = z.object({
 });
 
 export type PreApprovalFormData = z.infer<typeof preApprovalFormSchema>;
+
+// Tasks for document requests and workflow items
+export const tasks = pgTable("tasks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  applicationId: varchar("application_id").references(() => loanApplications.id).notNull(),
+  assignedToUserId: varchar("assigned_to_user_id").references(() => users.id).notNull(),
+  createdByUserId: varchar("created_by_user_id").references(() => users.id).notNull(),
+  
+  // Task Details
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  taskType: varchar("task_type", { length: 50 }).notNull(), // document_request, verification, review, action
+  
+  // Document Request Specific
+  documentCategory: varchar("document_category", { length: 50 }), // tax_return, pay_stub, bank_statement, w2, id, other
+  documentYear: varchar("document_year", { length: 10 }), // e.g., "2024", "2023"
+  documentInstructions: text("document_instructions"),
+  
+  // Status
+  status: varchar("status", { length: 50 }).default("pending").notNull(), // pending, in_progress, submitted, verified, rejected, completed
+  priority: varchar("priority", { length: 20 }).default("normal"), // low, normal, high, urgent
+  
+  // Due Date
+  dueDate: timestamp("due_date"),
+  
+  // Verification (for document tasks)
+  verificationStatus: varchar("verification_status", { length: 50 }), // pending, verified, rejected, needs_review
+  verificationNotes: text("verification_notes"),
+  verifiedByUserId: varchar("verified_by_user_id").references(() => users.id),
+  verifiedAt: timestamp("verified_at"),
+  
+  // AI Analysis Results
+  aiAnalysisResult: jsonb("ai_analysis_result"),
+  aiAnalyzedAt: timestamp("ai_analyzed_at"),
+  
+  // Extracted Data (for income verification, etc.)
+  extractedData: jsonb("extracted_data"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const tasksRelations = relations(tasks, ({ one, many }) => ({
+  application: one(loanApplications, {
+    fields: [tasks.applicationId],
+    references: [loanApplications.id],
+  }),
+  assignedTo: one(users, {
+    fields: [tasks.assignedToUserId],
+    references: [users.id],
+  }),
+  createdBy: one(users, {
+    fields: [tasks.createdByUserId],
+    references: [users.id],
+  }),
+  verifiedBy: one(users, {
+    fields: [tasks.verifiedByUserId],
+    references: [users.id],
+  }),
+  taskDocuments: many(taskDocuments),
+}));
+
+export const insertTaskSchema = createInsertSchema(tasks).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertTask = z.infer<typeof insertTaskSchema>;
+export type Task = typeof tasks.$inferSelect;
+
+// Task Documents - links uploaded documents to specific tasks
+export const taskDocuments = pgTable("task_documents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  taskId: varchar("task_id").references(() => tasks.id).notNull(),
+  documentId: varchar("document_id").references(() => documents.id).notNull(),
+  
+  // Document specific verification for this task
+  isVerified: boolean("is_verified").default(false),
+  verificationNotes: text("verification_notes"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const taskDocumentsRelations = relations(taskDocuments, ({ one }) => ({
+  task: one(tasks, {
+    fields: [taskDocuments.taskId],
+    references: [tasks.id],
+  }),
+  document: one(documents, {
+    fields: [taskDocuments.documentId],
+    references: [documents.id],
+  }),
+}));
+
+export const insertTaskDocumentSchema = createInsertSchema(taskDocuments).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertTaskDocument = z.infer<typeof insertTaskDocumentSchema>;
+export type TaskDocument = typeof taskDocuments.$inferSelect;

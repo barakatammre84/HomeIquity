@@ -606,6 +606,229 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Task Routes - Admin/Staff can create and manage tasks
+  app.post("/api/tasks", isAuthenticated, async (req, res) => {
+    try {
+      const userRole = req.user?.role;
+      if (!["admin", "lender", "broker"].includes(userRole || "")) {
+        return res.status(403).json({ error: "Only staff can create tasks" });
+      }
+
+      const taskData = {
+        ...req.body,
+        createdByUserId: req.user!.id,
+      };
+
+      const task = await storage.createTask(taskData);
+
+      await storage.createDealActivity({
+        applicationId: task.applicationId,
+        activityType: "note",
+        title: "Task Created",
+        description: `New task: ${task.title}`,
+        performedBy: req.user!.id,
+      });
+
+      res.status(201).json(task);
+    } catch (error) {
+      console.error("Create task error:", error);
+      res.status(500).json({ error: "Failed to create task" });
+    }
+  });
+
+  app.get("/api/tasks", isAuthenticated, async (req, res) => {
+    try {
+      const userRole = req.user?.role;
+      const userId = req.user!.id;
+
+      let tasks;
+      if (["admin", "lender", "broker"].includes(userRole || "")) {
+        tasks = await storage.getAllTasks();
+      } else {
+        tasks = await storage.getTasksByUser(userId);
+      }
+
+      res.json(tasks);
+    } catch (error) {
+      console.error("Get tasks error:", error);
+      res.status(500).json({ error: "Failed to get tasks" });
+    }
+  });
+
+  app.get("/api/tasks/user/:userId", isAuthenticated, async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const requestingUserId = req.user!.id;
+      const userRole = req.user?.role;
+
+      if (userId !== requestingUserId && !["admin", "lender", "broker"].includes(userRole || "")) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+
+      const tasks = await storage.getTasksByUser(userId);
+      res.json(tasks);
+    } catch (error) {
+      console.error("Get user tasks error:", error);
+      res.status(500).json({ error: "Failed to get user tasks" });
+    }
+  });
+
+  app.get("/api/tasks/application/:applicationId", isAuthenticated, async (req, res) => {
+    try {
+      const { applicationId } = req.params;
+      const tasks = await storage.getTasksByApplication(applicationId);
+      res.json(tasks);
+    } catch (error) {
+      console.error("Get application tasks error:", error);
+      res.status(500).json({ error: "Failed to get application tasks" });
+    }
+  });
+
+  app.get("/api/tasks/:id", isAuthenticated, async (req, res) => {
+    try {
+      const task = await storage.getTask(req.params.id);
+      if (!task) {
+        return res.status(404).json({ error: "Task not found" });
+      }
+
+      const taskDocs = await storage.getTaskDocuments(task.id);
+
+      res.json({ ...task, documents: taskDocs });
+    } catch (error) {
+      console.error("Get task error:", error);
+      res.status(500).json({ error: "Failed to get task" });
+    }
+  });
+
+  app.patch("/api/tasks/:id", isAuthenticated, async (req, res) => {
+    try {
+      const task = await storage.getTask(req.params.id);
+      if (!task) {
+        return res.status(404).json({ error: "Task not found" });
+      }
+
+      const userRole = req.user?.role;
+      const userId = req.user!.id;
+      const isStaff = ["admin", "lender", "broker"].includes(userRole || "");
+      const isAssignedUser = task.assignedToUserId === userId;
+
+      if (!isStaff && !isAssignedUser) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+
+      const updateData = req.body;
+      if (updateData.verificationStatus && isStaff) {
+        updateData.verifiedByUserId = userId;
+        updateData.verifiedAt = new Date();
+      }
+
+      const updated = await storage.updateTask(req.params.id, updateData);
+      res.json(updated);
+    } catch (error) {
+      console.error("Update task error:", error);
+      res.status(500).json({ error: "Failed to update task" });
+    }
+  });
+
+  app.delete("/api/tasks/:id", isAuthenticated, async (req, res) => {
+    try {
+      const userRole = req.user?.role;
+      if (!["admin", "lender"].includes(userRole || "")) {
+        return res.status(403).json({ error: "Only admins can delete tasks" });
+      }
+
+      await storage.deleteTask(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Delete task error:", error);
+      res.status(500).json({ error: "Failed to delete task" });
+    }
+  });
+
+  // Task Document Routes
+  app.post("/api/tasks/:taskId/documents", isAuthenticated, async (req, res) => {
+    try {
+      const { taskId } = req.params;
+      const task = await storage.getTask(taskId);
+      if (!task) {
+        return res.status(404).json({ error: "Task not found" });
+      }
+
+      const userId = req.user!.id;
+      if (task.assignedToUserId !== userId && !["admin", "lender", "broker"].includes(req.user?.role || "")) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+
+      const { documentId } = req.body;
+
+      const taskDocument = await storage.createTaskDocument({
+        taskId,
+        documentId,
+      });
+
+      await storage.updateTask(taskId, { status: "submitted" });
+
+      await storage.createDealActivity({
+        applicationId: task.applicationId,
+        activityType: "document_uploaded",
+        title: "Document Uploaded for Task",
+        description: `Document uploaded for task: ${task.title}`,
+        performedBy: userId,
+      });
+
+      res.status(201).json(taskDocument);
+    } catch (error) {
+      console.error("Create task document error:", error);
+      res.status(500).json({ error: "Failed to link document to task" });
+    }
+  });
+
+  app.get("/api/tasks/:taskId/documents", isAuthenticated, async (req, res) => {
+    try {
+      const { taskId } = req.params;
+      const taskDocs = await storage.getTaskDocuments(taskId);
+      res.json(taskDocs);
+    } catch (error) {
+      console.error("Get task documents error:", error);
+      res.status(500).json({ error: "Failed to get task documents" });
+    }
+  });
+
+  app.patch("/api/tasks/:taskId/documents/:docId/verify", isAuthenticated, async (req, res) => {
+    try {
+      const userRole = req.user?.role;
+      if (!["admin", "lender", "broker"].includes(userRole || "")) {
+        return res.status(403).json({ error: "Only staff can verify documents" });
+      }
+
+      const { taskId, docId } = req.params;
+      const { isVerified, verificationNotes } = req.body;
+
+      const updated = await storage.updateTaskDocument(docId, {
+        isVerified,
+        verificationNotes,
+      });
+
+      if (isVerified) {
+        const task = await storage.getTask(taskId);
+        if (task) {
+          await storage.updateTask(taskId, {
+            status: "verified",
+            verificationStatus: "verified",
+            verifiedByUserId: req.user!.id,
+            verifiedAt: new Date(),
+            verificationNotes,
+          });
+        }
+      }
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Verify task document error:", error);
+      res.status(500).json({ error: "Failed to verify document" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;

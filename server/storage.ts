@@ -14,6 +14,8 @@ import {
   urlaAssets,
   urlaLiabilities,
   urlaPropertyInfo,
+  tasks,
+  taskDocuments,
   type User,
   type UpsertUser,
   type LoanApplication,
@@ -38,6 +40,10 @@ import {
   type InsertUrlaLiability,
   type UrlaPropertyInfo,
   type InsertUrlaPropertyInfo,
+  type Task,
+  type InsertTask,
+  type TaskDocument,
+  type InsertTaskDocument,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -133,6 +139,21 @@ export interface IStorage {
     liabilities: UrlaLiability[];
     propertyInfo: UrlaPropertyInfo | undefined;
   }>;
+
+  // Tasks
+  createTask(data: InsertTask): Promise<Task>;
+  getTask(id: string): Promise<Task | undefined>;
+  getTasksByApplication(applicationId: string): Promise<Task[]>;
+  getTasksByUser(userId: string): Promise<Task[]>;
+  getAllTasks(): Promise<Task[]>;
+  updateTask(id: string, data: Partial<Task>): Promise<Task | undefined>;
+  deleteTask(id: string): Promise<void>;
+  
+  // Task Documents
+  createTaskDocument(data: InsertTaskDocument): Promise<TaskDocument>;
+  getTaskDocuments(taskId: string): Promise<(TaskDocument & { document: Document })[]>;
+  updateTaskDocument(id: string, data: Partial<TaskDocument>): Promise<TaskDocument | undefined>;
+  deleteTaskDocument(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -643,6 +664,89 @@ export class DatabaseStorage implements IStorage {
       liabilities,
       propertyInfo,
     };
+  }
+
+  // Tasks
+  async createTask(data: InsertTask): Promise<Task> {
+    const [task] = await db.insert(tasks).values(data).returning();
+    return task;
+  }
+
+  async getTask(id: string): Promise<Task | undefined> {
+    const [task] = await db.select().from(tasks).where(eq(tasks.id, id)).limit(1);
+    return task;
+  }
+
+  async getTasksByApplication(applicationId: string): Promise<Task[]> {
+    return await db
+      .select()
+      .from(tasks)
+      .where(eq(tasks.applicationId, applicationId))
+      .orderBy(desc(tasks.createdAt));
+  }
+
+  async getTasksByUser(userId: string): Promise<Task[]> {
+    return await db
+      .select()
+      .from(tasks)
+      .where(eq(tasks.assignedToUserId, userId))
+      .orderBy(desc(tasks.createdAt));
+  }
+
+  async getAllTasks(): Promise<Task[]> {
+    return await db.select().from(tasks).orderBy(desc(tasks.createdAt));
+  }
+
+  async updateTask(id: string, data: Partial<Task>): Promise<Task | undefined> {
+    const { createdAt, updatedAt, id: taskId, ...cleanData } = data as any;
+    const [updated] = await db
+      .update(tasks)
+      .set({ ...cleanData, updatedAt: new Date() })
+      .where(eq(tasks.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteTask(id: string): Promise<void> {
+    await db.delete(taskDocuments).where(eq(taskDocuments.taskId, id));
+    await db.delete(tasks).where(eq(tasks.id, id));
+  }
+
+  // Task Documents
+  async createTaskDocument(data: InsertTaskDocument): Promise<TaskDocument> {
+    const [record] = await db.insert(taskDocuments).values(data).returning();
+    return record;
+  }
+
+  async getTaskDocuments(taskId: string): Promise<(TaskDocument & { document: Document })[]> {
+    const results = await db
+      .select({
+        taskDocument: taskDocuments,
+        document: documents,
+      })
+      .from(taskDocuments)
+      .innerJoin(documents, eq(taskDocuments.documentId, documents.id))
+      .where(eq(taskDocuments.taskId, taskId))
+      .orderBy(desc(taskDocuments.createdAt));
+    
+    return results.map(r => ({
+      ...r.taskDocument,
+      document: r.document,
+    }));
+  }
+
+  async updateTaskDocument(id: string, data: Partial<TaskDocument>): Promise<TaskDocument | undefined> {
+    const { createdAt, id: docId, ...cleanData } = data as any;
+    const [updated] = await db
+      .update(taskDocuments)
+      .set(cleanData)
+      .where(eq(taskDocuments.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteTaskDocument(id: string): Promise<void> {
+    await db.delete(taskDocuments).where(eq(taskDocuments.id, id));
   }
 }
 
