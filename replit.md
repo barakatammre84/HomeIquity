@@ -53,6 +53,23 @@ The backend is developed with **Node.js, Express.js, and TypeScript**. It uses *
 - Routes: `/agent/dashboard`, `/agent/edit`, `/agent/:agentId`, `/property/new`, `/property/:id/edit`
 - API endpoints: `/api/agents`, `/api/me/agent-profile`, `/api/me/listings`, property CRUD
 
+**Buyer Property Search (Zillow-style):** Property marketplace with smart affordability matching:
+- Pre-approved buyers see affordability badges on every property (Qualified, Stretch, Over Budget)
+- Stats dashboard showing count of qualified, stretch, and over-budget properties
+- "Only show affordable" toggle to filter by qualification status
+- Property cards show estimated monthly payments based on real loan data
+- Non-pre-approved users see full inventory with CTAs to get pre-approved
+- Routes: `/buy` (buyer search), `/property/:id` (detail with qualification breakdown)
+- API: `/api/properties/:id/affordability` (calculates qualification using underwriting engine)
+
+**PropertyDetail Qualification View:** Comprehensive affordability analysis per property:
+- PITI breakdown (Principal, Interest, Taxes, Insurance, PMI, HOA)
+- DTI impact calculation showing front-end and back-end ratios
+- Down payment requirements with reserve adequacy check
+- Eligibility status with clear pass/fail indicators
+- Recommended loan terms and rate estimates
+- "Get Pre-Approved" CTA for non-qualified users
+
 ## External Dependencies
 
 ### Third-Party Services
