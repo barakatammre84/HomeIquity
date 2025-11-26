@@ -477,15 +477,18 @@ export class DatabaseStorage implements IStorage {
 
   async upsertUrlaPersonalInfo(data: InsertUrlaPersonalInfo): Promise<UrlaPersonalInfo> {
     const existing = await this.getUrlaPersonalInfo(data.applicationId);
+    // Remove any timestamp fields that might have been serialized as strings from frontend
+    const { createdAt, updatedAt, id, ...cleanData } = data as any;
+    
     if (existing) {
       const [updated] = await db
         .update(urlaPersonalInfo)
-        .set({ ...data, updatedAt: new Date() })
+        .set({ ...cleanData, updatedAt: new Date() })
         .where(eq(urlaPersonalInfo.applicationId, data.applicationId))
         .returning();
       return updated;
     }
-    const [created] = await db.insert(urlaPersonalInfo).values(data).returning();
+    const [created] = await db.insert(urlaPersonalInfo).values(cleanData).returning();
     return created;
   }
 
@@ -504,9 +507,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateEmploymentHistory(id: string, data: Partial<EmploymentHistory>): Promise<EmploymentHistory | undefined> {
+    // Remove any timestamp/id fields that might have been serialized from frontend
+    const { createdAt, updatedAt, id: recordId, ...cleanData } = data as any;
     const [updated] = await db
       .update(employmentHistory)
-      .set({ ...data, updatedAt: new Date() })
+      .set({ ...cleanData, updatedAt: new Date() })
       .where(eq(employmentHistory.id, id))
       .returning();
     return updated;
@@ -549,9 +554,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateUrlaAsset(id: string, data: Partial<UrlaAsset>): Promise<UrlaAsset | undefined> {
+    // Remove any timestamp/id fields that might have been serialized from frontend
+    const { createdAt, updatedAt, id: recordId, ...cleanData } = data as any;
     const [updated] = await db
       .update(urlaAssets)
-      .set(data)
+      .set(cleanData)
       .where(eq(urlaAssets.id, id))
       .returning();
     return updated;
@@ -576,9 +583,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateUrlaLiability(id: string, data: Partial<UrlaLiability>): Promise<UrlaLiability | undefined> {
+    // Remove any timestamp/id fields that might have been serialized from frontend
+    const { createdAt, updatedAt, id: recordId, ...cleanData } = data as any;
     const [updated] = await db
       .update(urlaLiabilities)
-      .set(data)
+      .set(cleanData)
       .where(eq(urlaLiabilities.id, id))
       .returning();
     return updated;
@@ -600,15 +609,18 @@ export class DatabaseStorage implements IStorage {
 
   async upsertUrlaPropertyInfo(data: InsertUrlaPropertyInfo): Promise<UrlaPropertyInfo> {
     const existing = await this.getUrlaPropertyInfo(data.applicationId);
+    // Remove any timestamp fields that might have been serialized as strings from frontend
+    const { createdAt, updatedAt, id, ...cleanData } = data as any;
+    
     if (existing) {
       const [updated] = await db
         .update(urlaPropertyInfo)
-        .set({ ...data, updatedAt: new Date() })
+        .set({ ...cleanData, updatedAt: new Date() })
         .where(eq(urlaPropertyInfo.applicationId, data.applicationId))
         .returning();
       return updated;
     }
-    const [created] = await db.insert(urlaPropertyInfo).values(data).returning();
+    const [created] = await db.insert(urlaPropertyInfo).values(cleanData).returning();
     return created;
   }
 

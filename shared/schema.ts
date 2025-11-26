@@ -309,6 +309,12 @@ export const urlaPersonalInfo = pgTable("urla_personal_info", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   applicationId: varchar("application_id").references(() => loanApplications.id).notNull(),
   
+  // Borrower Name
+  firstName: varchar("first_name", { length: 100 }),
+  middleName: varchar("middle_name", { length: 100 }),
+  lastName: varchar("last_name", { length: 100 }),
+  suffix: varchar("suffix", { length: 20 }),
+  
   // Borrower Identity
   ssn: varchar("ssn", { length: 11 }),
   dateOfBirth: varchar("date_of_birth", { length: 10 }),

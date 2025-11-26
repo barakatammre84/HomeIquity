@@ -508,64 +508,92 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Bulk save URLA data
+  // Bulk save URLA data - only updates sections that are explicitly provided with content
   app.post("/api/urla/:applicationId/save", isAuthenticated, async (req, res) => {
     try {
       const { applicationId } = req.params;
       const { personalInfo, employmentHistory, otherIncomeSources, assets, liabilities, propertyInfo } = req.body;
 
+      // Verify user owns this application
+      const application = await storage.getLoanApplication(applicationId);
+      if (!application) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+      if (application.userId !== req.user!.id && req.user!.role !== "admin") {
+        return res.status(403).json({ error: "Not authorized to modify this application" });
+      }
+
       const results: any = {};
 
-      if (personalInfo) {
+      // Only update personal info if provided with actual content
+      if (personalInfo && Object.keys(personalInfo).some(key => personalInfo[key] !== undefined && personalInfo[key] !== "")) {
         results.personalInfo = await storage.upsertUrlaPersonalInfo({ ...personalInfo, applicationId });
       }
 
-      if (propertyInfo) {
+      // Only update property info if provided with actual content
+      if (propertyInfo && Object.keys(propertyInfo).some(key => propertyInfo[key] !== undefined && propertyInfo[key] !== "")) {
         results.propertyInfo = await storage.upsertUrlaPropertyInfo({ ...propertyInfo, applicationId });
       }
 
-      if (employmentHistory && Array.isArray(employmentHistory)) {
+      // Handle employment records - update existing, create new
+      if (employmentHistory && Array.isArray(employmentHistory) && employmentHistory.length > 0) {
         results.employmentHistory = [];
         for (const emp of employmentHistory) {
+          // Skip empty records
+          if (!emp.employerName && !emp.positionTitle && !emp.baseIncome) continue;
+          
           if (emp.id) {
             const updated = await storage.updateEmploymentHistory(emp.id, emp);
             if (updated) results.employmentHistory.push(updated);
           } else {
-            const created = await storage.createEmploymentHistory({ ...emp, applicationId });
+            const created = await storage.createEmploymentHistory({ ...emp, applicationId, employmentType: emp.employmentType || "current" });
             results.employmentHistory.push(created);
           }
         }
       }
 
-      if (assets && Array.isArray(assets)) {
+      // Handle assets - update existing, create new
+      if (assets && Array.isArray(assets) && assets.length > 0) {
         results.assets = [];
         for (const asset of assets) {
+          // Skip empty records
+          if (!asset.accountType && !asset.financialInstitution) continue;
+          
           if (asset.id) {
             const updated = await storage.updateUrlaAsset(asset.id, asset);
             if (updated) results.assets.push(updated);
-          } else {
+          } else if (asset.accountType) {
             const created = await storage.createUrlaAsset({ ...asset, applicationId });
             results.assets.push(created);
           }
         }
       }
 
-      if (liabilities && Array.isArray(liabilities)) {
+      // Handle liabilities - update existing, create new
+      if (liabilities && Array.isArray(liabilities) && liabilities.length > 0) {
         results.liabilities = [];
         for (const liability of liabilities) {
+          // Skip empty records
+          if (!liability.liabilityType && !liability.creditorName) continue;
+          
           if (liability.id) {
             const updated = await storage.updateUrlaLiability(liability.id, liability);
             if (updated) results.liabilities.push(updated);
-          } else {
+          } else if (liability.liabilityType) {
             const created = await storage.createUrlaLiability({ ...liability, applicationId });
             results.liabilities.push(created);
           }
         }
       }
 
-      if (otherIncomeSources && Array.isArray(otherIncomeSources)) {
+      // Handle other income sources - only create new ones (existing ones are preserved)
+      if (otherIncomeSources && Array.isArray(otherIncomeSources) && otherIncomeSources.length > 0) {
         results.otherIncomeSources = [];
         for (const income of otherIncomeSources) {
+          // Skip empty or already-saved records
+          if (!income.incomeSource || !income.monthlyAmount) continue;
+          if (income.id) continue; // Skip existing records, they're already saved
+          
           const created = await storage.createOtherIncomeSource({ ...income, applicationId });
           results.otherIncomeSources.push(created);
         }
