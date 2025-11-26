@@ -667,6 +667,181 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Property CRUD for agents
+  app.post("/api/properties", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const agentProfile = await storage.getAgentProfileByUserId(userId);
+      
+      if (!agentProfile) {
+        return res.status(403).json({ error: "Agent profile required to create listings" });
+      }
+
+      const propertyData = {
+        ...req.body,
+        agentId: agentProfile.id,
+        listedAt: new Date(),
+      };
+
+      const property = await storage.createProperty(propertyData);
+      
+      await storage.updateAgentProfile(agentProfile.id, {
+        activeListings: (agentProfile.activeListings || 0) + 1,
+      });
+
+      res.status(201).json(property);
+    } catch (error) {
+      console.error("Create property error:", error);
+      res.status(500).json({ error: "Failed to create property" });
+    }
+  });
+
+  app.patch("/api/properties/:id", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const property = await storage.getProperty(req.params.id);
+      
+      if (!property) {
+        return res.status(404).json({ error: "Property not found" });
+      }
+
+      const agentProfile = await storage.getAgentProfileByUserId(userId);
+      if (!agentProfile || property.agentId !== agentProfile.id) {
+        return res.status(403).json({ error: "Not authorized to update this property" });
+      }
+
+      const updated = await storage.updateProperty(req.params.id, req.body);
+      res.json(updated);
+    } catch (error) {
+      console.error("Update property error:", error);
+      res.status(500).json({ error: "Failed to update property" });
+    }
+  });
+
+  app.delete("/api/properties/:id", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const property = await storage.getProperty(req.params.id);
+      
+      if (!property) {
+        return res.status(404).json({ error: "Property not found" });
+      }
+
+      const agentProfile = await storage.getAgentProfileByUserId(userId);
+      if (!agentProfile || property.agentId !== agentProfile.id) {
+        return res.status(403).json({ error: "Not authorized to delete this property" });
+      }
+
+      await storage.deleteProperty(req.params.id);
+      
+      if (property.status === "active") {
+        await storage.updateAgentProfile(agentProfile.id, {
+          activeListings: Math.max((agentProfile.activeListings || 1) - 1, 0),
+        });
+      }
+
+      res.status(204).send();
+    } catch (error) {
+      console.error("Delete property error:", error);
+      res.status(500).json({ error: "Failed to delete property" });
+    }
+  });
+
+  // Agent Profile Routes
+  app.get("/api/agents", async (req, res) => {
+    try {
+      const agents = await storage.getAllAgentProfiles();
+      res.json(agents);
+    } catch (error) {
+      console.error("Get agents error:", error);
+      res.status(500).json({ error: "Failed to get agents" });
+    }
+  });
+
+  app.get("/api/agents/:agentId", async (req, res) => {
+    try {
+      const agent = await storage.getAgentProfile(req.params.agentId);
+      if (!agent) {
+        return res.status(404).json({ error: "Agent not found" });
+      }
+      
+      const user = await storage.getUser(agent.userId);
+      res.json({
+        ...agent,
+        user: user ? { email: user.email, firstName: user.firstName, lastName: user.lastName } : undefined,
+      });
+    } catch (error) {
+      console.error("Get agent error:", error);
+      res.status(500).json({ error: "Failed to get agent" });
+    }
+  });
+
+  app.get("/api/agents/:agentId/listings", async (req, res) => {
+    try {
+      const properties = await storage.getPropertiesByAgent(req.params.agentId);
+      res.json(properties.filter(p => p.status === "active"));
+    } catch (error) {
+      console.error("Get agent listings error:", error);
+      res.status(500).json({ error: "Failed to get agent listings" });
+    }
+  });
+
+  // Current user agent profile routes
+  app.get("/api/me/agent-profile", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      let profile = await storage.getAgentProfileByUserId(userId);
+      
+      if (!profile) {
+        profile = await storage.createAgentProfile({ userId });
+      }
+      
+      const user = await storage.getUser(userId);
+      res.json({
+        ...profile,
+        user: user ? { email: user.email, firstName: user.firstName, lastName: user.lastName } : undefined,
+      });
+    } catch (error) {
+      console.error("Get my agent profile error:", error);
+      res.status(500).json({ error: "Failed to get agent profile" });
+    }
+  });
+
+  app.patch("/api/me/agent-profile", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      let profile = await storage.getAgentProfileByUserId(userId);
+      
+      if (!profile) {
+        profile = await storage.createAgentProfile({ userId, ...req.body });
+      } else {
+        profile = await storage.updateAgentProfile(profile.id, req.body);
+      }
+      
+      res.json(profile);
+    } catch (error) {
+      console.error("Update agent profile error:", error);
+      res.status(500).json({ error: "Failed to update agent profile" });
+    }
+  });
+
+  app.get("/api/me/listings", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const profile = await storage.getAgentProfileByUserId(userId);
+      
+      if (!profile) {
+        return res.json([]);
+      }
+      
+      const properties = await storage.getPropertiesByAgent(profile.id);
+      res.json(properties);
+    } catch (error) {
+      console.error("Get my listings error:", error);
+      res.status(500).json({ error: "Failed to get listings" });
+    }
+  });
+
   app.get("/api/admin/stats", isAuthenticated, async (req, res) => {
     try {
       if (req.user?.role !== "admin") {

@@ -45,6 +45,14 @@ The backend is developed with **Node.js, Express.js, and TypeScript**. It uses *
 
 **Task Management System:** Staff can create document request tasks for borrowers, allowing document uploads, verification/rejection workflows, and tracking AI analysis results per task.
 
+**Real Estate Agent Platform:** Integrated agent profile and property listing system allowing real estate agents to:
+- Create and manage professional profiles (bio, license info, specialties, service areas)
+- List properties with full details (address, price, bedrooms, bathrooms, square feet)
+- Track listing stats (active listings, properties sold, ratings)
+- Public agent profile pages for buyers to view agent information and listings
+- Routes: `/agent/dashboard`, `/agent/edit`, `/agent/:agentId`, `/property/new`, `/property/:id/edit`
+- API endpoints: `/api/agents`, `/api/me/agent-profile`, `/api/me/listings`, property CRUD
+
 ## External Dependencies
 
 ### Third-Party Services

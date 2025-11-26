@@ -30,9 +30,9 @@ function Router() {
       <Route path="/" component={Landing} />
       <Route path="/apply" component={PreApproval} />
       <Route path="/properties" component={Properties} />
-      <Route path="/agent/:agentId" component={AgentProfile} />
       <Route path="/agent/dashboard" component={AgentDashboard} />
       <Route path="/agent/edit" component={AgentEdit} />
+      <Route path="/agent/:agentId" component={AgentProfile} />
       <Route path="/property/new" component={PropertyForm} />
       <Route path="/property/:propertyId/edit" component={PropertyForm} />
       <Route path="/loan-options/:id" component={LoanOptions} />

@@ -17,6 +17,7 @@ import {
   borrowerDeclarations,
   tasks,
   taskDocuments,
+  agentProfiles,
   type User,
   type UpsertUser,
   type LoanApplication,
@@ -47,6 +48,8 @@ import {
   type InsertTask,
   type TaskDocument,
   type InsertTaskDocument,
+  type AgentProfile,
+  type InsertAgentProfile,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -90,8 +93,18 @@ export interface IStorage {
     minPrice?: number;
     maxPrice?: number;
   }): Promise<Property[]>;
+  updateProperty(id: string, data: Partial<Property>): Promise<Property | undefined>;
+  deleteProperty(id: string): Promise<void>;
+  getPropertiesByAgent(agentId: string): Promise<Property[]>;
   saveProperty(userId: string, propertyId: string): Promise<void>;
   getSavedProperties(userId: string): Promise<Property[]>;
+
+  // Agent Profiles
+  createAgentProfile(data: InsertAgentProfile): Promise<AgentProfile>;
+  getAgentProfile(id: string): Promise<AgentProfile | undefined>;
+  getAgentProfileByUserId(userId: string): Promise<AgentProfile | undefined>;
+  updateAgentProfile(id: string, data: Partial<AgentProfile>): Promise<AgentProfile | undefined>;
+  getAllAgentProfiles(): Promise<AgentProfile[]>;
 
   // Stats
   getAdminStats(): Promise<{
@@ -970,6 +983,68 @@ export class DatabaseStorage implements IStorage {
 
   async deleteTaskDocument(id: string): Promise<void> {
     await db.delete(taskDocuments).where(eq(taskDocuments.id, id));
+  }
+
+  // Agent Profiles
+  async createAgentProfile(data: InsertAgentProfile): Promise<AgentProfile> {
+    const [profile] = await db.insert(agentProfiles).values(data).returning();
+    return profile;
+  }
+
+  async getAgentProfile(id: string): Promise<AgentProfile | undefined> {
+    const [profile] = await db
+      .select()
+      .from(agentProfiles)
+      .where(eq(agentProfiles.id, id))
+      .limit(1);
+    return profile;
+  }
+
+  async getAgentProfileByUserId(userId: string): Promise<AgentProfile | undefined> {
+    const [profile] = await db
+      .select()
+      .from(agentProfiles)
+      .where(eq(agentProfiles.userId, userId))
+      .limit(1);
+    return profile;
+  }
+
+  async updateAgentProfile(id: string, data: Partial<AgentProfile>): Promise<AgentProfile | undefined> {
+    const { createdAt, updatedAt, id: profileId, ...cleanData } = data as any;
+    const [updated] = await db
+      .update(agentProfiles)
+      .set({ ...cleanData, updatedAt: new Date() })
+      .where(eq(agentProfiles.id, id))
+      .returning();
+    return updated;
+  }
+
+  async getAllAgentProfiles(): Promise<AgentProfile[]> {
+    return await db.select().from(agentProfiles).orderBy(desc(agentProfiles.createdAt));
+  }
+
+  // Property CRUD extensions
+  async updateProperty(id: string, data: Partial<Property>): Promise<Property | undefined> {
+    const { createdAt, updatedAt, id: propId, ...cleanData } = data as any;
+    const [updated] = await db
+      .update(properties)
+      .set({ ...cleanData, updatedAt: new Date() })
+      .where(eq(properties.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteProperty(id: string): Promise<void> {
+    await db.delete(savedProperties).where(eq(savedProperties.propertyId, id));
+    await db.delete(properties).where(eq(properties.id, id));
+  }
+
+  async getPropertiesByAgent(agentId: string): Promise<Property[]> {
+    return await db
+      .select()
+      .from(properties)
+      .where(eq(properties.agentId, agentId))
+      .orderBy(desc(properties.createdAt));
   }
 }
 
