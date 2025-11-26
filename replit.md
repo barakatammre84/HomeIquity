@@ -1,8 +1,15 @@
-# MortgageAI - AI-Powered Mortgage Lending Platform
+# MortgageAI - Next-Generation MISMO 3.4 Mortgage Brokerage Platform
 
 ## Overview
 
-MortgageAI is a digital-first mortgage lending platform that leverages AI to streamline the home loan application process. The platform provides instant pre-approvals, automated underwriting, and transparent loan comparisons across conventional, FHA, and VA loan products. Inspired by Better.com's approach, it emphasizes speed, transparency, and user experience with a goal of reducing approval times from weeks to minutes.
+MortgageAI is a **deterministic mortgage brokerage platform** built on MISMO 3.4 standards, utilizing graph-based underwriting logic. It employs AI solely for data extraction (e.g., from tax returns, pay stubs) while relying on **hard-coded deterministic rules** for all underwriting decisions, ensuring regulatory compliance and mitigating Fair Lending risks. The platform aims to automate income qualification, asset verification, liability assessment, and pricing to deliver **3-minute pre-approvals** and enhance efficiency in the mortgage process.
+
+Key capabilities include:
+- Deterministic underwriting with MISMO 3.4 and ULAD compliance.
+- Graph-based data models (XLink) to prevent orphaned financial data.
+- Advanced income qualification and property eligibility algorithms.
+- LLPA pricing matrix with first-time homebuyer waivers.
+- Multi-tenant support for various user roles.
 
 ## User Preferences
 
@@ -10,207 +17,58 @@ Preferred communication style: Simple, everyday language.
 
 ## System Architecture
 
-### Frontend Architecture
+### UI/UX Decisions
 
-**Technology Stack:**
-- React 18 with TypeScript for type safety
-- Vite as build tool and development server
-- Wouter for lightweight client-side routing
-- TanStack Query (React Query) for server state management
-- Shadcn/ui component library built on Radix UI primitives
-- Tailwind CSS for styling with custom design system
+The frontend is built with **React 18 and TypeScript**, using **Vite** for tooling, **Wouter** for routing, and **TanStack Query** for server state management. It features a custom design system with **Shadcn/ui (Radix UI)** components and **Tailwind CSS**, supporting light/dark themes and consistent typography. Key pages include a conversational pre-approval form with a Live Advisory Panel, a user dashboard, loan options comparison, a properties marketplace with "Can I buy?" checks, and various compliance-related forms and dashboards.
 
-**Design System:**
-- Custom Tailwind configuration with extended color palette based on HSL variables
-- Support for light/dark themes via CSS custom properties
-- Typography using Inter/Work Sans font families via Google Fonts
-- Consistent spacing primitives (2, 4, 6, 8, 12, 16 Tailwind units)
-- Component-based architecture with reusable UI primitives
+### Technical Implementations
 
-**Key Pages:**
-- Landing page for unauthenticated users with marketing content
-- Pre-approval form with multi-step wizard interface
-- Dashboard for authenticated users showing application status and metrics
-- Loan options comparison page displaying AI-generated scenarios
-- Properties marketplace for browsing available real estate
-- Admin dashboard for platform management and analytics
+The backend is developed with **Node.js, Express.js, and TypeScript**. It uses **PostgreSQL (Neon serverless)** with **Drizzle ORM** for data persistence. **Passport.js** handles session-based authentication with **role-based access control** and ownership-scoped queries. The API is RESTful, with structured error handling and robust logging.
 
-### Backend Architecture
+**Database Schema:** Core entities include Users, Loan Applications, Loan Options, Documents, Properties, and Deal Activities. It incorporates MISMO 3.4 graph entities like UrlaPersonalInfo, EmploymentHistory, UrlaAssets, UrlaLiabilities, and UrlaPropertyInfo, utilizing UUIDs as primary keys, JSONB for flexible data, and XLink-style foreign key relationships for MISMO compliance.
 
-**Technology Stack:**
-- Node.js with Express.js framework
-- TypeScript for type safety across the stack
-- PostgreSQL database via Neon serverless
-- Drizzle ORM for database operations and type-safe queries
-- Passport.js for authentication with session-based auth
-- Express sessions stored in PostgreSQL via connect-pg-simple
+**Deterministic Underwriting Engine:** This engine is central to the platform, making all eligibility decisions based on hard-coded rules aligned with Fannie Mae/Freddie Mac guidelines. It includes modules for:
+- **Income Qualification:** Base, variable (2-year average), and self-employment (Form 1084) income calculations.
+- **Asset Verification:** Rules for various asset types and reserve requirements.
+- **Liability Assessment:** Rules for installment debts, leases, student loans, and credit cards.
+- **DTI Calculation:** Front-end and back-end ratios with program-specific adjustments.
+- **Property Eligibility:** "Can I buy this house?" algorithm, LTV calculation, and PITI synthesis.
+- **Pricing Engine:** LLPA matrix lookup, PMI calculation, and first-time homebuyer waivers.
 
-**API Design:**
-- RESTful API endpoints under `/api` prefix
-- Session-based authentication with HTTP-only cookies
-- Role-based access control (borrower, broker, admin, lender roles)
-- Request/response logging middleware for debugging
-- Structured error handling with appropriate HTTP status codes
+**AI Integration:** **Google Gemini API** is used exclusively for **document data extraction** (e.g., from tax returns, pay stubs, bank statements). Extracted data is then fed into the deterministic underwriting engine, ensuring AI is not used for decision-making.
 
-**Authentication System:**
-- Local authentication strategy via Passport.js
-- User sessions persisted in PostgreSQL sessions table
-- Serialization/deserialization for user objects
-- Protected routes with `isAuthenticated` and `isAdmin` middleware
-- 7-day session lifetime with secure cookie settings
+**MISMO 3.4 GSE Compliance:** The platform supports MISMO 3.4 XML export with a hierarchical structure and **XLink graph model** to link all financial data to borrower roles, preventing orphaned data. It is ULAD compliant for GSE submission and includes MERS MIN generation.
 
-### Database Schema
+**Borrower Declarations (URLA Section 5):** A dedicated system manages borrower declarations, including property occupancy intent, financial disclosures, transaction disclosures, and citizenship status, with API endpoints for retrieval and updates.
 
-**Core Entities:**
-- **Users**: Stores user profiles with role-based permissions (borrower, broker, admin, lender)
-- **Loan Applications**: Tracks mortgage applications with financial details and status workflow
-- **Loan Options**: AI-generated loan scenarios (conventional, FHA, VA) with rates and terms
-- **Documents**: File metadata for uploaded user documents linked to applications
-- **Properties**: Real estate listings with details, images, and search metadata
-- **Deal Activities**: Activity log for tracking application progress and changes
-- **Saved Properties**: User bookmarks for favorite property listings
-- **Sessions**: PostgreSQL-based session storage for authentication
+**Data Quality Scoring System:** Provides completeness scoring across URLA sections for broker dashboards, tracking personal information, employment history, assets, liabilities, and document requirements.
 
-**Key Design Decisions:**
-- UUIDs as primary keys via PostgreSQL's `gen_random_uuid()`
-- Timestamps (createdAt, updatedAt) on all major entities
-- JSONB fields for flexible data like property features and analysis results
-- Indexed fields for common queries (email, userId, applicationId)
-- Enum-like varchar fields with validation for statuses and types
-
-### AI Integration
-
-**Google Gemini API:**
-- Primary AI service for loan analysis via `@google/genai` SDK
-- Analyzes borrower financial profiles against loan product criteria
-- Generates multiple loan scenarios with interest rates, payments, and terms
-- Provides strengths/concerns/recommendations in natural language
-- Calculates DTI (debt-to-income) and LTV (loan-to-value) ratios
-- Determines pre-approval amounts based on creditworthiness
-
-**Analysis Process:**
-1. Collect borrower input (income, debts, credit score, property details)
-2. Send structured prompt to Gemini with loan product specifications
-3. Parse AI response into typed loan scenarios and analysis
-4. Store results in database linked to loan application
-5. Present options to user with comparison interface
-
-### MISMO 3.4 GSE Compliance
-
-**MISMO 3.4 XML Export:**
-- Generates compliant XML for GSE loan delivery (Fannie Mae, Freddie Mac)
-- Follows MISMO 3.4 hierarchical structure: MESSAGE → DEAL_SETS → DEAL → COLLATERALS/LOANS/PARTIES
-- Supports ULDD Phase 5 requirements effective July 28, 2025
-- MERS MIN generation with Luhn check digit algorithm
-- Full borrower declarations export with MISMO-compliant field mapping
-
-**Export API:**
-- Endpoint: `GET /api/loan-applications/:id/mismo-export`
-- Authorization: Staff roles only (admin, lender, broker)
-- Returns: application/xml with properly formatted MISMO 3.4 XML
-- Includes loan identifiers, qualification metrics (DTI/LTV), borrower information, collateral details
-- Includes borrower declarations (bankruptcy, foreclosure, judgments, citizenship, intent to occupy)
-
-**Key Files:**
-- `shared/mismo.ts` - TypeScript types for MISMO containers (XMLNode, generation options)
-- `server/mismo.ts` - XML generation service with MERS utilities, borrower declarations mapping
-- `server/storage.ts` - getMISMOLoanData aggregates all loan data including declarations for export
-
-### Borrower Declarations (URLA Section 5)
-
-**Database Table (`borrower_declarations`):**
-- Section 5a: Property occupancy intent, prior ownership, seller relationships, down payment borrowing
-- Section 5b: Financial disclosures - judgments, delinquent debts, lawsuits, foreclosure/bankruptcy history
-- Section 5c: Transaction disclosures - undisclosed debts, new credit applications, priority liens
-- Citizenship status fields (US citizen, permanent resident alien)
-- Data quality tracking (completedAt, verifiedAt, verifiedBy)
-
-**API Endpoints:**
-- `GET /api/loan-applications/:id/declarations` - Retrieve borrower declarations
-- `POST /api/loan-applications/:id/declarations` - Save/update borrower declarations
-
-### Data Quality Scoring System
-
-**Purpose:** Provides completeness scoring across URLA sections for broker dashboards
-
-**API Endpoint:** `GET /api/loan-applications/:id/data-quality`
-
-**Scoring Sections:**
-- Personal Information: firstName, lastName, SSN, DOB, contact info, address
-- Employment History: Current employment verification status
-- Assets: At least one asset account required
-- Liabilities: Tracked obligations
-- Borrower Declarations: Key declaration fields completion
-- Documents: Required document types (W-2, pay stubs, bank statements, ID)
-
-**Response Format:**
-- `overallScore`: Weighted average percentage
-- `sections[]`: Individual section scores with `missingFields` and `verificationStatus`
-
-### Task Management System
-
-**Document Request Workflow:**
-- Staff can create document request tasks assigned to borrowers
-- Tasks include document category, instructions, due dates, and priority levels
-- Borrowers upload documents which are linked to tasks
-- Staff can verify/reject uploaded documents with notes
-- AI analysis results stored per task for income/asset verification
-
-**API Endpoints:**
-- `POST /api/tasks` - Create task (staff only)
-- `GET /api/tasks` - List tasks (all for staff, assigned only for borrowers)
-- `PATCH /api/tasks/:id` - Update task status
-- `POST /api/tasks/:taskId/documents` - Link document to task
-- `PATCH /api/tasks/:taskId/documents/:docId/verify` - Verify document (staff only)
+**Task Management System:** Staff can create document request tasks for borrowers, allowing document uploads, verification/rejection workflows, and tracking AI analysis results per task.
 
 ## External Dependencies
 
 ### Third-Party Services
 
-**Neon Database:**
-- Serverless PostgreSQL hosting
-- WebSocket-based connection pooling via `@neondatabase/serverless`
-- Configured via `DATABASE_URL` environment variable
-- Used for all persistent data storage
-
-**Google Gemini AI:**
-- Generative AI for loan analysis and underwriting automation
-- Accessed via `GEMINI_API_KEY` environment variable
-- Processes loan applications to generate approval decisions
-- Returns structured financial scenarios and recommendations
+-   **Neon Database:** Serverless PostgreSQL hosting for all persistent data storage.
+-   **Google Gemini AI:** Used for document data extraction from financial documents.
 
 ### UI Component Libraries
 
-**Radix UI:**
-- Headless, accessible component primitives
-- Includes: Dialog, Dropdown Menu, Select, Radio Group, Checkbox, Tabs, Toast, Tooltip, Progress, Slider, Accordion, and more
-- Provides WAI-ARIA compliant interactive components
-- Customized with Tailwind CSS via Shadcn/ui wrapper patterns
-
-**Additional UI Dependencies:**
-- `cmdk` - Command palette component
-- `react-day-picker` - Calendar/date picker
-- `recharts` - Data visualization and charting library
-- `embla-carousel-react` - Carousel/slider component
-- `vaul` - Drawer component for mobile interfaces
-- `class-variance-authority` - Type-safe variant styling
-- `lucide-react` - Icon library
+-   **Radix UI:** Headless, accessible component primitives, customized via Shadcn/ui and Tailwind CSS.
+-   **cmdk:** Command palette component.
+-   **react-day-picker:** Calendar/date picker.
+-   **recharts:** Data visualization and charting library.
+-   **embla-carousel-react:** Carousel component.
+-   **vaul:** Drawer component.
+-   **lucide-react:** Icon library.
+-   **framer-motion:** Animation library.
 
 ### Development Tools
 
-**Build & Development:**
-- Vite for fast development server and optimized production builds
-- esbuild for server-side code bundling
-- tsx for running TypeScript in development
-- Tailwind CSS with PostCSS for styling
-
-**Type Safety:**
-- Zod for runtime schema validation
-- Drizzle-Zod for generating schemas from database models
-- React Hook Form with Zod resolver for form validation
-- TypeScript strict mode across entire codebase
-
-**Replit Integration:**
-- `@replit/vite-plugin-runtime-error-modal` - Error overlay in development
-- `@replit/vite-plugin-cartographer` - Code mapping tool
-- `@replit/vite-plugin-dev-banner` - Development environment banner
+-   **Vite:** Fast development server and optimized production builds.
+-   **esbuild:** Server-side code bundling.
+-   **tsx:** Running TypeScript in development.
+-   **Tailwind CSS:** For styling.
+-   **Zod:** Runtime schema validation and Drizzle-Zod for generating schemas.
+-   **React Hook Form:** With Zod resolver for form validation.
+-   **TypeScript:** Strict mode across the codebase.
