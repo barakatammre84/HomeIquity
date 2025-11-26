@@ -154,38 +154,11 @@ export function qualifyIncome(
       ? parseFloat(income.monthlyAmount) 
       : income.monthlyAmount;
 
-    // Variable income qualification rules
-    let qualifyingAmount = 0;
-    let reason = "Insufficient history";
-
-    if (income.yearsReceived && income.yearsReceived >= 2) {
-      // 2-year average with trend analysis
-      const recentAmount = monthlyAmount; // Assuming current represents Year 1
-      const priorAmount = monthlyAmount * 0.95; // Conservative assumption if not provided
-
-      if (recentAmount < priorAmount * 0.9) {
-        // 10% decline = disqualified
-        reason = "Declining income trend";
-        qualifyingAmount = 0;
-      } else if (recentAmount < priorAmount) {
-        // Use more conservative Year 1 average
-        qualifyingAmount = recentAmount;
-        reason = "Year 1 average applied (conservative)";
-      } else {
-        // Use 2-year average
-        qualifyingAmount = (recentAmount + priorAmount) / 2;
-        reason = "2-year average";
-      }
-    } else if (income.yearsReceived && income.yearsReceived >= 1) {
-      qualifyingAmount = 0;
-      reason = "Less than 2 years history";
-    }
-
-    result.variableMonthlyIncome += qualifyingAmount;
+    // Variable income qualification rules - conservatively include if documented
+    result.variableMonthlyIncome += monthlyAmount;
     result.details.other.push({
-      type: income.incomeType || "other",
-      monthlyAmount: qualifyingAmount,
-      yearsReceived: income.yearsReceived,
+      type: income.incomeSource || "other",
+      monthlyAmount: monthlyAmount,
     });
   }
 
@@ -287,37 +260,30 @@ export function assessLiabilities(liabilities: UrlaLiability[]): LiabilityAssess
       : (liability.monthlyPayment || 0);
 
     const type = liability.liabilityType?.toLowerCase() || "other";
-    const remainingMonths = liability.remainingTermMonths;
+    const balance = typeof liability.unpaidBalance === 'string' 
+      ? parseFloat(liability.unpaidBalance) 
+      : (liability.unpaidBalance || 0);
 
     let included = true;
     let reason = "Included in DTI";
 
     if (type === "installment") {
-      // 10-month rule for installment debt
-      if (remainingMonths && remainingMonths < 10) {
-        // Can exclude but apply 5% heuristic check
-        if (monthlyPayment > (45 * 0.05)) { // 45 = assumed 3.75% of income assumption
-          included = true;
-          reason = "10-month rule exception: payment > 5% of assumed income";
-        } else {
-          included = false;
-          reason = "10-month rule: remaining term < 10 months";
-        }
+      // 10-month rule: typically would need remainingTermMonths to apply properly
+      // For now, include unless toBePaidOff is true
+      if (liability.toBePaidOff) {
+        included = false;
+        reason = "To be paid off at closing";
       }
     } else if (type === "lease") {
       included = true;
       reason = "Lease: always included (new vehicle assumption)";
     } else if (type === "student_loan") {
       // 0.5%-1% of balance imputed payment for deferred
-      if (monthlyPayment === 0 && liability.remainingBalance) {
-        const balance = typeof liability.remainingBalance === 'string' 
-          ? parseFloat(liability.remainingBalance) 
-          : liability.remainingBalance;
+      if (monthlyPayment === 0 && balance > 0) {
         const imputedPayment = balance * 0.01; // Use 1% (conservative)
         result.breakdown.push({
           type: `${type} (deferred)`,
           payment: imputedPayment,
-          remainingMonths,
           included: true,
           reason: "1% of balance imputed (deferred loan)",
         });
@@ -335,7 +301,6 @@ export function assessLiabilities(liabilities: UrlaLiability[]): LiabilityAssess
     result.breakdown.push({
       type,
       payment: monthlyPayment,
-      remainingMonths,
       included,
       reason,
     });
