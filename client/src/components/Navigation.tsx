@@ -18,7 +18,7 @@ export function Navigation() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const publicLinks = [
-    { href: "/apply", label: "Buy" },
+    { href: "/buy", label: "Buy" },
     { href: "/apply", label: "Refinance" },
     { href: "/apply", label: "HELOC" },
     { href: "/apply", label: "Rates" },
@@ -27,7 +27,7 @@ export function Navigation() {
 
   const authenticatedLinks = [
     { href: "/dashboard", label: "Dashboard" },
-    { href: "/apply", label: "Buy" },
+    { href: "/buy", label: "Buy" },
     { href: "/apply", label: "Refinance" },
     { href: "/properties", label: "Properties" },
   ];

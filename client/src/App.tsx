@@ -23,6 +23,8 @@ import AgentProfile from "@/pages/AgentProfile";
 import AgentDashboard from "@/pages/AgentDashboard";
 import AgentEdit from "@/pages/AgentEdit";
 import PropertyForm from "@/pages/PropertyForm";
+import BuyerProperties from "@/pages/BuyerProperties";
+import PropertyDetail from "@/pages/PropertyDetail";
 
 function Router() {
   return (
@@ -30,6 +32,8 @@ function Router() {
       <Route path="/" component={Landing} />
       <Route path="/apply" component={PreApproval} />
       <Route path="/properties" component={Properties} />
+      <Route path="/buy" component={BuyerProperties} />
+      <Route path="/property/:propertyId" component={PropertyDetail} />
       <Route path="/agent/dashboard" component={AgentDashboard} />
       <Route path="/agent/edit" component={AgentEdit} />
       <Route path="/agent/:agentId" component={AgentProfile} />
