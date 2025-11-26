@@ -19,6 +19,10 @@ import Tasks from "@/pages/Tasks";
 import StaffDashboard from "@/pages/StaffDashboard";
 import TaskDetail from "@/pages/TaskDetail";
 import URLAForm from "@/pages/URLAForm";
+import AgentProfile from "@/pages/AgentProfile";
+import AgentDashboard from "@/pages/AgentDashboard";
+import AgentEdit from "@/pages/AgentEdit";
+import PropertyForm from "@/pages/PropertyForm";
 
 function Router() {
   return (
@@ -26,6 +30,11 @@ function Router() {
       <Route path="/" component={Landing} />
       <Route path="/apply" component={PreApproval} />
       <Route path="/properties" component={Properties} />
+      <Route path="/agent/:agentId" component={AgentProfile} />
+      <Route path="/agent/dashboard" component={AgentDashboard} />
+      <Route path="/agent/edit" component={AgentEdit} />
+      <Route path="/property/new" component={PropertyForm} />
+      <Route path="/property/:propertyId/edit" component={PropertyForm} />
       <Route path="/loan-options/:id" component={LoanOptions} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/application-summary" component={ApplicationSummary} />
