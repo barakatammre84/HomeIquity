@@ -1214,7 +1214,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         parseFloat(ltv),
         propertyType as any,
         occupancyType as any,
-        application.isFirstTimeBuyer,
+        application.isFirstTimeBuyer ?? false,
         borrowerIncome,
         areaMedianIncome
       );
