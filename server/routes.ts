@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated, isAdmin } from "./auth";
 import { analyzeLoanApplication } from "./gemini";
-import { generateMISMOXML, type MISMOLoanDTO } from "./mismo";
+import { generateMISMO34XML, type MISMOLoanDTO } from "./mismo";
 import { seedDatabase } from "./seed";
 import { insertLoanApplicationSchema } from "@shared/schema";
 import { z } from "zod";
@@ -249,7 +249,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         declarations: null,
       };
 
-      const xml = generateMISMOXML(dto);
+      const xml = generateMISMO34XML(dto);
       
       // Set proper headers for XML download
       res.setHeader("Content-Type", "application/xml");
