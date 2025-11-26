@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { useForm } from "react-hook-form";
+import { useState, useEffect, useMemo } from "react";
+import { useForm, UseFormReturn } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocation } from "wouter";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -24,7 +24,10 @@ import {
   Shield,
   Users,
   Loader2,
-  Check
+  Check,
+  AlertCircle,
+  ThumbsUp,
+  Info
 } from "lucide-react";
 
 const US_STATES = [
@@ -200,6 +203,198 @@ const QUESTIONS: Question[] = [
     subtitle: "Click submit to get your personalized loan options. This will not affect your credit score."
   }
 ];
+
+interface AdvisoryPanelProps {
+  formValues: PreApprovalFormData;
+  currentStepId: string;
+}
+
+function AdvisoryPanel({ formValues, currentStepId }: AdvisoryPanelProps) {
+  const stats = useMemo(() => {
+    const income = parseFloat(String(formValues.annualIncome || "").replace(/[^0-9.]/g, "")) || 0;
+    const debts = parseFloat(String(formValues.monthlyDebts || "").replace(/[^0-9.]/g, "")) || 0;
+    const price = parseFloat(String(formValues.purchasePrice || "").replace(/[^0-9.]/g, "")) || 0;
+    const down = parseFloat(String(formValues.downPayment || "").replace(/[^0-9.]/g, "")) || 0;
+    
+    const loanAmount = price - down;
+    const estRate = 0.065;
+    const monthlyRate = estRate / 12;
+    const numPayments = 360;
+    
+    let estMortgage = 0;
+    if (loanAmount > 0 && monthlyRate > 0) {
+      estMortgage = (loanAmount * monthlyRate * Math.pow(1 + monthlyRate, numPayments)) / 
+                    (Math.pow(1 + monthlyRate, numPayments) - 1);
+      estMortgage += (price * 0.0125) / 12;
+    }
+    
+    const monthlyIncome = income / 12;
+    const totalMonthlyObligation = debts + estMortgage;
+    
+    const dti = monthlyIncome > 0 ? (totalMonthlyObligation / monthlyIncome) * 100 : 0;
+    const ltv = price > 0 ? ((price - down) / price) * 100 : 0;
+    const downPaymentPercent = price > 0 ? (down / price) * 100 : 0;
+    
+    return { dti, estMortgage, loanAmount, ltv, downPaymentPercent };
+  }, [formValues]);
+
+  if (currentStepId === "intro" || currentStepId === "loanPurpose" || currentStepId === "propertyType") {
+    return null;
+  }
+
+  const getContextualAdvice = () => {
+    switch (currentStepId) {
+      case "purchasePrice":
+        return "We use this to estimate your monthly payment and closing costs.";
+      case "downPayment":
+        if (stats.loanAmount > 766550) {
+          return (
+            <span className="text-amber-600 dark:text-amber-400 font-medium">
+              Note: This loan amount enters 'Jumbo' territory, which may require a higher credit score and larger down payment.
+            </span>
+          );
+        }
+        if (stats.downPaymentPercent >= 20) {
+          return (
+            <span className="text-green-600 dark:text-green-400">
+              Great! Putting 20%+ down avoids PMI (Private Mortgage Insurance), saving you money each month.
+            </span>
+          );
+        }
+        return "Tip: A 20% down payment avoids Private Mortgage Insurance (PMI).";
+      case "propertyState":
+        return "Location affects property taxes and available loan programs.";
+      case "annualIncome":
+        return "We use gross income to calculate your debt-to-income ratio. We'll verify with W-2s or tax returns later.";
+      case "employmentType":
+        return "Employment type helps us determine which documents we'll need to verify your income.";
+      case "employmentYears":
+        return "Most lenders prefer 2+ years of stable employment history.";
+      case "monthlyDebts":
+        return "Include car payments, student loans, credit cards, and other monthly obligations.";
+      case "creditScore":
+        return "A score above 740 typically qualifies for the best interest rates.";
+      case "veteranAndFirstTime":
+        return "Veterans may qualify for VA loans with no down payment. First-time buyers may access special programs.";
+      case "final":
+        return "Review complete! Click submit to see your personalized loan options.";
+      default:
+        return "Keep going! We're building your financial profile.";
+    }
+  };
+
+  const getDtiStatus = () => {
+    if (stats.dti <= 0) return { color: "bg-muted", text: "Enter your info to see DTI" };
+    if (stats.dti < 36) return { color: "bg-green-500", text: "Looking great! Lenders love a DTI under 36%." };
+    if (stats.dti < 43) return { color: "bg-yellow-500", text: "You're in the approval zone, but consider the budget." };
+    if (stats.dti < 50) return { color: "bg-orange-500", text: "This is getting tight. You may need to reduce the loan amount." };
+    return { color: "bg-red-500", text: "This loan amount might be a stretch for standard approval." };
+  };
+
+  const dtiStatus = getDtiStatus();
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: 20 }}
+      animate={{ opacity: 1, x: 0 }}
+      className="hidden lg:block fixed right-8 top-1/2 -translate-y-1/2 w-80 bg-card rounded-2xl shadow-xl border p-6 transition-all duration-500 z-30"
+      data-testid="advisory-panel"
+    >
+      <div className="flex items-center gap-2 mb-4 border-b pb-3">
+        <div className="bg-primary/10 p-1.5 rounded-lg">
+          <TrendingUp className="w-4 h-4 text-primary" />
+        </div>
+        <span className="font-bold text-foreground text-sm uppercase tracking-wider">Live Analysis</span>
+      </div>
+
+      <div className="space-y-5">
+        {(stats.dti > 0 || stats.estMortgage > 0) && (
+          <div>
+            <div className="flex justify-between text-xs mb-1.5">
+              <span className="text-muted-foreground">Debt-to-Income Ratio</span>
+              <span className={`font-bold ${stats.dti > 43 ? "text-red-500" : stats.dti > 36 ? "text-yellow-600" : "text-green-600"}`}>
+                {stats.dti > 0 ? `${stats.dti.toFixed(0)}%` : "—"}
+              </span>
+            </div>
+            <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+              <motion.div 
+                className={`h-full transition-colors duration-500 ${dtiStatus.color}`}
+                initial={{ width: 0 }}
+                animate={{ width: `${Math.min(Math.max(stats.dti, 0), 100)}%` }}
+                transition={{ duration: 0.5 }}
+              />
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-1.5">
+              {dtiStatus.text}
+            </p>
+          </div>
+        )}
+
+        <div className="bg-muted/50 rounded-xl p-4">
+          <div className="flex gap-3">
+            <Info className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              {getContextualAdvice()}
+            </p>
+          </div>
+        </div>
+
+        {stats.estMortgage > 0 && (
+          <div className="text-center pt-2 border-t">
+            <div className="text-xs text-muted-foreground uppercase mb-1">Est. Monthly Payment</div>
+            <div className="text-2xl font-bold text-foreground" data-testid="text-est-payment">
+              ${stats.estMortgage.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+              <span className="text-sm text-muted-foreground font-normal">/mo</span>
+            </div>
+            <p className="text-[10px] text-muted-foreground mt-1">
+              Based on 6.5% rate, 30-year fixed
+            </p>
+          </div>
+        )}
+
+        {stats.ltv > 0 && stats.ltv < 100 && (
+          <div className="flex justify-between text-xs border-t pt-3">
+            <span className="text-muted-foreground">Loan-to-Value (LTV)</span>
+            <span className={`font-medium ${stats.ltv <= 80 ? "text-green-600" : "text-yellow-600"}`}>
+              {stats.ltv.toFixed(0)}%
+            </span>
+          </div>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
+function getDynamicTitle(currentQ: Question, formValues: PreApprovalFormData): string {
+  const { purchasePrice, loanPurpose, employmentType, downPayment } = formValues;
+
+  switch (currentQ.id) {
+    case "downPayment":
+      if (purchasePrice) {
+        return `On a $${purchasePrice} home, how much can you put down?`;
+      }
+      break;
+    case "creditScore":
+      if (loanPurpose === "cash_out") {
+        return "Since you're pulling cash out, credit score is key. What's yours?";
+      }
+      break;
+    case "annualIncome":
+      return "What's your total household income?";
+    case "employmentYears":
+      if (employmentType === "self_employed") {
+        return "How many years have you been self-employed?";
+      }
+      if (employmentType === "retired") {
+        return "How many years have you been retired?";
+      }
+      break;
+    case "monthlyDebts":
+      return "What are your current monthly debt payments?";
+  }
+
+  return currentQ.question || "";
+}
 
 export default function PreApproval() {
   const [currentStep, setCurrentStep] = useState(0);
@@ -571,6 +766,10 @@ export default function PreApproval() {
     );
   }
 
+  // Watch form values once for performance optimization
+  const watchedValues = form.watch();
+  const dynamicTitle = useMemo(() => getDynamicTitle(currentQ, watchedValues), [currentQ, watchedValues]);
+
   // The Conversational Form Steps
   return (
     <div className="min-h-screen flex flex-col bg-background overflow-hidden">
@@ -601,8 +800,11 @@ export default function PreApproval() {
         <div className="w-10" />
       </div>
 
+      {/* Advisory Panel (Desktop only) */}
+      <AdvisoryPanel formValues={watchedValues} currentStepId={currentQ.id} />
+
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col items-center justify-center p-6 pt-20 w-full max-w-4xl mx-auto relative">
+      <div className="flex-1 flex flex-col items-center justify-center p-6 pt-20 w-full max-w-4xl mx-auto relative lg:pr-96">
         <AnimatePresence mode="wait" custom={direction}>
           <motion.div
             key={currentStep}
@@ -618,7 +820,7 @@ export default function PreApproval() {
               className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-4 leading-tight"
               data-testid="text-question"
             >
-              {currentQ.question}
+              {dynamicTitle}
             </h2>
             
             {currentQ.subtitle && (
