@@ -246,10 +246,61 @@ export const insertDealActivitySchema = createInsertSchema(dealActivities).omit(
 export type InsertDealActivity = z.infer<typeof insertDealActivitySchema>;
 export type DealActivity = typeof dealActivities.$inferSelect;
 
+// Real Estate Agent Profiles
+export const agentProfiles = pgTable("agent_profiles", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull().unique(),
+  
+  bio: text("bio"),
+  phoneNumber: varchar("phone_number", { length: 20 }),
+  licenseNumber: varchar("license_number", { length: 50 }),
+  licenseExpiry: varchar("license_expiry", { length: 10 }),
+  brokerage: varchar("brokerage", { length: 255 }),
+  yearsInBusiness: integer("years_in_business"),
+  
+  specialties: text("specialties").array(), // ['first_time_buyers', 'luxury', 'investment', 'commercial']
+  serviceArea: text("service_area").array(), // list of states/counties served
+  
+  photoBucket: varchar("photo_bucket"), // object storage path
+  photoUrl: varchar("photo_url"),
+  
+  averageRating: decimal("average_rating", { precision: 3, scale: 2 }),
+  totalReviews: integer("total_reviews").default(0),
+  
+  propertiesSold: integer("properties_sold").default(0),
+  activeListings: integer("active_listings").default(0),
+  
+  socialLinks: jsonb("social_links"), // {twitter, instagram, facebook}
+  website: varchar("website", { length: 255 }),
+  
+  isVerified: boolean("is_verified").default(false),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const agentProfilesRelations = relations(agentProfiles, ({ one, many }) => ({
+  user: one(users, {
+    fields: [agentProfiles.userId],
+    references: [users.id],
+  }),
+  properties: many(properties),
+}));
+
+export const insertAgentProfileSchema = createInsertSchema(agentProfiles).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertAgentProfile = z.infer<typeof insertAgentProfileSchema>;
+export type AgentProfile = typeof agentProfiles.$inferSelect;
+
 // Properties (for MLS integration)
 export const properties = pgTable("properties", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   mlsId: varchar("mls_id", { length: 100 }),
+  agentId: varchar("agent_id").references(() => agentProfiles.id),
   
   address: text("address").notNull(),
   city: varchar("city", { length: 100 }).notNull(),
@@ -271,10 +322,19 @@ export const properties = pgTable("properties", {
   
   status: varchar("status", { length: 50 }).default("active"), // active, pending, sold
   listedAt: timestamp("listed_at"),
+  soldAt: timestamp("sold_at"),
+  soldPrice: decimal("sold_price", { precision: 12, scale: 2 }),
   
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
+
+export const propertiesRelations = relations(properties, ({ one }) => ({
+  agent: one(agentProfiles, {
+    fields: [properties.agentId],
+    references: [agentProfiles.id],
+  }),
+}));
 
 export const insertPropertySchema = createInsertSchema(properties).omit({
   id: true,
