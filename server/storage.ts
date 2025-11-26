@@ -140,6 +140,19 @@ export interface IStorage {
     propertyInfo: UrlaPropertyInfo | undefined;
   }>;
 
+  // MISMO Export Data
+  getMISMOLoanData(applicationId: string): Promise<{
+    application: LoanApplication;
+    user: User | null;
+    personalInfo: UrlaPersonalInfo | null;
+    employment: EmploymentHistory[];
+    assets: UrlaAsset[];
+    liabilities: UrlaLiability[];
+    propertyInfo: UrlaPropertyInfo | null;
+    loanOptions: LoanOption[];
+    documents: Document[];
+  } | null>;
+
   // Tasks
   createTask(data: InsertTask): Promise<Task>;
   getTask(id: string): Promise<Task | undefined>;
@@ -663,6 +676,33 @@ export class DatabaseStorage implements IStorage {
       assets,
       liabilities,
       propertyInfo,
+    };
+  }
+
+  // MISMO Export Data - aggregates all data needed for MISMO 3.4 XML generation
+  async getMISMOLoanData(applicationId: string) {
+    const application = await this.getLoanApplication(applicationId);
+    if (!application) {
+      return null;
+    }
+
+    const [user, urlaData, loanOpts, docs] = await Promise.all([
+      application.userId ? this.getUser(application.userId) : Promise.resolve(undefined),
+      this.getCompleteUrlaData(applicationId),
+      this.getLoanOptionsByApplication(applicationId),
+      this.getDocumentsByApplication(applicationId),
+    ]);
+
+    return {
+      application,
+      user: user || null,
+      personalInfo: urlaData.personalInfo || null,
+      employment: urlaData.employmentHistory,
+      assets: urlaData.assets,
+      liabilities: urlaData.liabilities,
+      propertyInfo: urlaData.propertyInfo || null,
+      loanOptions: loanOpts,
+      documents: docs,
     };
   }
 

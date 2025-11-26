@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated, isAdmin } from "./auth";
 import { analyzeLoanApplication } from "./gemini";
+import { generateMISMOXML, type MISMOLoanDTO } from "./mismo";
 import { seedDatabase } from "./seed";
 import { insertLoanApplicationSchema } from "@shared/schema";
 import { z } from "zod";
@@ -222,6 +223,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Lock rate error:", error);
       res.status(500).json({ error: "Failed to lock rate" });
+    }
+  });
+
+  // MISMO 3.4 XML Export Route - GSE compliant loan delivery format
+  app.get("/api/loan-applications/:id/mismo-export", isAuthenticated, async (req, res) => {
+    try {
+      const userRole = req.user?.role;
+      
+      // Only staff roles can export MISMO XML
+      if (!["admin", "lender", "broker"].includes(userRole || "")) {
+        return res.status(403).json({ error: "Only staff can export MISMO data" });
+      }
+
+      const { id } = req.params;
+      const mismoData = await storage.getMISMOLoanData(id);
+      
+      if (!mismoData) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+
+      // Build the DTO with declarations (currently we pass null as declarations are not stored separately)
+      const dto: MISMOLoanDTO = {
+        ...mismoData,
+        declarations: null,
+      };
+
+      const xml = generateMISMOXML(dto);
+      
+      // Set proper headers for XML download
+      res.setHeader("Content-Type", "application/xml");
+      res.setHeader("Content-Disposition", `attachment; filename="mismo-${id}.xml"`);
+      res.send(xml);
+
+      await storage.createDealActivity({
+        applicationId: id,
+        activityType: "note",
+        title: "MISMO XML Exported",
+        description: "Loan data exported in MISMO 3.4 format for GSE delivery",
+        performedBy: req.user!.id,
+      });
+    } catch (error) {
+      console.error("MISMO export error:", error);
+      res.status(500).json({ error: "Failed to generate MISMO XML" });
     }
   });
 
