@@ -14,6 +14,7 @@ import {
   urlaAssets,
   urlaLiabilities,
   urlaPropertyInfo,
+  borrowerDeclarations,
   tasks,
   taskDocuments,
   type User,
@@ -40,6 +41,8 @@ import {
   type InsertUrlaLiability,
   type UrlaPropertyInfo,
   type InsertUrlaPropertyInfo,
+  type BorrowerDeclarations,
+  type InsertBorrowerDeclarations,
   type Task,
   type InsertTask,
   type TaskDocument,
@@ -57,6 +60,7 @@ export interface IStorage {
   // Loan Applications
   createLoanApplication(data: InsertLoanApplication): Promise<LoanApplication>;
   getLoanApplication(id: string): Promise<LoanApplication | undefined>;
+  getLoanApplicationWithAccess(id: string, userId: string, userRole: string): Promise<LoanApplication | undefined>;
   getLoanApplicationsByUser(userId: string): Promise<LoanApplication[]>;
   getAllLoanApplications(): Promise<LoanApplication[]>;
   updateLoanApplication(id: string, data: Partial<LoanApplication>): Promise<LoanApplication | undefined>;
@@ -131,6 +135,10 @@ export interface IStorage {
   getUrlaPropertyInfo(applicationId: string): Promise<UrlaPropertyInfo | undefined>;
   upsertUrlaPropertyInfo(data: InsertUrlaPropertyInfo): Promise<UrlaPropertyInfo>;
   
+  // Borrower Declarations
+  getBorrowerDeclarations(applicationId: string): Promise<BorrowerDeclarations | undefined>;
+  upsertBorrowerDeclarations(data: InsertBorrowerDeclarations): Promise<BorrowerDeclarations>;
+  
   getCompleteUrlaData(applicationId: string): Promise<{
     personalInfo: UrlaPersonalInfo | undefined;
     employmentHistory: EmploymentHistory[];
@@ -138,6 +146,7 @@ export interface IStorage {
     assets: UrlaAsset[];
     liabilities: UrlaLiability[];
     propertyInfo: UrlaPropertyInfo | undefined;
+    declarations: BorrowerDeclarations | undefined;
   }>;
 
   // MISMO Export Data
@@ -149,9 +158,21 @@ export interface IStorage {
     assets: UrlaAsset[];
     liabilities: UrlaLiability[];
     propertyInfo: UrlaPropertyInfo | null;
+    declarations: BorrowerDeclarations | null;
     loanOptions: LoanOption[];
     documents: Document[];
   } | null>;
+  
+  // Data Quality Scoring
+  getApplicationDataQuality(applicationId: string): Promise<{
+    overallScore: number;
+    sections: {
+      name: string;
+      score: number;
+      missingFields: string[];
+      verificationStatus: string;
+    }[];
+  }>;
 
   // Tasks
   createTask(data: InsertTask): Promise<Task>;
@@ -223,6 +244,32 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(loanApplications)
       .where(eq(loanApplications.id, id))
+      .limit(1);
+    return application;
+  }
+
+  async getLoanApplicationWithAccess(id: string, userId: string, userRole: string): Promise<LoanApplication | undefined> {
+    // Staff roles get unrestricted access
+    const isStaff = ["admin", "lender", "broker"].includes(userRole);
+    
+    if (isStaff) {
+      // Staff can access any application
+      const [application] = await db
+        .select()
+        .from(loanApplications)
+        .where(eq(loanApplications.id, id))
+        .limit(1);
+      return application;
+    }
+    
+    // Non-staff can only access their own applications - query scoped by userId
+    const [application] = await db
+      .select()
+      .from(loanApplications)
+      .where(and(
+        eq(loanApplications.id, id),
+        eq(loanApplications.userId, userId)
+      ))
       .limit(1);
     return application;
   }
@@ -454,17 +501,33 @@ export class DatabaseStorage implements IStorage {
         ? Math.round((approvedCount.count / appCount.count) * 100)
         : 0;
 
+    // Get loan breakdown by type from loanOptions table
+    const loanTypeStats = await db
+      .select({
+        type: loanOptions.loanType,
+        count: sql<number>`count(DISTINCT ${loanOptions.applicationId})::int`,
+        volume: sql<string>`coalesce(sum(${loanOptions.loanAmount}::numeric), 0)::text`,
+      })
+      .from(loanOptions)
+      .innerJoin(loanApplications, eq(loanOptions.applicationId, loanApplications.id))
+      .where(eq(loanOptions.isRecommended, true))
+      .groupBy(loanOptions.loanType);
+
+    // Ensure all loan types are represented with defaults
+    const loansByTypeMap = new Map(loanTypeStats.map(lt => [lt.type, lt]));
+    const loansByType = ["conventional", "fha", "va"].map(type => ({
+      type,
+      count: loansByTypeMap.get(type)?.count ?? 0,
+      volume: loansByTypeMap.get(type)?.volume ?? "0",
+    }));
+
     return {
       totalUsers: userCount.count,
       totalApplications: appCount.count,
       totalLoanVolume: volumeResult.total,
       approvalRate,
       applicationsByStatus: statusCounts,
-      loansByType: [
-        { type: "conventional", count: 0, volume: "0" },
-        { type: "fha", count: 0, volume: "0" },
-        { type: "va", count: 0, volume: "0" },
-      ],
+      loansByType,
       recentApplications: appsWithUsers,
     };
   }
@@ -658,15 +721,42 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
+  // Borrower Declarations
+  async getBorrowerDeclarations(applicationId: string): Promise<BorrowerDeclarations | undefined> {
+    const [declarations] = await db
+      .select()
+      .from(borrowerDeclarations)
+      .where(eq(borrowerDeclarations.applicationId, applicationId))
+      .limit(1);
+    return declarations;
+  }
+
+  async upsertBorrowerDeclarations(data: InsertBorrowerDeclarations): Promise<BorrowerDeclarations> {
+    const existing = await this.getBorrowerDeclarations(data.applicationId);
+    const { createdAt, updatedAt, id, ...cleanData } = data as any;
+    
+    if (existing) {
+      const [updated] = await db
+        .update(borrowerDeclarations)
+        .set({ ...cleanData, updatedAt: new Date() })
+        .where(eq(borrowerDeclarations.applicationId, data.applicationId))
+        .returning();
+      return updated;
+    }
+    const [created] = await db.insert(borrowerDeclarations).values(cleanData).returning();
+    return created;
+  }
+
   // Get Complete URLA Data
   async getCompleteUrlaData(applicationId: string) {
-    const [personalInfo, employment, income, assets, liabilities, propertyInfo] = await Promise.all([
+    const [personalInfo, employment, income, assets, liabilities, propertyInfo, declarations] = await Promise.all([
       this.getUrlaPersonalInfo(applicationId),
       this.getEmploymentHistory(applicationId),
       this.getOtherIncomeSources(applicationId),
       this.getUrlaAssets(applicationId),
       this.getUrlaLiabilities(applicationId),
       this.getUrlaPropertyInfo(applicationId),
+      this.getBorrowerDeclarations(applicationId),
     ]);
 
     return {
@@ -676,6 +766,7 @@ export class DatabaseStorage implements IStorage {
       assets,
       liabilities,
       propertyInfo,
+      declarations,
     };
   }
 
@@ -701,9 +792,101 @@ export class DatabaseStorage implements IStorage {
       assets: urlaData.assets,
       liabilities: urlaData.liabilities,
       propertyInfo: urlaData.propertyInfo || null,
+      declarations: urlaData.declarations || null,
       loanOptions: loanOpts,
       documents: docs,
     };
+  }
+
+  // Data Quality Scoring for Broker Dashboard
+  async getApplicationDataQuality(applicationId: string) {
+    const [application, urlaData, docs, taskList] = await Promise.all([
+      this.getLoanApplication(applicationId),
+      this.getCompleteUrlaData(applicationId),
+      this.getDocumentsByApplication(applicationId),
+      this.getTasksByApplication(applicationId),
+    ]);
+
+    const sections = [];
+
+    // Personal Information Section
+    const personalFields = [
+      "firstName", "lastName", "ssn", "dateOfBirth", "email", "cellPhone",
+      "currentStreet", "currentCity", "currentState", "currentZip"
+    ];
+    const personalMissing = personalFields.filter(f => !urlaData.personalInfo?.[f as keyof typeof urlaData.personalInfo]);
+    const personalScore = Math.round(((personalFields.length - personalMissing.length) / personalFields.length) * 100);
+    sections.push({
+      name: "Personal Information",
+      score: personalScore,
+      missingFields: personalMissing,
+      verificationStatus: urlaData.personalInfo?.ssn ? "verified" : "pending",
+    });
+
+    // Employment Section
+    const hasCurrentEmployment = urlaData.employmentHistory.some(e => e.employmentType === "current");
+    const employmentScore = hasCurrentEmployment ? 100 : 0;
+    sections.push({
+      name: "Employment History",
+      score: employmentScore,
+      missingFields: hasCurrentEmployment ? [] : ["Current Employment"],
+      verificationStatus: hasCurrentEmployment ? "pending_verification" : "incomplete",
+    });
+
+    // Assets Section
+    const assetsScore = urlaData.assets.length > 0 ? 100 : 0;
+    sections.push({
+      name: "Assets",
+      score: assetsScore,
+      missingFields: urlaData.assets.length > 0 ? [] : ["At least one asset account"],
+      verificationStatus: urlaData.assets.length > 0 ? "pending_verification" : "incomplete",
+    });
+
+    // Liabilities Section
+    const liabilitiesScore = urlaData.liabilities.length >= 0 ? 100 : 0;
+    sections.push({
+      name: "Liabilities",
+      score: liabilitiesScore,
+      missingFields: [],
+      verificationStatus: "complete",
+    });
+
+    // Declarations Section
+    const declarationFields = [
+      "willOccupyAsPrimaryResidence", "hasRelationshipWithSeller", 
+      "hasOutstandingJudgments", "hasDeclaredBankruptcy", "isUSCitizen"
+    ];
+    const declarationsMissing = declarationFields.filter(
+      f => urlaData.declarations?.[f as keyof typeof urlaData.declarations] === null || 
+           urlaData.declarations?.[f as keyof typeof urlaData.declarations] === undefined
+    );
+    const declarationsScore = urlaData.declarations 
+      ? Math.round(((declarationFields.length - declarationsMissing.length) / declarationFields.length) * 100)
+      : 0;
+    sections.push({
+      name: "Borrower Declarations",
+      score: declarationsScore,
+      missingFields: declarationsMissing,
+      verificationStatus: urlaData.declarations?.declarationsVerifiedAt ? "verified" : "pending",
+    });
+
+    // Documents Section
+    const requiredDocTypes = ["w2", "pay_stub", "bank_statement", "id"];
+    const uploadedTypes = Array.from(new Set(docs.map(d => d.documentType)));
+    const docsMissing = requiredDocTypes.filter(t => !uploadedTypes.includes(t));
+    const docsVerified = docs.filter(d => d.status === "verified").length;
+    const docsScore = Math.round(((requiredDocTypes.length - docsMissing.length) / requiredDocTypes.length) * 100);
+    sections.push({
+      name: "Documents",
+      score: docsScore,
+      missingFields: docsMissing,
+      verificationStatus: docsVerified === docs.length && docs.length > 0 ? "verified" : "pending_verification",
+    });
+
+    // Calculate overall score
+    const overallScore = Math.round(sections.reduce((sum, s) => sum + s.score, 0) / sections.length);
+
+    return { overallScore, sections };
   }
 
   // Tasks

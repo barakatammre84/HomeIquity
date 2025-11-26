@@ -102,17 +102,50 @@ Preferred communication style: Simple, everyday language.
 - Follows MISMO 3.4 hierarchical structure: MESSAGE → DEAL_SETS → DEAL → COLLATERALS/LOANS/PARTIES
 - Supports ULDD Phase 5 requirements effective July 28, 2025
 - MERS MIN generation with Luhn check digit algorithm
+- Full borrower declarations export with MISMO-compliant field mapping
 
 **Export API:**
 - Endpoint: `GET /api/loan-applications/:id/mismo-export`
 - Authorization: Staff roles only (admin, lender, broker)
 - Returns: application/xml with properly formatted MISMO 3.4 XML
 - Includes loan identifiers, qualification metrics (DTI/LTV), borrower information, collateral details
+- Includes borrower declarations (bankruptcy, foreclosure, judgments, citizenship, intent to occupy)
 
 **Key Files:**
 - `shared/mismo.ts` - TypeScript types for MISMO containers (XMLNode, generation options)
-- `server/mismo.ts` - XML generation service with MERS utilities
-- `server/storage.ts` - getMISMOLoanData aggregates all loan data for export
+- `server/mismo.ts` - XML generation service with MERS utilities, borrower declarations mapping
+- `server/storage.ts` - getMISMOLoanData aggregates all loan data including declarations for export
+
+### Borrower Declarations (URLA Section 5)
+
+**Database Table (`borrower_declarations`):**
+- Section 5a: Property occupancy intent, prior ownership, seller relationships, down payment borrowing
+- Section 5b: Financial disclosures - judgments, delinquent debts, lawsuits, foreclosure/bankruptcy history
+- Section 5c: Transaction disclosures - undisclosed debts, new credit applications, priority liens
+- Citizenship status fields (US citizen, permanent resident alien)
+- Data quality tracking (completedAt, verifiedAt, verifiedBy)
+
+**API Endpoints:**
+- `GET /api/loan-applications/:id/declarations` - Retrieve borrower declarations
+- `POST /api/loan-applications/:id/declarations` - Save/update borrower declarations
+
+### Data Quality Scoring System
+
+**Purpose:** Provides completeness scoring across URLA sections for broker dashboards
+
+**API Endpoint:** `GET /api/loan-applications/:id/data-quality`
+
+**Scoring Sections:**
+- Personal Information: firstName, lastName, SSN, DOB, contact info, address
+- Employment History: Current employment verification status
+- Assets: At least one asset account required
+- Liabilities: Tracked obligations
+- Borrower Declarations: Key declaration fields completion
+- Documents: Required document types (W-2, pay stubs, bank statements, ID)
+
+**Response Format:**
+- `overallScore`: Weighted average percentage
+- `sections[]`: Individual section scores with `missingFields` and `verificationStatus`
 
 ### Task Management System
 

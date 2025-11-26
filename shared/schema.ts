@@ -589,6 +589,75 @@ export const insertUrlaPropertyInfoSchema = createInsertSchema(urlaPropertyInfo)
 export type InsertUrlaPropertyInfo = z.infer<typeof insertUrlaPropertyInfoSchema>;
 export type UrlaPropertyInfo = typeof urlaPropertyInfo.$inferSelect;
 
+// Borrower Declarations (URLA Section 5 / MISMO 3.4 Declarations)
+export const borrowerDeclarations = pgTable("borrower_declarations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  applicationId: varchar("application_id").references(() => loanApplications.id).notNull(),
+  
+  // Section 5a - About This Property and Your Money for This Loan
+  willOccupyAsPrimaryResidence: boolean("will_occupy_as_primary_residence"),
+  hasOwnershipInterestInPast3Years: boolean("has_ownership_interest_in_past_3_years"),
+  priorPropertyType: varchar("prior_property_type", { length: 50 }), // primary_residence, second_home, investment, fha_primary
+  priorPropertyTitle: varchar("prior_property_title", { length: 50 }), // sole, joint_with_spouse, joint_with_other
+  
+  hasRelationshipWithSeller: boolean("has_relationship_with_seller"),
+  isBorrowingForDownPayment: boolean("is_borrowing_for_down_payment"),
+  borrowedAmount: decimal("borrowed_amount", { precision: 12, scale: 2 }),
+  
+  hasAppliedForMortgageOnOtherProperty: boolean("has_applied_for_mortgage_on_other_property"),
+  hasCreditForMortgageOnOtherProperty: boolean("has_credit_for_mortgage_on_other_property"),
+  hasPriorityLienOnSubjectProperty: boolean("has_priority_lien_on_subject_property"),
+  
+  // Section 5b - About Your Finances
+  hasCoMakerEndorser: boolean("has_co_maker_endorser"),
+  hasOutstandingJudgments: boolean("has_outstanding_judgments"),
+  isDelinquentOnFederalDebt: boolean("is_delinquent_on_federal_debt"),
+  isPartyToLawsuit: boolean("is_party_to_lawsuit"),
+  hasConveyedTitleInLieuOfForeclosure: boolean("has_conveyed_title_in_lieu_of_foreclosure"),
+  hasCompletedShortSale: boolean("has_completed_short_sale"),
+  hasBeenForeclosed: boolean("has_been_foreclosed"),
+  hasDeclaredBankruptcy: boolean("has_declared_bankruptcy"),
+  bankruptcyTypes: text("bankruptcy_types"), // chapter_7, chapter_11, chapter_12, chapter_13
+  
+  // Section 5c - About This Transaction  
+  hasUndisclosedDebt: boolean("has_undisclosed_debt"),
+  undisclosedDebtAmount: decimal("undisclosed_debt_amount", { precision: 12, scale: 2 }),
+  hasAppliedForNewCredit: boolean("has_applied_for_new_credit"),
+  hasPriorityLienToBePaidOff: boolean("has_priority_lien_to_be_paid_off"),
+  
+  // Additional Disclosures
+  isUSCitizen: boolean("is_us_citizen"),
+  isPermanentResidentAlien: boolean("is_permanent_resident_alien"),
+  
+  // Data Quality Fields
+  declarationsCompletedAt: timestamp("declarations_completed_at"),
+  declarationsVerifiedAt: timestamp("declarations_verified_at"),
+  declarationsVerifiedBy: varchar("declarations_verified_by").references(() => users.id),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const borrowerDeclarationsRelations = relations(borrowerDeclarations, ({ one }) => ({
+  application: one(loanApplications, {
+    fields: [borrowerDeclarations.applicationId],
+    references: [loanApplications.id],
+  }),
+  verifiedBy: one(users, {
+    fields: [borrowerDeclarations.declarationsVerifiedBy],
+    references: [users.id],
+  }),
+}));
+
+export const insertBorrowerDeclarationsSchema = createInsertSchema(borrowerDeclarations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertBorrowerDeclarations = z.infer<typeof insertBorrowerDeclarationsSchema>;
+export type BorrowerDeclarations = typeof borrowerDeclarations.$inferSelect;
+
 // Pre-approval form validation schema
 export const preApprovalFormSchema = z.object({
   // Step 1: Basic Info

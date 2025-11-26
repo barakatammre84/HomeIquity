@@ -15,19 +15,8 @@ import type {
   UrlaPropertyInfo,
   LoanOption,
   Document,
+  BorrowerDeclarations,
 } from "@shared/schema";
-
-export interface BorrowerDeclarations {
-  bankruptcyDeclared?: boolean;
-  foreclosureDeclared?: boolean;
-  outstandingJudgments?: boolean;
-  primaryResidence?: boolean;
-  partyToLawsuit?: boolean;
-  delinquentDebt?: boolean;
-  alimonyChildSupport?: boolean;
-  borrowedDownPayment?: boolean;
-  coMakerEndorser?: boolean;
-}
 import {
   MISMO_NAMESPACE,
   XLINK_NAMESPACE,
@@ -304,42 +293,48 @@ function buildBorrowerNode(dto: MISMOLoanDTO): XMLNode {
 
   if (declarations) {
     const declarationNode: XMLNode[] = [];
-    if (declarations.bankruptcyDeclared !== undefined) {
-      declarationNode.push({ 
-        tag: "BankruptcyIndicator", 
-        text: declarations.bankruptcyDeclared ? "true" : "false" 
-      });
-    }
-    if (declarations.foreclosureDeclared !== undefined) {
-      declarationNode.push({ 
-        tag: "LoanForeclosureIndicator", 
-        text: declarations.foreclosureDeclared ? "true" : "false" 
-      });
-    }
-    if (declarations.outstandingJudgments !== undefined) {
-      declarationNode.push({ 
-        tag: "OutstandingJudgmentsIndicator", 
-        text: declarations.outstandingJudgments ? "true" : "false" 
-      });
-    }
-    if (personalInfo?.citizenship) {
-      declarationNode.push({ 
-        tag: "USCitizenIndicator", 
-        text: personalInfo.citizenship === "us_citizen" ? "true" : "false" 
-      });
-      if (personalInfo.citizenship === "permanent_resident") {
-        declarationNode.push({ 
-          tag: "PermanentResidentAlienIndicator", 
-          text: "true"
-        });
+    
+    // Helper to add boolean indicator if value is set
+    const addBooleanIndicator = (tag: string, value: boolean | null | undefined) => {
+      if (value !== null && value !== undefined) {
+        declarationNode.push({ tag, text: value ? "true" : "false" });
       }
-    }
-    if (declarations.primaryResidence !== undefined) {
-      declarationNode.push({ 
-        tag: "IntentToOccupyIndicator", 
-        text: declarations.primaryResidence ? "true" : "false" 
-      });
-    }
+    };
+    
+    // Section 5a - Property and Money for Loan
+    addBooleanIndicator("IntentToOccupyIndicator", declarations.willOccupyAsPrimaryResidence);
+    addBooleanIndicator("HomeownerPastThreeYearsIndicator", declarations.hasOwnershipInterestInPast3Years);
+    addBooleanIndicator("PropertySellerRelationshipIndicator", declarations.hasRelationshipWithSeller);
+    addBooleanIndicator("BorrowedDownPaymentIndicator", declarations.isBorrowingForDownPayment);
+    
+    // URLA 5a-E: "Have you or will you be applying for a mortgage loan on another property?"
+    // MortgageOnOtherPropertyIndicator covers both applied for AND credit extended on other properties
+    addBooleanIndicator("MortgageOnOtherPropertyIndicator", declarations.hasAppliedForMortgageOnOtherProperty);
+    // Note: hasCreditForMortgageOnOtherProperty is included as part of MortgageOnOtherPropertyIndicator per MISMO 3.4
+    // NewMortgageOnOtherPropertyIndicator is for mortgages on the SUBJECT property, not other properties
+    
+    // Priority lien indicators - MISMO requires separate flags for presence vs payoff
+    addBooleanIndicator("PriorityLienIndicator", declarations.hasPriorityLienOnSubjectProperty);
+    
+    // Section 5b - Finances
+    addBooleanIndicator("CoMakerEndorserOfNoteIndicator", declarations.hasCoMakerEndorser);
+    addBooleanIndicator("OutstandingJudgmentsIndicator", declarations.hasOutstandingJudgments);
+    addBooleanIndicator("DelinquentPastDueIndicator", declarations.isDelinquentOnFederalDebt);
+    addBooleanIndicator("PartyToLawsuitIndicator", declarations.isPartyToLawsuit);
+    addBooleanIndicator("DeedInLieuIndicator", declarations.hasConveyedTitleInLieuOfForeclosure);
+    addBooleanIndicator("ShortSaleIndicator", declarations.hasCompletedShortSale);
+    addBooleanIndicator("LoanForeclosureIndicator", declarations.hasBeenForeclosed);
+    addBooleanIndicator("BankruptcyIndicator", declarations.hasDeclaredBankruptcy);
+    
+    // Section 5c - Transaction
+    addBooleanIndicator("UndisclosedBorrowedFundsIndicator", declarations.hasUndisclosedDebt);
+    addBooleanIndicator("NewCreditIndicator", declarations.hasAppliedForNewCredit);
+    addBooleanIndicator("PriorityLienPayoffIndicator", declarations.hasPriorityLienToBePaidOff);
+    
+    // Citizenship
+    addBooleanIndicator("USCitizenIndicator", declarations.isUSCitizen);
+    addBooleanIndicator("PermanentResidentAlienIndicator", declarations.isPermanentResidentAlien);
+    
     if (declarationNode.length > 0) {
       borrowerChildren.push({ tag: "DECLARATION", children: declarationNode });
     }

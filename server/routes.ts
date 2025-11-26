@@ -5,8 +5,13 @@ import { setupAuth, isAuthenticated, isAdmin } from "./auth";
 import { analyzeLoanApplication } from "./gemini";
 import { generateMISMO34XML, type MISMOLoanDTO } from "./mismo";
 import { seedDatabase } from "./seed";
-import { insertLoanApplicationSchema } from "@shared/schema";
+import { insertLoanApplicationSchema, insertBorrowerDeclarationsSchema } from "@shared/schema";
 import { z } from "zod";
+
+// Validation schema for declarations with boolean coercion
+const declarationsValidationSchema = insertBorrowerDeclarationsSchema.partial().extend({
+  applicationId: z.string().optional(),
+});
 import multer from "multer";
 import path from "path";
 import fs from "fs";
@@ -243,10 +248,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Application not found" });
       }
 
-      // Build the DTO with declarations (currently we pass null as declarations are not stored separately)
+      // Build the DTO with declarations from storage
       const dto: MISMOLoanDTO = {
         ...mismoData,
-        declarations: null,
       };
 
       const xml = generateMISMO34XML(dto);
@@ -266,6 +270,82 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("MISMO export error:", error);
       res.status(500).json({ error: "Failed to generate MISMO XML" });
+    }
+  });
+
+  // Data Quality Scoring API - for broker dashboard (ownership-scoped query)
+  app.get("/api/loan-applications/:id/data-quality", isAuthenticated, async (req, res) => {
+    try {
+      const { id } = req.params;
+      // Use ownership-scoped query - authorization happens at database level
+      const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role || "");
+      
+      if (!application) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+      
+      const quality = await storage.getApplicationDataQuality(id);
+      res.json(quality);
+    } catch (error) {
+      console.error("Data quality error:", error);
+      res.status(500).json({ error: "Failed to get data quality" });
+    }
+  });
+
+  // Borrower Declarations API - with ownership-scoped query
+  app.get("/api/loan-applications/:id/declarations", isAuthenticated, async (req, res) => {
+    try {
+      const { id } = req.params;
+      // Use ownership-scoped query - authorization happens at database level
+      const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role || "");
+      
+      if (!application) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+      
+      const declarations = await storage.getBorrowerDeclarations(id);
+      res.json(declarations || null);
+    } catch (error) {
+      console.error("Get declarations error:", error);
+      res.status(500).json({ error: "Failed to get declarations" });
+    }
+  });
+
+  app.post("/api/loan-applications/:id/declarations", isAuthenticated, async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Validate request body with Zod schema
+      const parseResult = declarationsValidationSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ 
+          error: "Invalid declarations data", 
+          details: parseResult.error.flatten() 
+        });
+      }
+      
+      // Use ownership-scoped query - authorization happens at database level
+      const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role || "");
+      
+      if (!application) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+      
+      const data = { ...parseResult.data, applicationId: id };
+      const declarations = await storage.upsertBorrowerDeclarations(data);
+      
+      await storage.createDealActivity({
+        applicationId: id,
+        activityType: "note",
+        title: "Declarations Updated",
+        description: "Borrower declarations have been submitted",
+        performedBy: req.user!.id,
+      });
+      
+      res.json(declarations);
+    } catch (error) {
+      console.error("Save declarations error:", error);
+      res.status(500).json({ error: "Failed to save declarations" });
     }
   });
 
