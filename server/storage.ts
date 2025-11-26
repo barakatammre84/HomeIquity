@@ -18,6 +18,10 @@ import {
   tasks,
   taskDocuments,
   agentProfiles,
+  loanMilestones,
+  loanConditions,
+  documentRequirementRules,
+  underwritingSnapshots,
   type User,
   type UpsertUser,
   type LoanApplication,
@@ -50,6 +54,14 @@ import {
   type InsertTaskDocument,
   type AgentProfile,
   type InsertAgentProfile,
+  type LoanMilestone,
+  type InsertLoanMilestone,
+  type LoanCondition,
+  type InsertLoanCondition,
+  type DocumentRequirementRule,
+  type InsertDocumentRequirementRule,
+  type UnderwritingSnapshot,
+  type InsertUnderwritingSnapshot,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -356,6 +368,15 @@ export class DatabaseStorage implements IStorage {
   // Documents
   async createDocument(data: InsertDocument): Promise<Document> {
     const [doc] = await db.insert(documents).values(data).returning();
+    return doc;
+  }
+
+  async getDocument(id: string): Promise<Document | undefined> {
+    const [doc] = await db
+      .select()
+      .from(documents)
+      .where(eq(documents.id, id))
+      .limit(1);
     return doc;
   }
 
@@ -1045,6 +1066,144 @@ export class DatabaseStorage implements IStorage {
       .from(properties)
       .where(eq(properties.agentId, agentId))
       .orderBy(desc(properties.createdAt));
+  }
+
+  // ============================================================================
+  // LOAN PIPELINE TRACKING
+  // ============================================================================
+
+  // Loan Milestones
+  async createLoanMilestone(data: InsertLoanMilestone): Promise<LoanMilestone> {
+    const [milestone] = await db.insert(loanMilestones).values(data).returning();
+    return milestone;
+  }
+
+  async getLoanMilestones(applicationId: string): Promise<LoanMilestone | undefined> {
+    const [milestone] = await db
+      .select()
+      .from(loanMilestones)
+      .where(eq(loanMilestones.applicationId, applicationId))
+      .limit(1);
+    return milestone;
+  }
+
+  async updateLoanMilestones(applicationId: string, data: Partial<LoanMilestone>): Promise<LoanMilestone | undefined> {
+    const { createdAt, updatedAt, id, ...cleanData } = data as any;
+    const [updated] = await db
+      .update(loanMilestones)
+      .set({ ...cleanData, updatedAt: new Date() })
+      .where(eq(loanMilestones.applicationId, applicationId))
+      .returning();
+    return updated;
+  }
+
+  // Loan Conditions
+  async createLoanCondition(data: InsertLoanCondition): Promise<LoanCondition> {
+    const [condition] = await db.insert(loanConditions).values(data).returning();
+    return condition;
+  }
+
+  async getLoanCondition(id: string): Promise<LoanCondition | undefined> {
+    const [condition] = await db
+      .select()
+      .from(loanConditions)
+      .where(eq(loanConditions.id, id))
+      .limit(1);
+    return condition;
+  }
+
+  async getLoanConditionsByApplication(applicationId: string): Promise<LoanCondition[]> {
+    return await db
+      .select()
+      .from(loanConditions)
+      .where(eq(loanConditions.applicationId, applicationId))
+      .orderBy(loanConditions.priority, desc(loanConditions.createdAt));
+  }
+
+  async updateLoanCondition(id: string, data: Partial<LoanCondition>): Promise<LoanCondition | undefined> {
+    const { createdAt, updatedAt, id: condId, ...cleanData } = data as any;
+    const [updated] = await db
+      .update(loanConditions)
+      .set({ ...cleanData, updatedAt: new Date() })
+      .where(eq(loanConditions.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteLoanCondition(id: string): Promise<void> {
+    await db.delete(loanConditions).where(eq(loanConditions.id, id));
+  }
+
+  async clearLoanCondition(id: string, userId: string, notes?: string): Promise<LoanCondition | undefined> {
+    const [updated] = await db
+      .update(loanConditions)
+      .set({
+        status: "cleared",
+        clearedByUserId: userId,
+        clearedAt: new Date(),
+        clearanceNotes: notes,
+        updatedAt: new Date(),
+      })
+      .where(eq(loanConditions.id, id))
+      .returning();
+    return updated;
+  }
+
+  // Document Requirement Rules
+  async createDocumentRequirementRule(data: InsertDocumentRequirementRule): Promise<DocumentRequirementRule> {
+    const [rule] = await db.insert(documentRequirementRules).values(data).returning();
+    return rule;
+  }
+
+  async getDocumentRequirementRule(id: string): Promise<DocumentRequirementRule | undefined> {
+    const [rule] = await db
+      .select()
+      .from(documentRequirementRules)
+      .where(eq(documentRequirementRules.id, id))
+      .limit(1);
+    return rule;
+  }
+
+  async getAllDocumentRequirementRules(): Promise<DocumentRequirementRule[]> {
+    return await db
+      .select()
+      .from(documentRequirementRules)
+      .where(eq(documentRequirementRules.isActive, true))
+      .orderBy(documentRequirementRules.priority);
+  }
+
+  async updateDocumentRequirementRule(id: string, data: Partial<DocumentRequirementRule>): Promise<DocumentRequirementRule | undefined> {
+    const { createdAt, updatedAt, id: ruleId, ...cleanData } = data as any;
+    const [updated] = await db
+      .update(documentRequirementRules)
+      .set({ ...cleanData, updatedAt: new Date() })
+      .where(eq(documentRequirementRules.id, id))
+      .returning();
+    return updated;
+  }
+
+  // Underwriting Snapshots
+  async createUnderwritingSnapshot(data: InsertUnderwritingSnapshot): Promise<UnderwritingSnapshot> {
+    const [snapshot] = await db.insert(underwritingSnapshots).values(data).returning();
+    return snapshot;
+  }
+
+  async getUnderwritingSnapshotsByApplication(applicationId: string): Promise<UnderwritingSnapshot[]> {
+    return await db
+      .select()
+      .from(underwritingSnapshots)
+      .where(eq(underwritingSnapshots.applicationId, applicationId))
+      .orderBy(desc(underwritingSnapshots.createdAt));
+  }
+
+  async getLatestUnderwritingSnapshot(applicationId: string): Promise<UnderwritingSnapshot | undefined> {
+    const [snapshot] = await db
+      .select()
+      .from(underwritingSnapshots)
+      .where(eq(underwritingSnapshots.applicationId, applicationId))
+      .orderBy(desc(underwritingSnapshots.createdAt))
+      .limit(1);
+    return snapshot;
   }
 }
 

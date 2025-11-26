@@ -145,8 +145,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           employmentYears: formData.employmentYears || "0",
         });
 
+        const newStatus = analysisResult.isApproved ? "pre_approved" : "denied";
+        
         await storage.updateLoanApplication(application.id, {
-          status: analysisResult.isApproved ? "pre_approved" : "denied",
+          status: newStatus,
           preApprovalAmount: analysisResult.preApprovalAmount,
           dtiRatio: analysisResult.dtiRatio,
           ltvRatio: analysisResult.ltvRatio,
@@ -169,6 +171,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
             ? `Congratulations! You've been pre-approved for up to $${parseFloat(analysisResult.preApprovalAmount).toLocaleString()}`
             : "Your application requires additional review.",
         });
+
+        if (analysisResult.isApproved) {
+          const updatedApp = await storage.getLoanApplication(application.id);
+          if (updatedApp) {
+            const { initializeLoanPipeline } = await import("./pipelineEngine");
+            await initializeLoanPipeline(updatedApp, userId);
+            
+            await storage.createDealActivity({
+              applicationId: application.id,
+              activityType: "status_change",
+              title: "Document Collection Started",
+              description: "Required documents have been identified. Please upload them to continue your application.",
+              performedBy: "system",
+            });
+          }
+        }
       } catch (analysisError) {
         console.error("AI analysis error:", analysisError);
         await storage.updateLoanApplication(application.id, { status: "submitted" });
@@ -1720,6 +1738,243 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Calculate pricing error:", error);
       res.status(500).json({ error: "Failed to calculate pricing" });
+    }
+  });
+
+  // ============================================================================
+  // LOAN PIPELINE API ENDPOINTS
+  // ============================================================================
+
+  app.get("/api/loan-applications/:id/pipeline", isAuthenticated, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);
+      if (!application) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+
+      const { checkPipelineProgress, getPipelineSummary } = await import("./pipelineEngine");
+      
+      const [progress, summary, milestones, conditions] = await Promise.all([
+        checkPipelineProgress(id),
+        getPipelineSummary(id),
+        storage.getLoanMilestones(id),
+        storage.getLoanConditionsByApplication(id),
+      ]);
+
+      res.json({
+        progress,
+        summary,
+        milestones,
+        conditions,
+      });
+    } catch (error) {
+      console.error("Get pipeline status error:", error);
+      res.status(500).json({ error: "Failed to get pipeline status" });
+    }
+  });
+
+  app.get("/api/loan-applications/:id/conditions", isAuthenticated, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);
+      if (!application) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+
+      const conditions = await storage.getLoanConditionsByApplication(id);
+      
+      const grouped = {
+        priorToApproval: conditions.filter(c => c.priority === "prior_to_approval"),
+        priorToDocs: conditions.filter(c => c.priority === "prior_to_docs"),
+        priorToFunding: conditions.filter(c => c.priority === "prior_to_funding"),
+      };
+
+      const stats = {
+        total: conditions.length,
+        outstanding: conditions.filter(c => c.status === "outstanding").length,
+        submitted: conditions.filter(c => c.status === "submitted").length,
+        cleared: conditions.filter(c => c.status === "cleared").length,
+        waived: conditions.filter(c => c.status === "waived").length,
+      };
+
+      res.json({ conditions, grouped, stats });
+    } catch (error) {
+      console.error("Get conditions error:", error);
+      res.status(500).json({ error: "Failed to get conditions" });
+    }
+  });
+
+  app.patch("/api/conditions/:id", isAuthenticated, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const condition = await storage.getLoanCondition(id);
+      if (!condition) {
+        return res.status(404).json({ error: "Condition not found" });
+      }
+
+      const userRole = req.user?.role;
+      const isStaff = ["admin", "lender", "broker"].includes(userRole || "");
+      
+      if (!isStaff) {
+        return res.status(403).json({ error: "Only staff can update conditions" });
+      }
+
+      const { status, clearanceNotes } = req.body;
+
+      if (status === "cleared") {
+        const updated = await storage.clearLoanCondition(id, req.user!.id, clearanceNotes);
+        
+        await storage.createDealActivity({
+          applicationId: condition.applicationId,
+          activityType: "condition_cleared",
+          title: "Condition Cleared",
+          description: `"${condition.title}" has been cleared.`,
+          performedBy: req.user!.id,
+        });
+
+        return res.json(updated);
+      }
+
+      const updated = await storage.updateLoanCondition(id, { status, clearanceNotes });
+      res.json(updated);
+    } catch (error) {
+      console.error("Update condition error:", error);
+      res.status(500).json({ error: "Failed to update condition" });
+    }
+  });
+
+  app.get("/api/loan-applications/:id/milestones", isAuthenticated, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);
+      if (!application) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+
+      const milestones = await storage.getLoanMilestones(id);
+      res.json(milestones || {});
+    } catch (error) {
+      console.error("Get milestones error:", error);
+      res.status(500).json({ error: "Failed to get milestones" });
+    }
+  });
+
+  app.post("/api/loan-applications/:id/advance-stage", isAuthenticated, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const userRole = req.user?.role;
+      const isStaff = ["admin", "lender", "broker"].includes(userRole || "");
+      
+      if (!isStaff) {
+        return res.status(403).json({ error: "Only staff can advance loan stages" });
+      }
+
+      const application = await storage.getLoanApplication(id);
+      if (!application) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+
+      const { newStage } = req.body;
+      if (!newStage) {
+        return res.status(400).json({ error: "New stage is required" });
+      }
+
+      const { updatePipelineStage, checkPipelineProgress } = await import("./pipelineEngine");
+      
+      const progress = await checkPipelineProgress(id);
+      if (!progress.readyForNextStage && newStage !== "denied") {
+        return res.status(400).json({ 
+          error: "Cannot advance stage", 
+          blockers: progress.blockers 
+        });
+      }
+
+      await updatePipelineStage(id, newStage);
+
+      await storage.createDealActivity({
+        applicationId: id,
+        activityType: "status_change",
+        title: `Stage Advanced to ${newStage.replace(/_/g, " ").replace(/\b\w/g, (l: string) => l.toUpperCase())}`,
+        description: `Loan advanced to ${newStage} stage.`,
+        performedBy: req.user!.id,
+      });
+
+      const updatedApp = await storage.getLoanApplication(id);
+      res.json(updatedApp);
+    } catch (error) {
+      console.error("Advance stage error:", error);
+      res.status(500).json({ error: "Failed to advance stage" });
+    }
+  });
+
+  app.get("/api/pipeline/queue", isAuthenticated, async (req, res) => {
+    try {
+      const userRole = req.user?.role;
+      const isStaff = ["admin", "lender", "broker"].includes(userRole || "");
+      
+      if (!isStaff) {
+        return res.status(403).json({ error: "Only staff can view pipeline queue" });
+      }
+
+      const applications = await storage.getAllLoanApplications();
+      const activeApps = applications.filter(a => 
+        !["draft", "funded", "denied"].includes(a.status || "draft")
+      );
+
+      const { getPipelineSummary } = await import("./pipelineEngine");
+      
+      const summaries = await Promise.all(
+        activeApps.map(app => getPipelineSummary(app.id))
+      );
+
+      const queue = summaries
+        .filter((s): s is NonNullable<typeof s> => s !== null)
+        .sort((a, b) => {
+          const priorityOrder = { urgent: 0, high: 1, normal: 2 };
+          if (priorityOrder[a.priority] !== priorityOrder[b.priority]) {
+            return priorityOrder[a.priority] - priorityOrder[b.priority];
+          }
+          return b.daysInPipeline - a.daysInPipeline;
+        });
+
+      const byStage: Record<string, typeof queue> = {};
+      for (const item of queue) {
+        if (!byStage[item.currentStage]) {
+          byStage[item.currentStage] = [];
+        }
+        byStage[item.currentStage].push(item);
+      }
+
+      res.json({
+        total: queue.length,
+        byPriority: {
+          urgent: queue.filter(q => q.priority === "urgent").length,
+          high: queue.filter(q => q.priority === "high").length,
+          normal: queue.filter(q => q.priority === "normal").length,
+        },
+        byStage,
+        queue,
+      });
+    } catch (error) {
+      console.error("Get pipeline queue error:", error);
+      res.status(500).json({ error: "Failed to get pipeline queue" });
+    }
+  });
+
+  app.get("/api/loan-applications/:id/underwriting-snapshots", isAuthenticated, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);
+      if (!application) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+
+      const snapshots = await storage.getUnderwritingSnapshotsByApplication(id);
+      res.json(snapshots);
+    } catch (error) {
+      console.error("Get underwriting snapshots error:", error);
+      res.status(500).json({ error: "Failed to get underwriting snapshots" });
     }
   });
 
