@@ -82,19 +82,29 @@ export function AppSidebar() {
           </SidebarGroup>
         ))}
 
-        {user?.role === "admin" && (
+        {["admin", "lender", "broker"].includes(user?.role || "") && (
           <SidebarGroup>
-            <SidebarGroupLabel>Admin</SidebarGroupLabel>
+            <SidebarGroupLabel>Staff</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
                 <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={isActive("/admin")}>
-                    <Link href="/admin" className="cursor-pointer">
-                      <Users className="h-4 w-4" />
-                      <span>Admin Panel</span>
+                  <SidebarMenuButton asChild isActive={isActive("/staff-dashboard")}>
+                    <Link href="/staff-dashboard" className="cursor-pointer" data-testid="link-staff-dashboard">
+                      <CheckSquare className="h-4 w-4" />
+                      <span>Task Management</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
+                {user?.role === "admin" && (
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild isActive={isActive("/admin")}>
+                      <Link href="/admin" className="cursor-pointer">
+                        <Users className="h-4 w-4" />
+                        <span>Admin Panel</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>

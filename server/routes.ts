@@ -6,6 +6,44 @@ import { analyzeLoanApplication } from "./gemini";
 import { seedDatabase } from "./seed";
 import { insertLoanApplicationSchema } from "@shared/schema";
 import { z } from "zod";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
+
+const uploadDir = path.join(process.cwd(), "uploads");
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => {
+      cb(null, uploadDir);
+    },
+    filename: (req, file, cb) => {
+      const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+      cb(null, uniqueSuffix + path.extname(file.originalname));
+    },
+  }),
+  limits: {
+    fileSize: 10 * 1024 * 1024,
+  },
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = [
+      "application/pdf",
+      "image/jpeg",
+      "image/png",
+      "image/jpg",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Invalid file type"));
+    }
+  },
+});
 
 export async function registerRoutes(app: Express): Promise<Server> {
   await setupAuth(app);
@@ -184,6 +222,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Lock rate error:", error);
       res.status(500).json({ error: "Failed to lock rate" });
+    }
+  });
+
+  app.post("/api/documents/upload", isAuthenticated, upload.single("file"), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: "No file uploaded" });
+      }
+
+      const { documentType, applicationId } = req.body;
+      const userId = req.user!.id;
+
+      const document = await storage.createDocument({
+        userId,
+        applicationId: applicationId || null,
+        documentType: documentType || "other",
+        fileName: req.file.originalname,
+        fileSize: req.file.size,
+        mimeType: req.file.mimetype,
+        storagePath: req.file.path,
+        status: "uploaded",
+      });
+
+      if (applicationId) {
+        await storage.createDealActivity({
+          applicationId,
+          activityType: "document_uploaded",
+          title: "Document Uploaded",
+          description: `${req.file.originalname} has been uploaded.`,
+          performedBy: userId,
+        });
+      }
+
+      res.status(201).json(document);
+    } catch (error) {
+      console.error("Document upload error:", error);
+      res.status(500).json({ error: "Failed to upload document" });
+    }
+  });
+
+  app.get("/api/documents", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const documents = await storage.getDocumentsByUser(userId);
+      res.json(documents);
+    } catch (error) {
+      console.error("Get documents error:", error);
+      res.status(500).json({ error: "Failed to get documents" });
     }
   });
 
