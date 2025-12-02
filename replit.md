@@ -121,6 +121,14 @@ The backend is developed with **Node.js, Express.js, and TypeScript**. It uses *
 - Loan status filtering and drill-down
 - Staff-only access with role gating
 
+**Multi-Property Support:** Enables borrowers to apply for multiple homes when deals fall through:
+- Application properties tracking with status (active, offer_pending, deal_fell_through, closed)
+- Property switching without losing pre-approval status
+- Deal fell through workflow with reason tracking
+- Property history maintained for audit purposes
+- Routes: Property management in `/pipeline/:id`
+- API: `/api/loan-applications/:id/properties`, `/api/loan-applications/:id/properties/:propertyId/switch`, `/api/loan-applications/:id/properties/:propertyId/deal-fell-through`
+
 ## External Dependencies
 
 ### Third-Party Services
