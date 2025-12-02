@@ -103,6 +103,7 @@ export const loanApplicationsRelations = relations(loanApplications, ({ one, man
   loanOptions: many(loanOptions),
   documents: many(documents),
   dealActivities: many(dealActivities),
+  applicationProperties: many(applicationProperties),
 }));
 
 export const insertLoanApplicationSchema = createInsertSchema(loanApplications).omit({
@@ -113,6 +114,55 @@ export const insertLoanApplicationSchema = createInsertSchema(loanApplications).
 
 export type InsertLoanApplication = z.infer<typeof insertLoanApplicationSchema>;
 export type LoanApplication = typeof loanApplications.$inferSelect;
+
+// Application Properties - supports multiple properties per application
+// When deals fall through, borrowers can add new properties without starting over
+export const applicationProperties = pgTable("application_properties", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  applicationId: varchar("application_id").references(() => loanApplications.id).notNull(),
+  
+  // Property Details
+  address: text("address").notNull(),
+  city: varchar("city", { length: 100 }),
+  state: varchar("state", { length: 50 }),
+  zipCode: varchar("zip_code", { length: 20 }),
+  propertyType: varchar("property_type", { length: 50 }), // single_family, condo, townhouse, multi_family
+  
+  // Pricing
+  purchasePrice: decimal("purchase_price", { precision: 12, scale: 2 }).notNull(),
+  downPayment: decimal("down_payment", { precision: 12, scale: 2 }),
+  
+  // Status
+  status: varchar("status", { length: 50 }).default("active").notNull(), // active, offer_pending, offer_rejected, deal_fell_through, closed
+  isCurrentProperty: boolean("is_current_property").default(true).notNull(),
+  
+  // Offer tracking
+  offerAmount: decimal("offer_amount", { precision: 12, scale: 2 }),
+  offerDate: timestamp("offer_date"),
+  offerStatus: varchar("offer_status", { length: 50 }), // pending, accepted, rejected, countered, withdrawn
+  
+  // Notes about why deal fell through (for record keeping)
+  notes: text("notes"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const applicationPropertiesRelations = relations(applicationProperties, ({ one }) => ({
+  application: one(loanApplications, {
+    fields: [applicationProperties.applicationId],
+    references: [loanApplications.id],
+  }),
+}));
+
+export const insertApplicationPropertySchema = createInsertSchema(applicationProperties).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertApplicationProperty = z.infer<typeof insertApplicationPropertySchema>;
+export type ApplicationProperty = typeof applicationProperties.$inferSelect;
 
 // Loan Options (generated scenarios)
 export const loanOptions = pgTable("loan_options", {

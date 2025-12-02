@@ -22,6 +22,7 @@ import {
   loanConditions,
   documentRequirementRules,
   underwritingSnapshots,
+  applicationProperties,
   type User,
   type UpsertUser,
   type LoanApplication,
@@ -62,6 +63,8 @@ import {
   type InsertDocumentRequirementRule,
   type UnderwritingSnapshot,
   type InsertUnderwritingSnapshot,
+  type ApplicationProperty,
+  type InsertApplicationProperty,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -213,6 +216,14 @@ export interface IStorage {
   getTaskDocuments(taskId: string): Promise<(TaskDocument & { document: Document })[]>;
   updateTaskDocument(id: string, data: Partial<TaskDocument>): Promise<TaskDocument | undefined>;
   deleteTaskDocument(id: string): Promise<void>;
+  
+  // Application Properties - multi-property support
+  createApplicationProperty(data: InsertApplicationProperty): Promise<ApplicationProperty>;
+  getApplicationProperties(applicationId: string): Promise<ApplicationProperty[]>;
+  getCurrentProperty(applicationId: string): Promise<ApplicationProperty | undefined>;
+  updateApplicationProperty(id: string, data: Partial<ApplicationProperty>): Promise<ApplicationProperty | undefined>;
+  switchToProperty(applicationId: string, propertyId: string): Promise<ApplicationProperty | undefined>;
+  markDealFellThrough(propertyId: string, reason: string): Promise<ApplicationProperty | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1204,6 +1215,81 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(underwritingSnapshots.createdAt))
       .limit(1);
     return snapshot;
+  }
+
+  // Application Properties - multi-property support
+  async createApplicationProperty(data: InsertApplicationProperty): Promise<ApplicationProperty> {
+    // If this is marked as current, unset current on other properties for this application
+    if (data.isCurrentProperty) {
+      await db
+        .update(applicationProperties)
+        .set({ isCurrentProperty: false, updatedAt: new Date() })
+        .where(eq(applicationProperties.applicationId, data.applicationId));
+    }
+    const [property] = await db.insert(applicationProperties).values(data).returning();
+    return property;
+  }
+
+  async getApplicationProperties(applicationId: string): Promise<ApplicationProperty[]> {
+    return await db
+      .select()
+      .from(applicationProperties)
+      .where(eq(applicationProperties.applicationId, applicationId))
+      .orderBy(desc(applicationProperties.createdAt));
+  }
+
+  async getCurrentProperty(applicationId: string): Promise<ApplicationProperty | undefined> {
+    const [property] = await db
+      .select()
+      .from(applicationProperties)
+      .where(
+        and(
+          eq(applicationProperties.applicationId, applicationId),
+          eq(applicationProperties.isCurrentProperty, true)
+        )
+      )
+      .limit(1);
+    return property;
+  }
+
+  async updateApplicationProperty(id: string, data: Partial<ApplicationProperty>): Promise<ApplicationProperty | undefined> {
+    const { id: propId, createdAt, ...cleanData } = data as any;
+    const [updated] = await db
+      .update(applicationProperties)
+      .set({ ...cleanData, updatedAt: new Date() })
+      .where(eq(applicationProperties.id, id))
+      .returning();
+    return updated;
+  }
+
+  async switchToProperty(applicationId: string, propertyId: string): Promise<ApplicationProperty | undefined> {
+    // First, unset current on all properties for this application
+    await db
+      .update(applicationProperties)
+      .set({ isCurrentProperty: false, updatedAt: new Date() })
+      .where(eq(applicationProperties.applicationId, applicationId));
+    
+    // Then set the new property as current
+    const [updated] = await db
+      .update(applicationProperties)
+      .set({ isCurrentProperty: true, status: "active", updatedAt: new Date() })
+      .where(eq(applicationProperties.id, propertyId))
+      .returning();
+    return updated;
+  }
+
+  async markDealFellThrough(propertyId: string, reason: string): Promise<ApplicationProperty | undefined> {
+    const [updated] = await db
+      .update(applicationProperties)
+      .set({ 
+        status: "deal_fell_through", 
+        isCurrentProperty: false,
+        notes: reason,
+        updatedAt: new Date() 
+      })
+      .where(eq(applicationProperties.id, propertyId))
+      .returning();
+    return updated;
   }
 }
 

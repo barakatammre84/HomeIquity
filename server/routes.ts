@@ -95,7 +95,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/loan-applications", async (req, res) => {
     try {
-      const userId = req.user?.id || "anonymous";
+      if (!req.user?.id) {
+        return res.status(401).json({ error: "Authentication required to create loan application" });
+      }
+      const userId = req.user.id;
       
       const formData = req.body;
       
