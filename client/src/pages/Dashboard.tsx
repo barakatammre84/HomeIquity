@@ -1,5 +1,6 @@
+import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { formatCurrency, getStatusLabel, getStatusColor } from "@/lib/authUtils";
 import { Button } from "@/components/ui/button";
@@ -78,13 +79,22 @@ const nextSteps = [
 
 export default function Dashboard() {
   const { user, isLoading: authLoading } = useAuth();
+  const [, navigate] = useLocation();
+
+  const isStaff = ["admin", "lender", "broker"].includes(user?.role || "");
+
+  useEffect(() => {
+    if (!authLoading && isStaff) {
+      navigate("/staff-dashboard");
+    }
+  }, [authLoading, isStaff, navigate]);
 
   const { data, isLoading } = useQuery<DashboardData>({
     queryKey: ["/api/dashboard"],
-    enabled: !authLoading,
+    enabled: !authLoading && !isStaff,
   });
 
-  if (authLoading || isLoading) {
+  if (authLoading || isLoading || isStaff) {
     return (
       <SidebarProvider>
         <div className="flex h-screen w-full">

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -88,6 +88,14 @@ export default function StaffDashboard() {
   const [selectedApplication, setSelectedApplication] = useState<string>("");
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("tasks");
+
+  const isStaff = ["admin", "lender", "broker"].includes(user?.role || "");
+
+  useEffect(() => {
+    if (!authLoading && !isStaff) {
+      navigate("/dashboard");
+    }
+  }, [authLoading, isStaff, navigate]);
 
   const [newTask, setNewTask] = useState({
     title: "",

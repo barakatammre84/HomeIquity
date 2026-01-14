@@ -98,12 +98,20 @@ export async function setupAuth(app: Express) {
   });
 
   app.get("/api/login", async (req, res) => {
-    const demoUser = await upsertUser({
+    let demoUser = await upsertUser({
       id: "demo-user-1",
       email: "demo@mortgageai.com",
       firstName: "Demo",
       lastName: "User",
     });
+
+    // Ensure demo user always has borrower role for consistent testing
+    if (demoUser.role !== "borrower") {
+      const updatedUser = await storage.updateUserRole(demoUser.id, "borrower");
+      if (updatedUser) {
+        demoUser = updatedUser;
+      }
+    }
 
     req.login(
       {
