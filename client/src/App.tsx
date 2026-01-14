@@ -22,6 +22,7 @@ import PipelineQueue from "@/pages/PipelineQueue";
 import BorrowerFile from "@/pages/BorrowerFile";
 import ComplianceDashboard from "@/pages/ComplianceDashboard";
 import LoanEstimate from "@/pages/LoanEstimate";
+import Verification from "@/pages/Verification";
 
 function Router() {
   return (
@@ -34,6 +35,7 @@ function Router() {
       <Route path="/application-summary" component={ApplicationSummary} />
       <Route path="/tasks" component={Tasks} />
       <Route path="/task/:id" component={TaskDetail} />
+      <Route path="/verification" component={Verification} />
       <Route path="/staff-dashboard" component={StaffDashboard} />
       <Route path="/pipeline-queue" component={PipelineQueue} />
       <Route path="/borrower-file/:id" component={BorrowerFile} />

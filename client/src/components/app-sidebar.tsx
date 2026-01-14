@@ -36,6 +36,7 @@ const borrowerNavigation = [
       { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard, testId: "link-borrower-dashboard" },
       { title: "My Application", href: "/application-summary", icon: FileText, testId: "link-application-summary" },
       { title: "My Tasks", href: "/tasks", icon: CheckSquare, testId: "link-tasks" },
+      { title: "Verification", href: "/verification", icon: Shield, testId: "link-verification" },
     ],
   },
   {

@@ -1116,3 +1116,120 @@ export const insertUnderwritingSnapshotSchema = createInsertSchema(underwritingS
 
 export type InsertUnderwritingSnapshot = z.infer<typeof insertUnderwritingSnapshotSchema>;
 export type UnderwritingSnapshot = typeof underwritingSnapshots.$inferSelect;
+
+// ============================================================================
+// PLAID VERIFICATION SYSTEM
+// ============================================================================
+
+// Plaid Link tokens for verification sessions
+export const plaidLinkTokens = pgTable("plaid_link_tokens", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  applicationId: varchar("application_id").references(() => loanApplications.id).notNull(),
+  
+  linkToken: text("link_token").notNull(),
+  verificationType: varchar("verification_type", { length: 50 }).notNull(), // employment, identity, income, assets
+  
+  status: varchar("status", { length: 50 }).default("pending").notNull(), // pending, completed, expired, failed
+  expiresAt: timestamp("expires_at").notNull(),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const plaidLinkTokensRelations = relations(plaidLinkTokens, ({ one }) => ({
+  user: one(users, {
+    fields: [plaidLinkTokens.userId],
+    references: [users.id],
+  }),
+  application: one(loanApplications, {
+    fields: [plaidLinkTokens.applicationId],
+    references: [loanApplications.id],
+  }),
+}));
+
+// Verification records - stores results from Plaid verification
+export const verifications = pgTable("verifications", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  applicationId: varchar("application_id").references(() => loanApplications.id).notNull(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  
+  // Verification Type
+  verificationType: varchar("verification_type", { length: 50 }).notNull(), // employment, identity, income, assets
+  
+  // Plaid References
+  plaidItemId: varchar("plaid_item_id", { length: 255 }),
+  plaidAccessToken: text("plaid_access_token"), // encrypted in production
+  plaidVerificationId: varchar("plaid_verification_id", { length: 255 }),
+  
+  // Status
+  status: varchar("status", { length: 50 }).default("pending").notNull(), // pending, in_progress, verified, failed, expired
+  verificationMethod: varchar("verification_method", { length: 50 }), // plaid_payroll, plaid_bank, manual, document
+  
+  // Employment Verification Data
+  employerName: varchar("employer_name", { length: 255 }),
+  employerAddress: text("employer_address"),
+  jobTitle: varchar("job_title", { length: 255 }),
+  startDate: timestamp("start_date"),
+  endDate: timestamp("end_date"),
+  isCurrentEmployer: boolean("is_current_employer"),
+  employmentStatus: varchar("employment_status", { length: 50 }), // active, inactive, on_leave
+  
+  // Income Data (from employment verification)
+  annualIncome: decimal("annual_income", { precision: 12, scale: 2 }),
+  payFrequency: varchar("pay_frequency", { length: 50 }), // weekly, biweekly, semimonthly, monthly
+  lastPayDate: timestamp("last_pay_date"),
+  lastPayAmount: decimal("last_pay_amount", { precision: 10, scale: 2 }),
+  
+  // Identity Verification Data
+  identityVerified: boolean("identity_verified").default(false),
+  identityMatchScore: integer("identity_match_score"), // 0-100
+  addressVerified: boolean("address_verified").default(false),
+  ssnVerified: boolean("ssn_verified").default(false),
+  dateOfBirthVerified: boolean("date_of_birth_verified").default(false),
+  
+  // Full Response (stored as JSONB for complete audit trail)
+  rawResponse: jsonb("raw_response"),
+  
+  // Review
+  reviewedByUserId: varchar("reviewed_by_user_id").references(() => users.id),
+  reviewedAt: timestamp("reviewed_at"),
+  reviewNotes: text("review_notes"),
+  
+  // Timestamps
+  verifiedAt: timestamp("verified_at"),
+  expiresAt: timestamp("expires_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const verificationsRelations = relations(verifications, ({ one }) => ({
+  application: one(loanApplications, {
+    fields: [verifications.applicationId],
+    references: [loanApplications.id],
+  }),
+  user: one(users, {
+    fields: [verifications.userId],
+    references: [users.id],
+  }),
+  reviewedBy: one(users, {
+    fields: [verifications.reviewedByUserId],
+    references: [users.id],
+  }),
+}));
+
+export const insertVerificationSchema = createInsertSchema(verifications).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertVerification = z.infer<typeof insertVerificationSchema>;
+export type Verification = typeof verifications.$inferSelect;
+
+export const insertPlaidLinkTokenSchema = createInsertSchema(plaidLinkTokens).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertPlaidLinkToken = z.infer<typeof insertPlaidLinkTokenSchema>;
+export type PlaidLinkToken = typeof plaidLinkTokens.$inferSelect;

@@ -2285,6 +2285,234 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============================================================================
+  // PLAID VERIFICATION ROUTES
+  // ============================================================================
+
+  // Create a Plaid Link token for verification
+  app.post("/api/verifications/link-token", isAuthenticated, async (req, res) => {
+    try {
+      const { applicationId, verificationType } = req.body;
+      const userId = req.user!.id;
+
+      if (!applicationId || !verificationType) {
+        return res.status(400).json({ error: "applicationId and verificationType are required" });
+      }
+
+      // Verify ownership
+      const application = await storage.getLoanApplication(applicationId);
+      if (!application || application.userId !== userId) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+
+      const { isPlaidConfigured, createLinkToken } = await import("./plaid");
+
+      if (!isPlaidConfigured()) {
+        return res.status(503).json({ 
+          error: "Verification service not configured",
+          message: "Please contact support to enable verification services."
+        });
+      }
+
+      const result = await createLinkToken({
+        userId,
+        verificationType,
+      });
+
+      // Store the link token
+      const expiresAt = new Date(result.expiration);
+      const linkTokenRecord = await storage.createPlaidLinkToken({
+        userId,
+        applicationId,
+        linkToken: result.linkToken,
+        verificationType,
+        status: "pending",
+        expiresAt,
+      });
+
+      res.json({
+        linkToken: result.linkToken,
+        expiration: result.expiration,
+        linkTokenId: linkTokenRecord.id,
+      });
+    } catch (error) {
+      console.error("Create link token error:", error);
+      res.status(500).json({ error: "Failed to create verification session" });
+    }
+  });
+
+  // Exchange public token and process verification
+  app.post("/api/verifications/exchange", isAuthenticated, async (req, res) => {
+    try {
+      const { publicToken, linkTokenId, applicationId, verificationType } = req.body;
+      const userId = req.user!.id;
+
+      if (!publicToken || !applicationId || !verificationType) {
+        return res.status(400).json({ error: "publicToken, applicationId, and verificationType are required" });
+      }
+
+      // Verify ownership
+      const application = await storage.getLoanApplication(applicationId);
+      if (!application || application.userId !== userId) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+
+      const { isPlaidConfigured, exchangePublicToken, getIdentityData } = await import("./plaid");
+
+      if (!isPlaidConfigured()) {
+        return res.status(503).json({ error: "Verification service not configured" });
+      }
+
+      // Exchange the public token
+      const { accessToken, itemId } = await exchangePublicToken(publicToken);
+
+      // Create verification record
+      const verification = await storage.createVerification({
+        applicationId,
+        userId,
+        verificationType,
+        plaidItemId: itemId,
+        plaidAccessToken: accessToken,
+        status: "in_progress",
+        verificationMethod: "plaid_payroll",
+      });
+
+      // Update link token status if provided
+      if (linkTokenId) {
+        await storage.updatePlaidLinkToken(linkTokenId, { status: "completed" });
+      }
+
+      // For identity verification, fetch and store the data
+      if (verificationType === "identity") {
+        try {
+          const identityResult = await getIdentityData(accessToken);
+          await storage.updateVerification(verification.id, {
+            status: identityResult.verified ? "verified" : "failed",
+            identityVerified: identityResult.verified,
+            rawResponse: identityResult.rawResponse,
+            verifiedAt: identityResult.verified ? new Date() : undefined,
+          });
+        } catch (identityError) {
+          console.error("Identity fetch error:", identityError);
+          await storage.updateVerification(verification.id, {
+            status: "failed",
+            rawResponse: { error: String(identityError) },
+          });
+        }
+      }
+
+      // For employment verification, mark as pending review (webhook will update)
+      if (verificationType === "employment" || verificationType === "income") {
+        await storage.updateVerification(verification.id, {
+          status: "in_progress",
+        });
+      }
+
+      res.json({
+        verificationId: verification.id,
+        status: verification.status,
+        message: "Verification initiated successfully",
+      });
+    } catch (error) {
+      console.error("Exchange token error:", error);
+      res.status(500).json({ error: "Failed to process verification" });
+    }
+  });
+
+  // Get verifications for an application
+  app.get("/api/verifications/application/:applicationId", isAuthenticated, async (req, res) => {
+    try {
+      const { applicationId } = req.params;
+      const userId = req.user!.id;
+      const userRole = req.user?.role;
+      const isStaff = ["admin", "lender", "broker"].includes(userRole || "");
+
+      // Verify ownership or staff access
+      const application = await storage.getLoanApplication(applicationId);
+      if (!application) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+      if (application.userId !== userId && !isStaff) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+
+      const verifications = await storage.getVerificationsByApplication(applicationId);
+      res.json(verifications);
+    } catch (error) {
+      console.error("Get verifications error:", error);
+      res.status(500).json({ error: "Failed to get verifications" });
+    }
+  });
+
+  // Get verification status
+  app.get("/api/verifications/:id", isAuthenticated, async (req, res) => {
+    try {
+      const verification = await storage.getVerification(req.params.id);
+      if (!verification) {
+        return res.status(404).json({ error: "Verification not found" });
+      }
+
+      const userId = req.user!.id;
+      const userRole = req.user?.role;
+      const isStaff = ["admin", "lender", "broker"].includes(userRole || "");
+
+      if (verification.userId !== userId && !isStaff) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+
+      // Don't expose sensitive data like access token to client
+      const { plaidAccessToken, ...safeVerification } = verification;
+      res.json(safeVerification);
+    } catch (error) {
+      console.error("Get verification error:", error);
+      res.status(500).json({ error: "Failed to get verification" });
+    }
+  });
+
+  // Staff: Update verification status (approve/reject)
+  app.patch("/api/verifications/:id", isAuthenticated, async (req, res) => {
+    try {
+      const userRole = req.user?.role;
+      const isStaff = ["admin", "lender", "broker"].includes(userRole || "");
+
+      if (!isStaff) {
+        return res.status(403).json({ error: "Only staff can update verifications" });
+      }
+
+      const verification = await storage.getVerification(req.params.id);
+      if (!verification) {
+        return res.status(404).json({ error: "Verification not found" });
+      }
+
+      const { status, reviewNotes } = req.body;
+      const updated = await storage.updateVerification(req.params.id, {
+        status,
+        reviewNotes,
+        reviewedByUserId: req.user!.id,
+        reviewedAt: new Date(),
+        verifiedAt: status === "verified" ? new Date() : undefined,
+      });
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Update verification error:", error);
+      res.status(500).json({ error: "Failed to update verification" });
+    }
+  });
+
+  // Check if Plaid is configured
+  app.get("/api/verifications/config/status", isAuthenticated, async (req, res) => {
+    try {
+      const { isPlaidConfigured } = await import("./plaid");
+      res.json({
+        plaidConfigured: isPlaidConfigured(),
+        supportedVerificationTypes: ["employment", "identity", "income", "assets"],
+      });
+    } catch (error) {
+      res.json({ plaidConfigured: false, supportedVerificationTypes: [] });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;
