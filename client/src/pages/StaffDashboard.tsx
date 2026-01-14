@@ -126,7 +126,7 @@ export default function StaffDashboard() {
   const createTaskMutation = useMutation({
     mutationFn: async (taskData: any) => {
       const response = await apiRequest("POST", "/api/tasks", taskData);
-      return response.json();
+      return await response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
@@ -137,7 +137,7 @@ export default function StaffDashboard() {
       setCreateDialogOpen(false);
       resetNewTaskForm();
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: "Error",
         description: error.message || "Failed to create task",
@@ -149,13 +149,20 @@ export default function StaffDashboard() {
   const updateTaskMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<Task> }) => {
       const response = await apiRequest("PATCH", `/api/tasks/${id}`, data);
-      return response.json();
+      return await response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
       toast({
         title: "Task Updated",
         description: "The task has been updated successfully.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update task",
+        variant: "destructive",
       });
     },
   });

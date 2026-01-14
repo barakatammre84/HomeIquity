@@ -88,11 +88,19 @@ export default function Tasks() {
 
   const updateTaskMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<Task> }) => {
-      return await apiRequest("PATCH", `/api/tasks/${id}`, data);
+      const response = await apiRequest("PATCH", `/api/tasks/${id}`, data);
+      return await response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
       toast({ title: "Task updated", description: "Your task has been updated." });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Update Failed",
+        description: error.message || "Failed to update task",
+        variant: "destructive",
+      });
     },
   });
 
@@ -113,18 +121,21 @@ export default function Tasks() {
       });
 
       if (!uploadResponse.ok) {
-        throw new Error("Failed to upload document");
+        const errorText = await uploadResponse.text();
+        throw new Error(errorText || "Failed to upload document");
       }
 
       const document = await uploadResponse.json();
 
-      await apiRequest("POST", `/api/tasks/${selectedTask.id}/documents`, {
+      const linkResponse = await apiRequest("POST", `/api/tasks/${selectedTask.id}/documents`, {
         documentId: document.id,
       });
+      await linkResponse.json();
 
-      await apiRequest("PATCH", `/api/tasks/${selectedTask.id}`, {
+      const updateResponse = await apiRequest("PATCH", `/api/tasks/${selectedTask.id}`, {
         status: "submitted",
       });
+      await updateResponse.json();
 
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
       queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
@@ -138,9 +149,10 @@ export default function Tasks() {
       setSelectedFile(null);
       setSelectedTask(null);
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "There was an error uploading your document.";
       toast({
         title: "Upload Failed",
-        description: "There was an error uploading your document. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
