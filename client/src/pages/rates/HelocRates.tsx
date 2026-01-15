@@ -3,22 +3,14 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { 
   TrendingDown, 
   Info, 
-  ArrowRight,
   Shield,
-  Calculator
+  Wallet
 } from "lucide-react";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import RatePageHeader from "@/components/RatePageHeader";
+import RatePageHeader, { RateRow } from "@/components/RatePageHeader";
 
 interface MortgageRateProgram {
   id: string;
@@ -90,6 +82,20 @@ export default function HelocRates() {
     }
   }, [zipcode]);
 
+  const formatTerm = (rate: MortgageRateWithProgram) => {
+    if (rate.program.isAdjustable) {
+      return `${rate.program.adjustmentPeriod || "Variable"} Rate`;
+    }
+    return rate.program.termYears ? `${rate.program.termYears}-yr` : "Variable Rate";
+  };
+
+  const formatPoints = (rate: MortgageRateWithProgram) => {
+    const points = rate.points ? parseFloat(rate.points).toFixed(2) : "0.00";
+    const loanAmount = rate.loanAmount ? parseInt(rate.loanAmount) : 100000;
+    const pointsCost = Math.round(parseFloat(rate.points || "0") * loanAmount / 100);
+    return { points, cost: `$${pointsCost.toLocaleString()}` };
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <RatePageHeader
@@ -101,34 +107,40 @@ export default function HelocRates() {
         isLoading={isFetching}
         showPropertyValue={true}
         showMortgageBalance={true}
-        showLoanAmount={true}
-        showCreditScore={true}
       />
 
-      <div className="max-w-6xl mx-auto px-4 pb-16">
+      <div className="max-w-6xl mx-auto px-4 py-8">
         {isLoading ? (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {[1, 2, 3, 4, 5, 6].map((i) => (
-              <Card key={i} className="overflow-hidden">
-                <CardHeader className="pb-2">
+          <div className="space-y-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="p-6 bg-background border rounded-lg">
+                <div className="flex items-center gap-8">
+                  <Skeleton className="h-10 w-32" />
+                  <Skeleton className="h-10 w-24" />
+                  <Skeleton className="h-10 w-24" />
                   <Skeleton className="h-6 w-32" />
-                </CardHeader>
-                <CardContent>
-                  <Skeleton className="h-10 w-24 mb-4" />
-                  <div className="space-y-2">
-                    <Skeleton className="h-4 w-full" />
-                    <Skeleton className="h-4 w-3/4" />
-                  </div>
-                </CardContent>
-              </Card>
+                  <Skeleton className="h-10 w-28 ml-auto" />
+                </div>
+              </div>
             ))}
           </div>
         ) : rates && rates.length > 0 ? (
           <>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mb-12">
-              {rates.map((rate) => (
-                <RateCard key={rate.id} rate={rate} />
-              ))}
+            <div className="space-y-4 mb-12">
+              {rates.map((rate) => {
+                const { points, cost } = formatPoints(rate);
+                return (
+                  <RateRow
+                    key={rate.id}
+                    term={formatTerm(rate)}
+                    rate={`${parseFloat(rate.rate).toFixed(3)}%`}
+                    apr={`${parseFloat(rate.apr).toFixed(3)}%`}
+                    points={points}
+                    pointsCost={cost}
+                    ctaHref="/apply?type=heloc"
+                  />
+                );
+              })}
             </div>
 
             <Card className="bg-primary/5 border-primary/20 mb-12">
@@ -137,10 +149,9 @@ export default function HelocRates() {
                   <h3 className="text-lg font-semibold mb-1">Access your home equity</h3>
                   <p className="text-muted-foreground">Flexible credit line with competitive rates</p>
                 </div>
-                <Button asChild>
+                <Button asChild className="bg-[#017848] hover:bg-[#015a37] text-white">
                   <Link href="/apply?type=heloc" data-testid="link-apply-heloc">
                     Apply for HELOC
-                    <ArrowRight className="h-4 w-4 ml-2" />
                   </Link>
                 </Button>
               </CardContent>
@@ -149,12 +160,12 @@ export default function HelocRates() {
         ) : (
           <Card className="text-center py-12">
             <CardContent>
-              <Calculator className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <Wallet className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-xl font-semibold mb-2">No HELOC rates available</h3>
               <p className="text-muted-foreground mb-6">
                 Enter your ZIP code above to see current HELOC rates for your area.
               </p>
-              <Button asChild>
+              <Button asChild className="bg-[#017848] hover:bg-[#015a37] text-white">
                 <Link href="/apply?type=heloc" data-testid="link-apply-heloc-empty">
                   Apply for HELOC
                 </Link>
@@ -227,74 +238,5 @@ export default function HelocRates() {
         </Card>
       </div>
     </div>
-  );
-}
-
-function RateCard({ rate }: { rate: MortgageRateWithProgram }) {
-  return (
-    <Card className="overflow-hidden transition-shadow hover-elevate" data-testid={`card-rate-${rate.program.slug}`}>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-lg">{rate.program.name}</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex items-baseline gap-2">
-          <span className="text-4xl font-bold tracking-tight">{parseFloat(rate.rate).toFixed(3)}%</span>
-          <span className="text-muted-foreground">Rate</span>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4 text-sm">
-          <div>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger className="flex items-center gap-1 text-muted-foreground">
-                  APR
-                  <Info className="h-3 w-3" />
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p className="max-w-xs">
-                    Annual Percentage Rate includes the interest rate plus lender fees.
-                  </p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            <p className="font-semibold text-lg">{parseFloat(rate.apr).toFixed(3)}%</p>
-          </div>
-          <div>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger className="flex items-center gap-1 text-muted-foreground">
-                  Points
-                  <Info className="h-3 w-3" />
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p className="max-w-xs">
-                    Points are upfront fees to lower your rate. 1 point = 1% of the loan amount.
-                  </p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            <p className="font-semibold text-lg">
-              {rate.points ? parseFloat(rate.points).toFixed(2) : "0.00"}
-            </p>
-          </div>
-        </div>
-
-        <div className="pt-2 border-t">
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">Variable Rate</span>
-            <Badge variant="outline" className="text-xs">
-              Flexible Access
-            </Badge>
-          </div>
-        </div>
-
-        <Button asChild className="w-full" data-testid={`button-lock-rate-${rate.program.slug}`}>
-          <Link href="/apply?type=heloc">
-            Apply Now
-            <ArrowRight className="h-4 w-4 ml-2" />
-          </Link>
-        </Button>
-      </CardContent>
-    </Card>
   );
 }

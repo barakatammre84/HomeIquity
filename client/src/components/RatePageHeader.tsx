@@ -1,47 +1,14 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Link } from "wouter";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { 
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { 
-  MapPin, 
-  ChevronDown, 
-  Clock,
-  DollarSign,
-  Home,
-  Building2,
-  CreditCard,
-  Loader2
-} from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export type LoanType = "purchase" | "refinance" | "cashout" | "heloc" | "va";
 
-type TabCategory = "mortgage" | "home-equity";
-
-const loanTypeToTab: Record<LoanType, TabCategory> = {
-  purchase: "mortgage",
-  refinance: "mortgage",
-  cashout: "mortgage",
-  va: "mortgage",
-  heloc: "home-equity",
-};
-
-// State-level average home prices for auto-population (2024 estimates)
 const stateAverageHomePrices: Record<string, number> = {
   AL: 220000, AK: 350000, AZ: 420000, AR: 195000, CA: 750000,
   CO: 550000, CT: 380000, DE: 340000, FL: 400000, GA: 320000,
@@ -56,7 +23,6 @@ const stateAverageHomePrices: Record<string, number> = {
   DC: 680000
 };
 
-// ZIP code prefix to state mapping (first 3 digits)
 const zipToState: Record<string, string> = {
   "006": "PR", "007": "PR", "008": "PR", "009": "PR",
   "010": "MA", "011": "MA", "012": "MA", "013": "MA", "014": "MA", "015": "MA", "016": "MA", "017": "MA", "018": "MA", "019": "MA", "020": "MA", "021": "MA", "022": "MA", "023": "MA", "024": "MA", "025": "MA", "026": "MA", "027": "MA",
@@ -124,7 +90,7 @@ function getAverageHomePrice(zipcode: string): number {
   if (state && stateAverageHomePrices[state]) {
     return stateAverageHomePrices[state];
   }
-  return 350000; // National average fallback
+  return 350000;
 }
 
 interface RatePageHeaderProps {
@@ -145,26 +111,35 @@ interface RatePageHeaderProps {
   showAdvancedInputs?: boolean;
 }
 
-const loanTypeLabels: Record<LoanType, string> = {
-  purchase: "Purchase mortgage rates today",
-  refinance: "Refinance rates today",
-  cashout: "Cash-out refinance rates today",
-  heloc: "HELOC rates today",
-  va: "VA loan rates today",
+const loanTypeDescriptions: Record<LoanType, string> = {
+  purchase: "purchase mortgage rates",
+  refinance: "refinance rates",
+  cashout: "cash-out refinance rates",
+  heloc: "HELOC rates",
+  va: "VA loan rates",
 };
 
-const loanTypeDescriptions: Record<LoanType, string> = {
-  purchase: "Here are today's purchase mortgage rates",
-  refinance: "Here are today's refinance rates",
-  cashout: "Here are today's cash-out refinance rates",
-  heloc: "Here are today's home equity line of credit rates",
-  va: "Here are today's VA loan rates for veterans and service members",
-};
+interface NavTab {
+  label: string;
+  href: string;
+  loanType: LoanType;
+}
+
+const mortgageTabs: NavTab[] = [
+  { label: "Purchase", href: "/rates/purchase", loanType: "purchase" },
+  { label: "Refinance", href: "/rates/refinance", loanType: "refinance" },
+  { label: "VA Loans", href: "/rates/va", loanType: "va" },
+];
+
+const homeEquityTabs: NavTab[] = [
+  { label: "Home Equity Loans", href: "/rates/refinance", loanType: "refinance" },
+  { label: "HELOC", href: "/rates/heloc", loanType: "heloc" },
+  { label: "Cash-out Refinance", href: "/rates/cash-out", loanType: "cashout" },
+];
 
 export default function RatePageHeader({
   loanType,
   title,
-  description,
   zipcode,
   onZipcodeChange,
   onSearch,
@@ -172,36 +147,24 @@ export default function RatePageHeader({
   showCashOutAmount = false,
   showPropertyValue = true,
   showMortgageBalance = false,
-  showDownPayment = false,
-  showLoanAmount = false,
-  showCreditScore = false,
-  showPropertyType = false,
-  showAdvancedInputs = true,
 }: RatePageHeaderProps) {
   const [cashOutAmount, setCashOutAmount] = useState("50000");
   const [propertyValue, setPropertyValue] = useState("350000");
   const [mortgageBalance, setMortgageBalance] = useState("200000");
-  const [downPayment, setDownPayment] = useState("20");
-  const [loanAmount, setLoanAmount] = useState("300000");
-  const [creditScore, setCreditScore] = useState("760");
-  const [propertyType, setPropertyType] = useState("single_family");
-  const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const lastZipcodeRef = useRef<string>("");
 
-  // Auto-populate property values based on zipcode
   useEffect(() => {
     if (zipcode.length === 5 && zipcode !== lastZipcodeRef.current) {
       const avgPrice = getAverageHomePrice(zipcode);
       setPropertyValue(avgPrice.toString());
-      setMortgageBalance(Math.round(avgPrice * 0.6).toString()); // Assume 60% LTV for existing mortgage
-      setLoanAmount(Math.round(avgPrice * 0.8).toString()); // 80% LTV for new loans
-      setCashOutAmount(Math.round(avgPrice * 0.1).toString()); // 10% for cash-out
+      setMortgageBalance(Math.round(avgPrice * 0.6).toString());
+      setCashOutAmount(Math.round(avgPrice * 0.1).toString());
       lastZipcodeRef.current = zipcode;
     }
   }, [zipcode]);
 
-  // Debounced auto-search when zipcode is complete
   useEffect(() => {
     if (debounceRef.current) {
       clearTimeout(debounceRef.current);
@@ -210,7 +173,7 @@ export default function RatePageHeader({
     if (zipcode.length === 5) {
       debounceRef.current = setTimeout(() => {
         onSearch();
-      }, 300); // 300ms debounce
+      }, 300);
     }
 
     return () => {
@@ -220,279 +183,232 @@ export default function RatePageHeader({
     };
   }, [zipcode, onSearch]);
 
-  const currentTime = new Date().toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-    timeZoneName: "short",
-  });
-
-  const currentDate = new Date().toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-  });
-
   const formatCurrency = (value: string) => {
     const num = parseInt(value.replace(/\D/g, "")) || 0;
-    return num.toLocaleString();
+    return "$" + num.toLocaleString();
   };
 
   const parseCurrency = (value: string) => {
     return value.replace(/\D/g, "");
   };
 
-  const detectedState = getStateFromZip(zipcode);
-
   return (
-    <div className="bg-gradient-to-b from-primary/5 to-background pb-8">
-      <div className="max-w-6xl mx-auto px-4 py-8 sm:py-12">
-        <div className="text-center mb-8">
-          <h1 
-            className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-4"
-            data-testid="rate-page-title"
-          >
-            {title || loanTypeLabels[loanType]}
-          </h1>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            {description || loanTypeDescriptions[loanType]}
-            {zipcode ? ` in ${zipcode}` : ""}. 
-            Take the next step by getting a personalized quote in as quick as 3 minutes with no impact to your credit score.
-          </p>
-        </div>
+    <div className="bg-[#f0f7f1] dark:bg-primary/5 pb-8">
+      <div className="max-w-6xl mx-auto px-4 pt-8 sm:pt-12">
+        <h1 
+          className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-4"
+          data-testid="rate-page-title"
+        >
+          {title}
+        </h1>
+        
+        <p className="text-lg text-muted-foreground mb-6">
+          Here are today's {loanTypeDescriptions[loanType]} in{" "}
+          {zipcode.length === 5 ? (
+            <span className="text-primary font-medium underline">{zipcode}</span>
+          ) : (
+            <span className="text-muted-foreground">your area</span>
+          )}
+          . Take the next step by getting a{" "}
+          <Link href="/apply" className="text-primary underline font-medium">
+            personalized quote
+          </Link>{" "}
+          in as quick as 3 minutes with no impact to your credit score.
+        </p>
 
-        <Card className="max-w-3xl mx-auto">
-          <CardContent className="p-6">
-            <div className="grid w-full grid-cols-2 gap-1 mb-6 bg-muted p-1 rounded-lg">
+        <Button 
+          asChild 
+          className="bg-[#017848] hover:bg-[#015a37] text-white mb-8"
+          data-testid="button-see-personalized-rates"
+        >
+          <Link href="/apply">See personalized rates</Link>
+        </Button>
+
+        <div className="flex flex-wrap items-center gap-x-8 gap-y-2 mb-6 text-sm">
+          <div className="flex items-center gap-4">
+            <span className="text-muted-foreground font-medium">Mortgage</span>
+            {mortgageTabs.map((tab) => (
               <Link
-                href="/rates/purchase"
+                key={tab.href}
+                href={tab.href}
                 className={cn(
-                  "flex items-center justify-center rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                  loanTypeToTab[loanType] === "mortgage" 
-                    ? "bg-background shadow-sm text-foreground" 
+                  "transition-colors",
+                  loanType === tab.loanType
+                    ? "text-primary font-medium"
                     : "text-muted-foreground hover:text-foreground"
                 )}
-                data-testid="tab-mortgage"
+                data-testid={`tab-${tab.loanType}`}
               >
-                Mortgage
+                {tab.label}
               </Link>
+            ))}
+          </div>
+          <div className="flex items-center gap-4">
+            <span className="text-muted-foreground font-medium">Home equity</span>
+            {homeEquityTabs.map((tab) => (
               <Link
-                href="/rates/heloc"
+                key={tab.href + tab.label}
+                href={tab.href}
                 className={cn(
-                  "flex items-center justify-center rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                  loanTypeToTab[loanType] === "home-equity" 
-                    ? "bg-background shadow-sm text-foreground" 
+                  "transition-colors",
+                  loanType === tab.loanType
+                    ? "text-primary font-medium"
                     : "text-muted-foreground hover:text-foreground"
                 )}
-                data-testid="tab-home-equity"
+                data-testid={`tab-${tab.loanType}-equity`}
               >
-                Home equity
+                {tab.label}
               </Link>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="zipcode" className="text-sm font-medium text-muted-foreground">
-                  Zip code
-                </Label>
-                <div className="relative">
-                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="zipcode"
-                    type="text"
-                    placeholder="Enter ZIP code"
-                    value={zipcode}
-                    onChange={(e) => onZipcodeChange(e.target.value.replace(/\D/g, "").slice(0, 5))}
-                    className="pl-10 pr-10 h-12"
-                    maxLength={5}
-                    data-testid="input-zipcode"
-                  />
-                  {isLoading && (
-                    <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground animate-spin" />
-                  )}
-                </div>
-                {detectedState && zipcode.length === 5 && (
-                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <Badge variant="secondary" className="text-xs px-2 py-0">
-                      {detectedState}
-                    </Badge>
-                    <span>area average: ${formatCurrency(getAverageHomePrice(zipcode).toString())}</span>
-                  </div>
-                )}
-              </div>
-
-              {showCashOutAmount && (
-                <div className="space-y-2">
-                  <Label htmlFor="cashout" className="text-sm font-medium text-muted-foreground">
-                    Cash-out amount
-                  </Label>
-                  <div className="relative">
-                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="cashout"
-                      type="text"
-                      value={`$${formatCurrency(cashOutAmount)}`}
-                      onChange={(e) => setCashOutAmount(parseCurrency(e.target.value))}
-                      className="pl-10 h-12"
-                      data-testid="input-cashout-amount"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {showPropertyValue && (
-                <div className="space-y-2">
-                  <Label htmlFor="property-value" className="text-sm font-medium text-muted-foreground">
-                    Property Value
-                  </Label>
-                  <div className="relative">
-                    <Home className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="property-value"
-                      type="text"
-                      value={`$${formatCurrency(propertyValue)}`}
-                      onChange={(e) => setPropertyValue(parseCurrency(e.target.value))}
-                      className="pl-10 h-12"
-                      data-testid="input-property-value"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {showMortgageBalance && (
-                <div className="space-y-2">
-                  <Label htmlFor="mortgage-balance" className="text-sm font-medium text-muted-foreground">
-                    Current Mortgage balance
-                  </Label>
-                  <div className="relative">
-                    <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="mortgage-balance"
-                      type="text"
-                      value={`$${formatCurrency(mortgageBalance)}`}
-                      onChange={(e) => setMortgageBalance(parseCurrency(e.target.value))}
-                      className="pl-10 h-12"
-                      data-testid="input-mortgage-balance"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {showDownPayment && (
-                <div className="space-y-2">
-                  <Label htmlFor="down-payment" className="text-sm font-medium text-muted-foreground">
-                    Down Payment (%)
-                  </Label>
-                  <Input
-                    id="down-payment"
-                    type="text"
-                    value={`${downPayment}%`}
-                    onChange={(e) => setDownPayment(e.target.value.replace(/\D/g, "").slice(0, 2))}
-                    className="h-12"
-                    data-testid="input-down-payment"
-                  />
-                </div>
-              )}
-
-              {showLoanAmount && (
-                <div className="space-y-2">
-                  <Label htmlFor="loan-amount" className="text-sm font-medium text-muted-foreground">
-                    Loan Amount
-                  </Label>
-                  <div className="relative">
-                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="loan-amount"
-                      type="text"
-                      value={`$${formatCurrency(loanAmount)}`}
-                      onChange={(e) => setLoanAmount(parseCurrency(e.target.value))}
-                      className="pl-10 h-12"
-                      data-testid="input-loan-amount"
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {showAdvancedInputs && (
-              <Collapsible 
-                open={isAdvancedOpen} 
-                onOpenChange={setIsAdvancedOpen}
-                className="mt-4"
-              >
-                <CollapsibleTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    className="w-full justify-between text-muted-foreground hover:text-foreground"
-                    data-testid="button-advanced-inputs"
-                  >
-                    Advanced inputs
-                    <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${isAdvancedOpen ? "rotate-180" : ""}`} />
-                  </Button>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="pt-4">
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    {showCreditScore && (
-                      <div className="space-y-2">
-                        <Label htmlFor="credit-score" className="text-sm font-medium text-muted-foreground">
-                          Credit Score
-                        </Label>
-                        <div className="relative">
-                          <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          <Input
-                            id="credit-score"
-                            type="text"
-                            value={creditScore}
-                            onChange={(e) => setCreditScore(e.target.value.replace(/\D/g, "").slice(0, 3))}
-                            className="pl-10 h-12"
-                            data-testid="input-credit-score"
-                          />
-                        </div>
-                      </div>
-                    )}
-
-                    {showPropertyType && (
-                      <div className="space-y-2">
-                        <Label htmlFor="property-type" className="text-sm font-medium text-muted-foreground">
-                          Property Type
-                        </Label>
-                        <Select value={propertyType} onValueChange={setPropertyType}>
-                          <SelectTrigger className="h-12" data-testid="select-property-type">
-                            <SelectValue placeholder="Select property type" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="single_family">Single Family Home</SelectItem>
-                            <SelectItem value="condo">Condo</SelectItem>
-                            <SelectItem value="townhouse">Townhouse</SelectItem>
-                            <SelectItem value="multi_family">Multi-Family (2-4 units)</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    )}
-                  </div>
-                </CollapsibleContent>
-              </Collapsible>
-            )}
-
-            {zipcode.length === 5 && (
-              <div className="mt-4 text-center text-sm text-muted-foreground" data-testid="auto-search-status">
-                {isLoading ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Finding the best rates for you...
-                  </span>
-                ) : (
-                  <span>Rates automatically updated for your location</span>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground mt-6">
-          <Clock className="h-4 w-4" />
-          <span>Rates updated at {currentTime} on {currentDate}</span>
+            ))}
+          </div>
         </div>
+
+        <div className="flex flex-wrap items-end gap-4 mb-4">
+          <div className="flex-shrink-0">
+            <Label className="text-xs text-muted-foreground mb-1 block">Zip code</Label>
+            <div className="relative">
+              <Input
+                type="text"
+                placeholder="Enter ZIP"
+                value={zipcode}
+                onChange={(e) => onZipcodeChange(e.target.value.replace(/\D/g, "").slice(0, 5))}
+                className="w-32 h-12 bg-background border rounded-md px-3 font-medium"
+                maxLength={5}
+                data-testid="input-zipcode"
+              />
+              {isLoading && (
+                <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground animate-spin" />
+              )}
+            </div>
+          </div>
+
+          {showCashOutAmount && (
+            <div className="flex-shrink-0">
+              <Label className="text-xs text-muted-foreground mb-1 block">Cash-out amount</Label>
+              <Input
+                type="text"
+                value={formatCurrency(cashOutAmount)}
+                onChange={(e) => setCashOutAmount(parseCurrency(e.target.value))}
+                className="w-32 h-12 bg-background border rounded-md px-3 font-medium"
+                data-testid="input-cashout-amount"
+              />
+            </div>
+          )}
+
+          {showPropertyValue && (
+            <div className="flex-shrink-0">
+              <Label className="text-xs text-muted-foreground mb-1 block">Property Value</Label>
+              <Input
+                type="text"
+                value={formatCurrency(propertyValue)}
+                onChange={(e) => setPropertyValue(parseCurrency(e.target.value))}
+                className="w-32 h-12 bg-background border rounded-md px-3 font-medium"
+                data-testid="input-property-value"
+              />
+            </div>
+          )}
+
+          {showMortgageBalance && (
+            <div className="flex-shrink-0">
+              <Label className="text-xs text-muted-foreground mb-1 block">Current Mortgage balance</Label>
+              <Input
+                type="text"
+                value={formatCurrency(mortgageBalance)}
+                onChange={(e) => setMortgageBalance(parseCurrency(e.target.value))}
+                className="w-40 h-12 bg-background border rounded-md px-3 font-medium"
+                data-testid="input-mortgage-balance"
+              />
+            </div>
+          )}
+
+          <div className="flex items-center gap-2 ml-auto">
+            <Label className="text-sm text-muted-foreground">Advanced inputs</Label>
+            <Switch
+              checked={showAdvanced}
+              onCheckedChange={setShowAdvanced}
+              data-testid="switch-advanced-inputs"
+            />
+          </div>
+        </div>
+
+        {showAdvanced && (
+          <div className="flex flex-wrap gap-4 mt-4 p-4 bg-background rounded-lg border">
+            <div>
+              <Label className="text-xs text-muted-foreground mb-1 block">Credit Score</Label>
+              <Input
+                type="text"
+                defaultValue="760"
+                className="w-24 h-10 bg-background border rounded-md px-3"
+                data-testid="input-credit-score"
+              />
+            </div>
+            <div>
+              <Label className="text-xs text-muted-foreground mb-1 block">Down Payment %</Label>
+              <Input
+                type="text"
+                defaultValue="20%"
+                className="w-24 h-10 bg-background border rounded-md px-3"
+                data-testid="input-down-payment"
+              />
+            </div>
+            <div>
+              <Label className="text-xs text-muted-foreground mb-1 block">Loan Amount</Label>
+              <Input
+                type="text"
+                value={formatCurrency(Math.round(parseInt(propertyValue) * 0.8).toString())}
+                className="w-32 h-10 bg-background border rounded-md px-3"
+                data-testid="input-loan-amount"
+                readOnly
+              />
+            </div>
+          </div>
+        )}
       </div>
+    </div>
+  );
+}
+
+export function RateRow({ 
+  term, 
+  rate, 
+  apr, 
+  points, 
+  pointsCost,
+  ctaHref = "/apply"
+}: { 
+  term: string;
+  rate: string;
+  apr: string;
+  points: string;
+  pointsCost: string;
+  ctaHref?: string;
+}) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-4 p-6 bg-background border rounded-lg mb-4 hover-elevate" data-testid={`rate-row-${term.replace(/\s+/g, "-").toLowerCase()}`}>
+      <div className="min-w-[140px]">
+        <span className="text-xs text-muted-foreground block mb-1">Term</span>
+        <span className="text-2xl font-semibold">{term}</span>
+      </div>
+      <div className="min-w-[100px]">
+        <span className="text-xs text-muted-foreground block mb-1">Rate</span>
+        <span className="text-2xl font-semibold text-[#017848]">{rate}</span>
+      </div>
+      <div className="min-w-[100px]">
+        <span className="text-xs text-muted-foreground block mb-1">APR</span>
+        <span className="text-2xl font-semibold">{apr}</span>
+      </div>
+      <div className="min-w-[100px]">
+        <span className="text-xs text-muted-foreground block mb-1">Points (cost)</span>
+        <span className="text-base font-medium">{points} ({pointsCost})</span>
+      </div>
+      <Button 
+        asChild 
+        variant="outline" 
+        className="ml-auto"
+        data-testid={`button-see-rates-${term.replace(/\s+/g, "-").toLowerCase()}`}
+      >
+        <Link href={ctaHref}>See my rates</Link>
+      </Button>
     </div>
   );
 }
