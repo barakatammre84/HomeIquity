@@ -26,6 +26,7 @@ import BorrowerFile from "@/pages/BorrowerFile";
 import ComplianceDashboard from "@/pages/ComplianceDashboard";
 import LoanEstimate from "@/pages/LoanEstimate";
 import Verification from "@/pages/Verification";
+import CreditConsent from "@/pages/CreditConsent";
 import LearningCenter from "@/pages/LearningCenter";
 import FAQ from "@/pages/FAQ";
 import ArticleDetail from "@/pages/ArticleDetail";
@@ -113,6 +114,9 @@ function Router() {
       </Route>
       <Route path="/verification">
         <BorrowerPage><Verification /></BorrowerPage>
+      </Route>
+      <Route path="/credit-consent/:id">
+        {(params) => <BorrowerPage><CreditConsent /></BorrowerPage>}
       </Route>
       <Route path="/urla-form">
         <BorrowerPage><URLAForm /></BorrowerPage>
