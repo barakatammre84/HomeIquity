@@ -684,19 +684,41 @@ export async function getLatestCreditPull(applicationId: string): Promise<Credit
   return pull || null;
 }
 
+export function validateAdverseActionReason(reasonKey: string): boolean {
+  return reasonKey in ADVERSE_ACTION_REASONS;
+}
+
+export function getValidAdverseActionReasonKeys(): string[] {
+  return Object.keys(ADVERSE_ACTION_REASONS);
+}
+
 export async function generateAdverseAction(
   data: {
     applicationId: string;
     creditPullId?: string;
     userId: string;
     actionType: "denial" | "counteroffer" | "rate_adjustment" | "terms_change";
-    primaryReason: keyof typeof ADVERSE_ACTION_REASONS;
-    secondaryReasons?: (keyof typeof ADVERSE_ACTION_REASONS)[];
+    primaryReason: string;
+    secondaryReasons?: string[];
     creditScoreUsed?: number;
     creditScoreSource?: "experian" | "equifax" | "transunion";
     generatedBy: string;
   }
 ): Promise<AdverseAction> {
+  // Validate primary reason key exists
+  if (!validateAdverseActionReason(data.primaryReason)) {
+    throw new Error(`Invalid primary reason key: ${data.primaryReason}. Valid keys: ${getValidAdverseActionReasonKeys().join(", ")}`);
+  }
+  
+  // Validate secondary reason keys exist
+  if (data.secondaryReasons) {
+    for (const reason of data.secondaryReasons) {
+      if (!validateAdverseActionReason(reason)) {
+        throw new Error(`Invalid secondary reason key: ${reason}. Valid keys: ${getValidAdverseActionReasonKeys().join(", ")}`);
+      }
+    }
+  }
+
   const bureau = data.creditScoreSource 
     ? BUREAU_CONTACT_INFO[data.creditScoreSource]
     : BUREAU_CONTACT_INFO.experian;
@@ -1527,54 +1549,112 @@ export async function getRetentionComplianceReport(): Promise<{
   recordCounts: Record<string, number>;
   archiveEligibleCounts: Record<string, number>;
   deleteEligibleCounts: Record<string, number>;
+  retentionReviewCounts: Record<string, number>;
   recommendations: string[];
 }> {
   const now = new Date();
   const policies = Object.values(DATA_RETENTION_POLICIES);
 
-  // Get counts for each data type
-  const [consentCount, pullCount, actionCount, auditCount] = await Promise.all([
-    db.select().from(creditConsents).then(r => r.length),
-    db.select().from(creditPulls).then(r => r.length),
-    db.select().from(adverseActions).then(r => r.length),
-    db.select().from(creditAuditLog).then(r => r.length),
+  // Get actual data with creation dates for proper analysis
+  const [consents, pulls, actions, auditLogs] = await Promise.all([
+    db.select().from(creditConsents),
+    db.select().from(creditPulls),
+    db.select().from(adverseActions),
+    db.select().from(creditAuditLog),
   ]);
 
   const recordCounts: Record<string, number> = {
-    credit_consent: consentCount,
-    credit_pull: pullCount,
-    adverse_action: actionCount,
-    credit_audit_log: auditCount,
+    credit_consent: consents.length,
+    credit_pull: pulls.length,
+    adverse_action: actions.length,
+    credit_audit_log: auditLogs.length,
   };
 
-  // Calculate archive-eligible counts
-  const archiveEligibleCounts: Record<string, number> = {};
-  const deleteEligibleCounts: Record<string, number> = {};
+  // Calculate archive-eligible, delete-eligible, and retention-review counts
+  const archiveEligibleCounts: Record<string, number> = {
+    credit_consent: 0,
+    credit_pull: 0,
+    adverse_action: 0,
+    credit_audit_log: 0,
+  };
+  const deleteEligibleCounts: Record<string, number> = {
+    credit_consent: 0,
+    credit_pull: 0,
+    adverse_action: 0,
+    credit_audit_log: 0,
+  };
+  const retentionReviewCounts: Record<string, number> = {
+    credit_consent: 0,
+    credit_pull: 0,
+    adverse_action: 0,
+    credit_audit_log: 0,
+  };
 
-  for (const [dataType, policy] of Object.entries(DATA_RETENTION_POLICIES)) {
-    const archiveCutoff = new Date(now);
-    archiveCutoff.setDate(archiveCutoff.getDate() - policy.archiveAfterDays);
-
-    let deleteCutoff: Date | null = null;
-    if (policy.deleteAfterDays) {
-      deleteCutoff = new Date(now);
-      deleteCutoff.setDate(deleteCutoff.getDate() - policy.deleteAfterDays);
+  // Helper function to check record status
+  const checkRecordStatus = (
+    createdAt: Date | null,
+    policy: RetentionPolicy,
+    archivedAt?: Date | null
+  ): "active" | "archive_eligible" | "delete_eligible" | "retention_review" => {
+    if (!createdAt) return "active";
+    
+    const ageMs = now.getTime() - createdAt.getTime();
+    const ageDays = Math.floor(ageMs / (1000 * 60 * 60 * 24));
+    
+    // Check if data has exceeded the retention period (regardless of deleteAfterDays)
+    // This is a compliance violation - data should be reviewed for retention justification
+    if (ageDays >= policy.retentionPeriodDays) {
+      return "delete_eligible"; // Exceeding retention period = compliance flag
     }
-
-    // For simplicity, we'll estimate based on credit_pulls as the main data type
-    if (dataType === "credit_pull") {
-      const eligibleForArchive = await db
-        .select()
-        .from(creditPulls)
-        .where(lt(creditPulls.createdAt, archiveCutoff))
-        .then(r => r.filter(p => !p.archivedAt).length);
-
-      archiveEligibleCounts[dataType] = eligibleForArchive;
-      deleteEligibleCounts[dataType] = 0; // Credit pulls should not be deleted
-    } else {
-      archiveEligibleCounts[dataType] = 0;
-      deleteEligibleCounts[dataType] = 0;
+    
+    // Check delete eligibility (if explicit delete policy exists)
+    if (policy.deleteAfterDays && ageDays >= policy.deleteAfterDays) {
+      return "delete_eligible";
     }
+    
+    // Check if approaching retention period end (within 180 days of max retention)
+    if (ageDays >= policy.retentionPeriodDays - 180) {
+      return "retention_review";
+    }
+    
+    // Check archive eligibility
+    if (ageDays >= policy.archiveAfterDays && !archivedAt) {
+      return "archive_eligible";
+    }
+    
+    return "active";
+  };
+
+  // Process credit consents
+  for (const consent of consents) {
+    const status = checkRecordStatus(consent.createdAt, DATA_RETENTION_POLICIES.credit_consent);
+    if (status === "archive_eligible") archiveEligibleCounts.credit_consent++;
+    if (status === "delete_eligible") deleteEligibleCounts.credit_consent++;
+    if (status === "retention_review") retentionReviewCounts.credit_consent++;
+  }
+
+  // Process credit pulls
+  for (const pull of pulls) {
+    const status = checkRecordStatus(pull.createdAt, DATA_RETENTION_POLICIES.credit_pull, pull.archivedAt);
+    if (status === "archive_eligible") archiveEligibleCounts.credit_pull++;
+    if (status === "delete_eligible") deleteEligibleCounts.credit_pull++;
+    if (status === "retention_review") retentionReviewCounts.credit_pull++;
+  }
+
+  // Process adverse actions
+  for (const action of actions) {
+    const status = checkRecordStatus(action.createdAt, DATA_RETENTION_POLICIES.adverse_action);
+    if (status === "archive_eligible") archiveEligibleCounts.adverse_action++;
+    if (status === "delete_eligible") deleteEligibleCounts.adverse_action++;
+    if (status === "retention_review") retentionReviewCounts.adverse_action++;
+  }
+
+  // Process audit logs
+  for (const log of auditLogs) {
+    const status = checkRecordStatus(log.timestamp, DATA_RETENTION_POLICIES.credit_audit_log);
+    if (status === "archive_eligible") archiveEligibleCounts.credit_audit_log++;
+    if (status === "delete_eligible") deleteEligibleCounts.credit_audit_log++;
+    if (status === "retention_review") retentionReviewCounts.credit_audit_log++;
   }
 
   // Generate recommendations
@@ -1584,6 +1664,13 @@ export async function getRetentionComplianceReport(): Promise<{
   if (archiveTotal > 0) {
     recommendations.push(
       `${archiveTotal} records are eligible for archival. Consider running the archive process.`
+    );
+  }
+
+  const reviewTotal = Object.values(retentionReviewCounts).reduce((a, b) => a + b, 0);
+  if (reviewTotal > 0) {
+    recommendations.push(
+      `${reviewTotal} records are approaching the end of their retention period (within 180 days). Review for compliance planning.`
     );
   }
 
@@ -1610,6 +1697,7 @@ export async function getRetentionComplianceReport(): Promise<{
     recordCounts,
     archiveEligibleCounts,
     deleteEligibleCounts,
+    retentionReviewCounts,
     recommendations,
   };
 }

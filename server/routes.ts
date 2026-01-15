@@ -3444,6 +3444,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Zod schema for adverse action request validation
+  const adverseActionRequestSchema = z.object({
+    actionType: z.enum(["denial", "counteroffer", "rate_adjustment", "terms_change"]),
+    primaryReason: z.string().refine(
+      (val) => creditService.validateAdverseActionReason(val),
+      { message: `Invalid primary reason key. Must be one of: ${creditService.getValidAdverseActionReasonKeys().join(", ")}` }
+    ),
+    secondaryReasons: z.array(
+      z.string().refine(
+        (val) => creditService.validateAdverseActionReason(val),
+        { message: `Invalid secondary reason key. Must be one of: ${creditService.getValidAdverseActionReasonKeys().join(", ")}` }
+      )
+    ).optional(),
+    creditPullId: z.string().uuid().optional(),
+    creditScoreUsed: z.number().min(300).max(850).optional(),
+    creditScoreSource: z.enum(["experian", "equifax", "transunion"]).optional(),
+  });
+
   // Generate adverse action notice (staff only)
   app.post("/api/loan-applications/:id/credit/adverse-action", isAuthenticated, async (req, res) => {
     try {
@@ -3458,6 +3476,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Application not found" });
       }
       
+      // Validate request body using Zod schema
+      const parseResult = adverseActionRequestSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        const errorMessages = parseResult.error.errors.map(e => e.message).join("; ");
+        return res.status(400).json({ error: errorMessages });
+      }
+      
       const { 
         actionType, 
         primaryReason, 
@@ -3465,11 +3490,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         creditPullId,
         creditScoreUsed,
         creditScoreSource,
-      } = req.body;
-      
-      if (!actionType || !primaryReason) {
-        return res.status(400).json({ error: "Action type and primary reason are required" });
-      }
+      } = parseResult.data;
       
       const adverseAction = await creditService.generateAdverseAction({
         applicationId: req.params.id,
