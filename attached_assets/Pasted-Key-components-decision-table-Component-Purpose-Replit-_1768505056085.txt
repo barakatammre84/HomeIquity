@@ -1,0 +1,36 @@
+Key components (decision table)
+Component	Purpose	Replit implementation
+Consent UI + Model Form	Capture explicit, timestamped FCRA consent before any pull	Frontend form; POST to /api/consent; store consent record in DB with IP and user agent
+Consent Storage	Durable, tamper‑evident record of consent	PostgreSQL row + append‑only audit log; store hash of record in audit table
+Credit Bureau Integration	Execute authorized credit pulls and receive responses	Backend service calls to bureau APIs (Equifax/Experian/TransUnion) via secure serverless endpoints
+Adverse Action Engine	Auto‑generate notices when credit use triggers adverse action	Rule engine that maps bureau responses to model adverse notices and templates
+Immutable Audit Trail	For regulators and lenders: every consent and pull logged immutably	Append‑only event store; signed entries; periodic export (CSV/PDF) for audits
+Security & Retention	Encryption, key management, and retention policy (3+ years)	Replit secrets for keys; encrypted storage in S3/Supabase; retention enforcement job
+Implementation checklist (practical steps)
+Legal templates: Use FCRA/Reg V model forms and disclosures as the baseline for consent and adverse notices. 
+
+Consent capture: Build a minimal consent flow that must be accepted before any credit action; record name, email, timestamp, IP, user agent, and exact consent text. Store both the raw form and a hashed snapshot. 
+
+Backend endpoints on Replit: /api/consent, /api/credit-pull, /api/adverse-action, /api/audit-export. Keep credit‑pull logic off the client. Use Replit secrets for API keys.
+
+Credit bureau integration: Contract with bureau vendors; implement server‑side API calls with retry, idempotency keys, and secure logging of request/response IDs.
+
+Adverse action automation: Implement mapping rules (reason codes → model notice). Generate notices as PDFs and email them; log delivery and store copies. 
+
+Immutable audit trail: Use an append‑only table with cryptographic hashes of each event; optionally mirror hashes to an external store (S3) for tamper evidence. Provide export for compliance exams.
+
+Retention & access controls: Enforce 3+ year retention, role‑based access, and encryption at rest/in transit. 
+
+Risks, limitations, and mitigations
+Regulatory risk: Using non‑model disclosures or pulling credit without explicit consent can trigger enforcement. Mitigation: Use CFPB/Reg V model language and log consent. 
+
+Data security risk: Storing PII on Replit alone is insufficient. Mitigation: Keep secrets and PII in managed cloud storage (S3/Supabase) with server‑side encryption; use Replit for app runtime only.
+
+Operational risk: Bureau API errors or rate limits. Mitigation: Implement retries, exponential backoff, and idempotency keys; surface failures to processors.
+
+Decisions you’ll need to make (scope)
+Which bureau(s) to integrate first (tri‑merge vs single bureau).
+
+Where to store PII (managed cloud vs Replit DB).
+
+Adverse action templates: use model forms or customize with counsel.
