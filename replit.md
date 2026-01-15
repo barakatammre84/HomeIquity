@@ -129,12 +129,31 @@ The backend is developed with **Node.js, Express.js, and TypeScript**. It uses *
 - Routes: Property management in `/pipeline/:id`
 - API: `/api/loan-applications/:id/properties`, `/api/loan-applications/:id/properties/:propertyId/switch`, `/api/loan-applications/:id/properties/:propertyId/deal-fell-through`
 
+**Plaid Verification Integration:** Automated employment and identity verification:
+- Employment verification through payroll data
+- Identity verification through financial institution records
+- Income verification for faster underwriting
+- Asset verification for reserve calculations
+- Graceful fallback to manual verification when Plaid is not configured
+- Database tables: `verifications`, `plaid_link_tokens` for tracking verification status
+- Routes: `/verification` (borrower verification center)
+- API: `/api/verifications/link-token`, `/api/verifications/exchange`, `/api/verifications/application/:id`
+- Environment: Requires `PLAID_CLIENT_ID` and `PLAID_SECRET` for production
+
+**Security Features:**
+- CSRF protection via Origin/Referer header validation
+- Session-based authentication with secure cookies
+- Role-based access control (borrower, broker, lender, admin)
+- Ownership-scoped queries to prevent data leakage
+- All state-changing API routes protected with authentication middleware
+
 ## External Dependencies
 
 ### Third-Party Services
 
 -   **Neon Database:** Serverless PostgreSQL hosting for all persistent data storage.
 -   **Google Gemini AI:** Used for document data extraction from financial documents.
+-   **Plaid:** Automated verification services for employment, identity, income, and assets (optional - requires PLAID_CLIENT_ID and PLAID_SECRET).
 
 ### UI Component Libraries
 
