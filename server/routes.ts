@@ -11,6 +11,7 @@ import {
   insertContentCategorySchema,
   insertArticleSchema,
   insertFaqSchema,
+  type User,
 } from "@shared/schema";
 import { z } from "zod";
 import { 

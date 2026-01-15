@@ -26,6 +26,8 @@ import Verification from "@/pages/Verification";
 import LearningCenter from "@/pages/LearningCenter";
 import FAQ from "@/pages/FAQ";
 import ArticleDetail from "@/pages/ArticleDetail";
+import MortgageRates from "@/pages/MortgageRates";
+import AdminRates from "@/pages/AdminRates";
 
 function Router() {
   return (
@@ -52,6 +54,8 @@ function Router() {
       <Route path="/learn" component={LearningCenter} />
       <Route path="/learn/:slug" component={ArticleDetail} />
       <Route path="/faq" component={FAQ} />
+      <Route path="/rates" component={MortgageRates} />
+      <Route path="/admin/rates" component={AdminRates} />
       <Route component={NotFound} />
     </Switch>
   );
