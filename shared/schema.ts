@@ -1245,6 +1245,7 @@ export const contentCategories = pgTable("content_categories", {
   slug: varchar("slug", { length: 100 }).notNull().unique(),
   description: text("description"),
   icon: varchar("icon", { length: 50 }), // lucide icon name
+  color: varchar("color", { length: 20 }), // hex color code
   displayOrder: integer("display_order").default(0),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),

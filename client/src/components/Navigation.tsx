@@ -29,21 +29,22 @@ const buyMenuItems = [
   { href: "/calculators/rent-vs-buy", label: "Rent vs Buy Calculator" },
   { href: "/agents", label: "Find an Agent" },
   { href: "/va-loans", label: "VA Loans" },
-  { href: "/resources", label: "Learning Center" },
+  { href: "/learn", label: "Learning Center" },
+  { href: "/faq", label: "FAQs" },
 ];
 
 const refinanceMenuItems = [
   { href: "/apply?type=refinance", label: "Apply Now" },
   { href: "/rates/refinance", label: "Refinance Rates" },
   { href: "/calculators/cashout", label: "Cash-out Refinance Calculator" },
-  { href: "/resources", label: "Learning Center" },
+  { href: "/learn", label: "Learning Center" },
 ];
 
 const helocMenuItems = [
   { href: "/apply?type=heloc", label: "Apply Now" },
   { href: "/calculators/heloc", label: "Calculate Your Cash" },
   { href: "/heloc-vs-cashout", label: "HELOC vs. Cash-out Refinance" },
-  { href: "/resources", label: "Learning Center" },
+  { href: "/learn", label: "Learning Center" },
 ];
 
 const ratesMenuItems = [

@@ -23,6 +23,9 @@ import BorrowerFile from "@/pages/BorrowerFile";
 import ComplianceDashboard from "@/pages/ComplianceDashboard";
 import LoanEstimate from "@/pages/LoanEstimate";
 import Verification from "@/pages/Verification";
+import LearningCenter from "@/pages/LearningCenter";
+import FAQ from "@/pages/FAQ";
+import ArticleDetail from "@/pages/ArticleDetail";
 
 function Router() {
   return (
@@ -46,6 +49,9 @@ function Router() {
       <Route path="/resources" component={Resources} />
       <Route path="/staff" component={Staff} />
       <Route path="/admin" component={AdminDashboard} />
+      <Route path="/learn" component={LearningCenter} />
+      <Route path="/learn/:slug" component={ArticleDetail} />
+      <Route path="/faq" component={FAQ} />
       <Route component={NotFound} />
     </Switch>
   );
