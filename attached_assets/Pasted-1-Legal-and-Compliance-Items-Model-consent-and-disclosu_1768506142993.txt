@@ -1,0 +1,57 @@
+1. Legal and Compliance Items
+Model consent and disclosure language for both soft and hard pulls; store the exact text version used.
+
+Adverse action templates mapped to bureau reason codes and AUS outcomes; include delivery methods and timestamps.
+
+State‑specific rules (Illinois IDFPR and any other states you’ll operate in) for fees, deposits, and disclosures.
+
+Legal review of fee/refund policy, deposit terms, and marketing language by counsel experienced in mortgage/FCRA.
+
+2. Vendor, Contract, and Data Flow Requirements
+Vendor selection and contracts: tri‑merge vendor SLA, pricing tiers, rescore/supplement fees, sample report delivery, and support SLAs.
+
+Test credentials and sample reports from each vendor to validate parsing and mapping in staging.
+
+Idempotency and rate‑limit handling for bureau APIs; queueing and retry logic for transient failures.
+
+Fallback plan (single bureau or manual process) if tri‑merge vendor is down.
+
+3. Security, Data Storage, and Retention
+PII storage plan: what stays in Replit runtime vs. managed encrypted storage (S3/Supabase).
+
+Key management and secrets lifecycle using Replit secrets + cloud KMS.
+
+Encryption at rest and in transit for all credit responses and consent records.
+
+Retention policy and automated purge/archival to meet 3+ year regulatory requirements.
+
+Data subject request process (access, deletion, portability) and consent revocation handling.
+
+4. Auditability, Logging, and Evidence
+Append‑only audit store with cryptographic hashes or signed entries for consent, soft_pull, commitment, hard_pull, and adverse_action.
+
+Store raw bureau response IDs and full payloads (encrypted) plus parsed fields.
+
+Exportable audit packages (CSV/PDF) for exams showing timeline, consent, and notices.
+
+Automated reconciliation between pulls billed by vendor and pulls recorded in your system.
+
+5. Operational Playbook and UX
+Gating rules that define exactly when to require signed application, deposit, or purchase agreement.
+
+Clear borrower messaging about soft vs hard pulls and any fees; visible in UI and emails.
+
+Save & Resume and session persistence for multi‑step consent flows.
+
+Support scripts and SLA for follow‑up when a hard pull fails or a borrower disputes a pull.
+
+Training and SOPs for MLOs, processors, and compliance staff on the staged flow and adverse actions.
+
+6. Monitoring, Testing, and Resilience
+End‑to‑end tests in staging with vendor test accounts and sample reports.
+
+Monitoring and alerts for failed pulls, high error rates, vendor SLA breaches, and unusual adverse action spikes.
+
+Incident response and runbooks for data breaches, vendor outages, and compliance incidents.
+
+Performance and cost monitoring to track tri‑merge spend per channel and per funded loan.
