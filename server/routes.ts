@@ -2894,6 +2894,183 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // =============================================================================
+  // MORTGAGE RATES
+  // =============================================================================
+
+  // Get mortgage rates for a location (public)
+  app.get("/api/mortgage-rates", async (req, res) => {
+    try {
+      const { state, zipcode } = req.query;
+      const rates = await storage.getMortgageRatesForLocation(
+        state as string | undefined,
+        zipcode as string | undefined
+      );
+      res.json(rates);
+    } catch (error) {
+      console.error("Get mortgage rates error:", error);
+      res.status(500).json({ error: "Failed to get mortgage rates" });
+    }
+  });
+
+  // Get all rate programs (public)
+  app.get("/api/mortgage-rate-programs", async (req, res) => {
+    try {
+      const programs = await storage.getActiveMortgageRatePrograms();
+      res.json(programs);
+    } catch (error) {
+      console.error("Get mortgage rate programs error:", error);
+      res.status(500).json({ error: "Failed to get mortgage rate programs" });
+    }
+  });
+
+  // =============================================================================
+  // MORTGAGE RATES ADMIN (Admin only)
+  // =============================================================================
+
+  // Get all mortgage rates for admin
+  app.get("/api/admin/mortgage-rates", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      if (user.role !== "admin") {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+      
+      const rates = await storage.getAllMortgageRates();
+      res.json(rates);
+    } catch (error) {
+      console.error("Admin get mortgage rates error:", error);
+      res.status(500).json({ error: "Failed to get mortgage rates" });
+    }
+  });
+
+  // Get all rate programs for admin
+  app.get("/api/admin/mortgage-rate-programs", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      if (user.role !== "admin") {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+      
+      const programs = await storage.getAllMortgageRatePrograms();
+      res.json(programs);
+    } catch (error) {
+      console.error("Admin get mortgage rate programs error:", error);
+      res.status(500).json({ error: "Failed to get mortgage rate programs" });
+    }
+  });
+
+  // Create a new rate program (admin only)
+  app.post("/api/admin/mortgage-rate-programs", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      if (user.role !== "admin") {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+      
+      const program = await storage.createMortgageRateProgram(req.body);
+      res.status(201).json(program);
+    } catch (error) {
+      console.error("Create mortgage rate program error:", error);
+      res.status(500).json({ error: "Failed to create mortgage rate program" });
+    }
+  });
+
+  // Update a rate program (admin only)
+  app.patch("/api/admin/mortgage-rate-programs/:id", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      if (user.role !== "admin") {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+      
+      const program = await storage.updateMortgageRateProgram(req.params.id, req.body);
+      if (!program) {
+        return res.status(404).json({ error: "Program not found" });
+      }
+      res.json(program);
+    } catch (error) {
+      console.error("Update mortgage rate program error:", error);
+      res.status(500).json({ error: "Failed to update mortgage rate program" });
+    }
+  });
+
+  // Delete a rate program (admin only)
+  app.delete("/api/admin/mortgage-rate-programs/:id", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      if (user.role !== "admin") {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+      
+      await storage.deleteMortgageRateProgram(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Delete mortgage rate program error:", error);
+      res.status(500).json({ error: "Failed to delete mortgage rate program" });
+    }
+  });
+
+  // Create a new mortgage rate (admin only)
+  app.post("/api/admin/mortgage-rates", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      if (user.role !== "admin") {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+      
+      const rateData = {
+        ...req.body,
+        createdBy: user.id,
+        updatedBy: user.id,
+      };
+      const rate = await storage.createMortgageRate(rateData);
+      res.status(201).json(rate);
+    } catch (error) {
+      console.error("Create mortgage rate error:", error);
+      res.status(500).json({ error: "Failed to create mortgage rate" });
+    }
+  });
+
+  // Update a mortgage rate (admin only)
+  app.patch("/api/admin/mortgage-rates/:id", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      if (user.role !== "admin") {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+      
+      const rateData = {
+        ...req.body,
+        updatedBy: user.id,
+      };
+      const rate = await storage.updateMortgageRate(req.params.id, rateData);
+      if (!rate) {
+        return res.status(404).json({ error: "Rate not found" });
+      }
+      res.json(rate);
+    } catch (error) {
+      console.error("Update mortgage rate error:", error);
+      res.status(500).json({ error: "Failed to update mortgage rate" });
+    }
+  });
+
+  // Delete a mortgage rate (admin only)
+  app.delete("/api/admin/mortgage-rates/:id", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      if (user.role !== "admin") {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+      
+      await storage.deleteMortgageRate(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Delete mortgage rate error:", error);
+      res.status(500).json({ error: "Failed to delete mortgage rate" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;
