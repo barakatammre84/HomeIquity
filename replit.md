@@ -72,6 +72,14 @@ The backend is developed with **Node.js, Express.js, and TypeScript**. It uses *
 -   **Compliance Monitoring Dashboard:** Real-time metrics, retention status, and actionable alerts
 -   **API Validation:** Zod schema validation enforcing catalog key usage for adverse action reasons
 
+**Broker Referral Dashboard:** Commission tracking and referral management for mortgage brokers with:
+-   **Referral Tracking:** View all referred borrowers with loan status and progress
+-   **Commission Management:** Track pending, approved, and paid commissions per loan
+-   **Performance Stats:** Real-time KPIs including total referrals, active loans, closed volume, and earnings
+-   **Role-Based Access:** Broker/lender/admin roles can view referrals; lender/admin can manage commissions
+-   **Commission Calculation:** Automatic calculation based on loan amount × commission rate
+-   **Payment Tracking:** Status workflow (pending → approved → paid) with payment date logging
+
 ## External Dependencies
 
 ### Third-Party Services
