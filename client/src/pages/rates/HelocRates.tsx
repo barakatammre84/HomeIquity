@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -69,7 +69,7 @@ export default function HelocRates() {
   const [zipcode, setZipcode] = useState("");
   const [searchZipcode, setSearchZipcode] = useState("");
 
-  const { data: rates, isLoading } = useQuery<MortgageRateWithProgram[]>({
+  const { data: rates, isLoading, isFetching } = useQuery<MortgageRateWithProgram[]>({
     queryKey: ["/api/mortgage-rates", { zipcode: searchZipcode, loanType: "heloc" }],
     queryFn: async () => {
       const params = new URLSearchParams();
@@ -84,11 +84,11 @@ export default function HelocRates() {
     },
   });
 
-  const handleSearch = () => {
+  const handleSearch = useCallback(() => {
     if (zipcode.length === 5) {
       setSearchZipcode(zipcode);
     }
-  };
+  }, [zipcode]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -98,6 +98,7 @@ export default function HelocRates() {
         zipcode={zipcode}
         onZipcodeChange={setZipcode}
         onSearch={handleSearch}
+        isLoading={isFetching}
         showPropertyValue={true}
         showMortgageBalance={true}
         showLoanAmount={true}

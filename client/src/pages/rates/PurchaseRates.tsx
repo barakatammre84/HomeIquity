@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -69,7 +69,7 @@ export default function PurchaseRates() {
   const [zipcode, setZipcode] = useState("");
   const [searchZipcode, setSearchZipcode] = useState("");
 
-  const { data: rates, isLoading } = useQuery<MortgageRateWithProgram[]>({
+  const { data: rates, isLoading, isFetching } = useQuery<MortgageRateWithProgram[]>({
     queryKey: ["/api/mortgage-rates", { zipcode: searchZipcode, loanType: "conventional" }],
     queryFn: async () => {
       const params = new URLSearchParams();
@@ -85,11 +85,11 @@ export default function PurchaseRates() {
     },
   });
 
-  const handleSearch = () => {
+  const handleSearch = useCallback(() => {
     if (zipcode.length === 5) {
       setSearchZipcode(zipcode);
     }
-  };
+  }, [zipcode]);
 
   const purchaseRates = rates?.filter(r => 
     r.program.loanType === "conventional" || r.program.loanType === null
@@ -103,6 +103,7 @@ export default function PurchaseRates() {
         zipcode={zipcode}
         onZipcodeChange={setZipcode}
         onSearch={handleSearch}
+        isLoading={isFetching}
         showPropertyValue={true}
         showDownPayment={true}
         showCreditScore={true}

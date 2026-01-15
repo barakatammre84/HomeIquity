@@ -129,6 +129,18 @@ The backend is developed with **Node.js, Express.js, and TypeScript**. It uses *
 - Routes: Property management in `/pipeline/:id`
 - API: `/api/loan-applications/:id/properties`, `/api/loan-applications/:id/properties/:propertyId/switch`, `/api/loan-applications/:id/properties/:propertyId/deal-fell-through`
 
+**Dynamic Rate Pages with Auto-Search:** Location-aware mortgage rate discovery:
+- Dedicated pages for each loan type: `/rates/purchase`, `/rates/refinance`, `/rates/cash-out`, `/rates/heloc`, `/rates/va`
+- **Auto-search**: Rates automatically refresh when user enters complete 5-digit ZIP code (no submit button needed)
+- **Smart auto-population**: Property values, mortgage balances, and loan amounts auto-populate based on state average home prices
+- **State detection**: ZIP code prefix mapped to state, displayed as badge (e.g., "CA" badge for 90210)
+- **Location-aware defaults**: Uses state-level average home prices (e.g., CA $750,000, TX $320,000, NY $420,000)
+- Reusable `RatePageHeader` component with configurable inputs per loan type
+- Rate prioritization: zipcode-specific > state-level > national fallback
+- Loading indicators show search progress in real-time
+- Routes: `/rates/purchase`, `/rates/refinance`, `/rates/cash-out`, `/rates/heloc`, `/rates/va`
+- API: `/api/mortgage-rates` with zipcode, state, and loanType filters
+
 **Plaid Verification Integration:** Automated employment and identity verification:
 - Employment verification through payroll data
 - Identity verification through financial institution records

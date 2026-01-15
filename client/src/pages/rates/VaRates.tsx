@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -70,7 +70,7 @@ export default function VaRates() {
   const [zipcode, setZipcode] = useState("");
   const [searchZipcode, setSearchZipcode] = useState("");
 
-  const { data: rates, isLoading } = useQuery<MortgageRateWithProgram[]>({
+  const { data: rates, isLoading, isFetching } = useQuery<MortgageRateWithProgram[]>({
     queryKey: ["/api/mortgage-rates", { zipcode: searchZipcode, loanType: "va" }],
     queryFn: async () => {
       const params = new URLSearchParams();
@@ -86,11 +86,11 @@ export default function VaRates() {
     },
   });
 
-  const handleSearch = () => {
+  const handleSearch = useCallback(() => {
     if (zipcode.length === 5) {
       setSearchZipcode(zipcode);
     }
-  };
+  }, [zipcode]);
 
   const vaRates = rates?.filter(r => r.program.loanType === "va");
 
@@ -103,6 +103,7 @@ export default function VaRates() {
         zipcode={zipcode}
         onZipcodeChange={setZipcode}
         onSearch={handleSearch}
+        isLoading={isFetching}
         showPropertyValue={true}
         showDownPayment={true}
         showCreditScore={true}
