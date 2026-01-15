@@ -52,18 +52,167 @@ By clicking "I Authorize" you confirm that:
 - The information you provided is accurate
 - You authorize the credit inquiry described above`;
 
-const ADVERSE_ACTION_REASONS = {
-  credit_score_low: "Credit score does not meet minimum requirements",
-  dti_high: "Debt-to-income ratio exceeds maximum threshold",
-  insufficient_credit_history: "Insufficient credit history to evaluate",
-  derogatory_items: "Derogatory items on credit report",
-  recent_late_payments: "Recent late payment history",
-  high_credit_utilization: "High credit utilization ratio",
-  bankruptcy_recent: "Recent bankruptcy on credit report",
-  foreclosure_recent: "Recent foreclosure on credit report",
-  collections_active: "Active collection accounts",
-  insufficient_income: "Insufficient income for requested loan amount",
+interface AdverseActionReasonDetail {
+  description: string;
+  bureauReasonCodes: {
+    experian?: string[];
+    equifax?: string[];
+    transunion?: string[];
+    fico?: string[];
+  };
+  category: "credit_history" | "payment_history" | "credit_utilization" | "derogatory" | "income" | "other";
+  severity: "high" | "medium" | "low";
+}
+
+const ADVERSE_ACTION_REASONS: Record<string, AdverseActionReasonDetail> = {
+  credit_score_low: {
+    description: "Credit score does not meet minimum requirements",
+    bureauReasonCodes: {
+      experian: ["001", "002"],
+      equifax: ["01", "02"],
+      transunion: ["AA", "AB"],
+      fico: ["1", "2"],
+    },
+    category: "credit_history",
+    severity: "high",
+  },
+  dti_high: {
+    description: "Debt-to-income ratio exceeds maximum threshold",
+    bureauReasonCodes: {
+      experian: ["038"],
+      equifax: ["38"],
+      transunion: ["BT"],
+      fico: ["38"],
+    },
+    category: "income",
+    severity: "high",
+  },
+  insufficient_credit_history: {
+    description: "Insufficient credit history to evaluate",
+    bureauReasonCodes: {
+      experian: ["009", "010"],
+      equifax: ["09", "10"],
+      transunion: ["AI", "AJ"],
+      fico: ["9", "10"],
+    },
+    category: "credit_history",
+    severity: "medium",
+  },
+  derogatory_items: {
+    description: "Derogatory items on credit report",
+    bureauReasonCodes: {
+      experian: ["022", "023", "024"],
+      equifax: ["22", "23", "24"],
+      transunion: ["BF", "BG", "BH"],
+      fico: ["22", "23", "24"],
+    },
+    category: "derogatory",
+    severity: "high",
+  },
+  recent_late_payments: {
+    description: "Recent late payment history",
+    bureauReasonCodes: {
+      experian: ["003", "004", "005"],
+      equifax: ["03", "04", "05"],
+      transunion: ["AC", "AD", "AE"],
+      fico: ["3", "4", "5"],
+    },
+    category: "payment_history",
+    severity: "high",
+  },
+  high_credit_utilization: {
+    description: "High credit utilization ratio",
+    bureauReasonCodes: {
+      experian: ["014", "015"],
+      equifax: ["14", "15"],
+      transunion: ["AN", "AO"],
+      fico: ["14", "15"],
+    },
+    category: "credit_utilization",
+    severity: "medium",
+  },
+  bankruptcy_recent: {
+    description: "Recent bankruptcy on credit report",
+    bureauReasonCodes: {
+      experian: ["020"],
+      equifax: ["20"],
+      transunion: ["BD"],
+      fico: ["20"],
+    },
+    category: "derogatory",
+    severity: "high",
+  },
+  foreclosure_recent: {
+    description: "Recent foreclosure on credit report",
+    bureauReasonCodes: {
+      experian: ["021"],
+      equifax: ["21"],
+      transunion: ["BE"],
+      fico: ["21"],
+    },
+    category: "derogatory",
+    severity: "high",
+  },
+  collections_active: {
+    description: "Active collection accounts",
+    bureauReasonCodes: {
+      experian: ["040", "041"],
+      equifax: ["40", "41"],
+      transunion: ["BV", "BW"],
+      fico: ["40", "41"],
+    },
+    category: "derogatory",
+    severity: "high",
+  },
+  insufficient_income: {
+    description: "Insufficient income for requested loan amount",
+    bureauReasonCodes: {
+      experian: ["098"],
+      equifax: ["98"],
+      transunion: ["CZ"],
+      fico: ["98"],
+    },
+    category: "income",
+    severity: "medium",
+  },
+  too_many_inquiries: {
+    description: "Too many recent credit inquiries",
+    bureauReasonCodes: {
+      experian: ["008"],
+      equifax: ["08"],
+      transunion: ["AH"],
+      fico: ["8"],
+    },
+    category: "other",
+    severity: "low",
+  },
+  short_credit_history: {
+    description: "Length of credit history is too short",
+    bureauReasonCodes: {
+      experian: ["011"],
+      equifax: ["11"],
+      transunion: ["AK"],
+      fico: ["11"],
+    },
+    category: "credit_history",
+    severity: "medium",
+  },
+  too_few_accounts: {
+    description: "Too few accounts with credit history",
+    bureauReasonCodes: {
+      experian: ["013"],
+      equifax: ["13"],
+      transunion: ["AM"],
+      fico: ["13"],
+    },
+    category: "credit_history",
+    severity: "low",
+  },
 };
+
+const ADVERSE_ACTION_SIMPLE: Record<string, string> = Object.fromEntries(
+  Object.entries(ADVERSE_ACTION_REASONS).map(([key, val]) => [key, val.description])
+);
 
 const BUREAU_CONTACT_INFO = {
   experian: {
@@ -552,12 +701,19 @@ export async function generateAdverseAction(
     ? BUREAU_CONTACT_INFO[data.creditScoreSource]
     : BUREAU_CONTACT_INFO.experian;
 
+  const primaryReasonDetail = ADVERSE_ACTION_REASONS[data.primaryReason];
+  const secondaryReasonDetails = data.secondaryReasons?.map(r => ADVERSE_ACTION_REASONS[r]);
+  
+  const bureauKey = data.creditScoreSource || "experian";
+  const primaryBureauCodes = primaryReasonDetail?.bureauReasonCodes?.[bureauKey as keyof typeof primaryReasonDetail.bureauReasonCodes] || [];
+  
   const noticeText = generateAdverseActionNotice({
     actionType: data.actionType,
-    primaryReason: ADVERSE_ACTION_REASONS[data.primaryReason],
-    secondaryReasons: data.secondaryReasons?.map(r => ADVERSE_ACTION_REASONS[r]),
+    primaryReason: primaryReasonDetail?.description || "Credit decision factors",
+    secondaryReasons: secondaryReasonDetails?.map(r => r?.description || ""),
     creditScoreUsed: data.creditScoreUsed,
     bureau,
+    bureauReasonCodes: primaryBureauCodes,
   });
 
   const adverseAction: InsertAdverseAction = {
@@ -565,8 +721,8 @@ export async function generateAdverseAction(
     creditPullId: data.creditPullId,
     userId: data.userId,
     actionType: data.actionType,
-    primaryReason: ADVERSE_ACTION_REASONS[data.primaryReason],
-    secondaryReasons: data.secondaryReasons?.map(r => ADVERSE_ACTION_REASONS[r]),
+    primaryReason: primaryReasonDetail?.description || "Credit decision factors",
+    secondaryReasons: secondaryReasonDetails?.map(r => r?.description || ""),
     creditScoreUsed: data.creditScoreUsed,
     creditScoreSource: data.creditScoreSource,
     scoreRangeLow: 300,
@@ -605,6 +761,7 @@ function generateAdverseActionNotice(data: {
   secondaryReasons?: string[];
   creditScoreUsed?: number;
   bureau: typeof BUREAU_CONTACT_INFO.experian;
+  bureauReasonCodes?: string[];
 }): string {
   const actionTypeText = {
     denial: "DENIAL OF CREDIT",
@@ -626,13 +783,22 @@ ACTION TAKEN: ${data.actionType.replace(/_/g, " ").toUpperCase()}
 
 PRINCIPAL REASON(S) FOR THIS DECISION:
 
-1. ${data.primaryReason}
+1. ${data.primaryReason}${data.bureauReasonCodes && data.bureauReasonCodes.length > 0 ? ` (Reason Code: ${data.bureauReasonCodes.join(", ")})` : ""}
 `;
 
   if (data.secondaryReasons && data.secondaryReasons.length > 0) {
     data.secondaryReasons.forEach((reason, index) => {
       notice += `${index + 2}. ${reason}\n`;
     });
+  }
+
+  if (data.bureauReasonCodes && data.bureauReasonCodes.length > 0) {
+    notice += `
+BUREAU REASON CODES:
+The following standardized reason codes apply to this decision:
+${data.bureauReasonCodes.map(code => `- Code ${code}`).join("\n")}
+These codes are industry-standard identifiers used by credit bureaus.
+`;
   }
 
   if (data.creditScoreUsed) {
@@ -791,8 +957,23 @@ export function getDisclosureVersion(): string {
   return CURRENT_DISCLOSURE_VERSION;
 }
 
-export function getAdverseActionReasons(): typeof ADVERSE_ACTION_REASONS {
+export function getAdverseActionReasons(): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(ADVERSE_ACTION_REASONS).map(([key, val]) => [key, val.description])
+  );
+}
+
+export function getAdverseActionReasonsDetailed(): typeof ADVERSE_ACTION_REASONS {
   return ADVERSE_ACTION_REASONS;
+}
+
+export function getReasonBureauCodes(
+  reasonKey: string, 
+  bureau: "experian" | "equifax" | "transunion" | "fico"
+): string[] {
+  const reason = ADVERSE_ACTION_REASONS[reasonKey];
+  if (!reason) return [];
+  return reason.bureauReasonCodes[bureau] || [];
 }
 
 export async function verifyAuditLogIntegrity(
