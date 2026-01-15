@@ -9,58 +9,165 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Home, LayoutDashboard, Users, Menu, X, Phone } from "lucide-react";
+import {
+  NavigationMenu,
+  NavigationMenuContent,
+  NavigationMenuItem,
+  NavigationMenuLink,
+  NavigationMenuList,
+  NavigationMenuTrigger,
+} from "@/components/ui/navigation-menu";
+import { Home, LayoutDashboard, Users, Menu, X, Phone, ChevronDown } from "lucide-react";
 import { useState } from "react";
+import { cn } from "@/lib/utils";
+
+const buyMenuItems = [
+  { href: "/apply", label: "Apply Now" },
+  { href: "/rates/purchase", label: "Purchase Rates" },
+  { href: "/calculators/affordability", label: "Affordability Calculator" },
+  { href: "/calculators/mortgage", label: "Mortgage Calculator" },
+  { href: "/calculators/rent-vs-buy", label: "Rent vs Buy Calculator" },
+  { href: "/agents", label: "Find an Agent" },
+  { href: "/va-loans", label: "VA Loans" },
+  { href: "/resources", label: "Learning Center" },
+];
+
+const refinanceMenuItems = [
+  { href: "/apply?type=refinance", label: "Apply Now" },
+  { href: "/rates/refinance", label: "Refinance Rates" },
+  { href: "/calculators/cashout", label: "Cash-out Refinance Calculator" },
+  { href: "/resources", label: "Learning Center" },
+];
+
+const helocMenuItems = [
+  { href: "/apply?type=heloc", label: "Apply Now" },
+  { href: "/calculators/heloc", label: "Calculate Your Cash" },
+  { href: "/heloc-vs-cashout", label: "HELOC vs. Cash-out Refinance" },
+  { href: "/resources", label: "Learning Center" },
+];
+
+const ratesMenuItems = [
+  { href: "/rates/purchase", label: "Purchase Mortgage Rates" },
+  { href: "/rates/refinance", label: "Refinance Rates" },
+  { href: "/rates/cashout", label: "Refinance Cash-out Rates" },
+  { href: "/rates/heloc", label: "HELOC Rates" },
+  { href: "/rates/va", label: "Purchase VA Rates" },
+];
+
+interface NavDropdownProps {
+  label: string;
+  items: { href: string; label: string }[];
+  testId: string;
+}
+
+function NavDropdownItem({ href, label, parentLabel }: { href: string; label: string; parentLabel: string }) {
+  const [, navigate] = useLocation();
+  
+  return (
+    <li>
+      <NavigationMenuLink
+        className={cn(
+          "block select-none rounded-md p-3 leading-none no-underline outline-none transition-colors cursor-pointer",
+          "hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
+        )}
+        onClick={() => navigate(href)}
+        data-testid={`nav-dropdown-${parentLabel.toLowerCase()}-${label.toLowerCase().replace(/\s+/g, '-')}`}
+      >
+        <span className="text-sm font-medium">{label}</span>
+      </NavigationMenuLink>
+    </li>
+  );
+}
+
+function NavDropdown({ label, items, testId }: NavDropdownProps) {
+  return (
+    <NavigationMenuItem>
+      <NavigationMenuTrigger 
+        className="bg-transparent text-green-100 hover:text-white hover:bg-green-800 data-[state=open]:bg-green-800 data-[state=open]:text-white"
+        data-testid={testId}
+      >
+        {label}
+      </NavigationMenuTrigger>
+      <NavigationMenuContent>
+        <ul className="grid w-[220px] gap-1 p-2">
+          {items.map((item) => (
+            <NavDropdownItem 
+              key={item.href + item.label} 
+              href={item.href} 
+              label={item.label} 
+              parentLabel={label} 
+            />
+          ))}
+        </ul>
+      </NavigationMenuContent>
+    </NavigationMenuItem>
+  );
+}
+
+function MobileNavSection({ label, items, onItemClick }: { label: string; items: { href: string; label: string }[]; onItemClick: () => void }) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <div className="border-b border-green-800 pb-2">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex w-full items-center justify-between py-2 text-left text-green-100 hover:text-white"
+        data-testid={`mobile-nav-${label.toLowerCase()}`}
+      >
+        <span className="font-medium">{label}</span>
+        <ChevronDown className={cn("h-4 w-4 transition-transform", isOpen && "rotate-180")} />
+      </button>
+      {isOpen && (
+        <div className="ml-4 flex flex-col gap-1 pb-2">
+          {items.map((item) => (
+            <Link key={item.href + item.label} href={item.href}>
+              <Button
+                variant="ghost"
+                className="w-full justify-start text-green-200 hover:text-white hover:bg-green-800"
+                onClick={onItemClick}
+              >
+                {item.label}
+              </Button>
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function Navigation() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const [location] = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const publicLinks = [
-    { href: "/buy", label: "Buy" },
-    { href: "/apply", label: "Refinance" },
-    { href: "/apply", label: "HELOC" },
-    { href: "/apply", label: "Rates" },
-    { href: "/resources", label: "Better+" },
-  ];
-
-  const authenticatedLinks = [
-    { href: "/dashboard", label: "Dashboard" },
-    { href: "/buy", label: "Buy" },
-    { href: "/apply", label: "Refinance" },
-    { href: "/properties", label: "Properties" },
-  ];
-
-  const navLinks = isAuthenticated ? authenticatedLinks : publicLinks;
-
-  const isActive = (path: string) => location === path;
-
   return (
     <nav className="sticky top-0 z-50 w-full bg-green-900">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between gap-4">
-          <div className="flex items-center gap-8">
+          <div className="flex items-center gap-6">
             <Link href="/" className="flex items-center gap-2">
               <Home className="h-6 w-6 text-white" />
               <span className="text-xl font-bold text-white">MortgageAI</span>
             </Link>
 
-            <div className="hidden lg:flex lg:items-center lg:gap-1">
-              {navLinks.map((link, index) => (
-                <Link key={`${link.href}-${index}`} href={link.href}>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className={`text-green-100 hover:text-white hover:bg-green-800 ${
-                      isActive(link.href) ? "bg-green-800 text-white" : ""
-                    }`}
-                    data-testid={`nav-link-${link.label.toLowerCase()}`}
-                  >
-                    {link.label}
-                  </Button>
-                </Link>
-              ))}
+            <div className="hidden lg:block">
+              <NavigationMenu>
+                <NavigationMenuList className="gap-0">
+                  <NavDropdown label="Buy" items={buyMenuItems} testId="nav-dropdown-buy" />
+                  <NavDropdown label="Refinance" items={refinanceMenuItems} testId="nav-dropdown-refinance" />
+                  <NavDropdown label="HELOC" items={helocMenuItems} testId="nav-dropdown-heloc" />
+                  <NavDropdown label="Rates" items={ratesMenuItems} testId="nav-dropdown-rates" />
+                  <NavigationMenuItem>
+                    <NavigationMenuLink 
+                      className="group inline-flex h-9 w-max items-center justify-center rounded-md bg-transparent px-4 py-2 text-sm font-medium text-green-100 transition-colors hover:bg-green-800 hover:text-white focus:bg-green-800 focus:text-white focus:outline-none cursor-pointer"
+                      onClick={() => window.location.href = '/resources'}
+                    >
+                      Better+
+                    </NavigationMenuLink>
+                  </NavigationMenuItem>
+                </NavigationMenuList>
+              </NavigationMenu>
             </div>
           </div>
 
@@ -138,13 +245,13 @@ export function Navigation() {
                     Sign in
                   </Button>
                 </a>
-                <Link href="/dashboard">
+                <Link href="/apply">
                   <Button
                     size="sm"
                     className="bg-green-500 text-white hover:bg-green-600"
-                    data-testid="button-dashboard"
+                    data-testid="button-get-started"
                   >
-                    Dashboard
+                    Get Started
                   </Button>
                 </Link>
               </div>
@@ -165,19 +272,19 @@ export function Navigation() {
         {mobileMenuOpen && (
           <div className="border-t border-green-800 py-4 lg:hidden">
             <div className="flex flex-col gap-2">
-              {navLinks.map((link, index) => (
-                <Link key={`${link.href}-${index}`} href={link.href}>
-                  <Button
-                    variant="ghost"
-                    className={`w-full justify-start text-green-100 hover:text-white hover:bg-green-800 ${
-                      isActive(link.href) ? "bg-green-800 text-white" : ""
-                    }`}
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    {link.label}
-                  </Button>
-                </Link>
-              ))}
+              <MobileNavSection label="Buy" items={buyMenuItems} onItemClick={() => setMobileMenuOpen(false)} />
+              <MobileNavSection label="Refinance" items={refinanceMenuItems} onItemClick={() => setMobileMenuOpen(false)} />
+              <MobileNavSection label="HELOC" items={helocMenuItems} onItemClick={() => setMobileMenuOpen(false)} />
+              <MobileNavSection label="Rates" items={ratesMenuItems} onItemClick={() => setMobileMenuOpen(false)} />
+              <Link href="/resources">
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start text-green-100 hover:text-white hover:bg-green-800"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Better+
+                </Button>
+              </Link>
             </div>
           </div>
         )}
