@@ -1835,3 +1835,60 @@ export const insertCreditAuditLogSchema = createInsertSchema(creditAuditLog).omi
 
 export type InsertCreditAuditLog = z.infer<typeof insertCreditAuditLogSchema>;
 export type CreditAuditLog = typeof creditAuditLog.$inferSelect;
+
+// Broker Commissions - tracks commission payments to referring brokers/loan officers
+export const brokerCommissions = pgTable("broker_commissions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Link to broker and application
+  brokerId: varchar("broker_id").references(() => users.id).notNull(),
+  applicationId: varchar("application_id").references(() => loanApplications.id).notNull(),
+  
+  // Commission Details
+  loanAmount: decimal("loan_amount", { precision: 12, scale: 2 }).notNull(),
+  commissionRate: decimal("commission_rate", { precision: 5, scale: 4 }).notNull(), // e.g., 0.0100 = 1%
+  commissionAmount: decimal("commission_amount", { precision: 10, scale: 2 }).notNull(),
+  
+  // Payment Status
+  status: varchar("status", { length: 50 }).default("pending").notNull(), // pending, approved, paid, cancelled
+  
+  // Payment Details
+  paidAt: timestamp("paid_at"),
+  paidBy: varchar("paid_by").references(() => users.id),
+  paymentReference: varchar("payment_reference", { length: 255 }),
+  paymentMethod: varchar("payment_method", { length: 50 }), // check, wire, ach
+  
+  // Notes
+  notes: text("notes"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_broker_commissions_broker").on(table.brokerId),
+  index("idx_broker_commissions_application").on(table.applicationId),
+  index("idx_broker_commissions_status").on(table.status),
+]);
+
+export const brokerCommissionsRelations = relations(brokerCommissions, ({ one }) => ({
+  broker: one(users, {
+    fields: [brokerCommissions.brokerId],
+    references: [users.id],
+  }),
+  application: one(loanApplications, {
+    fields: [brokerCommissions.applicationId],
+    references: [loanApplications.id],
+  }),
+  paidByUser: one(users, {
+    fields: [brokerCommissions.paidBy],
+    references: [users.id],
+  }),
+}));
+
+export const insertBrokerCommissionSchema = createInsertSchema(brokerCommissions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertBrokerCommission = z.infer<typeof insertBrokerCommissionSchema>;
+export type BrokerCommission = typeof brokerCommissions.$inferSelect;
