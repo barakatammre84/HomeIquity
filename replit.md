@@ -140,6 +140,18 @@ The backend is developed with **Node.js, Express.js, and TypeScript**. It uses *
 - API: `/api/verifications/link-token`, `/api/verifications/exchange`, `/api/verifications/application/:id`
 - Environment: Requires `PLAID_CLIENT_ID` and `PLAID_SECRET` for production
 
+**Learning Center & FAQ System:** Educational content management for homebuyers:
+- Learning Center with category-based article browsing and search
+- Articles with markdown content, reading time estimates, and related content
+- FAQ page with searchable questions organized by category
+- Helpful/not helpful feedback system for FAQ engagement metrics
+- Category filtering with visual badges and icons
+- Popular questions feature for commonly asked FAQs
+- Database tables: `content_categories`, `articles`, `faqs`
+- Routes: `/learn` (Learning Center), `/learn/:slug` (article detail), `/faq` (FAQ hub)
+- API: `/api/content-categories`, `/api/articles`, `/api/articles/:slug`, `/api/faqs`, `/api/faqs/:id/feedback`
+- Seeded with 4 categories, 3 articles, and 8 FAQs for immediate content availability
+
 **Security Features:**
 - CSRF protection via Origin/Referer header validation
 - Session-based authentication with secure cookies
