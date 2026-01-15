@@ -1,7 +1,6 @@
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
 import { useEffect } from "react";
-import { Navigation } from "@/components/Navigation";
 import { Loader2 } from "lucide-react";
 
 interface PrivateLayoutProps {
@@ -60,10 +59,5 @@ export function PrivateLayout({ children, requiredRoles }: PrivateLayoutProps) {
     }
   }
 
-  return (
-    <div className="min-h-screen bg-background">
-      <Navigation />
-      <main>{children}</main>
-    </div>
-  );
+  return <>{children}</>;
 }

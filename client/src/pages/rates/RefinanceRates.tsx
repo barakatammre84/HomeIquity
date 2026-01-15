@@ -101,7 +101,7 @@ export default function RefinanceRates() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <>
       <RatePageHeader
         loanType="refinance"
         title="Refinance rates today"
@@ -240,6 +240,6 @@ export default function RefinanceRates() {
           </CardContent>
         </Card>
       </div>
-    </div>
+    </>
   );
 }

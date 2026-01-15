@@ -101,7 +101,7 @@ export default function CashOutRates() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <>
       <RatePageHeader
         loanType="cashout"
         title="Cash-out refinance rates today"
@@ -244,6 +244,6 @@ export default function CashOutRates() {
           </CardContent>
         </Card>
       </div>
-    </div>
+    </>
   );
 }

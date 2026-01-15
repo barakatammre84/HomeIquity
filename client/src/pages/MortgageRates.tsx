@@ -98,7 +98,7 @@ export default function MortgageRates() {
   });
 
   return (
-    <div className="min-h-screen bg-background">
+    <>
       <div className="bg-gradient-to-b from-primary/5 to-background pb-12">
         <div className="max-w-6xl mx-auto px-4 py-8 sm:py-12">
           <div className="text-center mb-8">
@@ -265,7 +265,7 @@ export default function MortgageRates() {
           </CardContent>
         </Card>
       </div>
-    </div>
+    </>
   );
 }
 

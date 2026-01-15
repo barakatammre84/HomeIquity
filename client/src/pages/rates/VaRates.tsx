@@ -100,7 +100,7 @@ export default function VaRates() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <>
       <RatePageHeader
         loanType="va"
         title="VA loan rates today"
@@ -266,6 +266,6 @@ export default function VaRates() {
           </CardContent>
         </Card>
       </div>
-    </div>
+    </>
   );
 }

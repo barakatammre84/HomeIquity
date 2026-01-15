@@ -102,7 +102,7 @@ export default function PurchaseRates() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <>
       <RatePageHeader
         loanType="purchase"
         title="Purchase mortgage rates today"
@@ -242,6 +242,6 @@ export default function PurchaseRates() {
           </CardContent>
         </Card>
       </div>
-    </div>
+    </>
   );
 }

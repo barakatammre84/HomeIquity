@@ -97,7 +97,7 @@ export default function HelocRates() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <>
       <RatePageHeader
         loanType="heloc"
         title="HELOC rates today"
@@ -237,6 +237,6 @@ export default function HelocRates() {
           </CardContent>
         </Card>
       </div>
-    </div>
+    </>
   );
 }
