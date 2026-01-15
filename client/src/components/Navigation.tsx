@@ -23,7 +23,7 @@ import { cn } from "@/lib/utils";
 
 const buyMenuItems = [
   { href: "/apply", label: "Apply Now" },
-  { href: "/rates/purchase", label: "Purchase Rates" },
+  { href: "/rates", label: "Today's Rates" },
   { href: "/calculators/affordability", label: "Affordability Calculator" },
   { href: "/calculators/mortgage", label: "Mortgage Calculator" },
   { href: "/calculators/rent-vs-buy", label: "Rent vs Buy Calculator" },
@@ -35,7 +35,7 @@ const buyMenuItems = [
 
 const refinanceMenuItems = [
   { href: "/apply?type=refinance", label: "Apply Now" },
-  { href: "/rates/refinance", label: "Refinance Rates" },
+  { href: "/rates?type=refinance", label: "Refinance Rates" },
   { href: "/calculators/cashout", label: "Cash-out Refinance Calculator" },
   { href: "/learn", label: "Learning Center" },
 ];
@@ -48,11 +48,10 @@ const helocMenuItems = [
 ];
 
 const ratesMenuItems = [
-  { href: "/rates/purchase", label: "Purchase Mortgage Rates" },
-  { href: "/rates/refinance", label: "Refinance Rates" },
-  { href: "/rates/cashout", label: "Refinance Cash-out Rates" },
-  { href: "/rates/heloc", label: "HELOC Rates" },
-  { href: "/rates/va", label: "Purchase VA Rates" },
+  { href: "/rates", label: "Today's Rates" },
+  { href: "/rates?type=purchase", label: "Purchase Mortgage Rates" },
+  { href: "/rates?type=refinance", label: "Refinance Rates" },
+  { href: "/rates?type=va", label: "VA Loan Rates" },
 ];
 
 interface NavDropdownProps {

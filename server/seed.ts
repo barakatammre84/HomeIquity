@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { properties, users, contentCategories, articles, faqs } from "@shared/schema";
+import { properties, users, contentCategories, articles, faqs, mortgageRatePrograms, mortgageRates } from "@shared/schema";
 import { sql } from "drizzle-orm";
 
 const sampleProperties = [
@@ -375,6 +375,141 @@ Most improvements take 30-60 days to show on your credit report. Start working o
         await db.insert(faqs).values(faq);
       }
       console.log("Seeded FAQs");
+    }
+
+    // Seed mortgage rate programs and rates
+    const existingPrograms = await db.select({ id: mortgageRatePrograms.id }).from(mortgageRatePrograms).limit(1);
+    if (existingPrograms.length === 0) {
+      console.log("Seeding mortgage rate programs...");
+      
+      const ratePrograms = [
+        {
+          id: "prog-30yr-fixed",
+          name: "30-yr fixed",
+          slug: "30-yr-fixed",
+          description: "Traditional 30-year fixed rate mortgage with consistent monthly payments",
+          termYears: 30,
+          isAdjustable: false,
+          loanType: "conventional",
+          displayOrder: 1,
+          isActive: true,
+        },
+        {
+          id: "prog-20yr-fixed",
+          name: "20-yr fixed",
+          slug: "20-yr-fixed",
+          description: "20-year fixed rate mortgage for faster payoff",
+          termYears: 20,
+          isAdjustable: false,
+          loanType: "conventional",
+          displayOrder: 2,
+          isActive: true,
+        },
+        {
+          id: "prog-15yr-fixed",
+          name: "15-yr fixed",
+          slug: "15-yr-fixed",
+          description: "15-year fixed rate mortgage with lower rates",
+          termYears: 15,
+          isAdjustable: false,
+          loanType: "conventional",
+          displayOrder: 3,
+          isActive: true,
+        },
+        {
+          id: "prog-10yr-fixed",
+          name: "10-yr fixed",
+          slug: "10-yr-fixed",
+          description: "10-year fixed rate mortgage for fastest payoff",
+          termYears: 10,
+          isAdjustable: false,
+          loanType: "conventional",
+          displayOrder: 4,
+          isActive: true,
+        },
+        {
+          id: "prog-5-6-arm",
+          name: "5/6m ARM",
+          slug: "5-6-arm",
+          description: "Adjustable rate mortgage with 5-year fixed period, then adjusts every 6 months",
+          termYears: 30,
+          isAdjustable: true,
+          adjustmentPeriod: "6m",
+          loanType: "conventional",
+          displayOrder: 5,
+          isActive: true,
+        },
+        {
+          id: "prog-7-6-arm",
+          name: "7/6m ARM",
+          slug: "7-6-arm",
+          description: "Adjustable rate mortgage with 7-year fixed period, then adjusts every 6 months",
+          termYears: 30,
+          isAdjustable: true,
+          adjustmentPeriod: "6m",
+          loanType: "conventional",
+          displayOrder: 6,
+          isActive: true,
+        },
+        {
+          id: "prog-30yr-fha",
+          name: "30-yr FHA",
+          slug: "30-yr-fha",
+          description: "FHA-backed 30-year fixed rate mortgage with lower down payment requirements",
+          termYears: 30,
+          isAdjustable: false,
+          loanType: "fha",
+          displayOrder: 7,
+          isActive: true,
+        },
+        {
+          id: "prog-30yr-va",
+          name: "30-yr VA",
+          slug: "30-yr-va",
+          description: "VA-backed 30-year fixed rate mortgage for eligible veterans",
+          termYears: 30,
+          isAdjustable: false,
+          loanType: "va",
+          displayOrder: 8,
+          isActive: true,
+        },
+      ];
+      
+      for (const program of ratePrograms) {
+        await db.insert(mortgageRatePrograms).values(program);
+      }
+      console.log(`Seeded ${ratePrograms.length} mortgage rate programs`);
+      
+      // Now seed rates for these programs
+      console.log("Seeding mortgage rates...");
+      
+      const ratesData = [
+        // 30-year fixed rates
+        { programId: "prog-30yr-fixed", rate: "6.750", apr: "6.957", points: "2.21", pointsCost: "3542", loanAmount: "160000", downPaymentPercent: 20, creditScoreMin: 760 },
+        // 20-year fixed rates
+        { programId: "prog-20yr-fixed", rate: "6.500", apr: "6.745", points: "2.21", pointsCost: "3542", loanAmount: "160000", downPaymentPercent: 20, creditScoreMin: 760 },
+        // 15-year fixed rates
+        { programId: "prog-15yr-fixed", rate: "5.875", apr: "6.250", points: "2.05", pointsCost: "3280", loanAmount: "160000", downPaymentPercent: 20, creditScoreMin: 760 },
+        // 10-year fixed rates
+        { programId: "prog-10yr-fixed", rate: "5.625", apr: "6.125", points: "1.98", pointsCost: "3168", loanAmount: "160000", downPaymentPercent: 20, creditScoreMin: 760 },
+        // 5/6 ARM rates
+        { programId: "prog-5-6-arm", rate: "6.375", apr: "7.247", points: "2.10", pointsCost: "3360", loanAmount: "160000", downPaymentPercent: 20, creditScoreMin: 760 },
+        // 7/6 ARM rates
+        { programId: "prog-7-6-arm", rate: "6.500", apr: "7.128", points: "1.85", pointsCost: "2960", loanAmount: "160000", downPaymentPercent: 20, creditScoreMin: 760 },
+        // FHA rates
+        { programId: "prog-30yr-fha", rate: "6.375", apr: "7.324", points: "2.35", pointsCost: "3760", loanAmount: "160000", downPaymentPercent: 3, creditScoreMin: 620 },
+        // VA rates
+        { programId: "prog-30yr-va", rate: "6.125", apr: "6.465", points: "1.75", pointsCost: "2800", loanAmount: "160000", downPaymentPercent: 0, creditScoreMin: 620 },
+      ];
+      
+      for (const rate of ratesData) {
+        await db.insert(mortgageRates).values({
+          ...rate,
+          isActive: true,
+          createdBy: "admin-user-1",
+        });
+      }
+      console.log(`Seeded ${ratesData.length} mortgage rates`);
     }
 
     console.log("Database seeded successfully");

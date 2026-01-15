@@ -47,7 +47,7 @@ import {
   DollarSign,
   Shield,
 } from "lucide-react";
-import Navigation from "@/components/Navigation";
+import { Navigation } from "@/components/Navigation";
 
 interface MortgageRateProgram {
   id: string;
