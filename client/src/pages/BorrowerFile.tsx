@@ -1,6 +1,8 @@
 import { useParams, Link } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
@@ -11,6 +13,24 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
+import { Separator } from "@/components/ui/separator";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import {
   FileText,
   User,
@@ -28,7 +48,11 @@ import {
   CreditCard,
   Home,
   Shield,
+  RefreshCw,
+  AlertOctagon,
+  FileWarning,
 } from "lucide-react";
+import { format } from "date-fns";
 import type { LoanApplication, Document, LoanCondition, UrlaPersonalInfo } from "@shared/schema";
 
 interface ApplicationData {
@@ -58,6 +82,50 @@ interface PipelineData {
   conditions: LoanCondition[];
 }
 
+interface CreditSummary {
+  hasActiveConsent: boolean;
+  consent: {
+    id: string;
+    consentTimestamp: string;
+    borrowerFullName: string;
+    disclosureVersion: string;
+  } | null;
+  latestPull: {
+    id: string;
+    status: string;
+    pullType: string;
+    bureaus: string[];
+    representativeScore: number | null;
+    experianScore: number | null;
+    equifaxScore: number | null;
+    transunionScore: number | null;
+    totalTradelines: number | null;
+    openTradelines: number | null;
+    derogatoryCount: number | null;
+    totalDebt: string | null;
+    monthlyPayments: string | null;
+    completedAt: string | null;
+    expiresAt: string | null;
+  } | null;
+  pullCount: number;
+  adverseActionCount: number;
+  latestAdverseAction: {
+    id: string;
+    actionType: string;
+    primaryReason: string;
+    noticeDate: string;
+    deliveredAt: string | null;
+  } | null;
+}
+
+interface CreditAuditEntry {
+  id: string;
+  action: string;
+  actionDetails: Record<string, any> | null;
+  timestamp: string;
+  performedBy: string | null;
+}
+
 function formatDate(date: Date | string | null | undefined): string {
   if (!date) return "N/A";
   return new Date(date).toLocaleDateString("en-US", {
@@ -82,6 +150,7 @@ export default function BorrowerFile() {
   const params = useParams();
   const applicationId = params.id as string;
   const { user, isLoading: authLoading } = useAuth();
+  const { toast } = useToast();
 
   const { data: appData, isLoading: appLoading } = useQuery<ApplicationData>({
     queryKey: [`/api/loan-applications/${applicationId}`],
@@ -96,6 +165,41 @@ export default function BorrowerFile() {
   const { data: urlaData } = useQuery<{ personalInfo: UrlaPersonalInfo | null }>({
     queryKey: [`/api/urla/${applicationId}`],
     enabled: !!applicationId && !authLoading,
+  });
+
+  const { data: creditData, isLoading: creditLoading, refetch: refetchCredit } = useQuery<CreditSummary>({
+    queryKey: [`/api/loan-applications/${applicationId}/credit/summary`],
+    enabled: !!applicationId && !authLoading,
+  });
+
+  const { data: auditLog } = useQuery<{ auditLog: CreditAuditEntry[] }>({
+    queryKey: [`/api/loan-applications/${applicationId}/credit/audit-log`],
+    enabled: !!applicationId && !authLoading,
+  });
+
+  const pullCreditMutation = useMutation({
+    mutationFn: async (pullType: string) => {
+      const response = await apiRequest("POST", `/api/loan-applications/${applicationId}/credit/pull`, {
+        pullType,
+        bureaus: ["experian", "equifax", "transunion"],
+      });
+      return await response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/loan-applications/${applicationId}/credit`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/loan-applications/${applicationId}`] });
+      toast({
+        title: "Credit Pull Complete",
+        description: "Credit report has been successfully retrieved.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Credit Pull Failed",
+        description: error.message || "Failed to pull credit report",
+        variant: "destructive",
+      });
+    },
   });
 
   const isLoading = authLoading || appLoading || pipelineLoading;
@@ -276,6 +380,10 @@ export default function BorrowerFile() {
                   <TabsTrigger value="timeline" data-testid="tab-timeline">
                     <Clock className="mr-2 h-4 w-4" />
                     Timeline
+                  </TabsTrigger>
+                  <TabsTrigger value="credit" data-testid="tab-credit">
+                    <CreditCard className="mr-2 h-4 w-4" />
+                    Credit
                   </TabsTrigger>
                 </TabsList>
 
@@ -537,6 +645,233 @@ export default function BorrowerFile() {
                               </div>
                             ))}
                           </div>
+                        )}
+                      </ScrollArea>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+
+                <TabsContent value="credit" className="space-y-4">
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <Card>
+                      <CardHeader>
+                        <div className="flex items-center justify-between">
+                          <CardTitle className="flex items-center gap-2">
+                            <Shield className="h-5 w-5" />
+                            Consent Status
+                          </CardTitle>
+                          {creditLoading && <RefreshCw className="h-4 w-4 animate-spin" />}
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        {creditData?.hasActiveConsent ? (
+                          <div className="space-y-3">
+                            <div className="flex items-center gap-2">
+                              <CheckCircle2 className="h-5 w-5 text-green-500" />
+                              <span className="font-medium text-green-700 dark:text-green-400" data-testid="text-consent-status">
+                                Consent Active
+                              </span>
+                            </div>
+                            <div className="text-sm text-muted-foreground space-y-1">
+                              <p>Signed by: {creditData.consent?.borrowerFullName}</p>
+                              <p>Date: {creditData.consent?.consentTimestamp && format(new Date(creditData.consent.consentTimestamp), "MMM d, yyyy 'at' h:mm a")}</p>
+                              <p>Version: {creditData.consent?.disclosureVersion}</p>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="space-y-3">
+                            <div className="flex items-center gap-2">
+                              <AlertCircle className="h-5 w-5 text-amber-500" />
+                              <span className="font-medium text-amber-700 dark:text-amber-400" data-testid="text-consent-status">
+                                No Active Consent
+                              </span>
+                            </div>
+                            <p className="text-sm text-muted-foreground">
+                              Borrower must provide credit authorization before a credit pull can be performed.
+                            </p>
+                            <Button variant="outline" size="sm" asChild>
+                              <Link href={`/credit-consent/${applicationId}`}>
+                                Request Consent
+                              </Link>
+                            </Button>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader>
+                        <div className="flex items-center justify-between">
+                          <CardTitle className="flex items-center gap-2">
+                            <CreditCard className="h-5 w-5" />
+                            Credit Report
+                          </CardTitle>
+                          <Button
+                            size="sm"
+                            disabled={!creditData?.hasActiveConsent || pullCreditMutation.isPending}
+                            onClick={() => pullCreditMutation.mutate("tri_merge")}
+                            data-testid="button-pull-credit"
+                          >
+                            {pullCreditMutation.isPending ? (
+                              <>
+                                <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                                Pulling...
+                              </>
+                            ) : (
+                              <>
+                                <RefreshCw className="mr-2 h-4 w-4" />
+                                Pull Credit
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        {creditData?.latestPull ? (
+                          <div className="space-y-4">
+                            <div className="grid grid-cols-4 gap-4 text-center">
+                              <div>
+                                <p className="text-xs text-muted-foreground">Representative</p>
+                                <p className="text-2xl font-bold" data-testid="text-rep-score">
+                                  {creditData.latestPull.representativeScore || "—"}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-muted-foreground">Experian</p>
+                                <p className="text-lg font-semibold" data-testid="text-exp-score">
+                                  {creditData.latestPull.experianScore || "—"}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-muted-foreground">Equifax</p>
+                                <p className="text-lg font-semibold" data-testid="text-eqf-score">
+                                  {creditData.latestPull.equifaxScore || "—"}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-muted-foreground">TransUnion</p>
+                                <p className="text-lg font-semibold" data-testid="text-tu-score">
+                                  {creditData.latestPull.transunionScore || "—"}
+                                </p>
+                              </div>
+                            </div>
+                            <Separator />
+                            <div className="grid grid-cols-2 gap-4 text-sm">
+                              <div>
+                                <span className="text-muted-foreground">Tradelines:</span>
+                                <span className="ml-2 font-medium">
+                                  {creditData.latestPull.openTradelines}/{creditData.latestPull.totalTradelines}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-muted-foreground">Derogatory:</span>
+                                <span className="ml-2 font-medium">
+                                  {creditData.latestPull.derogatoryCount || 0}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-muted-foreground">Total Debt:</span>
+                                <span className="ml-2 font-medium">
+                                  {formatCurrency(creditData.latestPull.totalDebt)}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-muted-foreground">Monthly Payments:</span>
+                                <span className="ml-2 font-medium">
+                                  {formatCurrency(creditData.latestPull.monthlyPayments)}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              Pulled: {creditData.latestPull.completedAt && format(new Date(creditData.latestPull.completedAt), "MMM d, yyyy")}
+                              {creditData.latestPull.expiresAt && ` • Expires: ${format(new Date(creditData.latestPull.expiresAt), "MMM d, yyyy")}`}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="text-center py-6">
+                            <CreditCard className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+                            <p className="text-muted-foreground">
+                              No credit report on file
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {creditData?.pullCount || 0} previous pull(s)
+                            </p>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {creditData?.adverseActionCount && creditData.adverseActionCount > 0 && (
+                    <Card className="border-red-200 dark:border-red-800">
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2 text-red-600 dark:text-red-400">
+                          <AlertOctagon className="h-5 w-5" />
+                          Adverse Action Notices ({creditData.adverseActionCount})
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        {creditData.latestAdverseAction && (
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="font-medium capitalize">
+                                {creditData.latestAdverseAction.actionType.replace(/_/g, " ")}
+                              </span>
+                              <Badge variant={creditData.latestAdverseAction.deliveredAt ? "default" : "secondary"}>
+                                {creditData.latestAdverseAction.deliveredAt ? "Delivered" : "Pending Delivery"}
+                              </Badge>
+                            </div>
+                            <p className="text-sm text-muted-foreground">
+                              {creditData.latestAdverseAction.primaryReason}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              Generated: {format(new Date(creditData.latestAdverseAction.noticeDate), "MMM d, yyyy")}
+                            </p>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <FileWarning className="h-5 w-5" />
+                        Credit Audit Log
+                      </CardTitle>
+                      <CardDescription>
+                        Immutable record of all credit-related actions for FCRA compliance
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <ScrollArea className="h-[200px]">
+                        {auditLog?.auditLog && auditLog.auditLog.length > 0 ? (
+                          <div className="space-y-2">
+                            {auditLog.auditLog.map((entry) => (
+                              <div
+                                key={entry.id}
+                                className="flex items-start justify-between text-sm border-b pb-2 last:border-0"
+                              >
+                                <div>
+                                  <p className="font-medium capitalize">
+                                    {entry.action.replace(/_/g, " ")}
+                                  </p>
+                                  {entry.actionDetails && (
+                                    <p className="text-xs text-muted-foreground">
+                                      {JSON.stringify(entry.actionDetails)}
+                                    </p>
+                                  )}
+                                </div>
+                                <span className="text-xs text-muted-foreground whitespace-nowrap">
+                                  {format(new Date(entry.timestamp), "MMM d, h:mm a")}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-center text-muted-foreground py-8">
+                            No credit activity recorded yet.
+                          </p>
                         )}
                       </ScrollArea>
                     </CardContent>
