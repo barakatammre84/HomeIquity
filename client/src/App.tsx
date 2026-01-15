@@ -3,6 +3,9 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { PublicLayout } from "@/components/layouts/PublicLayout";
+import { PrivateLayout } from "@/components/layouts/PrivateLayout";
+
 import NotFound from "@/pages/not-found";
 import Landing from "@/pages/Landing";
 import PreApproval from "@/pages/PreApproval";
@@ -34,38 +37,118 @@ import CashOutRates from "@/pages/rates/CashOutRates";
 import HelocRates from "@/pages/rates/HelocRates";
 import VaRates from "@/pages/rates/VaRates";
 
+function PublicPage({ children }: { children: React.ReactNode }) {
+  return <PublicLayout>{children}</PublicLayout>;
+}
+
+function BorrowerPage({ children }: { children: React.ReactNode }) {
+  return <PrivateLayout>{children}</PrivateLayout>;
+}
+
+function StaffPage({ children }: { children: React.ReactNode }) {
+  return <PrivateLayout requiredRoles={["broker", "lender", "admin"]}>{children}</PrivateLayout>;
+}
+
+function AdminPage({ children }: { children: React.ReactNode }) {
+  return <PrivateLayout requiredRoles={["admin"]}>{children}</PrivateLayout>;
+}
+
 function Router() {
   return (
     <Switch>
+      {/* Public Pages - Anyone can access */}
       <Route path="/" component={Landing} />
       <Route path="/apply" component={PreApproval} />
-      <Route path="/loan-options/:id" component={LoanOptions} />
-      <Route path="/pipeline/:id" component={LoanPipeline} />
-      <Route path="/dashboard" component={Dashboard} />
-      <Route path="/application-summary" component={ApplicationSummary} />
-      <Route path="/tasks" component={Tasks} />
-      <Route path="/task/:id" component={TaskDetail} />
-      <Route path="/verification" component={Verification} />
-      <Route path="/staff-dashboard" component={StaffDashboard} />
-      <Route path="/pipeline-queue" component={PipelineQueue} />
-      <Route path="/borrower-file/:id" component={BorrowerFile} />
-      <Route path="/loan-estimate/:id" component={LoanEstimate} />
-      <Route path="/compliance" component={ComplianceDashboard} />
-      <Route path="/urla-form" component={URLAForm} />
-      <Route path="/documents" component={Documents} />
-      <Route path="/resources" component={Resources} />
-      <Route path="/staff" component={Staff} />
-      <Route path="/admin" component={AdminDashboard} />
-      <Route path="/learn" component={LearningCenter} />
-      <Route path="/learn/:slug" component={ArticleDetail} />
-      <Route path="/faq" component={FAQ} />
-      <Route path="/rates" component={MortgageRates} />
-      <Route path="/rates/purchase" component={PurchaseRates} />
-      <Route path="/rates/refinance" component={RefinanceRates} />
-      <Route path="/rates/cash-out" component={CashOutRates} />
-      <Route path="/rates/heloc" component={HelocRates} />
-      <Route path="/rates/va" component={VaRates} />
-      <Route path="/admin/rates" component={AdminRates} />
+      <Route path="/resources">
+        <PublicPage><Resources /></PublicPage>
+      </Route>
+      <Route path="/learn">
+        <PublicPage><LearningCenter /></PublicPage>
+      </Route>
+      <Route path="/learn/:slug">
+        {(params) => <PublicPage><ArticleDetail /></PublicPage>}
+      </Route>
+      <Route path="/faq">
+        <PublicPage><FAQ /></PublicPage>
+      </Route>
+      
+      {/* Rate Pages - Public with navigation header */}
+      <Route path="/rates">
+        <PublicPage><MortgageRates /></PublicPage>
+      </Route>
+      <Route path="/rates/purchase">
+        <PublicPage><PurchaseRates /></PublicPage>
+      </Route>
+      <Route path="/rates/refinance">
+        <PublicPage><RefinanceRates /></PublicPage>
+      </Route>
+      <Route path="/rates/cash-out">
+        <PublicPage><CashOutRates /></PublicPage>
+      </Route>
+      <Route path="/rates/heloc">
+        <PublicPage><HelocRates /></PublicPage>
+      </Route>
+      <Route path="/rates/va">
+        <PublicPage><VaRates /></PublicPage>
+      </Route>
+
+      {/* Private Pages - Borrower (logged-in clients working on their application) */}
+      <Route path="/dashboard">
+        <BorrowerPage><Dashboard /></BorrowerPage>
+      </Route>
+      <Route path="/loan-options/:id">
+        {(params) => <BorrowerPage><LoanOptions /></BorrowerPage>}
+      </Route>
+      <Route path="/pipeline/:id">
+        {(params) => <BorrowerPage><LoanPipeline /></BorrowerPage>}
+      </Route>
+      <Route path="/application-summary">
+        <BorrowerPage><ApplicationSummary /></BorrowerPage>
+      </Route>
+      <Route path="/tasks">
+        <BorrowerPage><Tasks /></BorrowerPage>
+      </Route>
+      <Route path="/task/:id">
+        {(params) => <BorrowerPage><TaskDetail /></BorrowerPage>}
+      </Route>
+      <Route path="/verification">
+        <BorrowerPage><Verification /></BorrowerPage>
+      </Route>
+      <Route path="/urla-form">
+        <BorrowerPage><URLAForm /></BorrowerPage>
+      </Route>
+      <Route path="/documents">
+        <BorrowerPage><Documents /></BorrowerPage>
+      </Route>
+
+      {/* Private Pages - Staff (brokers, lenders processing mortgage applications) */}
+      <Route path="/staff-dashboard">
+        <StaffPage><StaffDashboard /></StaffPage>
+      </Route>
+      <Route path="/pipeline-queue">
+        <StaffPage><PipelineQueue /></StaffPage>
+      </Route>
+      <Route path="/borrower-file/:id">
+        {(params) => <StaffPage><BorrowerFile /></StaffPage>}
+      </Route>
+      <Route path="/loan-estimate/:id">
+        {(params) => <StaffPage><LoanEstimate /></StaffPage>}
+      </Route>
+      <Route path="/compliance">
+        <StaffPage><ComplianceDashboard /></StaffPage>
+      </Route>
+      <Route path="/staff">
+        <StaffPage><Staff /></StaffPage>
+      </Route>
+
+      {/* Private Pages - Admin only (manage content, rates, users) */}
+      <Route path="/admin">
+        <AdminPage><AdminDashboard /></AdminPage>
+      </Route>
+      <Route path="/admin/rates">
+        <AdminPage><AdminRates /></AdminPage>
+      </Route>
+
       <Route component={NotFound} />
     </Switch>
   );
