@@ -34,6 +34,68 @@ app.use(express.json({
 }));
 app.use(express.urlencoded({ extended: false }));
 
+// CSRF Protection for session-based routes
+// Check Origin/Referer headers for state-changing requests
+app.use((req, res, next) => {
+  const safeMethods = ['GET', 'HEAD', 'OPTIONS'];
+  if (safeMethods.includes(req.method)) {
+    return next();
+  }
+
+  // Skip CSRF check for non-API routes
+  if (!req.path.startsWith('/api')) {
+    return next();
+  }
+
+  const origin = req.headers.origin;
+  const referer = req.headers.referer;
+  const host = req.headers.host;
+
+  // In development, allow requests from localhost
+  const isDev = process.env.NODE_ENV === 'development';
+  
+  // Check if origin matches host
+  if (origin) {
+    try {
+      const originUrl = new URL(origin);
+      const hostName = host?.split(':')[0];
+      if (originUrl.hostname === hostName || 
+          (isDev && (originUrl.hostname === 'localhost' || originUrl.hostname === '127.0.0.1'))) {
+        return next();
+      }
+    } catch {
+      // Invalid origin URL
+    }
+  }
+
+  // Fallback: check referer
+  if (referer) {
+    try {
+      const refererUrl = new URL(referer);
+      const hostName = host?.split(':')[0];
+      if (refererUrl.hostname === hostName ||
+          (isDev && (refererUrl.hostname === 'localhost' || refererUrl.hostname === '127.0.0.1'))) {
+        return next();
+      }
+    } catch {
+      // Invalid referer URL
+    }
+  }
+
+  // In development mode, be more lenient
+  if (isDev) {
+    return next();
+  }
+
+  // If neither origin nor referer match, reject request
+  if (!origin && !referer) {
+    return next(); // Allow if no origin/referer (e.g., API testing tools in development)
+  }
+
+  log(`CSRF check failed: origin=${origin}, referer=${referer}, host=${host}`);
+  return res.status(403).json({ error: 'CSRF validation failed' });
+});
+
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;

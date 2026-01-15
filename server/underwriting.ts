@@ -207,13 +207,13 @@ export function verifyAssets(
   };
 
   for (const asset of assets) {
-    if (!asset.accountBalance) continue;
+    if (!asset.cashOrMarketValue) continue;
 
-    const balance = typeof asset.accountBalance === 'string' 
-      ? parseFloat(asset.accountBalance) 
-      : asset.accountBalance;
+    const balance = typeof asset.cashOrMarketValue === 'string' 
+      ? parseFloat(asset.cashOrMarketValue) 
+      : asset.cashOrMarketValue;
 
-    const assetType = asset.assetType?.toLowerCase() || "other";
+    const assetType = asset.accountType?.toLowerCase() || "other";
     const haircut = HAIRCUTS[assetType] || 0.5;
     const verifiedValue = balance * haircut;
 
