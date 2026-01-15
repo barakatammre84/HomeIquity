@@ -62,7 +62,15 @@ The backend is developed with **Node.js, Express.js, and TypeScript**. It uses *
 
 **Security Features:** Includes CSRF protection, session-based authentication, role-based access control, ownership-scoped queries, and authenticated API routes.
 
-**Credit & FCRA Compliance Module:** Manages credit-related activities with regulatory compliance, featuring consent capture (FCRA-2025-v1), two-stage credit pull (soft/hard), simulated tri-merge credit reports, adverse action notice generation, and an immutable audit log.
+**Credit & FCRA Compliance Module:** Enterprise-grade credit compliance system with:
+-   **Encrypted Storage:** AES-256-GCM encryption for raw bureau responses with PII protection
+-   **Cryptographic Audit Trails:** SHA-256 hashes with chained previous-hash linking for tamper-evidence
+-   **Exportable Compliance Packages:** CSV/PDF audit exports for regulatory exams
+-   **Multi-Step Consent Flows:** Save/resume capability with state-specific disclosures and fee policies
+-   **Enhanced Adverse Action Templates:** Bureau-specific reason codes (Experian, Equifax, TransUnion, FICO) with category classification and severity levels
+-   **Data Retention Policies:** FCRA/ECOA/GLBA-compliant retention with automated archival tracking
+-   **Compliance Monitoring Dashboard:** Real-time metrics, retention status, and actionable alerts
+-   **API Validation:** Zod schema validation enforcing catalog key usage for adverse action reasons
 
 ## External Dependencies
 
