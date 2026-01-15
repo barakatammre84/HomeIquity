@@ -3387,6 +3387,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/loan-applications/:id/credit/audit-log/verify", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      
+      if (!["broker", "lender", "admin"].includes(user.role)) {
+        return res.status(403).json({ error: "Staff access required" });
+      }
+      
+      const application = await storage.getLoanApplication(req.params.id);
+      if (!application) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+      
+      const result = await creditService.verifyAuditLogIntegrity(req.params.id);
+      res.json(result);
+    } catch (error) {
+      console.error("Verify audit log error:", error);
+      res.status(500).json({ error: "Failed to verify audit log" });
+    }
+  });
+
+  app.get("/api/loan-applications/:id/credit/audit-log/export", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      
+      if (!["broker", "lender", "admin"].includes(user.role)) {
+        return res.status(403).json({ error: "Staff access required" });
+      }
+      
+      const application = await storage.getLoanApplication(req.params.id);
+      if (!application) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+      
+      const format = req.query.format as string || "json";
+      
+      if (format === "csv") {
+        const csv = await creditService.generateCSVExport(req.params.id);
+        res.setHeader("Content-Type", "text/csv");
+        res.setHeader("Content-Disposition", `attachment; filename="audit-log-${req.params.id}.csv"`);
+        res.send(csv);
+      } else {
+        const exportPackage = await creditService.generateAuditExportPackage(req.params.id, user.id);
+        res.json(exportPackage);
+      }
+    } catch (error) {
+      console.error("Export audit log error:", error);
+      res.status(500).json({ error: "Failed to export audit log" });
+    }
+  });
+
   // Get comprehensive credit summary for an application
   app.get("/api/loan-applications/:id/credit/summary", isAuthenticated, async (req, res) => {
     try {

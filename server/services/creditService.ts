@@ -15,6 +15,12 @@ import {
   type AdverseAction,
 } from "@shared/schema";
 import { eq, and, desc } from "drizzle-orm";
+import { 
+  computeAuditEntryHash, 
+  encryptSensitiveData, 
+  computeHash,
+  verifyHashChain 
+} from "./encryptionService";
 
 const CURRENT_DISCLOSURE_VERSION = "FCRA-2025-v1";
 
@@ -252,6 +258,29 @@ export async function simulateCreditPullCompletion(
 
   const totalDebt = Math.floor(Math.random() * 50000) + 5000;
   const monthlyPayments = Math.floor(totalDebt * 0.03);
+  const totalTradelines = Math.floor(Math.random() * 15) + 3;
+  const openTradelines = Math.floor(Math.random() * 8) + 2;
+  const derogatoryCount = Math.floor(Math.random() * 3);
+  const inquiryCount30Days = Math.floor(Math.random() * 3);
+  const inquiryCount90Days = Math.floor(Math.random() * 5);
+
+  const simulatedRawResponse = JSON.stringify({
+    requestId: `SIM-${Date.now()}`,
+    timestamp: new Date().toISOString(),
+    bureaus: {
+      experian: { score: experian, reportDate: new Date().toISOString() },
+      equifax: { score: equifax, reportDate: new Date().toISOString() },
+      transunion: { score: transunion, reportDate: new Date().toISOString() },
+    },
+    tradelines: { total: totalTradelines, open: openTradelines },
+    derogatory: derogatoryCount,
+    inquiries: { last30Days: inquiryCount30Days, last90Days: inquiryCount90Days },
+    debt: { total: totalDebt, monthlyPayment: monthlyPayments },
+    simulationMode: true,
+  });
+
+  const rawResponseHash = computeHash(simulatedRawResponse);
+  const encryptedResponse = encryptSensitiveData(simulatedRawResponse);
 
   const [updated] = await db
     .update(creditPulls)
@@ -261,13 +290,18 @@ export async function simulateCreditPullCompletion(
       equifaxScore: equifax,
       transunionScore: transunion,
       representativeScore,
-      totalTradelines: Math.floor(Math.random() * 15) + 3,
-      openTradelines: Math.floor(Math.random() * 8) + 2,
+      totalTradelines,
+      openTradelines,
       totalDebt: totalDebt.toString(),
       monthlyPayments: monthlyPayments.toString(),
-      derogatoryCount: Math.floor(Math.random() * 3),
-      inquiryCount30Days: Math.floor(Math.random() * 3),
-      inquiryCount90Days: Math.floor(Math.random() * 5),
+      derogatoryCount,
+      inquiryCount30Days,
+      inquiryCount90Days,
+      encryptedRawResponse: encryptedResponse.encryptedContent,
+      encryptionKeyId: encryptedResponse.keyId,
+      encryptionIV: encryptedResponse.iv,
+      vendorResponseHash: rawResponseHash,
+      vendorRequestId: `SIM-${creditPullId.substring(0, 8)}`,
       completedAt: new Date(),
       updatedAt: new Date(),
     })
@@ -282,6 +316,7 @@ export async function simulateCreditPullCompletion(
     actionDetails: {
       representativeScore,
       bureausReturned: pull.bureaus,
+      responseHashStored: true,
     },
   });
 
@@ -496,6 +531,37 @@ async function logCreditAction(data: {
   ipAddress?: string;
   userAgent?: string;
 }): Promise<void> {
+  const timestamp = new Date();
+  
+  let previousEntryHash: string | null = null;
+  let sequenceNumber = 1;
+  
+  if (data.applicationId) {
+    const [lastEntry] = await db
+      .select({
+        entryHash: creditAuditLog.entryHash,
+        sequenceNumber: creditAuditLog.sequenceNumber,
+      })
+      .from(creditAuditLog)
+      .where(eq(creditAuditLog.applicationId, data.applicationId))
+      .orderBy(desc(creditAuditLog.timestamp))
+      .limit(1);
+    
+    if (lastEntry) {
+      previousEntryHash = lastEntry.entryHash;
+      sequenceNumber = (lastEntry.sequenceNumber || 0) + 1;
+    }
+  }
+  
+  const entryHash = computeAuditEntryHash({
+    applicationId: data.applicationId || null,
+    userId: data.userId || null,
+    action: data.action,
+    actionDetails: data.actionDetails || null,
+    timestamp,
+    previousEntryHash,
+  });
+  
   const log: InsertCreditAuditLog = {
     applicationId: data.applicationId,
     userId: data.userId,
@@ -508,7 +574,10 @@ async function logCreditAction(data: {
     performedByRole: data.performedByRole,
     ipAddress: data.ipAddress,
     userAgent: data.userAgent,
-    timestamp: new Date(),
+    entryHash,
+    previousEntryHash,
+    sequenceNumber,
+    timestamp,
   };
 
   await db.insert(creditAuditLog).values(log);
@@ -536,4 +605,151 @@ export function getDisclosureVersion(): string {
 
 export function getAdverseActionReasons(): typeof ADVERSE_ACTION_REASONS {
   return ADVERSE_ACTION_REASONS;
+}
+
+export async function verifyAuditLogIntegrity(
+  applicationId: string
+): Promise<{ valid: boolean; brokenAt?: number; reason?: string; totalEntries: number }> {
+  const entries = await db
+    .select()
+    .from(creditAuditLog)
+    .where(eq(creditAuditLog.applicationId, applicationId))
+    .orderBy(creditAuditLog.timestamp);
+  
+  if (entries.length === 0) {
+    return { valid: true, totalEntries: 0 };
+  }
+  
+  const result = verifyHashChain(
+    entries.map(e => ({
+      entryHash: e.entryHash,
+      previousEntryHash: e.previousEntryHash,
+      applicationId: e.applicationId,
+      userId: e.userId,
+      action: e.action,
+      actionDetails: e.actionDetails as Record<string, any> | null,
+      timestamp: e.timestamp,
+    }))
+  );
+  
+  return { ...result, totalEntries: entries.length };
+}
+
+export interface AuditExportPackage {
+  applicationId: string;
+  exportedAt: string;
+  exportedBy: string;
+  integrityVerified: boolean;
+  consent: CreditConsent | null;
+  creditPulls: CreditPull[];
+  adverseActions: AdverseAction[];
+  auditEntries: Array<{
+    sequenceNumber: number | null;
+    action: string;
+    timestamp: Date;
+    entryHash: string;
+    previousEntryHash: string | null;
+    actionDetails: Record<string, any> | null;
+    performedBy: string | null;
+  }>;
+  summary: {
+    totalPulls: number;
+    totalAdverseActions: number;
+    totalAuditEntries: number;
+    firstActivity: string | null;
+    lastActivity: string | null;
+  };
+}
+
+export async function generateAuditExportPackage(
+  applicationId: string,
+  exportedBy: string
+): Promise<AuditExportPackage> {
+  const consent = await getActiveConsent(applicationId);
+  const pulls = await getCreditPullsByApplication(applicationId);
+  const actions = await getAdverseActionsByApplication(applicationId);
+  const auditEntries = await getCreditAuditLog(applicationId, 1000);
+  const integrityCheck = await verifyAuditLogIntegrity(applicationId);
+  
+  const sortedAudit = [...auditEntries].sort((a, b) => 
+    new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+  );
+  
+  await logCreditAction({
+    applicationId,
+    action: "audit_package_exported",
+    actionDetails: {
+      exportedBy,
+      integrityVerified: integrityCheck.valid,
+      entryCount: auditEntries.length,
+    },
+    performedBy: exportedBy,
+  });
+  
+  return {
+    applicationId,
+    exportedAt: new Date().toISOString(),
+    exportedBy,
+    integrityVerified: integrityCheck.valid,
+    consent,
+    creditPulls: pulls,
+    adverseActions: actions,
+    auditEntries: sortedAudit.map(e => ({
+      sequenceNumber: e.sequenceNumber,
+      action: e.action,
+      timestamp: e.timestamp,
+      entryHash: e.entryHash,
+      previousEntryHash: e.previousEntryHash,
+      actionDetails: e.actionDetails as Record<string, any> | null,
+      performedBy: e.performedBy,
+    })),
+    summary: {
+      totalPulls: pulls.length,
+      totalAdverseActions: actions.length,
+      totalAuditEntries: auditEntries.length,
+      firstActivity: sortedAudit[0]?.timestamp.toISOString() || null,
+      lastActivity: sortedAudit[sortedAudit.length - 1]?.timestamp.toISOString() || null,
+    },
+  };
+}
+
+export async function generateCSVExport(applicationId: string): Promise<string> {
+  const auditEntries = await getCreditAuditLog(applicationId, 1000);
+  const sortedAudit = [...auditEntries].sort((a, b) => 
+    new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+  );
+  
+  const headers = [
+    "Sequence",
+    "Timestamp",
+    "Action",
+    "Entry Hash",
+    "Previous Hash",
+    "Performed By",
+    "Details",
+  ];
+  
+  const rows = sortedAudit.map(e => [
+    e.sequenceNumber?.toString() || "",
+    e.timestamp.toISOString(),
+    e.action,
+    e.entryHash,
+    e.previousEntryHash || "GENESIS",
+    e.performedBy || "",
+    JSON.stringify(e.actionDetails || {}),
+  ]);
+  
+  const escapeCSV = (val: string) => {
+    if (val.includes(",") || val.includes('"') || val.includes("\n")) {
+      return `"${val.replace(/"/g, '""')}"`;
+    }
+    return val;
+  };
+  
+  const csvContent = [
+    headers.map(escapeCSV).join(","),
+    ...rows.map(row => row.map(escapeCSV).join(",")),
+  ].join("\n");
+  
+  return csvContent;
 }

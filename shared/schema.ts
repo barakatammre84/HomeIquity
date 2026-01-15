@@ -1578,6 +1578,16 @@ export const creditPulls = pgTable("credit_pulls", {
   // Report Storage (reference to secure storage, not the report itself)
   reportStorageRef: varchar("report_storage_ref", { length: 500 }),
   
+  // Encrypted Raw Response (AES-256-GCM encrypted)
+  encryptedRawResponse: text("encrypted_raw_response"), // Base64 encoded encrypted data
+  encryptionKeyId: varchar("encryption_key_id", { length: 100 }), // Reference to key used
+  encryptionIV: varchar("encryption_iv", { length: 48 }), // Base64 encoded IV
+  
+  // Vendor Response Metadata (for reconciliation)
+  vendorRequestId: varchar("vendor_request_id", { length: 255 }),
+  vendorResponseHash: varchar("vendor_response_hash", { length: 64 }), // SHA-256 of raw response
+  vendorBillingRef: varchar("vendor_billing_ref", { length: 255 }),
+  
   // Error Handling
   errorCode: varchar("error_code", { length: 50 }),
   errorMessage: text("error_message"),
@@ -1726,12 +1736,18 @@ export const creditAuditLog = pgTable("credit_audit_log", {
   ipAddress: varchar("ip_address", { length: 45 }),
   userAgent: text("user_agent"),
   
+  // Cryptographic Integrity (append-only chain)
+  entryHash: varchar("entry_hash", { length: 64 }).notNull(), // SHA-256 of this entry's content
+  previousEntryHash: varchar("previous_entry_hash", { length: 64 }), // Hash of previous entry (chain)
+  sequenceNumber: integer("sequence_number"), // Per-application sequence for ordering
+  
   // Timestamp (immutable)
   timestamp: timestamp("timestamp").defaultNow().notNull(),
 }, (table) => [
   index("idx_credit_audit_application").on(table.applicationId),
   index("idx_credit_audit_timestamp").on(table.timestamp),
   index("idx_credit_audit_action").on(table.action),
+  index("idx_credit_audit_entry_hash").on(table.entryHash),
 ]);
 
 export const creditAuditLogRelations = relations(creditAuditLog, ({ one }) => ({
