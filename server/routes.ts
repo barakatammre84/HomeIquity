@@ -1018,6 +1018,125 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Broker Referral Dashboard endpoints
+  app.get("/api/broker/referrals", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      if (!["broker", "lender", "admin"].includes(user.role)) {
+        return res.status(403).json({ error: "Broker access required" });
+      }
+      
+      const referrals = await storage.getBrokerReferrals(user.id);
+      res.json(referrals);
+    } catch (error) {
+      console.error("Get broker referrals error:", error);
+      res.status(500).json({ error: "Failed to get referrals" });
+    }
+  });
+
+  app.get("/api/broker/stats", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      if (!["broker", "lender", "admin"].includes(user.role)) {
+        return res.status(403).json({ error: "Broker access required" });
+      }
+      
+      const stats = await storage.getBrokerReferralStats(user.id);
+      res.json(stats);
+    } catch (error) {
+      console.error("Get broker stats error:", error);
+      res.status(500).json({ error: "Failed to get broker stats" });
+    }
+  });
+
+  app.get("/api/broker/commissions", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      if (!["broker", "lender", "admin"].includes(user.role)) {
+        return res.status(403).json({ error: "Broker access required" });
+      }
+      
+      const commissions = await storage.getBrokerCommissions(user.id);
+      res.json(commissions);
+    } catch (error) {
+      console.error("Get broker commissions error:", error);
+      res.status(500).json({ error: "Failed to get commissions" });
+    }
+  });
+
+  app.post("/api/broker/commissions", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      if (!["admin", "lender"].includes(user.role)) {
+        return res.status(403).json({ error: "Admin or lender access required" });
+      }
+      
+      const { brokerId, applicationId, loanAmount, commissionRate } = req.body;
+      
+      if (!brokerId || !applicationId || !loanAmount || !commissionRate) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
+      
+      const commissionAmount = (Number(loanAmount) * Number(commissionRate)).toFixed(2);
+      
+      const commission = await storage.createBrokerCommission({
+        brokerId,
+        applicationId,
+        loanAmount: loanAmount.toString(),
+        commissionRate: commissionRate.toString(),
+        commissionAmount,
+        status: "pending",
+      });
+      
+      res.status(201).json(commission);
+    } catch (error) {
+      console.error("Create broker commission error:", error);
+      res.status(500).json({ error: "Failed to create commission" });
+    }
+  });
+
+  app.patch("/api/broker/commissions/:id", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      if (!["admin", "lender"].includes(user.role)) {
+        return res.status(403).json({ error: "Admin or lender access required" });
+      }
+      
+      const { id } = req.params;
+      const updateData = { ...req.body };
+      
+      if (updateData.status === "paid" && !updateData.paidAt) {
+        updateData.paidAt = new Date();
+        updateData.paidBy = user.id;
+      }
+      
+      const updated = await storage.updateBrokerCommission(id, updateData);
+      if (!updated) {
+        return res.status(404).json({ error: "Commission not found" });
+      }
+      
+      res.json(updated);
+    } catch (error) {
+      console.error("Update broker commission error:", error);
+      res.status(500).json({ error: "Failed to update commission" });
+    }
+  });
+
+  app.get("/api/admin/commissions/pending", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      if (!["admin", "lender"].includes(user.role)) {
+        return res.status(403).json({ error: "Admin or lender access required" });
+      }
+      
+      const commissions = await storage.getAllPendingCommissions();
+      res.json(commissions);
+    } catch (error) {
+      console.error("Get pending commissions error:", error);
+      res.status(500).json({ error: "Failed to get pending commissions" });
+    }
+  });
+
   app.patch("/api/loan-applications/:id", isAuthenticated, async (req, res) => {
     try {
       const userId = req.user!.id;
