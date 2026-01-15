@@ -3351,6 +3351,99 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get detailed adverse action reasons with bureau codes
+  app.get("/api/credit/adverse-action-reasons/detailed", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      if (!["broker", "lender", "admin"].includes(user.role)) {
+        return res.status(403).json({ error: "Staff access required" });
+      }
+      res.json({ reasons: creditService.getAdverseActionReasonsDetailed() });
+    } catch (error) {
+      console.error("Get detailed adverse action reasons error:", error);
+      res.status(500).json({ error: "Failed to get detailed adverse action reasons" });
+    }
+  });
+
+  // Get retention policies
+  app.get("/api/credit/retention-policies", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      if (!["broker", "lender", "admin"].includes(user.role)) {
+        return res.status(403).json({ error: "Staff access required" });
+      }
+      res.json({ policies: creditService.getRetentionPolicies() });
+    } catch (error) {
+      console.error("Get retention policies error:", error);
+      res.status(500).json({ error: "Failed to get retention policies" });
+    }
+  });
+
+  // Get retention compliance report
+  app.get("/api/credit/retention-report", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      if (!["broker", "lender", "admin"].includes(user.role)) {
+        return res.status(403).json({ error: "Staff access required" });
+      }
+      const report = await creditService.getRetentionComplianceReport();
+      res.json(report);
+    } catch (error) {
+      console.error("Get retention report error:", error);
+      res.status(500).json({ error: "Failed to get retention report" });
+    }
+  });
+
+  // Get application retention status
+  app.get("/api/loan-applications/:id/retention-status", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      if (!["broker", "lender", "admin"].includes(user.role)) {
+        return res.status(403).json({ error: "Staff access required" });
+      }
+      const application = await storage.getLoanApplication(req.params.id);
+      if (!application) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+      const status = await creditService.getApplicationRetentionStatus(req.params.id);
+      res.json(status);
+    } catch (error) {
+      console.error("Get retention status error:", error);
+      res.status(500).json({ error: "Failed to get retention status" });
+    }
+  });
+
+  // Archive credit pull (staff only)
+  app.post("/api/credit/pulls/:pullId/archive", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      if (!["broker", "lender", "admin"].includes(user.role)) {
+        return res.status(403).json({ error: "Staff access required" });
+      }
+      const { reason } = req.body;
+      await creditService.archiveCreditPull(req.params.pullId, reason || "Retention policy", user.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Archive credit pull error:", error);
+      res.status(500).json({ error: "Failed to archive credit pull" });
+    }
+  });
+
+  // Get archive-eligible records
+  app.get("/api/credit/archive-eligible", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      if (!["broker", "lender", "admin"].includes(user.role)) {
+        return res.status(403).json({ error: "Staff access required" });
+      }
+      const eligible = await creditService.getArchiveEligibleRecords();
+      res.json(eligible);
+    } catch (error) {
+      console.error("Get archive eligible error:", error);
+      res.status(500).json({ error: "Failed to get archive eligible records" });
+    }
+  });
+
   // Generate adverse action notice (staff only)
   app.post("/api/loan-applications/:id/credit/adverse-action", isAuthenticated, async (req, res) => {
     try {
