@@ -37,6 +37,7 @@ import RefinanceRates from "@/pages/rates/RefinanceRates";
 import CashOutRates from "@/pages/rates/CashOutRates";
 import HelocRates from "@/pages/rates/HelocRates";
 import VaRates from "@/pages/rates/VaRates";
+import BrokerDashboard from "@/pages/BrokerDashboard";
 
 function PublicPage({ children }: { children: React.ReactNode }) {
   return <PublicLayout>{children}</PublicLayout>;
@@ -143,6 +144,9 @@ function Router() {
       </Route>
       <Route path="/staff">
         <StaffPage><Staff /></StaffPage>
+      </Route>
+      <Route path="/broker-dashboard">
+        <StaffPage><BrokerDashboard /></StaffPage>
       </Route>
 
       {/* Private Pages - Admin only (manage content, rates, users) */}
