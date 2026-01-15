@@ -5,7 +5,13 @@ import { setupAuth, isAuthenticated, isAdmin } from "./auth";
 import { analyzeLoanApplication } from "./gemini";
 import { generateMISMO34XML, type MISMOLoanDTO } from "./mismo";
 import { seedDatabase } from "./seed";
-import { insertLoanApplicationSchema, insertBorrowerDeclarationsSchema } from "@shared/schema";
+import { 
+  insertLoanApplicationSchema, 
+  insertBorrowerDeclarationsSchema,
+  insertContentCategorySchema,
+  insertArticleSchema,
+  insertFaqSchema,
+} from "@shared/schema";
 import { z } from "zod";
 import { 
   qualifyIncome, 
@@ -2507,6 +2513,384 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       res.json({ plaidConfigured: false, supportedVerificationTypes: [] });
+    }
+  });
+
+  // ================================
+  // Learning Center & FAQ Routes
+  // ================================
+
+  // --- Content Categories (Admin) ---
+  
+  // Get all categories (admin - includes inactive)
+  app.get("/api/admin/content-categories", isAuthenticated, async (req, res) => {
+    try {
+      const userRole = req.user?.role;
+      if (!["admin", "broker", "lender"].includes(userRole || "")) {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+      const categories = await storage.getAllContentCategories();
+      res.json(categories);
+    } catch (error) {
+      console.error("Get categories error:", error);
+      res.status(500).json({ error: "Failed to get categories" });
+    }
+  });
+
+  // Create category (admin)
+  app.post("/api/admin/content-categories", isAuthenticated, async (req, res) => {
+    try {
+      const userRole = req.user?.role;
+      if (!["admin"].includes(userRole || "")) {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+      const validatedData = insertContentCategorySchema.parse(req.body);
+      const category = await storage.createContentCategory(validatedData);
+      res.status(201).json(category);
+    } catch (error) {
+      console.error("Create category error:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Validation error", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to create category" });
+    }
+  });
+
+  // Update category (admin)
+  app.patch("/api/admin/content-categories/:id", isAuthenticated, async (req, res) => {
+    try {
+      const userRole = req.user?.role;
+      if (!["admin"].includes(userRole || "")) {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+      const updated = await storage.updateContentCategory(req.params.id, req.body);
+      if (!updated) {
+        return res.status(404).json({ error: "Category not found" });
+      }
+      res.json(updated);
+    } catch (error) {
+      console.error("Update category error:", error);
+      res.status(500).json({ error: "Failed to update category" });
+    }
+  });
+
+  // Delete category (admin)
+  app.delete("/api/admin/content-categories/:id", isAuthenticated, async (req, res) => {
+    try {
+      const userRole = req.user?.role;
+      if (!["admin"].includes(userRole || "")) {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+      await storage.deleteContentCategory(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Delete category error:", error);
+      res.status(500).json({ error: "Failed to delete category" });
+    }
+  });
+
+  // --- Articles (Admin) ---
+
+  // Get all articles (admin - includes drafts)
+  app.get("/api/admin/articles", isAuthenticated, async (req, res) => {
+    try {
+      const userRole = req.user?.role;
+      if (!["admin", "broker", "lender"].includes(userRole || "")) {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+      const articles = await storage.getAllArticles();
+      res.json(articles);
+    } catch (error) {
+      console.error("Get articles error:", error);
+      res.status(500).json({ error: "Failed to get articles" });
+    }
+  });
+
+  // Get single article (admin)
+  app.get("/api/admin/articles/:id", isAuthenticated, async (req, res) => {
+    try {
+      const userRole = req.user?.role;
+      if (!["admin", "broker", "lender"].includes(userRole || "")) {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+      const article = await storage.getArticle(req.params.id);
+      if (!article) {
+        return res.status(404).json({ error: "Article not found" });
+      }
+      res.json(article);
+    } catch (error) {
+      console.error("Get article error:", error);
+      res.status(500).json({ error: "Failed to get article" });
+    }
+  });
+
+  // Create article (admin)
+  app.post("/api/admin/articles", isAuthenticated, async (req, res) => {
+    try {
+      const userRole = req.user?.role;
+      if (!["admin"].includes(userRole || "")) {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+      const validatedData = insertArticleSchema.parse({
+        ...req.body,
+        authorId: req.user!.id,
+        publishedAt: req.body.status === "published" ? new Date() : null,
+      });
+      const article = await storage.createArticle(validatedData);
+      res.status(201).json(article);
+    } catch (error) {
+      console.error("Create article error:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Validation error", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to create article" });
+    }
+  });
+
+  // Update article (admin)
+  app.patch("/api/admin/articles/:id", isAuthenticated, async (req, res) => {
+    try {
+      const userRole = req.user?.role;
+      if (!["admin"].includes(userRole || "")) {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+      
+      const updateData = { ...req.body };
+      // Set publishedAt when publishing for the first time
+      if (req.body.status === "published") {
+        const existing = await storage.getArticle(req.params.id);
+        if (existing && existing.status !== "published") {
+          updateData.publishedAt = new Date();
+        }
+      }
+      
+      const updated = await storage.updateArticle(req.params.id, updateData);
+      if (!updated) {
+        return res.status(404).json({ error: "Article not found" });
+      }
+      res.json(updated);
+    } catch (error) {
+      console.error("Update article error:", error);
+      res.status(500).json({ error: "Failed to update article" });
+    }
+  });
+
+  // Delete article (admin)
+  app.delete("/api/admin/articles/:id", isAuthenticated, async (req, res) => {
+    try {
+      const userRole = req.user?.role;
+      if (!["admin"].includes(userRole || "")) {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+      await storage.deleteArticle(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Delete article error:", error);
+      res.status(500).json({ error: "Failed to delete article" });
+    }
+  });
+
+  // --- FAQs (Admin) ---
+
+  // Get all FAQs (admin - includes drafts)
+  app.get("/api/admin/faqs", isAuthenticated, async (req, res) => {
+    try {
+      const userRole = req.user?.role;
+      if (!["admin", "broker", "lender"].includes(userRole || "")) {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+      const faqs = await storage.getAllFaqs();
+      res.json(faqs);
+    } catch (error) {
+      console.error("Get FAQs error:", error);
+      res.status(500).json({ error: "Failed to get FAQs" });
+    }
+  });
+
+  // Get single FAQ (admin)
+  app.get("/api/admin/faqs/:id", isAuthenticated, async (req, res) => {
+    try {
+      const userRole = req.user?.role;
+      if (!["admin", "broker", "lender"].includes(userRole || "")) {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+      const faq = await storage.getFaq(req.params.id);
+      if (!faq) {
+        return res.status(404).json({ error: "FAQ not found" });
+      }
+      res.json(faq);
+    } catch (error) {
+      console.error("Get FAQ error:", error);
+      res.status(500).json({ error: "Failed to get FAQ" });
+    }
+  });
+
+  // Create FAQ (admin)
+  app.post("/api/admin/faqs", isAuthenticated, async (req, res) => {
+    try {
+      const userRole = req.user?.role;
+      if (!["admin"].includes(userRole || "")) {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+      const validatedData = insertFaqSchema.parse({
+        ...req.body,
+        authorId: req.user!.id,
+      });
+      const faq = await storage.createFaq(validatedData);
+      res.status(201).json(faq);
+    } catch (error) {
+      console.error("Create FAQ error:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Validation error", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to create FAQ" });
+    }
+  });
+
+  // Update FAQ (admin)
+  app.patch("/api/admin/faqs/:id", isAuthenticated, async (req, res) => {
+    try {
+      const userRole = req.user?.role;
+      if (!["admin"].includes(userRole || "")) {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+      const updated = await storage.updateFaq(req.params.id, req.body);
+      if (!updated) {
+        return res.status(404).json({ error: "FAQ not found" });
+      }
+      res.json(updated);
+    } catch (error) {
+      console.error("Update FAQ error:", error);
+      res.status(500).json({ error: "Failed to update FAQ" });
+    }
+  });
+
+  // Delete FAQ (admin)
+  app.delete("/api/admin/faqs/:id", isAuthenticated, async (req, res) => {
+    try {
+      const userRole = req.user?.role;
+      if (!["admin"].includes(userRole || "")) {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+      await storage.deleteFaq(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Delete FAQ error:", error);
+      res.status(500).json({ error: "Failed to delete FAQ" });
+    }
+  });
+
+  // --- Public Learning Center & FAQ Routes ---
+
+  // Get active categories (public)
+  app.get("/api/content-categories", async (req, res) => {
+    try {
+      const categories = await storage.getActiveContentCategories();
+      res.json(categories);
+    } catch (error) {
+      console.error("Get categories error:", error);
+      res.status(500).json({ error: "Failed to get categories" });
+    }
+  });
+
+  // Get published articles (public)
+  app.get("/api/articles", async (req, res) => {
+    try {
+      const { category, search } = req.query;
+      
+      let articles;
+      if (search && typeof search === "string") {
+        articles = await storage.searchArticles(search);
+      } else if (category && typeof category === "string") {
+        articles = await storage.getArticlesByCategory(category);
+      } else {
+        articles = await storage.getPublishedArticles();
+      }
+      
+      res.json(articles);
+    } catch (error) {
+      console.error("Get articles error:", error);
+      res.status(500).json({ error: "Failed to get articles" });
+    }
+  });
+
+  // Get single article by slug (public)
+  app.get("/api/articles/:slug", async (req, res) => {
+    try {
+      const article = await storage.getArticleBySlug(req.params.slug);
+      if (!article || article.status !== "published") {
+        return res.status(404).json({ error: "Article not found" });
+      }
+      
+      // Increment view count
+      await storage.incrementArticleViewCount(article.id);
+      
+      res.json(article);
+    } catch (error) {
+      console.error("Get article error:", error);
+      res.status(500).json({ error: "Failed to get article" });
+    }
+  });
+
+  // Get published FAQs (public)
+  app.get("/api/faqs", async (req, res) => {
+    try {
+      const { category, search, popular } = req.query;
+      
+      let faqs;
+      if (search && typeof search === "string") {
+        faqs = await storage.searchFaqs(search);
+      } else if (popular === "true") {
+        faqs = await storage.getPopularFaqs();
+      } else if (category && typeof category === "string") {
+        faqs = await storage.getFaqsByCategory(category);
+      } else {
+        faqs = await storage.getPublishedFaqs();
+      }
+      
+      res.json(faqs);
+    } catch (error) {
+      console.error("Get FAQs error:", error);
+      res.status(500).json({ error: "Failed to get FAQs" });
+    }
+  });
+
+  // Get single FAQ and increment view (public)
+  app.get("/api/faqs/:id", async (req, res) => {
+    try {
+      const faq = await storage.getFaq(req.params.id);
+      if (!faq || faq.status !== "published") {
+        return res.status(404).json({ error: "FAQ not found" });
+      }
+      
+      // Increment view count
+      await storage.incrementFaqViewCount(faq.id);
+      
+      res.json(faq);
+    } catch (error) {
+      console.error("Get FAQ error:", error);
+      res.status(500).json({ error: "Failed to get FAQ" });
+    }
+  });
+
+  // Mark FAQ as helpful/not helpful (public)
+  app.post("/api/faqs/:id/feedback", async (req, res) => {
+    try {
+      const { helpful } = req.body;
+      if (typeof helpful !== "boolean") {
+        return res.status(400).json({ error: "helpful must be a boolean" });
+      }
+      
+      const faq = await storage.getFaq(req.params.id);
+      if (!faq || faq.status !== "published") {
+        return res.status(404).json({ error: "FAQ not found" });
+      }
+      
+      await storage.markFaqHelpful(req.params.id, helpful);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("FAQ feedback error:", error);
+      res.status(500).json({ error: "Failed to record feedback" });
     }
   });
 

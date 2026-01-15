@@ -1233,3 +1233,158 @@ export const insertPlaidLinkTokenSchema = createInsertSchema(plaidLinkTokens).om
 
 export type InsertPlaidLinkToken = z.infer<typeof insertPlaidLinkTokenSchema>;
 export type PlaidLinkToken = typeof plaidLinkTokens.$inferSelect;
+
+// ================================
+// Learning Center & FAQ System
+// ================================
+
+// Content Categories - shared between articles and FAQs
+export const contentCategories = pgTable("content_categories", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name", { length: 100 }).notNull(),
+  slug: varchar("slug", { length: 100 }).notNull().unique(),
+  description: text("description"),
+  icon: varchar("icon", { length: 50 }), // lucide icon name
+  displayOrder: integer("display_order").default(0),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const contentCategoriesRelations = relations(contentCategories, ({ many }) => ({
+  articles: many(articles),
+  faqs: many(faqs),
+}));
+
+export const insertContentCategorySchema = createInsertSchema(contentCategories).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertContentCategory = z.infer<typeof insertContentCategorySchema>;
+export type ContentCategory = typeof contentCategories.$inferSelect;
+
+// Articles - Learning Center content
+export const articles = pgTable("articles", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Basic Info
+  title: varchar("title", { length: 255 }).notNull(),
+  slug: varchar("slug", { length: 255 }).notNull().unique(),
+  excerpt: text("excerpt"), // Short summary for cards/previews
+  content: text("content").notNull(), // Full article content (supports markdown)
+  
+  // Media
+  featuredImage: varchar("featured_image", { length: 500 }),
+  
+  // Organization
+  categoryId: varchar("category_id").references(() => contentCategories.id),
+  tags: text("tags").array(), // Array of tag strings for filtering
+  
+  // SEO
+  metaTitle: varchar("meta_title", { length: 255 }),
+  metaDescription: text("meta_description"),
+  
+  // Publishing
+  status: varchar("status", { length: 20 }).default("draft").notNull(), // draft, published, archived
+  publishedAt: timestamp("published_at"),
+  
+  // Author
+  authorId: varchar("author_id").references(() => users.id),
+  
+  // Metrics
+  viewCount: integer("view_count").default(0),
+  readTimeMinutes: integer("read_time_minutes").default(5),
+  
+  // Timestamps
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_articles_category").on(table.categoryId),
+  index("idx_articles_status").on(table.status),
+  index("idx_articles_published_at").on(table.publishedAt),
+]);
+
+export const articlesRelations = relations(articles, ({ one }) => ({
+  category: one(contentCategories, {
+    fields: [articles.categoryId],
+    references: [contentCategories.id],
+  }),
+  author: one(users, {
+    fields: [articles.authorId],
+    references: [users.id],
+  }),
+}));
+
+export const insertArticleSchema = createInsertSchema(articles).omit({
+  id: true,
+  viewCount: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertArticle = z.infer<typeof insertArticleSchema>;
+export type Article = typeof articles.$inferSelect;
+
+// FAQs - Frequently Asked Questions with search
+export const faqs = pgTable("faqs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Question & Answer
+  question: text("question").notNull(),
+  answer: text("answer").notNull(), // Supports markdown
+  
+  // Organization
+  categoryId: varchar("category_id").references(() => contentCategories.id),
+  tags: text("tags").array(), // For filtering and search
+  
+  // Search optimization
+  searchKeywords: text("search_keywords").array(), // Additional keywords for search matching
+  
+  // Display
+  displayOrder: integer("display_order").default(0),
+  isPopular: boolean("is_popular").default(false), // Featured FAQs
+  
+  // Publishing
+  status: varchar("status", { length: 20 }).default("draft").notNull(), // draft, published, archived
+  
+  // Author
+  authorId: varchar("author_id").references(() => users.id),
+  
+  // Metrics
+  helpfulCount: integer("helpful_count").default(0),
+  notHelpfulCount: integer("not_helpful_count").default(0),
+  viewCount: integer("view_count").default(0),
+  
+  // Timestamps
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_faqs_category").on(table.categoryId),
+  index("idx_faqs_status").on(table.status),
+  index("idx_faqs_popular").on(table.isPopular),
+]);
+
+export const faqsRelations = relations(faqs, ({ one }) => ({
+  category: one(contentCategories, {
+    fields: [faqs.categoryId],
+    references: [contentCategories.id],
+  }),
+  author: one(users, {
+    fields: [faqs.authorId],
+    references: [users.id],
+  }),
+}));
+
+export const insertFaqSchema = createInsertSchema(faqs).omit({
+  id: true,
+  helpfulCount: true,
+  notHelpfulCount: true,
+  viewCount: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertFaq = z.infer<typeof insertFaqSchema>;
+export type Faq = typeof faqs.$inferSelect;
