@@ -1543,6 +1543,58 @@ export const insertCreditConsentSchema = createInsertSchema(creditConsents).omit
 export type InsertCreditConsent = z.infer<typeof insertCreditConsentSchema>;
 export type CreditConsent = typeof creditConsents.$inferSelect;
 
+// Draft Consent Progress - For save & resume functionality
+export const draftConsentProgress = pgTable("draft_consent_progress", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  applicationId: varchar("application_id").references(() => loanApplications.id).notNull(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  
+  // Saved form data
+  consentType: varchar("consent_type", { length: 50 }).default("hard_pull"),
+  borrowerFullName: varchar("borrower_full_name", { length: 255 }),
+  borrowerSSNLast4: varchar("borrower_ssn_last4", { length: 4 }),
+  borrowerDOB: varchar("borrower_dob", { length: 10 }),
+  
+  // Progress tracking
+  disclosureRead: boolean("disclosure_read").default(false),
+  acknowledged: boolean("acknowledged").default(false),
+  currentStep: integer("current_step").default(1),
+  totalSteps: integer("total_steps").default(3),
+  
+  // State-specific tracking
+  stateDisclosuresReviewed: text("state_disclosures_reviewed").array(),
+  additionalAcknowledgments: jsonb("additional_acknowledgments"),
+  
+  // Timestamps
+  lastSavedAt: timestamp("last_saved_at").defaultNow(),
+  expiresAt: timestamp("expires_at"), // Drafts expire after 7 days
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_draft_consent_application").on(table.applicationId),
+  index("idx_draft_consent_user").on(table.userId),
+]);
+
+export const draftConsentProgressRelations = relations(draftConsentProgress, ({ one }) => ({
+  application: one(loanApplications, {
+    fields: [draftConsentProgress.applicationId],
+    references: [loanApplications.id],
+  }),
+  user: one(users, {
+    fields: [draftConsentProgress.userId],
+    references: [users.id],
+  }),
+}));
+
+export const insertDraftConsentProgressSchema = createInsertSchema(draftConsentProgress).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertDraftConsentProgress = z.infer<typeof insertDraftConsentProgressSchema>;
+export type DraftConsentProgress = typeof draftConsentProgress.$inferSelect;
+
 // Credit Pulls - Records of credit bureau inquiries
 export const creditPulls = pgTable("credit_pulls", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

@@ -3171,6 +3171,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/loan-applications/:id/credit/draft", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const application = await storage.getLoanApplication(req.params.id);
+      
+      if (!application) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+      
+      if (application.userId !== user.id) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
+      const draft = await creditService.getDraftConsent(req.params.id, user.id);
+      res.json({ draft });
+    } catch (error) {
+      console.error("Get draft consent error:", error);
+      res.status(500).json({ error: "Failed to get draft consent" });
+    }
+  });
+
+  app.post("/api/loan-applications/:id/credit/draft", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const application = await storage.getLoanApplication(req.params.id);
+      
+      if (!application) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+      
+      if (application.userId !== user.id) {
+        return res.status(403).json({ error: "Only the borrower can save draft consent" });
+      }
+      
+      const draft = await creditService.saveDraftConsent(req.params.id, user.id, req.body);
+      res.json({ draft });
+    } catch (error) {
+      console.error("Save draft consent error:", error);
+      res.status(500).json({ error: "Failed to save draft consent" });
+    }
+  });
+
+  app.delete("/api/loan-applications/:id/credit/draft", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const application = await storage.getLoanApplication(req.params.id);
+      
+      if (!application) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+      
+      if (application.userId !== user.id) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
+      await creditService.deleteDraftConsent(req.params.id, user.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Delete draft consent error:", error);
+      res.status(500).json({ error: "Failed to delete draft consent" });
+    }
+  });
+
   // Request credit pull (staff only)
   app.post("/api/loan-applications/:id/credit/pull", isAuthenticated, async (req, res) => {
     try {

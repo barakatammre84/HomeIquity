@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useParams, useLocation } from "wouter";
@@ -11,8 +11,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
-import { format } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
 import {
   Shield,
   FileText,
@@ -23,8 +24,10 @@ import {
   Lock,
   Info,
   ChevronRight,
+  Save,
+  RefreshCw,
 } from "lucide-react";
-import type { LoanApplication } from "@shared/schema";
+import type { LoanApplication, DraftConsentProgress } from "@shared/schema";
 
 interface DisclosureData {
   disclosureText: string;
@@ -62,6 +65,10 @@ interface CreditSummary {
   adverseActionCount: number;
 }
 
+interface DraftData {
+  draft: DraftConsentProgress | null;
+}
+
 export default function CreditConsent() {
   const { id: applicationId } = useParams<{ id: string }>();
   const [, setLocation] = useLocation();
@@ -71,7 +78,10 @@ export default function CreditConsent() {
   const [ssnLast4, setSsnLast4] = useState("");
   const [dob, setDob] = useState("");
   const [acknowledged, setAcknowledged] = useState(false);
+  const [disclosureRead, setDisclosureRead] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [draftLoaded, setDraftLoaded] = useState(false);
 
   const { data: application, isLoading: appLoading } = useQuery<LoanApplication>({
     queryKey: ["/api/loan-applications", applicationId],
@@ -87,6 +97,57 @@ export default function CreditConsent() {
     queryKey: ["/api/loan-applications", applicationId, "credit", "summary"],
     enabled: !!applicationId,
   });
+
+  const { data: draftData, isLoading: draftLoading } = useQuery<DraftData>({
+    queryKey: ["/api/loan-applications", applicationId, "credit", "draft"],
+    enabled: !!applicationId,
+  });
+
+  useEffect(() => {
+    if (draftData?.draft && !draftLoaded) {
+      const draft = draftData.draft;
+      if (draft.borrowerFullName) setFullName(draft.borrowerFullName);
+      if (draft.borrowerSSNLast4) setSsnLast4(draft.borrowerSSNLast4);
+      if (draft.borrowerDOB) setDob(draft.borrowerDOB);
+      if (draft.acknowledged) setAcknowledged(draft.acknowledged);
+      if (draft.disclosureRead) setDisclosureRead(draft.disclosureRead);
+      setDraftLoaded(true);
+    }
+  }, [draftData, draftLoaded]);
+
+  const saveDraftMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", `/api/loan-applications/${applicationId}/credit/draft`, {
+        borrowerFullName: fullName,
+        borrowerSSNLast4: ssnLast4,
+        borrowerDOB: dob,
+        disclosureRead,
+        acknowledged,
+        currentStep: acknowledged ? 3 : disclosureRead ? 2 : 1,
+      });
+      return await response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/loan-applications", applicationId, "credit", "draft"] });
+      toast({
+        title: "Progress Saved",
+        description: "Your consent form progress has been saved. You can return anytime to complete it.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to save progress",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSaveDraft = async () => {
+    setSaving(true);
+    await saveDraftMutation.mutateAsync();
+    setSaving(false);
+  };
 
   const submitConsentMutation = useMutation({
     mutationFn: async (consentGiven: boolean) => {
@@ -139,7 +200,7 @@ export default function CreditConsent() {
     setSubmitting(false);
   };
 
-  const isLoading = appLoading || disclosureLoading || summaryLoading;
+  const isLoading = appLoading || disclosureLoading || summaryLoading || draftLoading;
 
   if (isLoading) {
     return (
@@ -232,6 +293,22 @@ export default function CreditConsent() {
 
       {!hasActiveConsent && (
         <>
+          {draftData?.draft && (
+            <Alert className="border-blue-200 bg-blue-50 dark:bg-blue-950 dark:border-blue-800">
+              <RefreshCw className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              <AlertDescription className="text-blue-800 dark:text-blue-200">
+                <strong>Resume Progress:</strong> You have a saved draft from{" "}
+                {draftData.draft.lastSavedAt && formatDistanceToNow(new Date(draftData.draft.lastSavedAt), { addSuffix: true })}.
+                Your progress has been restored automatically.
+                {draftData.draft.expiresAt && (
+                  <span className="block text-sm mt-1 opacity-80">
+                    This draft expires {format(new Date(draftData.draft.expiresAt), "MMMM d, yyyy")}
+                  </span>
+                )}
+              </AlertDescription>
+            </Alert>
+          )}
+
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -335,6 +412,24 @@ export default function CreditConsent() {
                     <>
                       <Shield className="h-4 w-4 mr-2" />
                       I Authorize Credit Check
+                    </>
+                  )}
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={handleSaveDraft}
+                  disabled={saving}
+                  data-testid="button-save-progress"
+                >
+                  {saving ? (
+                    <>
+                      <Clock className="h-4 w-4 mr-2 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="h-4 w-4 mr-2" />
+                      Save Progress
                     </>
                   )}
                 </Button>
