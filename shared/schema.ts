@@ -1480,3 +1480,290 @@ export const insertMortgageRateSchema = createInsertSchema(mortgageRates).omit({
 
 export type InsertMortgageRate = z.infer<typeof insertMortgageRateSchema>;
 export type MortgageRate = typeof mortgageRates.$inferSelect;
+
+// =============================================================================
+// CREDIT & FCRA COMPLIANCE
+// =============================================================================
+
+// Credit Consents - FCRA-compliant consent capture before any credit action
+export const creditConsents = pgTable("credit_consents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  applicationId: varchar("application_id").references(() => loanApplications.id).notNull(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  
+  // Consent Details
+  consentType: varchar("consent_type", { length: 50 }).notNull(), // credit_pull, soft_pull, hard_pull, monitoring
+  disclosureVersion: varchar("disclosure_version", { length: 50 }).notNull(), // e.g., "FCRA-2024-v1"
+  disclosureText: text("disclosure_text").notNull(), // Full text of disclosure shown
+  
+  // Borrower Agreement
+  consentGiven: boolean("consent_given").notNull(),
+  consentTimestamp: timestamp("consent_timestamp").notNull(),
+  
+  // Identity Verification
+  borrowerFullName: varchar("borrower_full_name", { length: 255 }).notNull(),
+  borrowerSSNLast4: varchar("borrower_ssn_last4", { length: 4 }), // Last 4 digits for verification
+  borrowerDOB: varchar("borrower_dob", { length: 10 }), // YYYY-MM-DD
+  
+  // Audit Trail
+  ipAddress: varchar("ip_address", { length: 45 }),
+  userAgent: text("user_agent"),
+  signatureType: varchar("signature_type", { length: 50 }).default("electronic"), // electronic, esignature
+  
+  // Status
+  isActive: boolean("is_active").default(true),
+  revokedAt: timestamp("revoked_at"),
+  revokedReason: text("revoked_reason"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_credit_consents_application").on(table.applicationId),
+  index("idx_credit_consents_user").on(table.userId),
+]);
+
+export const creditConsentsRelations = relations(creditConsents, ({ one, many }) => ({
+  application: one(loanApplications, {
+    fields: [creditConsents.applicationId],
+    references: [loanApplications.id],
+  }),
+  user: one(users, {
+    fields: [creditConsents.userId],
+    references: [users.id],
+  }),
+  creditPulls: many(creditPulls),
+}));
+
+export const insertCreditConsentSchema = createInsertSchema(creditConsents).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertCreditConsent = z.infer<typeof insertCreditConsentSchema>;
+export type CreditConsent = typeof creditConsents.$inferSelect;
+
+// Credit Pulls - Records of credit bureau inquiries
+export const creditPulls = pgTable("credit_pulls", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  applicationId: varchar("application_id").references(() => loanApplications.id).notNull(),
+  consentId: varchar("consent_id").references(() => creditConsents.id).notNull(),
+  requestedBy: varchar("requested_by").references(() => users.id).notNull(),
+  
+  // Pull Type
+  pullType: varchar("pull_type", { length: 50 }).notNull(), // soft, hard, tri_merge
+  bureaus: text("bureaus").array(), // ['experian', 'equifax', 'transunion']
+  
+  // Status
+  status: varchar("status", { length: 50 }).default("pending").notNull(), // pending, processing, completed, failed, expired
+  
+  // Credit Report Data (encrypted/tokenized in production)
+  externalRequestId: varchar("external_request_id", { length: 255 }), // Credit bureau reference
+  
+  // Scores (when completed)
+  experianScore: integer("experian_score"),
+  equifaxScore: integer("equifax_score"),
+  transunionScore: integer("transunion_score"),
+  representativeScore: integer("representative_score"), // Middle score used for underwriting
+  
+  // Report Summary
+  totalTradelines: integer("total_tradelines"),
+  openTradelines: integer("open_tradelines"),
+  totalDebt: decimal("total_debt", { precision: 12, scale: 2 }),
+  monthlyPayments: decimal("monthly_payments", { precision: 10, scale: 2 }),
+  derogatoryCount: integer("derogatory_count"),
+  inquiryCount30Days: integer("inquiry_count_30_days"),
+  inquiryCount90Days: integer("inquiry_count_90_days"),
+  
+  // Report Storage (reference to secure storage, not the report itself)
+  reportStorageRef: varchar("report_storage_ref", { length: 500 }),
+  
+  // Error Handling
+  errorCode: varchar("error_code", { length: 50 }),
+  errorMessage: text("error_message"),
+  
+  // Timestamps
+  requestedAt: timestamp("requested_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+  expiresAt: timestamp("expires_at"), // Credit reports typically valid for 120 days
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_credit_pulls_application").on(table.applicationId),
+  index("idx_credit_pulls_consent").on(table.consentId),
+  index("idx_credit_pulls_status").on(table.status),
+]);
+
+export const creditPullsRelations = relations(creditPulls, ({ one, many }) => ({
+  application: one(loanApplications, {
+    fields: [creditPulls.applicationId],
+    references: [loanApplications.id],
+  }),
+  consent: one(creditConsents, {
+    fields: [creditPulls.consentId],
+    references: [creditConsents.id],
+  }),
+  requestedByUser: one(users, {
+    fields: [creditPulls.requestedBy],
+    references: [users.id],
+  }),
+  adverseActions: many(adverseActions),
+}));
+
+export const insertCreditPullSchema = createInsertSchema(creditPulls).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertCreditPull = z.infer<typeof insertCreditPullSchema>;
+export type CreditPull = typeof creditPulls.$inferSelect;
+
+// Adverse Actions - FCRA-required notices when credit is used against applicant
+export const adverseActions = pgTable("adverse_actions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  applicationId: varchar("application_id").references(() => loanApplications.id).notNull(),
+  creditPullId: varchar("credit_pull_id").references(() => creditPulls.id),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  
+  // Action Type
+  actionType: varchar("action_type", { length: 50 }).notNull(), // denial, counteroffer, rate_adjustment, terms_change
+  
+  // Reasons (FCRA requires specific reasons)
+  primaryReason: varchar("primary_reason", { length: 255 }).notNull(),
+  secondaryReasons: text("secondary_reasons").array(),
+  
+  // Credit Information Used
+  creditScoreUsed: integer("credit_score_used"),
+  creditScoreSource: varchar("credit_score_source", { length: 50 }), // experian, equifax, transunion
+  scoreRangeLow: integer("score_range_low"),
+  scoreRangeHigh: integer("score_range_high"),
+  
+  // Required Disclosures
+  bureauName: varchar("bureau_name", { length: 100 }),
+  bureauAddress: text("bureau_address"),
+  bureauPhone: varchar("bureau_phone", { length: 20 }),
+  bureauWebsite: varchar("bureau_website", { length: 255 }),
+  
+  // Notice Details
+  noticeText: text("notice_text").notNull(), // Full adverse action notice
+  
+  // Delivery
+  deliveryMethod: varchar("delivery_method", { length: 50 }), // email, mail, both, in_app
+  deliveredAt: timestamp("delivered_at"),
+  deliveryConfirmation: varchar("delivery_confirmation", { length: 255 }),
+  
+  // FCRA Compliance
+  noticeDate: timestamp("notice_date").notNull(), // Date notice was generated
+  fcraCompliant: boolean("fcra_compliant").default(true),
+  
+  // Staff Actions
+  generatedBy: varchar("generated_by").references(() => users.id),
+  reviewedBy: varchar("reviewed_by").references(() => users.id),
+  reviewedAt: timestamp("reviewed_at"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_adverse_actions_application").on(table.applicationId),
+  index("idx_adverse_actions_user").on(table.userId),
+  index("idx_adverse_actions_credit_pull").on(table.creditPullId),
+]);
+
+export const adverseActionsRelations = relations(adverseActions, ({ one }) => ({
+  application: one(loanApplications, {
+    fields: [adverseActions.applicationId],
+    references: [loanApplications.id],
+  }),
+  creditPull: one(creditPulls, {
+    fields: [adverseActions.creditPullId],
+    references: [creditPulls.id],
+  }),
+  user: one(users, {
+    fields: [adverseActions.userId],
+    references: [users.id],
+  }),
+  generatedByUser: one(users, {
+    fields: [adverseActions.generatedBy],
+    references: [users.id],
+  }),
+  reviewedByUser: one(users, {
+    fields: [adverseActions.reviewedBy],
+    references: [users.id],
+  }),
+}));
+
+export const insertAdverseActionSchema = createInsertSchema(adverseActions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertAdverseAction = z.infer<typeof insertAdverseActionSchema>;
+export type AdverseAction = typeof adverseActions.$inferSelect;
+
+// Credit Audit Log - Immutable record of every credit-related action
+export const creditAuditLog = pgTable("credit_audit_log", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // References
+  applicationId: varchar("application_id").references(() => loanApplications.id),
+  userId: varchar("user_id").references(() => users.id),
+  consentId: varchar("consent_id").references(() => creditConsents.id),
+  creditPullId: varchar("credit_pull_id").references(() => creditPulls.id),
+  adverseActionId: varchar("adverse_action_id").references(() => adverseActions.id),
+  
+  // Action Details
+  action: varchar("action", { length: 100 }).notNull(), // consent_given, consent_revoked, pull_requested, pull_completed, adverse_action_generated, etc.
+  actionDetails: jsonb("action_details"), // Additional context
+  
+  // Actor
+  performedBy: varchar("performed_by").references(() => users.id),
+  performedByRole: varchar("performed_by_role", { length: 50 }),
+  
+  // Audit Trail
+  ipAddress: varchar("ip_address", { length: 45 }),
+  userAgent: text("user_agent"),
+  
+  // Timestamp (immutable)
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+}, (table) => [
+  index("idx_credit_audit_application").on(table.applicationId),
+  index("idx_credit_audit_timestamp").on(table.timestamp),
+  index("idx_credit_audit_action").on(table.action),
+]);
+
+export const creditAuditLogRelations = relations(creditAuditLog, ({ one }) => ({
+  application: one(loanApplications, {
+    fields: [creditAuditLog.applicationId],
+    references: [loanApplications.id],
+  }),
+  user: one(users, {
+    fields: [creditAuditLog.userId],
+    references: [users.id],
+  }),
+  consent: one(creditConsents, {
+    fields: [creditAuditLog.consentId],
+    references: [creditConsents.id],
+  }),
+  creditPull: one(creditPulls, {
+    fields: [creditAuditLog.creditPullId],
+    references: [creditPulls.id],
+  }),
+  adverseAction: one(adverseActions, {
+    fields: [creditAuditLog.adverseActionId],
+    references: [adverseActions.id],
+  }),
+  performedByUser: one(users, {
+    fields: [creditAuditLog.performedBy],
+    references: [users.id],
+  }),
+}));
+
+export const insertCreditAuditLogSchema = createInsertSchema(creditAuditLog).omit({
+  id: true,
+});
+
+export type InsertCreditAuditLog = z.infer<typeof insertCreditAuditLogSchema>;
+export type CreditAuditLog = typeof creditAuditLog.$inferSelect;
