@@ -8,8 +8,6 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { SidebarProvider } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/app-sidebar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -190,20 +188,15 @@ export default function PipelineQueue() {
 
   if (authLoading || isLoading) {
     return (
-      <SidebarProvider>
-        <div className="flex h-screen w-full">
-          <AppSidebar />
-          <div className="flex-1 overflow-y-auto p-6">
-            <div className="space-y-6">
-              <Skeleton className="h-12 w-64" />
-              <div className="grid gap-4 md:grid-cols-4">
-                {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-24" />)}
-              </div>
-              <Skeleton className="h-96 w-full" />
-            </div>
+      <div className="overflow-y-auto p-6">
+        <div className="space-y-6">
+          <Skeleton className="h-12 w-64" />
+          <div className="grid gap-4 md:grid-cols-4">
+            {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-24" />)}
           </div>
+          <Skeleton className="h-96 w-full" />
         </div>
-      </SidebarProvider>
+      </div>
     );
   }
 
@@ -232,11 +225,8 @@ export default function PipelineQueue() {
   };
 
   return (
-    <SidebarProvider>
-      <div className="flex h-screen w-full">
-        <AppSidebar />
-        <div className="flex-1 overflow-y-auto bg-background">
-          <div className="space-y-6 px-4 py-6 sm:px-6 lg:px-8">
+    <>
+      <div className="space-y-6 px-4 py-6 sm:px-6 lg:px-8">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <h1 className="text-2xl font-bold tracking-tight" data-testid="text-page-title">
@@ -461,8 +451,6 @@ export default function PipelineQueue() {
               </div>
             </div>
           </div>
-        </div>
-      </div>
 
       <Dialog open={conditionDialogOpen} onOpenChange={setConditionDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
@@ -631,6 +619,6 @@ export default function PipelineQueue() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </SidebarProvider>
+    </>
   );
 }

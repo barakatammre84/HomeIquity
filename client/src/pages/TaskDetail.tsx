@@ -9,8 +9,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { SidebarProvider } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/app-sidebar";
 import { useLocation, useRoute } from "wouter";
 import type { Task, Document, TaskDocument } from "@shared/schema";
 import {
@@ -145,40 +143,30 @@ export default function TaskDetail() {
 
   if (authLoading || isLoading) {
     return (
-      <SidebarProvider>
-        <div className="flex h-screen w-full">
-          <AppSidebar />
-          <div className="flex-1 p-8">
-            <Skeleton className="mb-8 h-8 w-48" />
-            <Skeleton className="h-64" />
-          </div>
-        </div>
-      </SidebarProvider>
+      <div className="p-8">
+        <Skeleton className="mb-8 h-8 w-48" />
+        <Skeleton className="h-64" />
+      </div>
     );
   }
 
   if (!task) {
     return (
-      <SidebarProvider>
-        <div className="flex h-screen w-full">
-          <AppSidebar />
-          <div className="flex-1 flex items-center justify-center">
-            <Card className="max-w-md">
-              <CardContent className="p-8 text-center">
-                <AlertCircle className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                <h2 className="text-xl font-semibold mb-2">Task Not Found</h2>
-                <p className="text-muted-foreground mb-4">
-                  The task you're looking for doesn't exist or you don't have access.
-                </p>
-                <Button onClick={() => navigate("/tasks")}>
-                  <ArrowLeft className="mr-2 h-4 w-4" />
-                  Back to Tasks
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </SidebarProvider>
+      <div className="flex-1 flex items-center justify-center">
+        <Card className="max-w-md">
+          <CardContent className="p-8 text-center">
+            <AlertCircle className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+            <h2 className="text-xl font-semibold mb-2">Task Not Found</h2>
+            <p className="text-muted-foreground mb-4">
+              The task you're looking for doesn't exist or you don't have access.
+            </p>
+            <Button onClick={() => navigate("/tasks")}>
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to Tasks
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
@@ -188,11 +176,8 @@ export default function TaskDetail() {
   const canVerify = isStaff && task.status === "submitted";
 
   return (
-    <SidebarProvider>
-      <div className="flex h-screen w-full">
-        <AppSidebar />
-        <div className="flex-1 overflow-y-auto bg-background">
-          <div className="border-b p-4 sm:p-6 lg:p-8">
+    <>
+      <div className="border-b p-4 sm:p-6 lg:p-8">
             <Button
               variant="ghost"
               onClick={() => navigate(isStaff ? "/staff-dashboard" : "/tasks")}
@@ -483,8 +468,6 @@ export default function TaskDetail() {
               </div>
             </div>
           </div>
-        </div>
-      </div>
-    </SidebarProvider>
+    </>
   );
 }

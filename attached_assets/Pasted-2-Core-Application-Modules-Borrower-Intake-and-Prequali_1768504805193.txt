@@ -1,0 +1,132 @@
+2 Core Application Modules
+Borrower Intake and Prequalification
+
+Single, progressive intake form that auto‑classifies borrower type.
+
+Plaid integration for income, assets, and identity verification.
+
+Instant DTI, LTV, and affordability calculations.
+
+Auto‑generated prequalification summary for borrower and broker.
+
+Document Automation
+
+Secure upload portal with OCR and metadata extraction.
+
+Auto‑classification and missing‑document detection.
+
+Encrypted document vault and borrower progress UI.
+
+Credit and FCRA Compliance Layer
+
+Consent capture and disclosure storage before any credit action.
+
+API calls to credit bureaus with automated adverse action generation.
+
+Immutable audit records for every consent and pull.
+
+Loan Scenario Engine
+
+Real‑time scenario builder that returns purchase price, payment breakdown, and product options.
+
+Configurable product rules for FHA, VA, conventional, jumbo, and non‑QM.
+
+Cash‑to‑close and rate sensitivity outputs for advisory conversations.
+
+Compliance and Audit Trail
+
+Event logging for every user action, document change, and disclosure.
+
+Tamper‑resistant records and exportable audit packages for IDFPR and lenders.
+
+Role‑based access controls and session management.
+
+Processor and Broker Dashboard
+
+Pipeline view with SLA timers, outstanding conditions, and bottleneck alerts.
+
+Task queues for processors and automated reminders for borrowers.
+
+File profitability and time‑to‑close analytics.
+
+3 Integrations and External Services
+Essential integrations
+
+Plaid for assets and income verification.
+
+Credit bureau APIs for tri‑merge pulls.
+
+SendGrid for transactional email and Twilio for SMS.
+
+Cloud storage for encrypted documents.
+
+Optional LOS integration (Encompass, LendingPad) via API or SFTP.
+
+Security and hosting
+
+Use Replit for app runtime; use managed cloud services for production storage and secrets.
+
+Enforce TLS, server‑side encryption, and key management.
+
+Regular vulnerability scans and dependency monitoring.
+
+4 Operational Playbook
+Standardize workflows
+
+Templates for scripts, emails, and document requests.
+
+Predefined workflows for first‑time buyers, affluent clients, and investors.
+
+Automated sequences for education, credit improvement, and preapproval.
+
+Two funnels embedded in the app
+
+Renter to homeowner funnel: education modules, credit readiness checklist, automated nurture sequences.
+
+Affluent advisory funnel: scenario library, concierge onboarding, portfolio mortgage planning tools.
+
+Data driven optimization
+
+Track lead source, conversion rates, drop‑off points, time to close, and loan profitability.
+
+Use metrics to iterate UI, messaging, and underwriting rules.
+
+Compliance culture
+
+App enforces disclosures, consent capture, and retention policies.
+
+All marketing and co‑marketing flows reviewed for RESPA and fair lending risk.
+
+Quarterly compliance audits and annual independent reviews.
+
+5 Developer and Release Practices
+Development workflow
+
+Feature branches and pull requests inside Replit; CI checks for linting, tests, and security scans.
+
+Staging environment mirroring production integrations for Plaid and credit APIs.
+
+Release and rollback
+
+Canary releases for critical flows (intake, credit pulls).
+
+Automated database migrations with backups and rollback plans.
+
+Monitoring and incident response
+
+Alerts for failed integrations, SLA breaches, and suspicious activity.
+
+Runbooks for common incidents and a compliance‑ready incident log.
+
+6 Roadmap Items to Build First
+Secure borrower intake with Plaid and consent capture
+
+Document upload, OCR, and vaulting
+
+Credit pull workflow with FCRA logging
+
+Loan scenario engine for advisory conversations
+
+Processor dashboard and SLA automation
+
+Audit trail and compliance export feature

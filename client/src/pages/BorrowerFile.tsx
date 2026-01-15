@@ -2,10 +2,8 @@ import { useParams, Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import {
-  SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/app-sidebar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -104,20 +102,15 @@ export default function BorrowerFile() {
 
   if (isLoading) {
     return (
-      <SidebarProvider>
-        <div className="flex h-screen w-full">
-          <AppSidebar />
-          <div className="flex-1 overflow-y-auto p-6">
-            <div className="mx-auto max-w-6xl space-y-6">
-              <Skeleton className="h-12 w-64" />
-              <div className="grid gap-4 md:grid-cols-4">
-                {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-24" />)}
-              </div>
-              <Skeleton className="h-96 w-full" />
-            </div>
+      <div className="overflow-y-auto p-6">
+        <div className="mx-auto max-w-6xl space-y-6">
+          <Skeleton className="h-12 w-64" />
+          <div className="grid gap-4 md:grid-cols-4">
+            {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-24" />)}
           </div>
+          <Skeleton className="h-96 w-full" />
         </div>
-      </SidebarProvider>
+      </div>
     );
   }
 
@@ -130,26 +123,21 @@ export default function BorrowerFile() {
 
   if (!application) {
     return (
-      <SidebarProvider>
-        <div className="flex h-screen w-full">
-          <AppSidebar />
-          <div className="flex-1 flex items-center justify-center">
-            <Card className="max-w-md">
-              <CardHeader>
-                <CardTitle>File Not Found</CardTitle>
-                <CardDescription>
-                  This borrower file could not be found.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button asChild>
-                  <Link href="/pipeline-queue">Back to Pipeline</Link>
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </SidebarProvider>
+      <div className="flex-1 flex items-center justify-center">
+        <Card className="max-w-md">
+          <CardHeader>
+            <CardTitle>File Not Found</CardTitle>
+            <CardDescription>
+              This borrower file could not be found.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button asChild>
+              <Link href="/pipeline-queue">Back to Pipeline</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
@@ -157,33 +145,30 @@ export default function BorrowerFile() {
   const clearedConditions = conditions.filter(c => c.status === "cleared");
 
   return (
-    <SidebarProvider>
-      <div className="flex h-screen w-full">
-        <AppSidebar />
-        <div className="flex-1 overflow-y-auto">
-          <header className="sticky top-0 z-10 flex items-center justify-between border-b bg-background px-6 py-3">
-            <div className="flex items-center gap-4">
-              <SidebarTrigger data-testid="button-sidebar-toggle" />
-              <Button variant="ghost" size="sm" asChild>
-                <Link href="/pipeline-queue">
-                  <ArrowLeft className="mr-2 h-4 w-4" />
-                  Pipeline Queue
-                </Link>
-              </Button>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" data-testid="button-export-mismo">
-                <Download className="mr-2 h-4 w-4" />
-                Export MISMO
-              </Button>
-              <Button size="sm" data-testid="button-generate-le">
-                <FileText className="mr-2 h-4 w-4" />
-                Generate LE
-              </Button>
-            </div>
-          </header>
+    <>
+      <header className="sticky top-0 z-10 flex items-center justify-between border-b bg-background px-6 py-3">
+        <div className="flex items-center gap-4">
+          <SidebarTrigger data-testid="button-sidebar-toggle" />
+          <Button variant="ghost" size="sm" asChild>
+            <Link href="/pipeline-queue">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Pipeline Queue
+            </Link>
+          </Button>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" data-testid="button-export-mismo">
+            <Download className="mr-2 h-4 w-4" />
+            Export MISMO
+          </Button>
+          <Button size="sm" data-testid="button-generate-le">
+            <FileText className="mr-2 h-4 w-4" />
+            Generate LE
+          </Button>
+        </div>
+      </header>
 
-          <div className="p-6">
+      <div className="p-6">
             <div className="mx-auto max-w-6xl space-y-6">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
@@ -560,8 +545,6 @@ export default function BorrowerFile() {
               </Tabs>
             </div>
           </div>
-        </div>
-      </div>
-    </SidebarProvider>
+    </>
   );
 }

@@ -4,8 +4,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/useAuth";
-import { SidebarProvider } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/app-sidebar";
 import type { Document } from "@shared/schema";
 import {
   FileText,
@@ -52,26 +50,18 @@ export default function Documents() {
 
   if (authLoading || isLoading) {
     return (
-      <SidebarProvider>
-        <div className="flex h-screen w-full">
-          <AppSidebar />
-          <div className="flex-1 p-8">
-            <Skeleton className="mb-8 h-8 w-48" />
-            <Skeleton className="h-64" />
-          </div>
-        </div>
-      </SidebarProvider>
+      <div className="p-8">
+        <Skeleton className="mb-8 h-8 w-48" />
+        <Skeleton className="h-64" />
+      </div>
     );
   }
 
   const documents = data?.documents || [];
 
   return (
-    <SidebarProvider>
-      <div className="flex h-screen w-full">
-        <AppSidebar />
-        <div className="flex-1 overflow-y-auto bg-background">
-          <div className="border-b p-4 sm:p-6 lg:p-8">
+    <>
+      <div className="border-b p-4 sm:p-6 lg:p-8">
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Documents</h1>
@@ -177,8 +167,6 @@ export default function Documents() {
               </Card>
             )}
           </div>
-        </div>
-      </div>
-    </SidebarProvider>
+    </>
   );
 }

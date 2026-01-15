@@ -2,10 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useParams, Link } from "wouter";
 import {
-  SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/app-sidebar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -143,84 +141,71 @@ export default function LoanEstimate() {
 
   if (isLoading || authLoading) {
     return (
-      <SidebarProvider>
-        <div className="flex h-screen w-full">
-          <AppSidebar />
-          <div className="flex-1 overflow-y-auto p-6">
-            <div className="mx-auto max-w-4xl space-y-6">
-              <Skeleton className="h-12 w-64" />
-              <div className="grid gap-4 md:grid-cols-3">
-                {[1, 2, 3].map(i => <Skeleton key={i} className="h-28" />)}
-              </div>
-              <Skeleton className="h-96 w-full" />
-            </div>
+      <div className="overflow-y-auto p-6">
+        <div className="mx-auto max-w-4xl space-y-6">
+          <Skeleton className="h-12 w-64" />
+          <div className="grid gap-4 md:grid-cols-3">
+            {[1, 2, 3].map(i => <Skeleton key={i} className="h-28" />)}
           </div>
+          <Skeleton className="h-96 w-full" />
         </div>
-      </SidebarProvider>
+      </div>
     );
   }
 
   if (error || !le) {
     return (
-      <SidebarProvider>
-        <div className="flex h-screen w-full">
-          <AppSidebar />
-          <div className="flex-1 flex items-center justify-center">
-            <Card className="max-w-md">
-              <CardHeader>
-                <CardTitle>Error Loading Loan Estimate</CardTitle>
-                <CardDescription>
-                  Unable to generate the loan estimate for this application.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button asChild>
-                  <Link href="/dashboard">Go to Dashboard</Link>
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </SidebarProvider>
+      <div className="flex-1 flex items-center justify-center">
+        <Card className="max-w-md">
+          <CardHeader>
+            <CardTitle>Error Loading Loan Estimate</CardTitle>
+            <CardDescription>
+              Unable to generate the loan estimate for this application.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button asChild>
+              <Link href="/dashboard">Go to Dashboard</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
   return (
-    <SidebarProvider>
-      <div className="flex h-screen w-full">
-        <AppSidebar />
-        <div className="flex-1 overflow-y-auto">
-          <header className="sticky top-0 z-10 flex items-center justify-between border-b bg-background px-6 py-3">
-            <div className="flex items-center gap-4">
-              <SidebarTrigger data-testid="button-sidebar-toggle" />
-              <Button variant="ghost" size="icon" asChild>
-                <Link href={`/borrower-file/${id}`}>
-                  <ArrowLeft className="h-4 w-4" />
-                </Link>
-              </Button>
-              <div>
-                <h1 className="text-xl font-semibold flex items-center gap-2">
-                  <FileText className="h-5 w-5" />
-                  Loan Estimate
-                </h1>
-                <p className="text-sm text-muted-foreground">
-                  TRID-Compliant Disclosure Document
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" data-testid="button-print">
-                <Printer className="mr-2 h-4 w-4" />
-                Print
-              </Button>
-              <Button size="sm" data-testid="button-download">
-                <Download className="mr-2 h-4 w-4" />
-                Download PDF
-              </Button>
-            </div>
-          </header>
+    <>
+      <header className="sticky top-0 z-10 flex items-center justify-between border-b bg-background px-6 py-3">
+        <div className="flex items-center gap-4">
+          <SidebarTrigger data-testid="button-sidebar-toggle" />
+          <Button variant="ghost" size="icon" asChild>
+            <Link href={`/borrower-file/${id}`}>
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+          </Button>
+          <div>
+            <h1 className="text-xl font-semibold flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Loan Estimate
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              TRID-Compliant Disclosure Document
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" data-testid="button-print">
+            <Printer className="mr-2 h-4 w-4" />
+            Print
+          </Button>
+          <Button size="sm" data-testid="button-download">
+            <Download className="mr-2 h-4 w-4" />
+            Download PDF
+          </Button>
+        </div>
+      </header>
 
-          <ScrollArea className="h-[calc(100vh-64px)]">
+      <ScrollArea className="h-[calc(100vh-64px)]">
             <div className="p-6">
               <div className="mx-auto max-w-4xl space-y-6">
                 <Card className="bg-primary/5 border-primary/20">
@@ -523,9 +508,7 @@ export default function LoanEstimate() {
                 </Card>
               </div>
             </div>
-          </ScrollArea>
-        </div>
-      </div>
-    </SidebarProvider>
+      </ScrollArea>
+    </>
   );
 }

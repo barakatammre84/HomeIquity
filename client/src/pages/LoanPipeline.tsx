@@ -9,8 +9,6 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
-import { SidebarProvider } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/app-sidebar";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import {
@@ -229,21 +227,16 @@ export default function LoanPipeline() {
 
   if (isLoading) {
     return (
-      <SidebarProvider>
-        <div className="flex h-screen w-full">
-          <AppSidebar />
-          <div className="flex-1 overflow-y-auto p-6">
-            <div className="mx-auto max-w-5xl space-y-6">
-              <Skeleton className="h-12 w-64" />
-              <Skeleton className="h-32 w-full" />
-              <div className="grid gap-4 md:grid-cols-3">
-                {[1, 2, 3].map(i => <Skeleton key={i} className="h-24" />)}
-              </div>
-              <Skeleton className="h-64 w-full" />
-            </div>
+      <div className="overflow-y-auto p-6">
+        <div className="mx-auto max-w-5xl space-y-6">
+          <Skeleton className="h-12 w-64" />
+          <Skeleton className="h-32 w-full" />
+          <div className="grid gap-4 md:grid-cols-3">
+            {[1, 2, 3].map(i => <Skeleton key={i} className="h-24" />)}
           </div>
+          <Skeleton className="h-64 w-full" />
         </div>
-      </SidebarProvider>
+      </div>
     );
   }
 
@@ -253,24 +246,19 @@ export default function LoanPipeline() {
 
   if (!application) {
     return (
-      <SidebarProvider>
-        <div className="flex h-screen w-full">
-          <AppSidebar />
-          <div className="flex-1 flex items-center justify-center">
-            <Card className="max-w-md">
-              <CardHeader>
-                <CardTitle>Application Not Found</CardTitle>
-                <CardDescription>We couldn't find this loan application.</CardDescription>
-              </CardHeader>
-              <CardFooter>
-                <Link href="/dashboard">
-                  <Button data-testid="button-back-dashboard">Back to Dashboard</Button>
-                </Link>
-              </CardFooter>
-            </Card>
-          </div>
-        </div>
-      </SidebarProvider>
+      <div className="flex-1 flex items-center justify-center">
+        <Card className="max-w-md">
+          <CardHeader>
+            <CardTitle>Application Not Found</CardTitle>
+            <CardDescription>We couldn't find this loan application.</CardDescription>
+          </CardHeader>
+          <CardFooter>
+            <Link href="/dashboard">
+              <Button data-testid="button-back-dashboard">Back to Dashboard</Button>
+            </Link>
+          </CardFooter>
+        </Card>
+      </div>
     );
   }
 
@@ -301,11 +289,8 @@ export default function LoanPipeline() {
   );
 
   return (
-    <SidebarProvider>
-      <div className="flex h-screen w-full">
-        <AppSidebar />
-        <div className="flex-1 overflow-y-auto bg-background">
-          <div className="mx-auto max-w-5xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
+    <>
+      <div className="mx-auto max-w-5xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <h1 className="text-2xl font-bold tracking-tight" data-testid="text-page-title">
@@ -930,8 +915,6 @@ export default function LoanPipeline() {
               </CardContent>
             </Card>
           </div>
-        </div>
-      </div>
-    </SidebarProvider>
+    </>
   );
 }

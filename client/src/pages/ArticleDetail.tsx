@@ -3,8 +3,6 @@ import { Link, useParams } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { SidebarProvider } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/app-sidebar";
 import {
   ChevronLeft,
   Clock,
@@ -64,11 +62,8 @@ export default function ArticleDetail() {
 
   if (isLoading) {
     return (
-      <SidebarProvider>
-        <div className="flex h-screen w-full">
-          <AppSidebar />
-          <div className="flex-1 overflow-y-auto bg-background">
-            <div className="mx-auto max-w-3xl p-6 sm:p-8 lg:p-12">
+      <>
+        <div className="mx-auto max-w-3xl p-6 sm:p-8 lg:p-12">
               <Skeleton className="mb-6 h-6 w-32" />
               <Skeleton className="mb-4 h-12 w-full" />
               <Skeleton className="mb-8 h-6 w-48" />
@@ -77,20 +72,15 @@ export default function ArticleDetail() {
                 <Skeleton className="h-4 w-full" />
                 <Skeleton className="h-4 w-3/4" />
               </div>
-            </div>
-          </div>
         </div>
-      </SidebarProvider>
+      </>
     );
   }
 
   if (error || !article) {
     return (
-      <SidebarProvider>
-        <div className="flex h-screen w-full">
-          <AppSidebar />
-          <div className="flex-1 overflow-y-auto bg-background">
-            <div className="flex h-full flex-col items-center justify-center p-6 text-center">
+      <>
+        <div className="flex h-full flex-col items-center justify-center p-6 text-center">
               <BookOpen className="h-16 w-16 text-muted-foreground/50" />
               <h1 className="mt-6 text-2xl font-bold">Article Not Found</h1>
               <p className="mt-2 text-muted-foreground">
@@ -102,19 +92,14 @@ export default function ArticleDetail() {
                   Back to Learning Center
                 </Button>
               </Link>
-            </div>
-          </div>
         </div>
-      </SidebarProvider>
+      </>
     );
   }
 
   return (
-    <SidebarProvider>
-      <div className="flex h-screen w-full">
-        <AppSidebar />
-        <div className="flex-1 overflow-y-auto bg-background">
-          <article className="mx-auto max-w-3xl p-6 sm:p-8 lg:p-12">
+    <>
+      <article className="mx-auto max-w-3xl p-6 sm:p-8 lg:p-12">
             <div className="mb-8">
               <Link href="/learn">
                 <Button variant="ghost" size="sm" className="gap-1 -ml-2 mb-4" data-testid="button-back">
@@ -222,9 +207,7 @@ export default function ArticleDetail() {
                 </Link>
               </div>
             </div>
-          </article>
-        </div>
-      </div>
-    </SidebarProvider>
+      </article>
+    </>
   );
 }

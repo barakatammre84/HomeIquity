@@ -1,7 +1,5 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { SidebarProvider } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/app-sidebar";
 import {
   ChevronRight,
   Calculator,
@@ -73,10 +71,7 @@ const resources = [
 
 export default function Resources() {
   return (
-    <SidebarProvider>
-      <div className="flex h-screen w-full">
-        <AppSidebar />
-        <div className="flex-1 overflow-y-auto bg-background">
+    <>
           <div className="border-b p-4 sm:p-6 lg:p-8">
             <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Resources</h1>
             <p className="mt-1 text-sm text-muted-foreground">
@@ -124,8 +119,6 @@ export default function Resources() {
               </div>
             ))}
           </div>
-        </div>
-      </div>
-    </SidebarProvider>
+    </>
   );
 }

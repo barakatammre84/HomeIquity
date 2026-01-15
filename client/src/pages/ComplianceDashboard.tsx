@@ -2,10 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { Link } from "wouter";
 import {
-  SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/app-sidebar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -110,45 +108,35 @@ export default function ComplianceDashboard() {
 
   if (!isStaff) {
     return (
-      <SidebarProvider>
-        <div className="flex h-screen w-full">
-          <AppSidebar />
-          <div className="flex-1 flex items-center justify-center">
-            <Card className="max-w-md">
-              <CardHeader>
-                <CardTitle>Access Denied</CardTitle>
-                <CardDescription>
-                  Only staff members can access the compliance dashboard.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button asChild>
-                  <Link href="/dashboard">Go to Dashboard</Link>
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </SidebarProvider>
+      <div className="flex-1 flex items-center justify-center">
+        <Card className="max-w-md">
+          <CardHeader>
+            <CardTitle>Access Denied</CardTitle>
+            <CardDescription>
+              Only staff members can access the compliance dashboard.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button asChild>
+              <Link href="/dashboard">Go to Dashboard</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
   if (isLoading) {
     return (
-      <SidebarProvider>
-        <div className="flex h-screen w-full">
-          <AppSidebar />
-          <div className="flex-1 overflow-y-auto p-6">
-            <div className="mx-auto max-w-6xl space-y-6">
-              <Skeleton className="h-12 w-64" />
-              <div className="grid gap-4 md:grid-cols-4">
-                {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-28" />)}
-              </div>
-              <Skeleton className="h-96 w-full" />
-            </div>
+      <div className="overflow-y-auto p-6">
+        <div className="mx-auto max-w-6xl space-y-6">
+          <Skeleton className="h-12 w-64" />
+          <div className="grid gap-4 md:grid-cols-4">
+            {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-28" />)}
           </div>
+          <Skeleton className="h-96 w-full" />
         </div>
-      </SidebarProvider>
+      </div>
     );
   }
 
@@ -165,27 +153,24 @@ export default function ComplianceDashboard() {
     : 0;
 
   return (
-    <SidebarProvider>
-      <div className="flex h-screen w-full">
-        <AppSidebar />
-        <div className="flex-1 overflow-y-auto">
-          <header className="sticky top-0 z-10 flex items-center justify-between border-b bg-background px-6 py-3">
-            <div className="flex items-center gap-4">
-              <SidebarTrigger data-testid="button-sidebar-toggle" />
-              <div>
-                <h1 className="text-xl font-semibold">Compliance Dashboard</h1>
-                <p className="text-sm text-muted-foreground">TRID, MISMO & Regulatory Tracking</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" data-testid="button-export-report">
-                <Download className="mr-2 h-4 w-4" />
-                Export Report
-              </Button>
-            </div>
-          </header>
+    <>
+      <header className="sticky top-0 z-10 flex items-center justify-between border-b bg-background px-6 py-3">
+        <div className="flex items-center gap-4">
+          <SidebarTrigger data-testid="button-sidebar-toggle" />
+          <div>
+            <h1 className="text-xl font-semibold">Compliance Dashboard</h1>
+            <p className="text-sm text-muted-foreground">TRID, MISMO & Regulatory Tracking</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" data-testid="button-export-report">
+            <Download className="mr-2 h-4 w-4" />
+            Export Report
+          </Button>
+        </div>
+      </header>
 
-          <div className="p-6">
+      <div className="p-6">
             <div className="mx-auto max-w-6xl space-y-6">
               <div className="grid gap-4 md:grid-cols-4">
                 <Card>
@@ -527,8 +512,6 @@ export default function ComplianceDashboard() {
               </Tabs>
             </div>
           </div>
-        </div>
-      </div>
-    </SidebarProvider>
+    </>
   );
 }

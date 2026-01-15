@@ -1,8 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { SidebarProvider } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/app-sidebar";
 import {
   Users,
   Phone,
@@ -38,10 +36,7 @@ const teamMembers = [
 
 export default function Staff() {
   return (
-    <SidebarProvider>
-      <div className="flex h-screen w-full">
-        <AppSidebar />
-        <div className="flex-1 overflow-y-auto bg-background">
+    <>
           <div className="border-b p-4 sm:p-6 lg:p-8">
             <div className="flex items-center gap-2">
               <Users className="h-5 w-5" />
@@ -135,8 +130,6 @@ export default function Staff() {
               </CardContent>
             </Card>
           </div>
-        </div>
-      </div>
-    </SidebarProvider>
+    </>
   );
 }

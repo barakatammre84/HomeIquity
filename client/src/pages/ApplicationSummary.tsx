@@ -6,8 +6,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
-import { SidebarProvider } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/app-sidebar";
 import { formatCurrency, getStatusLabel, getStatusColor } from "@/lib/authUtils";
 import type { LoanApplication } from "@shared/schema";
 import {
@@ -37,18 +35,13 @@ export default function ApplicationSummary() {
 
   if (authLoading || isLoading) {
     return (
-      <SidebarProvider>
-        <div className="flex h-screen w-full">
-          <AppSidebar />
-          <div className="flex-1 p-8">
-            <Skeleton className="mb-8 h-8 w-48" />
-            <div className="grid gap-6 md:grid-cols-2">
-              <Skeleton className="h-64" />
-              <Skeleton className="h-64" />
-            </div>
-          </div>
+      <div className="p-8">
+        <Skeleton className="mb-8 h-8 w-48" />
+        <div className="grid gap-6 md:grid-cols-2">
+          <Skeleton className="h-64" />
+          <Skeleton className="h-64" />
         </div>
-      </SidebarProvider>
+      </div>
     );
   }
 
@@ -66,11 +59,8 @@ export default function ApplicationSummary() {
     : 0;
 
   return (
-    <SidebarProvider>
-      <div className="flex h-screen w-full">
-        <AppSidebar />
-        <div className="flex-1 overflow-y-auto bg-background">
-          <div className="border-b p-4 sm:p-6 lg:p-8">
+    <>
+      <div className="border-b p-4 sm:p-6 lg:p-8">
             <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
               Application summary
             </h1>
@@ -453,8 +443,6 @@ export default function ApplicationSummary() {
               </div>
             )}
           </div>
-        </div>
-      </div>
-    </SidebarProvider>
+    </>
   );
 }

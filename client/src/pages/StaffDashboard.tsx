@@ -13,8 +13,6 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { SidebarProvider } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/app-sidebar";
 import { useLocation } from "wouter";
 import type { Task, LoanApplication, User } from "@shared/schema";
 import {
@@ -214,40 +212,30 @@ export default function StaffDashboard() {
 
   if (authLoading || tasksLoading || applicationsLoading) {
     return (
-      <SidebarProvider>
-        <div className="flex h-screen w-full">
-          <AppSidebar />
-          <div className="flex-1 p-8">
-            <Skeleton className="mb-8 h-8 w-48" />
-            <div className="space-y-6">
-              {[1, 2, 3].map((i) => (
-                <Skeleton key={i} className="h-32" />
-              ))}
-            </div>
-          </div>
+      <div className="p-8">
+        <Skeleton className="mb-8 h-8 w-48" />
+        <div className="space-y-6">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-32" />
+          ))}
         </div>
-      </SidebarProvider>
+      </div>
     );
   }
 
   if (!user || !["admin", "lender", "broker"].includes(user.role || "")) {
     return (
-      <SidebarProvider>
-        <div className="flex h-screen w-full">
-          <AppSidebar />
-          <div className="flex-1 flex items-center justify-center">
-            <Card className="max-w-md">
-              <CardContent className="p-8 text-center">
-                <AlertCircle className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
-                <p className="text-muted-foreground">
-                  You do not have permission to access the staff dashboard.
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </SidebarProvider>
+      <div className="flex-1 flex items-center justify-center">
+        <Card className="max-w-md">
+          <CardContent className="p-8 text-center">
+            <AlertCircle className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+            <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
+            <p className="text-muted-foreground">
+              You do not have permission to access the staff dashboard.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
@@ -273,11 +261,8 @@ export default function StaffDashboard() {
   };
 
   return (
-    <SidebarProvider>
-      <div className="flex h-screen w-full">
-        <AppSidebar />
-        <div className="flex-1 overflow-y-auto bg-background">
-          <div className="border-b p-4 sm:p-6 lg:p-8">
+    <>
+      <div className="border-b p-4 sm:p-6 lg:p-8">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h1 className="text-2xl font-bold tracking-tight sm:text-3xl" data-testid="text-staff-dashboard-title">
@@ -701,8 +686,6 @@ export default function StaffDashboard() {
               </TabsContent>
             </Tabs>
           </div>
-        </div>
-      </div>
-    </SidebarProvider>
+    </>
   );
 }

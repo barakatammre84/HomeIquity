@@ -10,8 +10,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { SidebarProvider } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/app-sidebar";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { LoanApplication, UrlaPersonalInfo, EmploymentHistory, UrlaAsset, UrlaLiability, UrlaPropertyInfo, OtherIncomeSource } from "@shared/schema";
 import {
@@ -151,47 +149,34 @@ export default function URLAForm() {
 
   if (authLoading || dashboardLoading || urlaLoading) {
     return (
-      <SidebarProvider>
-        <div className="flex h-screen w-full">
-          <AppSidebar />
-          <div className="flex-1 p-8">
-            <Skeleton className="mb-8 h-8 w-48" />
-            <Skeleton className="h-96" />
-          </div>
-        </div>
-      </SidebarProvider>
+      <div className="p-8">
+        <Skeleton className="mb-8 h-8 w-48" />
+        <Skeleton className="h-96" />
+      </div>
     );
   }
 
   if (!activeApplication) {
     return (
-      <SidebarProvider>
-        <div className="flex h-screen w-full">
-          <AppSidebar />
-          <div className="flex-1 p-8">
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <FileText className="mb-4 h-12 w-12 text-muted-foreground" />
-                <p className="text-lg font-medium">No active application</p>
-                <p className="text-sm text-muted-foreground mt-2">
-                  Start a pre-approval application to access the URLA form.
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </SidebarProvider>
+      <div className="p-8">
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <FileText className="mb-4 h-12 w-12 text-muted-foreground" />
+            <p className="text-lg font-medium">No active application</p>
+            <p className="text-sm text-muted-foreground mt-2">
+              Start a pre-approval application to access the URLA form.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
   const app = urlaData?.application || activeApplication;
 
   return (
-    <SidebarProvider>
-      <div className="flex h-screen w-full">
-        <AppSidebar />
-        <div className="flex-1 overflow-y-auto bg-background">
-          <div className="border-b p-4 sm:p-6 lg:p-8">
+    <>
+      <div className="border-b p-4 sm:p-6 lg:p-8">
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
@@ -1307,8 +1292,6 @@ export default function URLAForm() {
               </Button>
             </div>
           </div>
-        </div>
-      </div>
-    </SidebarProvider>
+    </>
   );
 }

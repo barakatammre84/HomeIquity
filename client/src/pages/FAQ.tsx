@@ -6,8 +6,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { SidebarProvider } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/app-sidebar";
 import {
   Accordion,
   AccordionContent,
@@ -75,61 +73,58 @@ export default function FAQ() {
   const uncategorizedFaqs = faqs.filter((f) => !f.categoryId);
 
   return (
-    <SidebarProvider>
-      <div className="flex h-screen w-full">
-        <AppSidebar />
-        <div className="flex-1 overflow-y-auto bg-background">
-          <div className="border-b bg-gradient-to-br from-primary/5 to-primary/10 p-6 sm:p-8 lg:p-12">
-            <div className="mx-auto max-w-4xl text-center">
-              <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-sm font-medium text-primary">
-                <HelpCircle className="h-4 w-4" />
-                Frequently Asked Questions
-              </div>
-              <h1 className="text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
-                How Can We Help You?
-              </h1>
-              <p className="mt-4 text-lg text-muted-foreground">
-                Find answers to common questions about mortgages, the home buying process, and more
-              </p>
-              
-              <div className="relative mx-auto mt-8 max-w-xl">
-                <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  type="search"
-                  placeholder="Search questions..."
-                  className="h-12 pl-12 pr-4 text-base"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  data-testid="input-faq-search"
-                />
-              </div>
+    <>
+      <div className="border-b bg-gradient-to-br from-primary/5 to-primary/10 p-6 sm:p-8 lg:p-12">
+        <div className="mx-auto max-w-4xl text-center">
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-sm font-medium text-primary">
+            <HelpCircle className="h-4 w-4" />
+            Frequently Asked Questions
+          </div>
+          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
+            How Can We Help You?
+          </h1>
+          <p className="mt-4 text-lg text-muted-foreground">
+            Find answers to common questions about mortgages, the home buying process, and more
+          </p>
+          
+          <div className="relative mx-auto mt-8 max-w-xl">
+            <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              type="search"
+              placeholder="Search questions..."
+              className="h-12 pl-12 pr-4 text-base"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              data-testid="input-faq-search"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="p-4 sm:p-6 lg:p-8">
+        <div className="mx-auto max-w-4xl">
+          <div className="mb-6 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Link href="/learn">
+                <Button variant="ghost" size="sm" data-testid="link-learning-center">
+                  Learning Center
+                </Button>
+              </Link>
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              <span className="font-medium">FAQs</span>
             </div>
           </div>
 
-          <div className="p-4 sm:p-6 lg:p-8">
-            <div className="mx-auto max-w-4xl">
-              <div className="mb-6 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Link href="/learn">
-                    <Button variant="ghost" size="sm" data-testid="link-learning-center">
-                      Learning Center
-                    </Button>
-                  </Link>
-                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-medium">FAQs</span>
-                </div>
+          {!searchQuery && !selectedCategory && popularFaqs.length > 0 && (
+            <section className="mb-10">
+              <div className="mb-4 flex items-center gap-2">
+                <Star className="h-5 w-5 text-yellow-500" />
+                <h2 className="text-lg font-semibold">Popular Questions</h2>
               </div>
-
-              {!searchQuery && !selectedCategory && popularFaqs.length > 0 && (
-                <section className="mb-10">
-                  <div className="mb-4 flex items-center gap-2">
-                    <Star className="h-5 w-5 text-yellow-500" />
-                    <h2 className="text-lg font-semibold">Popular Questions</h2>
-                  </div>
-                  <Card>
-                    <Accordion type="multiple" className="w-full">
-                      {popularFaqs.slice(0, 5).map((faq) => (
-                        <AccordionItem key={faq.id} value={faq.id} data-testid={`faq-popular-${faq.id}`}>
+              <Card>
+                <Accordion type="multiple" className="w-full">
+                  {popularFaqs.slice(0, 5).map((faq) => (
+                    <AccordionItem key={faq.id} value={faq.id} data-testid={`faq-popular-${faq.id}`}>
                           <AccordionTrigger className="px-6 text-left hover:no-underline">
                             <span className="pr-4">{faq.question}</span>
                           </AccordionTrigger>
@@ -397,23 +392,21 @@ export default function FAQ() {
                 </div>
               )}
 
-              <div className="mt-12 rounded-xl bg-muted/50 p-8 text-center">
-                <BookOpen className="mx-auto h-10 w-10 text-primary" />
-                <h3 className="mt-4 text-lg font-semibold">Still have questions?</h3>
-                <p className="mt-2 text-muted-foreground">
-                  Check out our Learning Center for in-depth guides and articles
-                </p>
-                <Link href="/learn">
-                  <Button className="mt-4" data-testid="button-explore-learning-center">
-                    Explore Learning Center
-                    <ChevronRight className="ml-1 h-4 w-4" />
-                  </Button>
-                </Link>
-              </div>
-            </div>
+          <div className="mt-12 rounded-xl bg-muted/50 p-8 text-center">
+            <BookOpen className="mx-auto h-10 w-10 text-primary" />
+            <h3 className="mt-4 text-lg font-semibold">Still have questions?</h3>
+            <p className="mt-2 text-muted-foreground">
+              Check out our Learning Center for in-depth guides and articles
+            </p>
+            <Link href="/learn">
+              <Button className="mt-4" data-testid="button-explore-learning-center">
+                Explore Learning Center
+                <ChevronRight className="ml-1 h-4 w-4" />
+              </Button>
+            </Link>
           </div>
         </div>
       </div>
-    </SidebarProvider>
+    </>
   );
 }

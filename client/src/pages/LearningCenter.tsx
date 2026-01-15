@@ -6,8 +6,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { SidebarProvider } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/app-sidebar";
 import {
   Search,
   BookOpen,
@@ -132,11 +130,8 @@ export default function LearningCenter() {
   const isLoading = categoriesLoading || articlesLoading;
 
   return (
-    <SidebarProvider>
-      <div className="flex h-screen w-full">
-        <AppSidebar />
-        <div className="flex-1 overflow-y-auto bg-background">
-          <div className="border-b bg-gradient-to-br from-primary/5 to-primary/10 p-6 sm:p-8 lg:p-12">
+    <>
+      <div className="border-b bg-gradient-to-br from-primary/5 to-primary/10 p-6 sm:p-8 lg:p-12">
             <div className="mx-auto max-w-4xl text-center">
               <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-sm font-medium text-primary">
                 <GraduationCap className="h-4 w-4" />
@@ -161,10 +156,10 @@ export default function LearningCenter() {
                 />
               </div>
             </div>
-          </div>
+      </div>
 
-          <div className="p-4 sm:p-6 lg:p-8">
-            <div className="mx-auto max-w-7xl">
+      <div className="p-4 sm:p-6 lg:p-8">
+        <div className="mx-auto max-w-7xl">
               {!searchQuery && !selectedCategory && (
                 <section className="mb-12">
                   <div className="mb-6 flex items-center justify-between">
@@ -271,10 +266,8 @@ export default function LearningCenter() {
                   </div>
                 )}
               </section>
-            </div>
-          </div>
         </div>
       </div>
-    </SidebarProvider>
+    </>
   );
 }

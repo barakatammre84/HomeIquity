@@ -8,8 +8,6 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { SidebarProvider } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/app-sidebar";
 import { Link } from "wouter";
 import type { LoanApplication, Verification } from "@shared/schema";
 import {
@@ -234,19 +232,14 @@ export default function VerificationPage() {
 
   if (authLoading || dashboardLoading) {
     return (
-      <SidebarProvider>
-        <div className="flex h-screen w-full">
-          <AppSidebar />
-          <div className="flex-1 p-8">
-            <Skeleton className="mb-8 h-8 w-48" />
-            <div className="space-y-6">
-              {[1, 2, 3, 4].map((i) => (
-                <Skeleton key={i} className="h-32" />
-              ))}
-            </div>
-          </div>
+      <div className="p-8">
+        <Skeleton className="mb-8 h-8 w-48" />
+        <div className="space-y-6">
+          {[1, 2, 3, 4].map((i) => (
+            <Skeleton key={i} className="h-32" />
+          ))}
         </div>
-      </SidebarProvider>
+      </div>
     );
   }
 
@@ -254,11 +247,8 @@ export default function VerificationPage() {
   const totalRequired = verificationTypes.filter((v) => v.required).length;
 
   return (
-    <SidebarProvider>
-      <div className="flex h-screen w-full">
-        <AppSidebar />
-        <div className="flex-1 overflow-y-auto bg-background">
-          <div className="border-b p-4 sm:p-6 lg:p-8">
+    <>
+      <div className="border-b p-4 sm:p-6 lg:p-8">
             <h1 className="text-2xl font-bold tracking-tight sm:text-3xl" data-testid="text-verification-title">
               Verification Center
             </h1>
@@ -445,8 +435,6 @@ export default function VerificationPage() {
               </>
             )}
           </div>
-        </div>
-      </div>
-    </SidebarProvider>
+    </>
   );
 }

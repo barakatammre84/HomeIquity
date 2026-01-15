@@ -7,8 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { SidebarProvider } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/app-sidebar";
 import type { LoanApplication, DealActivity } from "@shared/schema";
 import {
   CheckCircle2,
@@ -96,19 +94,14 @@ export default function Dashboard() {
 
   if (authLoading || isLoading || isStaff) {
     return (
-      <SidebarProvider>
-        <div className="flex h-screen w-full">
-          <AppSidebar />
-          <div className="flex-1 p-8">
-            <Skeleton className="mb-8 h-8 w-48" />
-            <div className="grid gap-6 md:grid-cols-3">
-              {[1, 2, 3].map((i) => (
-                <Skeleton key={i} className="h-32" />
-              ))}
-            </div>
-          </div>
+      <div className="p-8">
+        <Skeleton className="mb-8 h-8 w-48" />
+        <div className="grid gap-6 md:grid-cols-3">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-32" />
+          ))}
         </div>
-      </SidebarProvider>
+      </div>
     );
   }
 
@@ -126,11 +119,8 @@ export default function Dashboard() {
   const isPreApproved = activeApplication?.status === "pre_approved";
 
   return (
-    <SidebarProvider>
-      <div className="flex h-screen w-full">
-        <AppSidebar />
-        <div className="flex-1 overflow-y-auto bg-background">
-          {isPreApproved ? (
+    <>
+      {isPreApproved ? (
             <div className="space-y-8 px-4 py-8 sm:px-6 lg:px-8">
               <div className="mx-auto max-w-4xl">
                 <div className="mb-8">
@@ -351,8 +341,6 @@ export default function Dashboard() {
               )}
             </div>
           )}
-        </div>
-      </div>
-    </SidebarProvider>
+    </>
   );
 }
