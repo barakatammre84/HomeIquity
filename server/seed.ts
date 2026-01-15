@@ -113,7 +113,7 @@ export async function seedDatabase() {
       console.log(`Seeded ${sampleProperties.length} properties`);
     }
 
-    const existingAdmin = await db.select({ id: users.id }).from(users).where(sql`role = 'admin'`).limit(1);
+    const existingAdmin = await db.select({ id: users.id }).from(users).where(sql`id = 'admin-user-1'`).limit(1);
     
     if (existingAdmin.length === 0) {
       console.log("Creating admin user...");
@@ -125,6 +125,8 @@ export async function seedDatabase() {
         role: "admin",
       });
       console.log("Admin user created");
+    } else {
+      console.log("Admin user already exists, skipping seed");
     }
 
     console.log("Database seeded successfully");
