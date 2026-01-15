@@ -186,7 +186,8 @@ export default function BorrowerFile() {
       return await response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/loan-applications/${applicationId}/credit`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/loan-applications/${applicationId}/credit/summary`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/loan-applications/${applicationId}/credit/audit-log`] });
       queryClient.invalidateQueries({ queryKey: [`/api/loan-applications/${applicationId}`] });
       toast({
         title: "Credit Pull Complete",

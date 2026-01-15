@@ -2,14 +2,7 @@
 
 ## Overview
 
-MortgageAI is a **deterministic mortgage brokerage platform** built on MISMO 3.4 standards, utilizing graph-based underwriting logic. It employs AI solely for data extraction (e.g., from tax returns, pay stubs) while relying on **hard-coded deterministic rules** for all underwriting decisions, ensuring regulatory compliance and mitigating Fair Lending risks. The platform aims to automate income qualification, asset verification, liability assessment, and pricing to deliver **3-minute pre-approvals** and enhance efficiency in the mortgage process.
-
-Key capabilities include:
-- Deterministic underwriting with MISMO 3.4 and ULAD compliance.
-- Graph-based data models (XLink) to prevent orphaned financial data.
-- Advanced income qualification and property eligibility algorithms.
-- LLPA pricing matrix with first-time homebuyer waivers.
-- Multi-tenant support for various user roles.
+MortgageAI is a **deterministic mortgage brokerage platform** built on MISMO 3.4 standards, utilizing graph-based underwriting logic. Its core purpose is to automate and streamline the mortgage process, delivering **3-minute pre-approvals**. The platform uses AI exclusively for data extraction, while all underwriting decisions are based on **hard-coded deterministic rules** to ensure regulatory compliance and mitigate Fair Lending risks. Key capabilities include deterministic underwriting with MISMO 3.4 and ULAD compliance, graph-based data models to prevent orphaned financial data, advanced income qualification, property eligibility algorithms, LLPA pricing, and multi-tenant support.
 
 ## User Preferences
 
@@ -19,183 +12,73 @@ Preferred communication style: Simple, everyday language.
 
 ### UI/UX Decisions
 
-The frontend is built with **React 18 and TypeScript**, using **Vite** for tooling, **Wouter** for routing, and **TanStack Query** for server state management. It features a custom design system with **Shadcn/ui (Radix UI)** components and **Tailwind CSS**, supporting light/dark themes and consistent typography. Key pages include a conversational pre-approval form with a Live Advisory Panel, a user dashboard, loan options comparison, a properties marketplace with "Can I buy?" checks, and various compliance-related forms and dashboards.
+The frontend is built with **React 18, TypeScript, Vite, Wouter, and TanStack Query**. It features a custom design system using **Shadcn/ui (Radix UI)** components and **Tailwind CSS**, supporting light/dark themes. Key UI components include a conversational pre-approval form with a Live Advisory Panel, a user dashboard, loan options comparison, a properties marketplace with "Can I buy?" checks, and various compliance-related forms.
 
 ### Technical Implementations
 
-The backend is developed with **Node.js, Express.js, and TypeScript**. It uses **PostgreSQL (Neon serverless)** with **Drizzle ORM** for data persistence. **Passport.js** handles session-based authentication with **role-based access control** and ownership-scoped queries. The API is RESTful, with structured error handling and robust logging.
+The backend is developed with **Node.js, Express.js, and TypeScript**. It uses **PostgreSQL (Neon serverless)** with **Drizzle ORM** for data persistence. **Passport.js** handles session-based authentication with **role-based access control** and ownership-scoped queries. The API is RESTful and includes structured error handling and robust logging.
 
-**Database Schema:** Core entities include Users, Loan Applications, Loan Options, Documents, Properties, and Deal Activities. It incorporates MISMO 3.4 graph entities like UrlaPersonalInfo, EmploymentHistory, UrlaAssets, UrlaLiabilities, and UrlaPropertyInfo, utilizing UUIDs as primary keys, JSONB for flexible data, and XLink-style foreign key relationships for MISMO compliance.
+**Database Schema:** Core entities include Users, Loan Applications, Loan Options, Documents, Properties, and Deal Activities, incorporating MISMO 3.4 graph entities and XLink-style foreign key relationships.
 
-**Deterministic Underwriting Engine:** This engine is central to the platform, making all eligibility decisions based on hard-coded rules aligned with Fannie Mae/Freddie Mac guidelines. It includes modules for:
-- **Income Qualification:** Base, variable (2-year average), and self-employment (Form 1084) income calculations.
-- **Asset Verification:** Rules for various asset types and reserve requirements.
-- **Liability Assessment:** Rules for installment debts, leases, student loans, and credit cards.
-- **DTI Calculation:** Front-end and back-end ratios with program-specific adjustments.
-- **Property Eligibility:** "Can I buy this house?" algorithm, LTV calculation, and PITI synthesis.
-- **Pricing Engine:** LLPA matrix lookup, PMI calculation, and first-time homebuyer waivers.
+**Deterministic Underwriting Engine:** This central engine makes all eligibility decisions based on hard-coded rules aligned with Fannie Mae/Freddie Mac guidelines. It includes modules for Income Qualification, Asset Verification, Liability Assessment, DTI Calculation, Property Eligibility ("Can I buy this house?" algorithm), and a Pricing Engine (LLPA matrix, PMI calculation, first-time homebuyer waivers).
 
-**AI Integration:** **Google Gemini API** is used exclusively for **document data extraction** (e.g., from tax returns, pay stubs, bank statements). Extracted data is then fed into the deterministic underwriting engine, ensuring AI is not used for decision-making.
+**AI Integration:** **Google Gemini API** is used exclusively for **document data extraction** (e.g., from tax returns, pay stubs, bank statements). This extracted data feeds into the deterministic underwriting engine, ensuring AI is not used for decision-making.
 
-**MISMO 3.4 GSE Compliance:** The platform supports MISMO 3.4 XML export with a hierarchical structure and **XLink graph model** to link all financial data to borrower roles, preventing orphaned data. It is ULAD compliant for GSE submission and includes MERS MIN generation.
+**MISMO 3.4 GSE Compliance:** The platform supports MISMO 3.4 XML export with a hierarchical structure and **XLink graph model** for linking financial data, ensuring ULAD compliance and MERS MIN generation.
 
-**Borrower Declarations (URLA Section 5):** A dedicated system manages borrower declarations, including property occupancy intent, financial disclosures, transaction disclosures, and citizenship status, with API endpoints for retrieval and updates.
+**Borrower Declarations (URLA Section 5):** Manages borrower declarations, including property occupancy intent, financial disclosures, and citizenship status.
 
-**Data Quality Scoring System:** Provides completeness scoring across URLA sections for broker dashboards, tracking personal information, employment history, assets, liabilities, and document requirements.
+**Data Quality Scoring System:** Provides completeness scoring for URLA sections.
 
-**Task Management System:** Staff can create document request tasks for borrowers, allowing document uploads, verification/rejection workflows, and tracking AI analysis results per task.
+**Task Management System:** Allows staff to create document request tasks for borrowers, including upload, verification, and AI analysis tracking.
 
-**Real Estate Agent Platform:** Integrated agent profile and property listing system allowing real estate agents to:
-- Create and manage professional profiles (bio, license info, specialties, service areas)
-- List properties with full details (address, price, bedrooms, bathrooms, square feet)
-- Track listing stats (active listings, properties sold, ratings)
-- Public agent profile pages for buyers to view agent information and listings
-- Routes: `/agent/dashboard`, `/agent/edit`, `/agent/:agentId`, `/property/new`, `/property/:id/edit`
-- API endpoints: `/api/agents`, `/api/me/agent-profile`, `/api/me/listings`, property CRUD
+**Real Estate Agent Platform:** Integrates agent profiles and property listings, allowing agents to manage their profiles and properties, with public profile pages for buyers.
 
-**Buyer Property Search (Zillow-style):** Property marketplace with smart affordability matching:
-- Pre-approved buyers see affordability badges on every property (Qualified, Stretch, Over Budget)
-- Stats dashboard showing count of qualified, stretch, and over-budget properties
-- "Only show affordable" toggle to filter by qualification status
-- Property cards show estimated monthly payments based on real loan data
-- Non-pre-approved users see full inventory with CTAs to get pre-approved
-- Routes: `/buy` (buyer search), `/property/:id` (detail with qualification breakdown)
-- API: `/api/properties/:id/affordability` (calculates qualification using underwriting engine)
+**Buyer Property Search (Zillow-style):** A property marketplace providing smart affordability matching for pre-approved buyers, showing "Qualified," "Stretch," or "Over Budget" badges and estimated monthly payments.
 
-**PropertyDetail Qualification View:** Comprehensive affordability analysis per property:
-- PITI breakdown (Principal, Interest, Taxes, Insurance, PMI, HOA)
-- DTI impact calculation showing front-end and back-end ratios
-- Down payment requirements with reserve adequacy check
-- Eligibility status with clear pass/fail indicators
-- Recommended loan terms and rate estimates
-- "Get Pre-Approved" CTA for non-qualified users
+**PropertyDetail Qualification View:** Offers comprehensive affordability analysis per property, including PITI breakdown, DTI impact, down payment requirements, and eligibility status.
 
-**Loan Pipeline Engine:** Rules-driven loan processing pipeline for fastest closing times:
-- **LoanStage Tracking:** 7-stage workflow from Application → Pre-Approval → Processing → Underwriting → Conditional Approval → Clear to Close → Funded
-- **Document Requirements Engine:** Auto-generates required documents based on borrower profile (employment type, loan purpose, property type, veteran status)
-- **Condition/Stips System:** Tracks conditions with priorities (prior_to_approval, prior_to_docs, prior_to_funding) and statuses (outstanding, submitted, cleared, waived)
-- **Milestone Tracking:** Timestamps for each stage transition with SLA monitoring
-- Routes: `/pipeline/:id` (borrower view), `/pipeline-queue` (staff queue)
-- API: `/api/loan-applications/:id/pipeline`, `/api/loan-applications/:id/conditions`, `/api/loan-applications/:id/advance-stage`, `/api/pipeline/queue`
+**Loan Pipeline Engine:** A rules-driven loan processing pipeline with 7 stages (Application to Funded), a Document Requirements Engine, a Condition/Stips System, and Milestone Tracking.
 
-**Borrower Pipeline Dashboard:** Visual progress tracking for borrowers:
-- Stage timeline showing completion progress
-- Outstanding conditions with upload CTAs
-- Document submission tracking
-- Estimated closing timeline
-- Contact loan officer CTA
+**Borrower Pipeline Dashboard:** Provides visual progress tracking for borrowers, showing stage timelines, outstanding conditions, and document submission status.
 
-**Staff Pipeline Queue:** Broker/lender workflow management:
-- Priority-sorted loan queue (urgent/high/normal based on SLA)
-- Stage distribution filters
-- Condition clearing dialog with notes
-- Stage advancement with blocker checking
-- Real-time refresh
+**Staff Pipeline Queue:** A management tool for brokers/lenders to view and manage priority-sorted loan queues, condition clearing, and stage advancement.
 
-**MISMO/ULAD Validation Service:** GSE submission readiness checking:
-- URLA section completeness scoring (personal info, employment, assets, liabilities)
-- Field-level validation with specific feedback
-- GSE Ready/ULDD Compliant/Needs Attention categorization
-- Real-time validation on demand via `/api/compliance/dashboard`
-- Routes: `/compliance` (staff-only compliance dashboard)
+**MISMO/ULAD Validation Service:** Checks GSE submission readiness, providing URLA section completeness scoring and field-level validation.
 
-**Loan Estimate Generator:** TRID-compliant disclosure creation:
-- APR calculation with all-in costs
-- Fee breakdown (origination, appraisal, title, recording, prepaid items)
-- Payment schedule with P&I, taxes, insurance, PMI
-- LLPA pricing engine integration
-- Routes: `/loan-estimate/:id` (staff view)
+**Loan Estimate Generator:** Creates TRID-compliant disclosures with APR calculation, fee breakdowns, and payment schedules, integrated with the LLPA pricing engine.
 
-**Unified Borrower File Workspace:** Single-view borrower profile for staff:
-- Application details with loan metrics
-- Document management with upload/download
-- Condition tracking with status indicators
-- Timeline view with activity history
-- Quick actions for MISMO export and LE generation
-- Routes: `/borrower-file/:id` (staff workspace)
+**Unified Borrower File Workspace:** A single-view profile for staff, including application details, document management, condition tracking, and activity history.
 
-**Broker Compliance Dashboard:** TRID and audit tracking:
-- TRID timing tab with disclosure deadlines
-- MISMO validation tab with GSE readiness scores
-- Audit log tab for activity history
-- Loan status filtering and drill-down
-- Staff-only access with role gating
+**Broker Compliance Dashboard:** Tracks TRID timing, MISMO validation, and audit logs.
 
-**Multi-Property Support:** Enables borrowers to apply for multiple homes when deals fall through:
-- Application properties tracking with status (active, offer_pending, deal_fell_through, closed)
-- Property switching without losing pre-approval status
-- Deal fell through workflow with reason tracking
-- Property history maintained for audit purposes
-- Routes: Property management in `/pipeline/:id`
-- API: `/api/loan-applications/:id/properties`, `/api/loan-applications/:id/properties/:propertyId/switch`, `/api/loan-applications/:id/properties/:propertyId/deal-fell-through`
+**Multi-Property Support:** Enables borrowers to manage multiple properties within an application, tracking property status and switching without losing pre-approval.
 
-**Dynamic Rate Pages with Auto-Search:** Location-aware mortgage rate discovery:
-- Dedicated pages for each loan type: `/rates/purchase`, `/rates/refinance`, `/rates/cash-out`, `/rates/heloc`, `/rates/va`
-- **Auto-search**: Rates automatically refresh when user enters complete 5-digit ZIP code (no submit button needed)
-- **Smart auto-population**: Property values, mortgage balances, and loan amounts auto-populate based on state average home prices
-- **State detection**: ZIP code prefix mapped to state, displayed as badge (e.g., "CA" badge for 90210)
-- **Location-aware defaults**: Uses state-level average home prices (e.g., CA $750,000, TX $320,000, NY $420,000)
-- Reusable `RatePageHeader` component with configurable inputs per loan type
-- Rate prioritization: zipcode-specific > state-level > national fallback
-- Loading indicators show search progress in real-time
-- Routes: `/rates/purchase`, `/rates/refinance`, `/rates/cash-out`, `/rates/heloc`, `/rates/va`
-- API: `/api/mortgage-rates` with zipcode, state, and loanType filters
+**Dynamic Rate Pages with Auto-Search:** Location-aware mortgage rate discovery pages for various loan types, featuring auto-refresh on ZIP code entry, smart auto-population of property values, and state detection.
 
-**Plaid Verification Integration:** Automated employment and identity verification:
-- Employment verification through payroll data
-- Identity verification through financial institution records
-- Income verification for faster underwriting
-- Asset verification for reserve calculations
-- Graceful fallback to manual verification when Plaid is not configured
-- Database tables: `verifications`, `plaid_link_tokens` for tracking verification status
-- Routes: `/verification` (borrower verification center)
-- API: `/api/verifications/link-token`, `/api/verifications/exchange`, `/api/verifications/application/:id`
-- Environment: Requires `PLAID_CLIENT_ID` and `PLAID_SECRET` for production
+**Plaid Verification Integration:** Provides automated employment, identity, income, and asset verification, with a fallback to manual verification.
 
-**Learning Center & FAQ System:** Educational content management for homebuyers:
-- Learning Center with category-based article browsing and search
-- Articles with markdown content, reading time estimates, and related content
-- FAQ page with searchable questions organized by category
-- Helpful/not helpful feedback system for FAQ engagement metrics
-- Category filtering with visual badges and icons
-- Popular questions feature for commonly asked FAQs
-- Database tables: `content_categories`, `articles`, `faqs`
-- Routes: `/learn` (Learning Center), `/learn/:slug` (article detail), `/faq` (FAQ hub)
-- API: `/api/content-categories`, `/api/articles`, `/api/articles/:slug`, `/api/faqs`, `/api/faqs/:id/feedback`
-- Seeded with 4 categories, 3 articles, and 8 FAQs for immediate content availability
+**Learning Center & FAQ System:** Manages educational content, including category-based articles with markdown support and searchable FAQs with feedback systems.
 
-**Security Features:**
-- CSRF protection via Origin/Referer header validation
-- Session-based authentication with secure cookies
-- Role-based access control (borrower, broker, lender, admin)
-- Ownership-scoped queries to prevent data leakage
-- All state-changing API routes protected with authentication middleware
+**Security Features:** Includes CSRF protection, session-based authentication, role-based access control, ownership-scoped queries, and authenticated API routes.
+
+**Credit & FCRA Compliance Module:** Manages credit-related activities with regulatory compliance, featuring consent capture (FCRA-2025-v1), two-stage credit pull (soft/hard), simulated tri-merge credit reports, adverse action notice generation, and an immutable audit log.
 
 ## External Dependencies
 
 ### Third-Party Services
 
--   **Neon Database:** Serverless PostgreSQL hosting for all persistent data storage.
--   **Google Gemini AI:** Used for document data extraction from financial documents.
--   **Plaid:** Automated verification services for employment, identity, income, and assets (optional - requires PLAID_CLIENT_ID and PLAID_SECRET).
+-   **Neon Database:** Serverless PostgreSQL hosting.
+-   **Google Gemini AI:** For document data extraction.
+-   **Plaid:** For automated employment, identity, income, and asset verification (optional).
 
 ### UI Component Libraries
 
--   **Radix UI:** Headless, accessible component primitives, customized via Shadcn/ui and Tailwind CSS.
+-   **Radix UI:** Headless, accessible component primitives.
 -   **cmdk:** Command palette component.
 -   **react-day-picker:** Calendar/date picker.
--   **recharts:** Data visualization and charting library.
+-   **recharts:** Data visualization.
 -   **embla-carousel-react:** Carousel component.
 -   **vaul:** Drawer component.
 -   **lucide-react:** Icon library.
 -   **framer-motion:** Animation library.
-
-### Development Tools
-
--   **Vite:** Fast development server and optimized production builds.
--   **esbuild:** Server-side code bundling.
--   **tsx:** Running TypeScript in development.
--   **Tailwind CSS:** For styling.
--   **Zod:** Runtime schema validation and Drizzle-Zod for generating schemas.
--   **React Hook Form:** With Zod resolver for form validation.
--   **TypeScript:** Strict mode across the codebase.
