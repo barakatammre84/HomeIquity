@@ -177,7 +177,7 @@ export default function MortgageRates() {
                   <p className="text-muted-foreground">Let us match or beat it</p>
                 </div>
                 <Button asChild>
-                  <Link href="/pre-approval" data-testid="link-match-rate">
+                  <Link href="/apply" data-testid="link-match-rate">
                     Get Your Custom Quote
                     <ArrowRight className="h-4 w-4 ml-2" />
                   </Link>
@@ -194,7 +194,7 @@ export default function MortgageRates() {
                 Enter your ZIP code above to see current mortgage rates for your area.
               </p>
               <Button asChild>
-                <Link href="/pre-approval" data-testid="link-get-preapproved">
+                <Link href="/apply" data-testid="link-get-preapproved">
                   Get Pre-Approved Instead
                 </Link>
               </Button>
@@ -351,7 +351,7 @@ function RateCard({ rate }: { rate: MortgageRateWithProgram }) {
         </div>
 
         <Button asChild className="w-full" data-testid={`button-lock-rate-${rate.program.slug}`}>
-          <Link href="/pre-approval">
+          <Link href="/apply">
             Lock This Rate
             <ArrowRight className="h-4 w-4 ml-2" />
           </Link>
