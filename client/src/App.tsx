@@ -28,6 +28,11 @@ import FAQ from "@/pages/FAQ";
 import ArticleDetail from "@/pages/ArticleDetail";
 import MortgageRates from "@/pages/MortgageRates";
 import AdminRates from "@/pages/AdminRates";
+import PurchaseRates from "@/pages/rates/PurchaseRates";
+import RefinanceRates from "@/pages/rates/RefinanceRates";
+import CashOutRates from "@/pages/rates/CashOutRates";
+import HelocRates from "@/pages/rates/HelocRates";
+import VaRates from "@/pages/rates/VaRates";
 
 function Router() {
   return (
@@ -55,6 +60,11 @@ function Router() {
       <Route path="/learn/:slug" component={ArticleDetail} />
       <Route path="/faq" component={FAQ} />
       <Route path="/rates" component={MortgageRates} />
+      <Route path="/rates/purchase" component={PurchaseRates} />
+      <Route path="/rates/refinance" component={RefinanceRates} />
+      <Route path="/rates/cash-out" component={CashOutRates} />
+      <Route path="/rates/heloc" component={HelocRates} />
+      <Route path="/rates/va" component={VaRates} />
       <Route path="/admin/rates" component={AdminRates} />
       <Route component={NotFound} />
     </Switch>

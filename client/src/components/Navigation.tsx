@@ -23,35 +23,39 @@ import { cn } from "@/lib/utils";
 
 const buyMenuItems = [
   { href: "/apply", label: "Apply Now" },
-  { href: "/rates", label: "Today's Rates" },
+  { href: "/rates/purchase", label: "Purchase Rates" },
   { href: "/calculators/affordability", label: "Affordability Calculator" },
   { href: "/calculators/mortgage", label: "Mortgage Calculator" },
   { href: "/calculators/rent-vs-buy", label: "Rent vs Buy Calculator" },
   { href: "/agents", label: "Find an Agent" },
-  { href: "/va-loans", label: "VA Loans" },
+  { href: "/rates/va", label: "VA Loans" },
   { href: "/learn", label: "Learning Center" },
   { href: "/faq", label: "FAQs" },
 ];
 
 const refinanceMenuItems = [
   { href: "/apply?type=refinance", label: "Apply Now" },
-  { href: "/rates?type=refinance", label: "Refinance Rates" },
-  { href: "/calculators/cashout", label: "Cash-out Refinance Calculator" },
+  { href: "/rates/refinance", label: "Refinance Rates" },
+  { href: "/rates/cash-out", label: "Cash-out Refinance Rates" },
+  { href: "/calculators/cashout", label: "Cash-out Calculator" },
   { href: "/learn", label: "Learning Center" },
 ];
 
 const helocMenuItems = [
   { href: "/apply?type=heloc", label: "Apply Now" },
+  { href: "/rates/heloc", label: "HELOC Rates" },
   { href: "/calculators/heloc", label: "Calculate Your Cash" },
   { href: "/heloc-vs-cashout", label: "HELOC vs. Cash-out Refinance" },
   { href: "/learn", label: "Learning Center" },
 ];
 
 const ratesMenuItems = [
-  { href: "/rates", label: "Today's Rates" },
-  { href: "/rates?type=purchase", label: "Purchase Mortgage Rates" },
-  { href: "/rates?type=refinance", label: "Refinance Rates" },
-  { href: "/rates?type=va", label: "VA Loan Rates" },
+  { href: "/rates", label: "All Rates" },
+  { href: "/rates/purchase", label: "Purchase Rates" },
+  { href: "/rates/refinance", label: "Refinance Rates" },
+  { href: "/rates/cash-out", label: "Cash-out Refinance Rates" },
+  { href: "/rates/heloc", label: "HELOC Rates" },
+  { href: "/rates/va", label: "VA Loan Rates" },
 ];
 
 interface NavDropdownProps {
