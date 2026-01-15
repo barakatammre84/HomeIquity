@@ -3080,13 +3080,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get disclosure text for consent form
   app.get("/api/credit/disclosure", isAuthenticated, async (req, res) => {
     try {
+      const stateCode = req.query.state as string | undefined;
       res.json({
-        disclosureText: creditService.getDisclosureText(),
+        disclosureText: creditService.getCombinedDisclosure(stateCode),
         disclosureVersion: creditService.getDisclosureVersion(),
+        stateRules: stateCode ? creditService.getStateDisclosureRules(stateCode) : null,
       });
     } catch (error) {
       console.error("Get disclosure error:", error);
       res.status(500).json({ error: "Failed to get disclosure" });
+    }
+  });
+
+  app.get("/api/credit/state-rules", isAuthenticated, async (req, res) => {
+    try {
+      const stateCode = req.query.state as string | undefined;
+      if (stateCode) {
+        res.json({ rules: creditService.getStateDisclosureRules(stateCode) });
+      } else {
+        res.json({ rules: creditService.getAllStateDisclosureRules() });
+      }
+    } catch (error) {
+      console.error("Get state rules error:", error);
+      res.status(500).json({ error: "Failed to get state rules" });
     }
   });
 

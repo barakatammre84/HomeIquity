@@ -86,6 +86,191 @@ const BUREAU_CONTACT_INFO = {
   },
 };
 
+interface StateDisclosureRule {
+  stateCode: string;
+  stateName: string;
+  additionalDisclosures: string[];
+  requiredNotices: string[];
+  creditReportFeeMax: number | null;
+  appraisalFeeMax: number | null;
+  specialRequirements: string[];
+  waitingPeriodDays: number;
+  additionalConsentRequired: boolean;
+}
+
+const STATE_DISCLOSURE_RULES: Record<string, StateDisclosureRule> = {
+  CA: {
+    stateCode: "CA",
+    stateName: "California",
+    additionalDisclosures: [
+      "California Civil Code Section 1785.20.2 - You have the right to receive a free credit report from a consumer credit reporting agency upon request.",
+      "California Financial Code Section 22502 - We are licensed by the California Department of Financial Protection and Innovation.",
+    ],
+    requiredNotices: [
+      "NOTICE TO CALIFORNIA BORROWERS: Under California law, you have the right to receive a copy of your credit report from the credit bureau that furnished the report used in evaluating your application.",
+    ],
+    creditReportFeeMax: 30,
+    appraisalFeeMax: null,
+    specialRequirements: ["California privacy notice required"],
+    waitingPeriodDays: 0,
+    additionalConsentRequired: false,
+  },
+  NY: {
+    stateCode: "NY",
+    stateName: "New York",
+    additionalDisclosures: [
+      "New York Banking Law Section 6-l - You have the right to request a fair credit score from us.",
+      "New York General Business Law Section 380 - Consumer credit reporting agencies must provide you with a free copy of your credit report upon request.",
+    ],
+    requiredNotices: [
+      "NOTICE TO NEW YORK BORROWERS: Under New York law, you are entitled to receive a free copy of your credit score upon request.",
+    ],
+    creditReportFeeMax: null,
+    appraisalFeeMax: null,
+    specialRequirements: ["New York fair lending disclosure required"],
+    waitingPeriodDays: 0,
+    additionalConsentRequired: true,
+  },
+  TX: {
+    stateCode: "TX",
+    stateName: "Texas",
+    additionalDisclosures: [
+      "Texas Finance Code Section 392.101 - You have the right to dispute any inaccurate information in your credit report.",
+    ],
+    requiredNotices: [
+      "NOTICE TO TEXAS BORROWERS: Complaints may be directed to the Texas Department of Banking at 2601 N. Lamar Blvd., Austin, Texas 78705.",
+    ],
+    creditReportFeeMax: null,
+    appraisalFeeMax: null,
+    specialRequirements: [],
+    waitingPeriodDays: 0,
+    additionalConsentRequired: false,
+  },
+  FL: {
+    stateCode: "FL",
+    stateName: "Florida",
+    additionalDisclosures: [
+      "Florida Statutes Chapter 494 - We are licensed by the Florida Office of Financial Regulation.",
+    ],
+    requiredNotices: [
+      "NOTICE TO FLORIDA BORROWERS: The Office of Financial Regulation can be contacted at (850) 487-9687.",
+    ],
+    creditReportFeeMax: null,
+    appraisalFeeMax: null,
+    specialRequirements: [],
+    waitingPeriodDays: 0,
+    additionalConsentRequired: false,
+  },
+  CO: {
+    stateCode: "CO",
+    stateName: "Colorado",
+    additionalDisclosures: [
+      "Colorado Revised Statutes 12-61-903 - You have the right to receive a copy of any credit report used.",
+    ],
+    requiredNotices: [
+      "NOTICE TO COLORADO BORROWERS: REGULATED BY THE DIVISION OF REAL ESTATE.",
+    ],
+    creditReportFeeMax: 40,
+    appraisalFeeMax: 500,
+    specialRequirements: ["Colorado requires 3-day waiting period for certain transactions"],
+    waitingPeriodDays: 3,
+    additionalConsentRequired: false,
+  },
+  NV: {
+    stateCode: "NV",
+    stateName: "Nevada",
+    additionalDisclosures: [
+      "Nevada Revised Statutes 645B - We are licensed by the Nevada Division of Mortgage Lending.",
+    ],
+    requiredNotices: [
+      "NOTICE TO NEVADA BORROWERS: You may contact the Nevada Division of Mortgage Lending at (702) 486-0782.",
+    ],
+    creditReportFeeMax: 35,
+    appraisalFeeMax: null,
+    specialRequirements: [],
+    waitingPeriodDays: 0,
+    additionalConsentRequired: false,
+  },
+  IL: {
+    stateCode: "IL",
+    stateName: "Illinois",
+    additionalDisclosures: [
+      "Illinois Residential Mortgage License Act - We are licensed by the Illinois Department of Financial and Professional Regulation.",
+    ],
+    requiredNotices: [
+      "NOTICE TO ILLINOIS BORROWERS: Contact IDFPR at 1-888-473-4858 for questions or complaints.",
+    ],
+    creditReportFeeMax: null,
+    appraisalFeeMax: null,
+    specialRequirements: ["Illinois fair lending notice required"],
+    waitingPeriodDays: 0,
+    additionalConsentRequired: false,
+  },
+};
+
+const DEFAULT_STATE_RULE: StateDisclosureRule = {
+  stateCode: "DEFAULT",
+  stateName: "Default",
+  additionalDisclosures: [],
+  requiredNotices: [],
+  creditReportFeeMax: null,
+  appraisalFeeMax: null,
+  specialRequirements: [],
+  waitingPeriodDays: 0,
+  additionalConsentRequired: false,
+};
+
+export function getStateDisclosureRules(stateCode: string): StateDisclosureRule {
+  return STATE_DISCLOSURE_RULES[stateCode.toUpperCase()] || DEFAULT_STATE_RULE;
+}
+
+export function getAllStateDisclosureRules(): Record<string, StateDisclosureRule> {
+  return STATE_DISCLOSURE_RULES;
+}
+
+export function getStateSpecificDisclosure(stateCode: string): string {
+  const rules = getStateDisclosureRules(stateCode);
+  if (rules.stateCode === "DEFAULT") {
+    return "";
+  }
+  
+  let disclosure = `\n\nSTATE-SPECIFIC DISCLOSURES FOR ${rules.stateName.toUpperCase()}:\n\n`;
+  
+  rules.additionalDisclosures.forEach((d, i) => {
+    disclosure += `${i + 1}. ${d}\n`;
+  });
+  
+  if (rules.requiredNotices.length > 0) {
+    disclosure += "\n";
+    rules.requiredNotices.forEach(notice => {
+      disclosure += `${notice}\n`;
+    });
+  }
+  
+  if (rules.creditReportFeeMax !== null) {
+    disclosure += `\nMaximum credit report fee: $${rules.creditReportFeeMax}`;
+  }
+  
+  if (rules.waitingPeriodDays > 0) {
+    disclosure += `\nRequired waiting period: ${rules.waitingPeriodDays} business days`;
+  }
+  
+  return disclosure;
+}
+
+export function getCombinedDisclosure(stateCode?: string): string {
+  let fullDisclosure = FCRA_DISCLOSURE_TEXT;
+  
+  if (stateCode) {
+    const stateDisclosure = getStateSpecificDisclosure(stateCode);
+    if (stateDisclosure) {
+      fullDisclosure += stateDisclosure;
+    }
+  }
+  
+  return fullDisclosure;
+}
+
 export async function createCreditConsent(
   data: {
     applicationId: string;
