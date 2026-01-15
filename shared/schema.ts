@@ -1389,3 +1389,94 @@ export const insertFaqSchema = createInsertSchema(faqs).omit({
 
 export type InsertFaq = z.infer<typeof insertFaqSchema>;
 export type Faq = typeof faqs.$inferSelect;
+
+// =============================================================================
+// MORTGAGE RATES
+// =============================================================================
+
+// Mortgage Rate Programs - defines the loan program types
+export const mortgageRatePrograms = pgTable("mortgage_rate_programs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name", { length: 100 }).notNull(), // e.g., "30-yr fixed", "15-yr fixed", "5/6m ARM"
+  slug: varchar("slug", { length: 100 }).unique().notNull(),
+  description: text("description"),
+  termYears: integer("term_years"), // 30, 20, 15, 10, etc.
+  isAdjustable: boolean("is_adjustable").default(false), // true for ARMs
+  adjustmentPeriod: varchar("adjustment_period", { length: 20 }), // "6m", "1y" for ARMs
+  loanType: varchar("loan_type", { length: 50 }), // conventional, fha, va, usda
+  displayOrder: integer("display_order").default(0),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertMortgageRateProgramSchema = createInsertSchema(mortgageRatePrograms).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertMortgageRateProgram = z.infer<typeof insertMortgageRateProgramSchema>;
+export type MortgageRateProgram = typeof mortgageRatePrograms.$inferSelect;
+
+// Mortgage Rates - the actual rate data by location and program
+export const mortgageRates = pgTable("mortgage_rates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Location targeting
+  state: varchar("state", { length: 2 }), // null means national/default
+  zipcode: varchar("zipcode", { length: 10 }), // null means state-wide or national
+  
+  // Program reference
+  programId: varchar("program_id").references(() => mortgageRatePrograms.id).notNull(),
+  
+  // Rate data
+  rate: decimal("rate", { precision: 6, scale: 3 }).notNull(), // e.g., 5.750
+  apr: decimal("apr", { precision: 6, scale: 3 }).notNull(), // e.g., 5.957
+  points: decimal("points", { precision: 5, scale: 2 }), // e.g., 2.21
+  pointsCost: decimal("points_cost", { precision: 10, scale: 2 }), // e.g., 3542.00
+  
+  // Assumptions
+  loanAmount: decimal("loan_amount", { precision: 12, scale: 2 }).default("160000"), // Default loan amount for calculation
+  downPaymentPercent: integer("down_payment_percent").default(20),
+  creditScoreMin: integer("credit_score_min").default(760),
+  
+  // Status and timestamps
+  isActive: boolean("is_active").default(true),
+  effectiveDate: timestamp("effective_date").defaultNow(),
+  expiresAt: timestamp("expires_at"),
+  
+  // Audit
+  createdBy: varchar("created_by").references(() => users.id),
+  updatedBy: varchar("updated_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_mortgage_rates_location").on(table.state, table.zipcode),
+  index("idx_mortgage_rates_program").on(table.programId),
+  index("idx_mortgage_rates_active").on(table.isActive),
+]);
+
+export const mortgageRatesRelations = relations(mortgageRates, ({ one }) => ({
+  program: one(mortgageRatePrograms, {
+    fields: [mortgageRates.programId],
+    references: [mortgageRatePrograms.id],
+  }),
+  createdByUser: one(users, {
+    fields: [mortgageRates.createdBy],
+    references: [users.id],
+  }),
+  updatedByUser: one(users, {
+    fields: [mortgageRates.updatedBy],
+    references: [users.id],
+  }),
+}));
+
+export const insertMortgageRateSchema = createInsertSchema(mortgageRates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertMortgageRate = z.infer<typeof insertMortgageRateSchema>;
+export type MortgageRate = typeof mortgageRates.$inferSelect;
