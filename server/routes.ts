@@ -27,6 +27,7 @@ import {
   extractPayStubData,
   extractBankStatementData,
 } from "./extractionService";
+import * as creditService from "./services/creditService";
 
 // Validation schema for declarations with boolean coercion
 const declarationsValidationSchema = insertBorrowerDeclarationsSchema.partial().extend({
@@ -3069,6 +3070,355 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Delete mortgage rate error:", error);
       res.status(500).json({ error: "Failed to delete mortgage rate" });
+    }
+  });
+
+  // ==========================================================================
+  // CREDIT & FCRA COMPLIANCE ENDPOINTS
+  // ==========================================================================
+
+  // Get disclosure text for consent form
+  app.get("/api/credit/disclosure", isAuthenticated, async (req, res) => {
+    try {
+      res.json({
+        disclosureText: creditService.getDisclosureText(),
+        disclosureVersion: creditService.getDisclosureVersion(),
+      });
+    } catch (error) {
+      console.error("Get disclosure error:", error);
+      res.status(500).json({ error: "Failed to get disclosure" });
+    }
+  });
+
+  // Get active consent for an application
+  app.get("/api/loan-applications/:id/credit/consent", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const application = await storage.getLoanApplication(req.params.id);
+      
+      if (!application) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+      
+      if (application.userId !== user.id && !["broker", "lender", "admin"].includes(user.role)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
+      const consent = await creditService.getActiveConsent(req.params.id);
+      res.json({ consent });
+    } catch (error) {
+      console.error("Get consent error:", error);
+      res.status(500).json({ error: "Failed to get consent" });
+    }
+  });
+
+  // Submit credit consent
+  app.post("/api/loan-applications/:id/credit/consent", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const application = await storage.getLoanApplication(req.params.id);
+      
+      if (!application) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+      
+      if (application.userId !== user.id) {
+        return res.status(403).json({ error: "Only the borrower can provide consent" });
+      }
+      
+      const { consentType, borrowerFullName, borrowerSSNLast4, borrowerDOB, consentGiven } = req.body;
+      
+      if (!borrowerFullName || consentGiven === undefined) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
+      
+      const consent = await creditService.createCreditConsent({
+        applicationId: req.params.id,
+        userId: user.id,
+        consentType: consentType || "hard_pull",
+        borrowerFullName,
+        borrowerSSNLast4,
+        borrowerDOB,
+        consentGiven,
+        ipAddress: req.ip,
+        userAgent: req.get("User-Agent"),
+      });
+      
+      res.status(201).json({ consent });
+    } catch (error) {
+      console.error("Create consent error:", error);
+      res.status(500).json({ error: "Failed to create consent" });
+    }
+  });
+
+  // Revoke consent
+  app.post("/api/credit/consent/:consentId/revoke", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const { reason } = req.body;
+      
+      await creditService.revokeConsent(
+        req.params.consentId,
+        reason || "Borrower requested revocation",
+        user.id,
+        req.ip
+      );
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Revoke consent error:", error);
+      res.status(500).json({ error: "Failed to revoke consent" });
+    }
+  });
+
+  // Request credit pull (staff only)
+  app.post("/api/loan-applications/:id/credit/pull", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      
+      if (!["broker", "lender", "admin"].includes(user.role)) {
+        return res.status(403).json({ error: "Staff access required" });
+      }
+      
+      const application = await storage.getLoanApplication(req.params.id);
+      if (!application) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+      
+      const consent = await creditService.getActiveConsent(req.params.id);
+      if (!consent) {
+        return res.status(400).json({ error: "Valid consent required before credit pull" });
+      }
+      
+      const { pullType, bureaus } = req.body;
+      
+      const pull = await creditService.requestCreditPull({
+        applicationId: req.params.id,
+        consentId: consent.id,
+        requestedBy: user.id,
+        pullType: pullType || "tri_merge",
+        bureaus: bureaus || ["experian", "equifax", "transunion"],
+        ipAddress: req.ip,
+      });
+      
+      // In simulation mode, immediately complete the pull
+      const completedPull = await creditService.simulateCreditPullCompletion(pull.id);
+      
+      // Update loan application with the representative credit score
+      if (completedPull.representativeScore) {
+        await storage.updateLoanApplication(req.params.id, {
+          creditScore: completedPull.representativeScore,
+        });
+      }
+      
+      res.status(201).json({ pull: completedPull });
+    } catch (error) {
+      console.error("Request credit pull error:", error);
+      res.status(500).json({ error: "Failed to request credit pull" });
+    }
+  });
+
+  // Get credit pulls for an application
+  app.get("/api/loan-applications/:id/credit/pulls", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const application = await storage.getLoanApplication(req.params.id);
+      
+      if (!application) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+      
+      if (application.userId !== user.id && !["broker", "lender", "admin"].includes(user.role)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
+      const pulls = await creditService.getCreditPullsByApplication(req.params.id);
+      res.json({ pulls });
+    } catch (error) {
+      console.error("Get credit pulls error:", error);
+      res.status(500).json({ error: "Failed to get credit pulls" });
+    }
+  });
+
+  // Get latest credit pull for an application
+  app.get("/api/loan-applications/:id/credit/latest", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const application = await storage.getLoanApplication(req.params.id);
+      
+      if (!application) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+      
+      if (application.userId !== user.id && !["broker", "lender", "admin"].includes(user.role)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
+      const pull = await creditService.getLatestCreditPull(req.params.id);
+      res.json({ pull });
+    } catch (error) {
+      console.error("Get latest credit pull error:", error);
+      res.status(500).json({ error: "Failed to get latest credit pull" });
+    }
+  });
+
+  // Get adverse action reasons list
+  app.get("/api/credit/adverse-action-reasons", isAuthenticated, async (req, res) => {
+    try {
+      res.json({ reasons: creditService.getAdverseActionReasons() });
+    } catch (error) {
+      console.error("Get adverse action reasons error:", error);
+      res.status(500).json({ error: "Failed to get adverse action reasons" });
+    }
+  });
+
+  // Generate adverse action notice (staff only)
+  app.post("/api/loan-applications/:id/credit/adverse-action", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      
+      if (!["broker", "lender", "admin"].includes(user.role)) {
+        return res.status(403).json({ error: "Staff access required" });
+      }
+      
+      const application = await storage.getLoanApplication(req.params.id);
+      if (!application) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+      
+      const { 
+        actionType, 
+        primaryReason, 
+        secondaryReasons, 
+        creditPullId,
+        creditScoreUsed,
+        creditScoreSource,
+      } = req.body;
+      
+      if (!actionType || !primaryReason) {
+        return res.status(400).json({ error: "Action type and primary reason are required" });
+      }
+      
+      const adverseAction = await creditService.generateAdverseAction({
+        applicationId: req.params.id,
+        creditPullId,
+        userId: application.userId,
+        actionType,
+        primaryReason,
+        secondaryReasons,
+        creditScoreUsed,
+        creditScoreSource,
+        generatedBy: user.id,
+      });
+      
+      res.status(201).json({ adverseAction });
+    } catch (error) {
+      console.error("Generate adverse action error:", error);
+      res.status(500).json({ error: "Failed to generate adverse action" });
+    }
+  });
+
+  // Get adverse actions for an application
+  app.get("/api/loan-applications/:id/credit/adverse-actions", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const application = await storage.getLoanApplication(req.params.id);
+      
+      if (!application) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+      
+      if (application.userId !== user.id && !["broker", "lender", "admin"].includes(user.role)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
+      const adverseActions = await creditService.getAdverseActionsByApplication(req.params.id);
+      res.json({ adverseActions });
+    } catch (error) {
+      console.error("Get adverse actions error:", error);
+      res.status(500).json({ error: "Failed to get adverse actions" });
+    }
+  });
+
+  // Mark adverse action as delivered (staff only)
+  app.post("/api/credit/adverse-action/:actionId/deliver", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      
+      if (!["broker", "lender", "admin"].includes(user.role)) {
+        return res.status(403).json({ error: "Staff access required" });
+      }
+      
+      const { deliveryMethod, deliveryConfirmation } = req.body;
+      
+      await creditService.markAdverseActionDelivered(
+        req.params.actionId,
+        deliveryMethod || "in_app",
+        deliveryConfirmation
+      );
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Mark adverse action delivered error:", error);
+      res.status(500).json({ error: "Failed to mark adverse action as delivered" });
+    }
+  });
+
+  // Get credit audit log for an application (staff only)
+  app.get("/api/loan-applications/:id/credit/audit-log", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      
+      if (!["broker", "lender", "admin"].includes(user.role)) {
+        return res.status(403).json({ error: "Staff access required" });
+      }
+      
+      const application = await storage.getLoanApplication(req.params.id);
+      if (!application) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+      
+      const limit = parseInt(req.query.limit as string) || 100;
+      const auditLog = await creditService.getCreditAuditLog(req.params.id, limit);
+      res.json({ auditLog });
+    } catch (error) {
+      console.error("Get credit audit log error:", error);
+      res.status(500).json({ error: "Failed to get credit audit log" });
+    }
+  });
+
+  // Get comprehensive credit summary for an application
+  app.get("/api/loan-applications/:id/credit/summary", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const application = await storage.getLoanApplication(req.params.id);
+      
+      if (!application) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+      
+      if (application.userId !== user.id && !["broker", "lender", "admin"].includes(user.role)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
+      const [consent, latestPull, pulls, adverseActions] = await Promise.all([
+        creditService.getActiveConsent(req.params.id),
+        creditService.getLatestCreditPull(req.params.id),
+        creditService.getCreditPullsByApplication(req.params.id),
+        creditService.getAdverseActionsByApplication(req.params.id),
+      ]);
+      
+      res.json({
+        hasActiveConsent: !!consent,
+        consent,
+        latestPull,
+        pullCount: pulls.length,
+        adverseActionCount: adverseActions.length,
+        latestAdverseAction: adverseActions[0] || null,
+      });
+    } catch (error) {
+      console.error("Get credit summary error:", error);
+      res.status(500).json({ error: "Failed to get credit summary" });
     }
   });
 
