@@ -79,6 +79,7 @@ const adminNavigation = [
     section: "Administration",
     items: [
       { title: "Admin Dashboard", href: "/admin", icon: LayoutDashboard, testId: "link-admin" },
+      { title: "Manage Users", href: "/admin/users", icon: Users, testId: "link-admin-users" },
       { title: "Manage Rates", href: "/admin/rates", icon: Percent, testId: "link-admin-rates" },
       { title: "Manage Content", href: "/admin/content", icon: PenSquare, testId: "link-admin-content" },
     ],

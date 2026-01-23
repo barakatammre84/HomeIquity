@@ -33,6 +33,7 @@ import ArticleDetail from "@/pages/ArticleDetail";
 import MortgageRates from "@/pages/MortgageRates";
 import AdminRates from "@/pages/AdminRates";
 import AdminContent from "@/pages/AdminContent";
+import AdminUsers from "@/pages/AdminUsers";
 import PurchaseRates from "@/pages/rates/PurchaseRates";
 import RefinanceRates from "@/pages/rates/RefinanceRates";
 import CashOutRates from "@/pages/rates/CashOutRates";
@@ -175,6 +176,9 @@ function Router() {
       </Route>
       <Route path="/admin/content">
         <AdminPage><AdminContent /></AdminPage>
+      </Route>
+      <Route path="/admin/users">
+        <AdminPage><AdminUsers /></AdminPage>
       </Route>
 
       <Route component={NotFound} />
