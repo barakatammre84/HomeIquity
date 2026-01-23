@@ -41,6 +41,7 @@ import BrokerDashboard from "@/pages/BrokerDashboard";
 import RentVsBuyCalculator from "@/pages/calculators/RentVsBuyCalculator";
 import AffordabilityCalculator from "@/pages/calculators/AffordabilityCalculator";
 import MortgageCalculator from "@/pages/calculators/MortgageCalculator";
+import TestLogin from "@/pages/TestLogin";
 
 function PublicPage({ children }: { children: React.ReactNode }) {
   return <PublicLayout>{children}</PublicLayout>;
@@ -63,6 +64,7 @@ function Router() {
     <Switch>
       {/* Public Pages - Anyone can access */}
       <Route path="/" component={Landing} />
+      <Route path="/test-login" component={TestLogin} />
       <Route path="/apply" component={PreApproval} />
       <Route path="/resources">
         <PublicPage><Resources /></PublicPage>

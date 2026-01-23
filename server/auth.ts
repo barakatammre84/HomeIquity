@@ -139,6 +139,65 @@ export async function setupAuth(app: Express) {
       res.redirect("/");
     });
   });
+
+  // Test login endpoint for admin access (development only)
+  app.post("/api/test-login", async (req, res) => {
+    const { email, password } = req.body;
+
+    // Predefined test accounts
+    const testAccounts: Record<string, { password: string; role: string; firstName: string; lastName: string }> = {
+      "admin@test.com": { password: "admin123", role: "admin", firstName: "Admin", lastName: "User" },
+      "broker@test.com": { password: "broker123", role: "broker", firstName: "Broker", lastName: "User" },
+      "lender@test.com": { password: "lender123", role: "lender", firstName: "Lender", lastName: "User" },
+      "borrower@test.com": { password: "borrower123", role: "borrower", firstName: "Borrower", lastName: "User" },
+    };
+
+    const account = testAccounts[email];
+    if (!account || account.password !== password) {
+      return res.status(401).json({ error: "Invalid email or password" });
+    }
+
+    // Create or update the test user
+    const testUser = await storage.upsertUser({
+      id: `test-${email.split("@")[0]}`,
+      email,
+      firstName: account.firstName,
+      lastName: account.lastName,
+      profileImageUrl: null,
+      role: account.role,
+    });
+
+    // Ensure role is correct
+    if (testUser.role !== account.role) {
+      await storage.updateUserRole(testUser.id, account.role);
+    }
+
+    req.login(
+      {
+        id: testUser.id,
+        email: testUser.email || undefined,
+        firstName: testUser.firstName || undefined,
+        lastName: testUser.lastName || undefined,
+        profileImageUrl: testUser.profileImageUrl || undefined,
+        role: account.role,
+      },
+      (err) => {
+        if (err) {
+          return res.status(500).json({ error: "Login failed" });
+        }
+        res.json({ 
+          success: true, 
+          user: { 
+            id: testUser.id, 
+            email: testUser.email, 
+            role: account.role,
+            firstName: account.firstName,
+            lastName: account.lastName,
+          } 
+        });
+      }
+    );
+  });
 }
 
 export const isAuthenticated: RequestHandler = (req, res, next) => {
