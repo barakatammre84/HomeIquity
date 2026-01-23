@@ -45,6 +45,8 @@ import AffordabilityCalculator from "@/pages/calculators/AffordabilityCalculator
 import MortgageCalculator from "@/pages/calculators/MortgageCalculator";
 import TestLogin from "@/pages/TestLogin";
 import GapCalculator from "@/pages/GapCalculator";
+import InviteGenerator from "@/pages/InviteGenerator";
+import ApplyInvite from "@/pages/ApplyInvite";
 
 function PublicPage({ children }: { children: React.ReactNode }) {
   return <PublicLayout>{children}</PublicLayout>;
@@ -55,7 +57,7 @@ function BorrowerPage({ children }: { children: React.ReactNode }) {
 }
 
 function StaffPage({ children }: { children: React.ReactNode }) {
-  return <PrivateLayout requiredRoles={["broker", "lender", "admin"]}>{children}</PrivateLayout>;
+  return <PrivateLayout requiredRoles={["admin", "lo", "loa", "processor", "underwriter", "closer"]}>{children}</PrivateLayout>;
 }
 
 function AdminPage({ children }: { children: React.ReactNode }) {
@@ -69,6 +71,9 @@ function Router() {
       <Route path="/" component={Landing} />
       <Route path="/test-login" component={TestLogin} />
       <Route path="/apply" component={PreApproval} />
+      <Route path="/apply/:token">
+        {(params) => <ApplyInvite />}
+      </Route>
       <Route path="/resources">
         <PublicPage><Resources /></PublicPage>
       </Route>
@@ -169,6 +174,9 @@ function Router() {
       </Route>
       <Route path="/broker-dashboard">
         <StaffPage><BrokerDashboard /></StaffPage>
+      </Route>
+      <Route path="/invite-clients">
+        <StaffPage><InviteGenerator /></StaffPage>
       </Route>
 
       {/* Private Pages - Admin only (manage content, rates, users) */}

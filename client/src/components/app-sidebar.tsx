@@ -33,6 +33,7 @@ import {
   PenSquare,
   Star,
   Calculator,
+  Link2,
 } from "lucide-react";
 
 // Client navigation - for Aspiring Owners and Active Buyers
@@ -87,6 +88,7 @@ const staffNavigation = [
       { title: "Overview", href: "/staff-dashboard", icon: LayoutDashboard, testId: "link-staff-overview" },
       { title: "Pipeline Queue", href: "/pipeline-queue", icon: GitBranch, testId: "link-pipeline-queue" },
       { title: "Broker Dashboard", href: "/broker-dashboard", icon: DollarSign, testId: "link-broker-dashboard" },
+      { title: "Invite Clients", href: "/invite-clients", icon: Link2, testId: "link-invite-clients" },
     ],
   },
   {
