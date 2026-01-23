@@ -16,7 +16,7 @@ export function PrivateLayout({ children, requiredRoles }: PrivateLayoutProps) {
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      window.location.href = "/api/login";
+      navigate("/test-login");
     }
   }, [isLoading, isAuthenticated, navigate]);
 
