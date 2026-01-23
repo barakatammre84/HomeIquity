@@ -80,6 +80,17 @@ The backend is developed with **Node.js, Express.js, and TypeScript**. It uses *
 -   **Commission Calculation:** Automatic calculation based on loan amount × commission rate
 -   **Payment Tracking:** Status workflow (pending → approved → paid) with payment date logging
 
+**Admin Content Management System:** Full CMS for website content with:
+-   **Article Management:** Create, edit, and publish Learning Center articles with markdown support
+-   **FAQ Management:** Manage frequently asked questions with categories and display ordering
+-   **Category Management:** Organize articles and FAQs by topic categories
+-   **Form Validation:** React Hook Form with Zod schema validation for data integrity
+-   **Role-Based Access:** Admin-only access with protected routes
+
+**Test Login System:** Development authentication at /test-login with predefined test accounts:
+-   Admin, Broker, Lender, and Borrower roles for testing different access levels
+-   Secure role selection without exposing credentials
+
 ## External Dependencies
 
 ### Third-Party Services
