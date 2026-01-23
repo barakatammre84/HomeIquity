@@ -16,9 +16,12 @@ import {
   insertCreditActionSchema,
   insertSavingsTransactionSchema,
   insertJourneyMilestoneSchema,
+  insertApplicationInviteSchema,
   ALL_ROLES,
+  isStaffRole,
   type User,
 } from "@shared/schema";
+import crypto from "crypto";
 import { z } from "zod";
 import { 
   qualifyIncome, 
@@ -4194,6 +4197,162 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Get credit recommendations error:", error);
       res.status(500).json({ error: "Failed to get credit recommendations" });
+    }
+  });
+
+  // ===== APPLICATION INVITES (Referral Links) =====
+  
+  // Create a new invite link (for LOs, LOAs, and agents)
+  app.post("/api/application-invites", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const allowedRoles = ["admin", "lo", "loa"];
+      
+      if (!allowedRoles.includes(user.role)) {
+        return res.status(403).json({ error: "Only loan officers and assistants can create invite links" });
+      }
+
+      const schema = z.object({
+        clientName: z.string().optional(),
+        clientEmail: z.string().email().optional().or(z.literal("")),
+        clientPhone: z.string().optional(),
+        message: z.string().optional(),
+        expiresInDays: z.number().min(1).max(90).default(30),
+      });
+
+      const result = schema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid input", details: result.error.format() });
+      }
+
+      const { clientName, clientEmail, clientPhone, message, expiresInDays } = result.data;
+
+      // Generate unique token
+      const token = crypto.randomBytes(32).toString("hex");
+      
+      // Calculate expiration date
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + expiresInDays);
+
+      const invite = await storage.createApplicationInvite({
+        referrerId: user.id,
+        referrerType: user.role as "lo" | "loa" | "admin",
+        clientName: clientName || null,
+        clientEmail: clientEmail || null,
+        clientPhone: clientPhone || null,
+        message: message || null,
+        token,
+        status: "pending",
+        expiresAt,
+      });
+
+      // Generate the full URL
+      const baseUrl = process.env.REPL_SLUG 
+        ? `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`
+        : "http://localhost:5000";
+      const inviteUrl = `${baseUrl}/apply/${token}`;
+
+      res.status(201).json({ 
+        invite,
+        inviteUrl,
+      });
+    } catch (error) {
+      console.error("Create application invite error:", error);
+      res.status(500).json({ error: "Failed to create invite link" });
+    }
+  });
+
+  // Get all invites for current user (referrer)
+  app.get("/api/application-invites", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const invites = await storage.getApplicationInvitesByReferrer(user.id);
+      
+      // Add computed fields
+      const invitesWithStatus = invites.map(invite => ({
+        ...invite,
+        isExpired: new Date(invite.expiresAt) < new Date(),
+      }));
+
+      res.json(invitesWithStatus);
+    } catch (error) {
+      console.error("Get application invites error:", error);
+      res.status(500).json({ error: "Failed to get invites" });
+    }
+  });
+
+  // Validate invite token (public endpoint for when client clicks link)
+  app.get("/api/application-invites/validate/:token", async (req, res) => {
+    try {
+      const { token } = req.params;
+      const invite = await storage.getApplicationInviteByToken(token);
+
+      if (!invite) {
+        return res.status(404).json({ error: "Invalid or expired invite link" });
+      }
+
+      // Check if expired
+      if (new Date(invite.expiresAt) < new Date()) {
+        await storage.updateApplicationInvite(invite.id, { status: "expired" });
+        return res.status(410).json({ error: "This invite link has expired" });
+      }
+
+      // Check if already used
+      if (invite.status === "applied") {
+        return res.status(410).json({ error: "This invite link has already been used" });
+      }
+
+      // Get referrer info
+      const referrer = await storage.getUser(invite.referrerId);
+
+      // Mark as clicked if first time
+      if (invite.status === "pending") {
+        await storage.updateApplicationInvite(invite.id, { 
+          status: "clicked",
+          clickedAt: new Date(),
+        });
+      }
+
+      res.json({
+        valid: true,
+        invite: {
+          id: invite.id,
+          clientName: invite.clientName,
+          clientEmail: invite.clientEmail,
+          message: invite.message,
+          referrer: referrer ? {
+            firstName: referrer.firstName,
+            lastName: referrer.lastName,
+            role: referrer.role,
+          } : null,
+        },
+      });
+    } catch (error) {
+      console.error("Validate invite error:", error);
+      res.status(500).json({ error: "Failed to validate invite" });
+    }
+  });
+
+  // Mark invite as applied (called when client submits application)
+  app.post("/api/application-invites/:id/applied", isAuthenticated, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { loanApplicationId } = req.body;
+
+      const updated = await storage.updateApplicationInvite(id, {
+        status: "applied",
+        appliedAt: new Date(),
+        loanApplicationId,
+      });
+
+      if (!updated) {
+        return res.status(404).json({ error: "Invite not found" });
+      }
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Mark invite applied error:", error);
+      res.status(500).json({ error: "Failed to update invite" });
     }
   });
 
