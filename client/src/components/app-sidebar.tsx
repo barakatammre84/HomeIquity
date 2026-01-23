@@ -27,6 +27,8 @@ import {
   Home,
   DollarSign,
   Building,
+  Percent,
+  PenSquare,
 } from "lucide-react";
 
 const borrowerNavigation = [
@@ -76,7 +78,9 @@ const adminNavigation = [
   {
     section: "Administration",
     items: [
-      { title: "Admin Panel", href: "/admin", icon: Users, testId: "link-admin" },
+      { title: "Admin Dashboard", href: "/admin", icon: LayoutDashboard, testId: "link-admin" },
+      { title: "Manage Rates", href: "/admin/rates", icon: Percent, testId: "link-admin-rates" },
+      { title: "Manage Content", href: "/admin/content", icon: PenSquare, testId: "link-admin-content" },
     ],
   },
 ];
