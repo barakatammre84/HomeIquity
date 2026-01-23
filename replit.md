@@ -89,12 +89,19 @@ The backend is developed with **Node.js, Express.js, and TypeScript**. It uses *
 
 **Admin User Management:** Staff account management for administrators with:
 -   **User Directory:** View all users with search and role-based filtering
--   **Role Assignment:** Change user roles (Admin, Lender, Broker, Borrower)
--   **User Stats Dashboard:** Real-time counts of users by role type
+-   **Role Assignment:** Change user roles across 8 mortgage industry roles
+-   **User Stats Dashboard:** Real-time counts by staff vs client categories with detailed breakdown
 -   **Self-Edit Protection:** Prevents admins from accidentally changing their own role
 
+**Mortgage Industry Role System:** Comprehensive role-based access control with:
+-   **Staff Roles (6):** Tech/Ops Lead (admin), Loan Officer (lo), LOA (loa), Processor, Underwriter, Closer/Funder
+-   **Client Roles (2):** Aspiring Owner (renters exploring homeownership), Active Buyer (borrowers in buying process)
+-   **Partner Support:** isPartner flag, partnerCompanyName, and NMLS ID fields for external loan officers
+-   **Role Helpers:** isStaffRole() and isClientRole() utility functions for access control
+
 **Test Login System:** Development authentication at /test-login with predefined test accounts:
--   Admin, Broker, Lender, and Borrower roles for testing different access levels
+-   Staff roles: Admin, LO, LOA, Processor, Underwriter, Closer with separate section
+-   Client roles: Aspiring Owner, Active Buyer for testing borrower experiences
 -   Secure role selection without exposing credentials
 
 ## External Dependencies

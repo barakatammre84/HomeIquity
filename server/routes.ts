@@ -12,6 +12,7 @@ import {
   insertArticleSchema,
   insertFaqSchema,
   insertCalculatorResultSchema,
+  ALL_ROLES,
   type User,
 } from "@shared/schema";
 import { z } from "zod";
@@ -1259,7 +1260,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: "Forbidden" });
       }
       const { role } = req.body;
-      if (!["borrower", "broker", "admin", "lender"].includes(role)) {
+      if (!ALL_ROLES.includes(role)) {
         return res.status(400).json({ error: "Invalid role" });
       }
       const user = await storage.updateUserRole(req.params.id, role);
