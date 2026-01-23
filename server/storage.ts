@@ -36,6 +36,7 @@ import {
   creditActions,
   savingsTransactions,
   journeyMilestones,
+  applicationInvites,
   type User,
   type UpsertUser,
   type LoanApplication,
@@ -104,6 +105,8 @@ import {
   type InsertSavingsTransaction,
   type JourneyMilestone,
   type InsertJourneyMilestone,
+  type ApplicationInvite,
+  type InsertApplicationInvite,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -365,6 +368,12 @@ export interface IStorage {
   // Journey Milestones
   getJourneyMilestones(goalId: string): Promise<JourneyMilestone[]>;
   createJourneyMilestone(data: InsertJourneyMilestone): Promise<JourneyMilestone>;
+
+  // Application Invites
+  createApplicationInvite(data: InsertApplicationInvite): Promise<ApplicationInvite>;
+  getApplicationInviteByToken(token: string): Promise<ApplicationInvite | undefined>;
+  getApplicationInvitesByReferrer(referrerId: string): Promise<ApplicationInvite[]>;
+  updateApplicationInvite(id: string, data: Partial<ApplicationInvite>): Promise<ApplicationInvite | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -2145,6 +2154,41 @@ export class DatabaseStorage implements IStorage {
       .values(data)
       .returning();
     return milestone;
+  }
+
+  // Application Invites
+  async createApplicationInvite(data: InsertApplicationInvite): Promise<ApplicationInvite> {
+    const [invite] = await db
+      .insert(applicationInvites)
+      .values(data)
+      .returning();
+    return invite;
+  }
+
+  async getApplicationInviteByToken(token: string): Promise<ApplicationInvite | undefined> {
+    const [invite] = await db
+      .select()
+      .from(applicationInvites)
+      .where(eq(applicationInvites.token, token));
+    return invite;
+  }
+
+  async getApplicationInvitesByReferrer(referrerId: string): Promise<ApplicationInvite[]> {
+    return await db
+      .select()
+      .from(applicationInvites)
+      .where(eq(applicationInvites.referrerId, referrerId))
+      .orderBy(desc(applicationInvites.createdAt));
+  }
+
+  async updateApplicationInvite(id: string, data: Partial<ApplicationInvite>): Promise<ApplicationInvite | undefined> {
+    const { id: inviteId, createdAt, ...cleanData } = data as any;
+    const [updated] = await db
+      .update(applicationInvites)
+      .set({ ...cleanData, updatedAt: new Date() })
+      .where(eq(applicationInvites.id, id))
+      .returning();
+    return updated;
   }
 }
 

@@ -2166,3 +2166,57 @@ export const insertJourneyMilestoneSchema = createInsertSchema(journeyMilestones
 
 export type InsertJourneyMilestone = z.infer<typeof insertJourneyMilestoneSchema>;
 export type JourneyMilestone = typeof journeyMilestones.$inferSelect;
+
+// Application Invites - Referral links for LOs and agents to send to affluent clients
+export const applicationInvites = pgTable("application_invites", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Referrer Info (LO or Agent)
+  referrerId: varchar("referrer_id").references(() => users.id).notNull(),
+  referrerType: varchar("referrer_type", { length: 20 }).notNull(), // 'lo', 'loa', 'agent'
+  
+  // Client Info (optional pre-fill)
+  clientName: varchar("client_name", { length: 255 }),
+  clientEmail: varchar("client_email", { length: 255 }),
+  clientPhone: varchar("client_phone", { length: 20 }),
+  
+  // Link Details
+  token: varchar("token", { length: 64 }).unique().notNull(), // Unique URL token
+  message: text("message"), // Optional personal message from referrer
+  
+  // Status tracking
+  status: varchar("status", { length: 20 }).default("pending").notNull(), // pending, clicked, applied, expired
+  
+  // Timestamps
+  expiresAt: timestamp("expires_at").notNull(),
+  clickedAt: timestamp("clicked_at"),
+  appliedAt: timestamp("applied_at"),
+  loanApplicationId: varchar("loan_application_id").references(() => loanApplications.id),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_application_invites_referrer").on(table.referrerId),
+  index("idx_application_invites_token").on(table.token),
+  index("idx_application_invites_status").on(table.status),
+]);
+
+export const applicationInvitesRelations = relations(applicationInvites, ({ one }) => ({
+  referrer: one(users, {
+    fields: [applicationInvites.referrerId],
+    references: [users.id],
+  }),
+  loanApplication: one(loanApplications, {
+    fields: [applicationInvites.loanApplicationId],
+    references: [loanApplications.id],
+  }),
+}));
+
+export const insertApplicationInviteSchema = createInsertSchema(applicationInvites).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertApplicationInvite = z.infer<typeof insertApplicationInviteSchema>;
+export type ApplicationInvite = typeof applicationInvites.$inferSelect;
