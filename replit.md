@@ -99,6 +99,15 @@ The backend is developed with **Node.js, Express.js, and TypeScript**. It uses *
 -   **Partner Support:** isPartner flag, partnerCompanyName, and NMLS ID fields for external loan officers
 -   **Role Helpers:** isStaffRole() and isClientRole() utility functions for access control
 
+**Aspiring Owner Journey (Gap to Homeownership):** Gamified mortgage readiness program for renters exploring homeownership with:
+-   **Gap Calculator Dashboard:** Four-card overview showing Credit Score, Savings Progress, DTI Ratio, and Overall Progress with gap analysis
+-   **Financial Snapshot Onboarding:** Collect current credit score, income, debts, rent, savings, and target home price
+-   **Credit Coach:** Score-based personalized credit improvement recommendations with impact levels and action tracking
+-   **Savings Vault:** Track deposits with transaction history, progress visualization, and automatic milestone creation
+-   **30-Day Roadmap:** Structured phases (Days 1-3: Truth & Transparency, 4-14: Credit Cleanup, 15-25: Save-to-Own, Day 30: Progress Report)
+-   **Achievements & Milestones:** Gamified progress tracking with automatic milestone creation at savings thresholds ($500, $1k, $2.5k, $5k, $10k)
+-   **Database Schema:** homeownershipGoals, creditActions, savingsTransactions, journeyMilestones tables
+
 **Test Login System:** Development authentication at /test-login with predefined test accounts:
 -   Staff roles: Admin, LO, LOA, Processor, Underwriter, Closer with separate section
 -   Client roles: Aspiring Owner, Active Buyer for testing borrower experiences
