@@ -1,3 +1,4 @@
+import { type ComponentType } from "react";
 import { Link, useLocation } from "wouter";
 import {
   Sidebar,
@@ -12,6 +13,7 @@ import {
   SidebarHeader,
 } from "@/components/ui/sidebar";
 import { useAuth } from "@/hooks/useAuth";
+import { isStaffRole } from "@shared/schema";
 import {
   LayoutDashboard,
   FileText,
@@ -29,9 +31,30 @@ import {
   Building,
   Percent,
   PenSquare,
+  Star,
+  Calculator,
 } from "lucide-react";
 
-const borrowerNavigation = [
+// Client navigation - for Aspiring Owners and Active Buyers
+const aspiringOwnerNavigation = [
+  {
+    section: "Explore Homeownership",
+    items: [
+      { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard, testId: "link-borrower-dashboard" },
+      { title: "Gap to Homeownership", href: "/gap-calculator", icon: Calculator, testId: "link-gap-calculator" },
+      { title: "Browse Properties", href: "/properties", icon: Home, testId: "link-properties" },
+    ],
+  },
+  {
+    section: "Get Ready",
+    items: [
+      { title: "Pre-Approval", href: "/pre-approval", icon: Star, testId: "link-pre-approval" },
+      { title: "Resources", href: "/resources", icon: BookOpen, testId: "link-resources" },
+    ],
+  },
+];
+
+const activeBuyerNavigation = [
   {
     section: "My Mortgage",
     items: [
@@ -86,16 +109,47 @@ const adminNavigation = [
   },
 ];
 
+// Navigation item type for proper typing
+interface NavItem {
+  title: string;
+  href: string;
+  icon: ComponentType<{ className?: string }>;
+  testId: string;
+}
+
+interface NavSection {
+  section: string;
+  items: NavItem[];
+}
+
 export function AppSidebar() {
   const [location] = useLocation();
   const { user } = useAuth();
 
   const isActive = (href: string) => location === href;
   
-  const isStaff = ["admin", "lender", "broker"].includes(user?.role || "");
-  const isAdmin = user?.role === "admin";
+  // Use the isStaffRole helper from schema
+  const userRole = user?.role || "";
+  const isStaff = isStaffRole(userRole);
+  const isAdmin = userRole === "admin";
+  const isAspiringOwner = userRole === "aspiring_owner";
 
-  const navigation = isStaff ? staffNavigation : borrowerNavigation;
+  // Select appropriate navigation based on role
+  let navigation: NavSection[];
+  if (isStaff) {
+    navigation = staffNavigation;
+  } else if (isAspiringOwner) {
+    navigation = aspiringOwnerNavigation;
+  } else {
+    navigation = activeBuyerNavigation;
+  }
+  
+  // Get role display name for portal label
+  const portalLabel = isStaff 
+    ? "Staff Portal" 
+    : isAspiringOwner 
+      ? "Aspiring Owner" 
+      : "Active Buyer";
 
   return (
     <Sidebar>
@@ -103,7 +157,7 @@ export function AppSidebar() {
         <div className="px-2 py-4">
           <p className="text-sm font-semibold">MortgageAI</p>
           <p className="text-xs text-muted-foreground">
-            {isStaff ? "Staff Portal" : "Borrower Portal"}
+            {portalLabel}
           </p>
         </div>
       </SidebarHeader>
