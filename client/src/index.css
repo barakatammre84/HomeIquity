@@ -47,14 +47,14 @@
   --font-serif: Georgia, serif;
   --font-mono: "JetBrains Mono", monospace;
   --radius: .625rem;
-  --shadow-2xs: 0px 2px 0px 0px hsl(0 0% 0% / 0.00);
-  --shadow-xs: 0px 2px 0px 0px hsl(0 0% 0% / 0.00);
-  --shadow-sm: 0px 2px 0px 0px hsl(0 0% 0% / 0.00), 0px 1px 2px -1px hsl(0 0% 0% / 0.00);
-  --shadow: 0px 2px 0px 0px hsl(0 0% 0% / 0.00), 0px 1px 2px -1px hsl(0 0% 0% / 0.00);
-  --shadow-md: 0px 2px 0px 0px hsl(0 0% 0% / 0.00), 0px 2px 4px -1px hsl(0 0% 0% / 0.00);
-  --shadow-lg: 0px 2px 0px 0px hsl(0 0% 0% / 0.00), 0px 4px 6px -1px hsl(0 0% 0% / 0.00);
-  --shadow-xl: 0px 2px 0px 0px hsl(0 0% 0% / 0.00), 0px 8px 10px -1px hsl(0 0% 0% / 0.00);
-  --shadow-2xl: 0px 2px 0px 0px hsl(0 0% 0% / 0.00);
+  --shadow-2xs: 0 1px 2px 0 hsl(0 0% 0% / 0.03);
+  --shadow-xs: 0 1px 3px 0 hsl(0 0% 0% / 0.04), 0 1px 2px -1px hsl(0 0% 0% / 0.03);
+  --shadow-sm: 0 2px 4px -1px hsl(0 0% 0% / 0.06), 0 1px 2px -1px hsl(0 0% 0% / 0.04);
+  --shadow: 0 4px 6px -1px hsl(0 0% 0% / 0.08), 0 2px 4px -2px hsl(0 0% 0% / 0.05);
+  --shadow-md: 0 6px 12px -2px hsl(0 0% 0% / 0.10), 0 3px 6px -3px hsl(0 0% 0% / 0.06);
+  --shadow-lg: 0 10px 20px -3px hsl(0 0% 0% / 0.12), 0 4px 8px -4px hsl(0 0% 0% / 0.08);
+  --shadow-xl: 0 16px 32px -4px hsl(0 0% 0% / 0.15), 0 8px 16px -6px hsl(0 0% 0% / 0.10);
+  --shadow-2xl: 0 24px 48px -6px hsl(0 0% 0% / 0.20);
   --tracking-normal: 0em;
   --spacing: 0.25rem;
 
@@ -127,14 +127,14 @@
   --chart-3: 185 70% 72%;
   --chart-4: 175 65% 75%;
   --chart-5: 165 60% 78%;
-  --shadow-2xs: 0px 2px 0px 0px hsl(0 0% 0% / 0.00);
-  --shadow-xs: 0px 2px 0px 0px hsl(0 0% 0% / 0.00);
-  --shadow-sm: 0px 2px 0px 0px hsl(0 0% 0% / 0.00), 0px 1px 2px -1px hsl(0 0% 0% / 0.00);
-  --shadow: 0px 2px 0px 0px hsl(0 0% 0% / 0.00), 0px 1px 2px -1px hsl(0 0% 0% / 0.00);
-  --shadow-md: 0px 2px 0px 0px hsl(0 0% 0% / 0.00), 0px 2px 4px -1px hsl(0 0% 0% / 0.00);
-  --shadow-lg: 0px 2px 0px 0px hsl(0 0% 0% / 0.00), 0px 4px 6px -1px hsl(0 0% 0% / 0.00);
-  --shadow-xl: 0px 2px 0px 0px hsl(0 0% 0% / 0.00), 0px 8px 10px -1px hsl(0 0% 0% / 0.00);
-  --shadow-2xl: 0px 2px 0px 0px hsl(0 0% 0% / 0.00);
+  --shadow-2xs: 0 1px 2px 0 hsl(0 0% 0% / 0.15);
+  --shadow-xs: 0 1px 3px 0 hsl(0 0% 0% / 0.20), 0 1px 2px -1px hsl(0 0% 0% / 0.15);
+  --shadow-sm: 0 2px 4px -1px hsl(0 0% 0% / 0.25), 0 1px 2px -1px hsl(0 0% 0% / 0.18);
+  --shadow: 0 4px 6px -1px hsl(0 0% 0% / 0.30), 0 2px 4px -2px hsl(0 0% 0% / 0.20);
+  --shadow-md: 0 6px 12px -2px hsl(0 0% 0% / 0.35), 0 3px 6px -3px hsl(0 0% 0% / 0.25);
+  --shadow-lg: 0 10px 20px -3px hsl(0 0% 0% / 0.40), 0 4px 8px -4px hsl(0 0% 0% / 0.30);
+  --shadow-xl: 0 16px 32px -4px hsl(0 0% 0% / 0.45), 0 8px 16px -6px hsl(0 0% 0% / 0.35);
+  --shadow-2xl: 0 24px 48px -6px hsl(0 0% 0% / 0.50);
 
 /* Fallback for older browsers */
   --sidebar-primary-border: hsl(var(--sidebar-primary));
