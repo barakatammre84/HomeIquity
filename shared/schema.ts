@@ -1892,3 +1892,31 @@ export const insertBrokerCommissionSchema = createInsertSchema(brokerCommissions
 
 export type InsertBrokerCommission = z.infer<typeof insertBrokerCommissionSchema>;
 export type BrokerCommission = typeof brokerCommissions.$inferSelect;
+
+// Calculator Results - stores user calculator inputs/results for follow-up
+export const calculatorResults = pgTable("calculator_results", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  calculatorType: varchar("calculator_type", { length: 50 }).notNull(), // rent_vs_buy, affordability, mortgage
+  inputs: jsonb("inputs").notNull(),
+  results: jsonb("results").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_calculator_results_user").on(table.userId),
+  index("idx_calculator_results_type").on(table.calculatorType),
+]);
+
+export const calculatorResultsRelations = relations(calculatorResults, ({ one }) => ({
+  user: one(users, {
+    fields: [calculatorResults.userId],
+    references: [users.id],
+  }),
+}));
+
+export const insertCalculatorResultSchema = createInsertSchema(calculatorResults).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertCalculatorResult = z.infer<typeof insertCalculatorResultSchema>;
+export type CalculatorResult = typeof calculatorResults.$inferSelect;

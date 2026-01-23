@@ -11,6 +11,7 @@ import {
   insertContentCategorySchema,
   insertArticleSchema,
   insertFaqSchema,
+  insertCalculatorResultSchema,
   type User,
 } from "@shared/schema";
 import { z } from "zod";
@@ -1134,6 +1135,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Get pending commissions error:", error);
       res.status(500).json({ error: "Failed to get pending commissions" });
+    }
+  });
+
+  // Calculator Results endpoints
+  app.post("/api/calculator-results", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      
+      const validationResult = insertCalculatorResultSchema.safeParse({
+        ...req.body,
+        userId: user.id,
+      });
+      
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          error: "Invalid request data", 
+          details: validationResult.error.errors 
+        });
+      }
+      
+      const calculatorResult = await storage.createCalculatorResult(validationResult.data);
+      
+      res.status(201).json(calculatorResult);
+    } catch (error) {
+      console.error("Create calculator result error:", error);
+      res.status(500).json({ error: "Failed to save calculator results" });
+    }
+  });
+
+  app.get("/api/calculator-results", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const results = await storage.getCalculatorResultsByUser(user.id);
+      res.json(results);
+    } catch (error) {
+      console.error("Get calculator results error:", error);
+      res.status(500).json({ error: "Failed to get calculator results" });
+    }
+  });
+
+  app.get("/api/calculator-results/:type", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const { type } = req.params;
+      const result = await storage.getLatestCalculatorResult(user.id, type);
+      
+      if (!result) {
+        return res.status(404).json({ error: "No results found" });
+      }
+      
+      res.json(result);
+    } catch (error) {
+      console.error("Get calculator result error:", error);
+      res.status(500).json({ error: "Failed to get calculator result" });
     }
   });
 

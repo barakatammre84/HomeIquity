@@ -31,6 +31,7 @@ import {
   mortgageRatePrograms,
   mortgageRates,
   brokerCommissions,
+  calculatorResults,
   type User,
   type UpsertUser,
   type LoanApplication,
@@ -89,6 +90,8 @@ import {
   type InsertMortgageRate,
   type BrokerCommission,
   type InsertBrokerCommission,
+  type CalculatorResult,
+  type InsertCalculatorResult,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -327,6 +330,11 @@ export interface IStorage {
   getBrokerCommission(id: string): Promise<BrokerCommission | undefined>;
   updateBrokerCommission(id: string, data: Partial<BrokerCommission>): Promise<BrokerCommission | undefined>;
   getAllPendingCommissions(): Promise<(BrokerCommission & { broker: User; application: LoanApplication })[]>;
+
+  // Calculator Results
+  createCalculatorResult(data: InsertCalculatorResult): Promise<CalculatorResult>;
+  getCalculatorResultsByUser(userId: string): Promise<CalculatorResult[]>;
+  getLatestCalculatorResult(userId: string, type: string): Promise<CalculatorResult | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1992,6 +2000,33 @@ export class DatabaseStorage implements IStorage {
       broker: c.users,
       application: c.loan_applications,
     }));
+  }
+
+  // Calculator Results
+  async createCalculatorResult(data: InsertCalculatorResult): Promise<CalculatorResult> {
+    const [result] = await db
+      .insert(calculatorResults)
+      .values(data)
+      .returning();
+    return result;
+  }
+
+  async getCalculatorResultsByUser(userId: string): Promise<CalculatorResult[]> {
+    return await db
+      .select()
+      .from(calculatorResults)
+      .where(eq(calculatorResults.userId, userId))
+      .orderBy(desc(calculatorResults.createdAt));
+  }
+
+  async getLatestCalculatorResult(userId: string, type: string): Promise<CalculatorResult | undefined> {
+    const [result] = await db
+      .select()
+      .from(calculatorResults)
+      .where(and(eq(calculatorResults.userId, userId), eq(calculatorResults.calculatorType, type)))
+      .orderBy(desc(calculatorResults.createdAt))
+      .limit(1);
+    return result;
   }
 }
 

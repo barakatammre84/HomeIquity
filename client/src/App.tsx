@@ -38,6 +38,9 @@ import CashOutRates from "@/pages/rates/CashOutRates";
 import HelocRates from "@/pages/rates/HelocRates";
 import VaRates from "@/pages/rates/VaRates";
 import BrokerDashboard from "@/pages/BrokerDashboard";
+import RentVsBuyCalculator from "@/pages/calculators/RentVsBuyCalculator";
+import AffordabilityCalculator from "@/pages/calculators/AffordabilityCalculator";
+import MortgageCalculator from "@/pages/calculators/MortgageCalculator";
 
 function PublicPage({ children }: { children: React.ReactNode }) {
   return <PublicLayout>{children}</PublicLayout>;
@@ -92,6 +95,17 @@ function Router() {
       </Route>
       <Route path="/rates/va">
         <PublicPage><VaRates /></PublicPage>
+      </Route>
+
+      {/* Calculator Pages - Public with navigation header */}
+      <Route path="/calculators/rent-vs-buy">
+        <PublicPage><RentVsBuyCalculator /></PublicPage>
+      </Route>
+      <Route path="/calculators/affordability">
+        <PublicPage><AffordabilityCalculator /></PublicPage>
+      </Route>
+      <Route path="/calculators/mortgage">
+        <PublicPage><MortgageCalculator /></PublicPage>
       </Route>
 
       {/* Private Pages - Borrower (logged-in clients working on their application) */}
