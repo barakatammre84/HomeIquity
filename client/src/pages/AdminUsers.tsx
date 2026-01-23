@@ -51,8 +51,23 @@ import {
   Home,
   AlertCircle,
   Filter,
+  UserCheck,
+  FileCheck,
+  ClipboardCheck,
+  Banknote,
+  Wrench,
+  Star,
 } from "lucide-react";
 import { format } from "date-fns";
+import { 
+  ALL_ROLES, 
+  STAFF_ROLES, 
+  CLIENT_ROLES,
+  ROLE_DISPLAY_NAMES, 
+  ROLE_DESCRIPTIONS,
+  isStaffRole,
+  type UserRole 
+} from "@shared/schema";
 
 interface User {
   id: string;
@@ -61,17 +76,26 @@ interface User {
   lastName: string | null;
   profileImageUrl: string | null;
   role: string;
+  isPartner?: boolean;
+  partnerCompanyName?: string | null;
+  nmlsId?: string | null;
   createdAt: string | null;
 }
 
 const ROLE_CONFIG: Record<string, { label: string; icon: typeof Shield; color: string }> = {
-  admin: { label: "Admin", icon: Shield, color: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200" },
-  lender: { label: "Lender", icon: Building2, color: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200" },
-  broker: { label: "Broker", icon: Briefcase, color: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" },
-  borrower: { label: "Borrower", icon: Home, color: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" },
+  // Staff roles
+  admin: { label: "Tech/Ops Lead", icon: Wrench, color: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200" },
+  lo: { label: "Loan Officer", icon: UserCheck, color: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" },
+  loa: { label: "LOA", icon: Briefcase, color: "bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-200" },
+  processor: { label: "Processor", icon: FileCheck, color: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200" },
+  underwriter: { label: "Underwriter", icon: ClipboardCheck, color: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200" },
+  closer: { label: "Closer/Funder", icon: Banknote, color: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200" },
+  // Client roles
+  aspiring_owner: { label: "Aspiring Owner", icon: Star, color: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200" },
+  active_buyer: { label: "Active Buyer", icon: Home, color: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" },
 };
 
-const ROLES = ["admin", "lender", "broker", "borrower"] as const;
+const ROLES = ALL_ROLES;
 
 export default function AdminUsers() {
   const { user: currentUser, isLoading: authLoading } = useAuth();
@@ -143,10 +167,19 @@ export default function AdminUsers() {
 
   const userStats = {
     total: users?.length || 0,
+    // Staff roles
     admins: users?.filter((u) => u.role === "admin").length || 0,
-    lenders: users?.filter((u) => u.role === "lender").length || 0,
-    brokers: users?.filter((u) => u.role === "broker").length || 0,
-    borrowers: users?.filter((u) => u.role === "borrower").length || 0,
+    loanOfficers: users?.filter((u) => u.role === "lo").length || 0,
+    loas: users?.filter((u) => u.role === "loa").length || 0,
+    processors: users?.filter((u) => u.role === "processor").length || 0,
+    underwriters: users?.filter((u) => u.role === "underwriter").length || 0,
+    closers: users?.filter((u) => u.role === "closer").length || 0,
+    // Client roles
+    aspiringOwners: users?.filter((u) => u.role === "aspiring_owner").length || 0,
+    activeBuyers: users?.filter((u) => u.role === "active_buyer").length || 0,
+    // Aggregates
+    totalStaff: users?.filter((u) => isStaffRole(u.role)).length || 0,
+    totalClients: users?.filter((u) => !isStaffRole(u.role)).length || 0,
   };
 
   if (authLoading) {
@@ -183,7 +216,8 @@ export default function AdminUsers() {
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-5">
+      {/* Summary Stats */}
+      <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardContent className="pt-4">
             <div className="flex items-center gap-3">
@@ -201,51 +235,98 @@ export default function AdminUsers() {
           <CardContent className="pt-4">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-red-100 dark:bg-red-900">
-                <Shield className="h-5 w-5 text-red-600 dark:text-red-300" />
+                <Wrench className="h-5 w-5 text-red-600 dark:text-red-300" />
               </div>
               <div>
                 <p className="text-2xl font-bold" data-testid="text-admin-count">{userStats.admins}</p>
-                <p className="text-sm text-muted-foreground">Admins</p>
+                <p className="text-sm text-muted-foreground">Tech/Ops Leads</p>
               </div>
             </div>
           </CardContent>
         </Card>
-        <Card data-testid="card-stat-lenders">
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900">
-                <Building2 className="h-5 w-5 text-purple-600 dark:text-purple-300" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold" data-testid="text-lender-count">{userStats.lenders}</p>
-                <p className="text-sm text-muted-foreground">Lenders</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card data-testid="card-stat-brokers">
+        <Card data-testid="card-stat-staff">
           <CardContent className="pt-4">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900">
-                <Briefcase className="h-5 w-5 text-blue-600 dark:text-blue-300" />
+                <UserCheck className="h-5 w-5 text-blue-600 dark:text-blue-300" />
               </div>
               <div>
-                <p className="text-2xl font-bold" data-testid="text-broker-count">{userStats.brokers}</p>
-                <p className="text-sm text-muted-foreground">Brokers</p>
+                <p className="text-2xl font-bold" data-testid="text-staff-count">{userStats.totalStaff}</p>
+                <p className="text-sm text-muted-foreground">Staff Members</p>
               </div>
             </div>
           </CardContent>
         </Card>
-        <Card data-testid="card-stat-borrowers">
+        <Card data-testid="card-stat-clients">
           <CardContent className="pt-4">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900">
                 <Home className="h-5 w-5 text-green-600 dark:text-green-300" />
               </div>
               <div>
-                <p className="text-2xl font-bold" data-testid="text-borrower-count">{userStats.borrowers}</p>
-                <p className="text-sm text-muted-foreground">Borrowers</p>
+                <p className="text-2xl font-bold" data-testid="text-client-count">{userStats.totalClients}</p>
+                <p className="text-sm text-muted-foreground">Clients</p>
               </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Detailed Role Breakdown */}
+      <div className="grid gap-4 md:grid-cols-4 lg:grid-cols-8">
+        <Card className="col-span-1">
+          <CardContent className="pt-3 pb-3">
+            <div className="text-center">
+              <p className="text-xl font-bold" data-testid="text-lo-count">{userStats.loanOfficers}</p>
+              <p className="text-xs text-muted-foreground">Loan Officers</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="col-span-1">
+          <CardContent className="pt-3 pb-3">
+            <div className="text-center">
+              <p className="text-xl font-bold" data-testid="text-loa-count">{userStats.loas}</p>
+              <p className="text-xs text-muted-foreground">LOAs</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="col-span-1">
+          <CardContent className="pt-3 pb-3">
+            <div className="text-center">
+              <p className="text-xl font-bold" data-testid="text-processor-count">{userStats.processors}</p>
+              <p className="text-xs text-muted-foreground">Processors</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="col-span-1">
+          <CardContent className="pt-3 pb-3">
+            <div className="text-center">
+              <p className="text-xl font-bold" data-testid="text-underwriter-count">{userStats.underwriters}</p>
+              <p className="text-xs text-muted-foreground">Underwriters</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="col-span-1">
+          <CardContent className="pt-3 pb-3">
+            <div className="text-center">
+              <p className="text-xl font-bold" data-testid="text-closer-count">{userStats.closers}</p>
+              <p className="text-xs text-muted-foreground">Closers</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="col-span-1">
+          <CardContent className="pt-3 pb-3">
+            <div className="text-center border-l-2 border-muted pl-2">
+              <p className="text-xl font-bold" data-testid="text-aspiring-count">{userStats.aspiringOwners}</p>
+              <p className="text-xs text-muted-foreground">Aspiring</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="col-span-1">
+          <CardContent className="pt-3 pb-3">
+            <div className="text-center">
+              <p className="text-xl font-bold" data-testid="text-active-buyer-count">{userStats.activeBuyers}</p>
+              <p className="text-xs text-muted-foreground">Active Buyers</p>
             </div>
           </CardContent>
         </Card>
@@ -306,7 +387,7 @@ export default function AdminUsers() {
               </TableHeader>
               <TableBody>
                 {filteredUsers.map((user) => {
-                  const roleConfig = ROLE_CONFIG[user.role] || ROLE_CONFIG.borrower;
+                  const roleConfig = ROLE_CONFIG[user.role] || ROLE_CONFIG.active_buyer;
                   const RoleIcon = roleConfig.icon;
                   const isCurrentUser = user.id === currentUser?.id;
 

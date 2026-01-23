@@ -6,14 +6,33 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Building2, Shield, Briefcase, Users, Home } from "lucide-react";
+import { 
+  Wrench, 
+  UserCheck, 
+  Briefcase, 
+  FileCheck, 
+  ClipboardCheck, 
+  Banknote, 
+  Star, 
+  Home 
+} from "lucide-react";
 
+// Test accounts for different mortgage industry roles
 const testAccounts = [
-  { email: "admin@test.com", password: "admin123", role: "Admin", icon: Shield, description: "Full system access" },
-  { email: "broker@test.com", password: "broker123", role: "Broker", icon: Briefcase, description: "Manage referrals & commissions" },
-  { email: "lender@test.com", password: "lender123", role: "Lender", icon: Building2, description: "Process loan applications" },
-  { email: "borrower@test.com", password: "borrower123", role: "Borrower", icon: Home, description: "Apply for mortgages" },
+  // Staff roles
+  { email: "admin@test.com", password: "admin123", role: "Tech/Ops Lead", roleKey: "admin", icon: Wrench, description: "Full system access & configuration", category: "staff" },
+  { email: "lo@test.com", password: "lo123", role: "Loan Officer", roleKey: "lo", icon: UserCheck, description: "Sales & lead qualification", category: "staff" },
+  { email: "loa@test.com", password: "loa123", role: "LOA", roleKey: "loa", icon: Briefcase, description: "Document collection & appointments", category: "staff" },
+  { email: "processor@test.com", password: "processor123", role: "Processor", roleKey: "processor", icon: FileCheck, description: "File bundling & pre-underwriting", category: "staff" },
+  { email: "underwriter@test.com", password: "underwriter123", role: "Underwriter", roleKey: "underwriter", icon: ClipboardCheck, description: "Final loan decisions", category: "staff" },
+  { email: "closer@test.com", password: "closer123", role: "Closer/Funder", roleKey: "closer", icon: Banknote, description: "Wire management & final docs", category: "staff" },
+  // Client roles
+  { email: "renter@test.com", password: "renter123", role: "Aspiring Owner", roleKey: "aspiring_owner", icon: Star, description: "Explore homeownership & gap calculator", category: "client" },
+  { email: "buyer@test.com", password: "buyer123", role: "Active Buyer", roleKey: "active_buyer", icon: Home, description: "Apply for mortgages & upload docs", category: "client" },
 ];
+
+const staffAccounts = testAccounts.filter(a => a.category === "staff");
+const clientAccounts = testAccounts.filter(a => a.category === "client");
 
 export default function TestLogin() {
   const [, setLocation] = useLocation();
@@ -39,10 +58,12 @@ export default function TestLogin() {
         description: `Welcome, ${data.user.firstName}! Role: ${data.user.role}`,
       });
 
+      // Route based on role type
+      const staffRoles = ["admin", "lo", "loa", "processor", "underwriter", "closer"];
       if (data.user.role === "admin") {
         setLocation("/admin");
-      } else if (data.user.role === "broker" || data.user.role === "lender") {
-        setLocation("/broker-dashboard");
+      } else if (staffRoles.includes(data.user.role)) {
+        setLocation("/staff-dashboard");
       } else {
         setLocation("/dashboard");
       }
@@ -70,26 +91,56 @@ export default function TestLogin() {
           <p className="text-muted-foreground mt-2">Select a test account or enter credentials manually</p>
         </div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {testAccounts.map((account) => (
-            <Card
-              key={account.email}
-              className="cursor-pointer hover-elevate"
-              onClick={() => handleLogin(account.email, account.password)}
-              data-testid={`card-login-${account.role.toLowerCase()}`}
-            >
-              <CardHeader className="pb-2">
-                <account.icon className="h-8 w-8 text-primary mb-2" />
-                <CardTitle className="text-lg">{account.role}</CardTitle>
-                <CardDescription>{account.description}</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-xs text-muted-foreground">
-                  {account.email}
-                </p>
-              </CardContent>
-            </Card>
-          ))}
+        {/* Staff Roles */}
+        <div className="space-y-3">
+          <h2 className="text-lg font-semibold text-muted-foreground">Staff Roles</h2>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {staffAccounts.map((account) => (
+              <Card
+                key={account.email}
+                className="cursor-pointer hover-elevate"
+                onClick={() => handleLogin(account.email, account.password)}
+                data-testid={`card-login-${account.roleKey}`}
+              >
+                <CardHeader className="pb-2">
+                  <account.icon className="h-8 w-8 text-primary mb-2" />
+                  <CardTitle className="text-lg">{account.role}</CardTitle>
+                  <CardDescription>{account.description}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-xs text-muted-foreground">
+                    {account.email}
+                  </p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+
+        {/* Client Roles */}
+        <div className="space-y-3">
+          <h2 className="text-lg font-semibold text-muted-foreground">Client Roles</h2>
+          <div className="grid md:grid-cols-2 gap-4">
+            {clientAccounts.map((account) => (
+              <Card
+                key={account.email}
+                className="cursor-pointer hover-elevate"
+                onClick={() => handleLogin(account.email, account.password)}
+                data-testid={`card-login-${account.roleKey}`}
+              >
+                <CardHeader className="pb-2">
+                  <account.icon className="h-8 w-8 text-primary mb-2" />
+                  <CardTitle className="text-lg">{account.role}</CardTitle>
+                  <CardDescription>{account.description}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-xs text-muted-foreground">
+                    {account.email}
+                  </p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </div>
 
         <Card className="max-w-md mx-auto">

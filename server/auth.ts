@@ -144,12 +144,22 @@ export async function setupAuth(app: Express) {
   app.post("/api/test-login", async (req, res) => {
     const { email, password } = req.body;
 
-    // Predefined test accounts
+    // Predefined test accounts - Mortgage Industry Roles
     const testAccounts: Record<string, { password: string; role: string; firstName: string; lastName: string }> = {
+      // Staff roles
       "admin@test.com": { password: "admin123", role: "admin", firstName: "Admin", lastName: "User" },
-      "broker@test.com": { password: "broker123", role: "broker", firstName: "Broker", lastName: "User" },
-      "lender@test.com": { password: "lender123", role: "lender", firstName: "Lender", lastName: "User" },
-      "borrower@test.com": { password: "borrower123", role: "borrower", firstName: "Borrower", lastName: "User" },
+      "lo@test.com": { password: "lo123", role: "lo", firstName: "Loan", lastName: "Officer" },
+      "loa@test.com": { password: "loa123", role: "loa", firstName: "Loan Officer", lastName: "Assistant" },
+      "processor@test.com": { password: "processor123", role: "processor", firstName: "Loan", lastName: "Processor" },
+      "underwriter@test.com": { password: "underwriter123", role: "underwriter", firstName: "Loan", lastName: "Underwriter" },
+      "closer@test.com": { password: "closer123", role: "closer", firstName: "Loan", lastName: "Closer" },
+      // Client roles
+      "renter@test.com": { password: "renter123", role: "aspiring_owner", firstName: "Aspiring", lastName: "Owner" },
+      "buyer@test.com": { password: "buyer123", role: "active_buyer", firstName: "Active", lastName: "Buyer" },
+      // Legacy accounts (for backward compatibility)
+      "broker@test.com": { password: "broker123", role: "lo", firstName: "Broker", lastName: "User" },
+      "lender@test.com": { password: "lender123", role: "processor", firstName: "Lender", lastName: "User" },
+      "borrower@test.com": { password: "borrower123", role: "active_buyer", firstName: "Borrower", lastName: "User" },
     };
 
     const account = testAccounts[email];
