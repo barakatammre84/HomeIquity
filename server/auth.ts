@@ -78,7 +78,7 @@ async function upsertUser(userData: {
     firstName: userData.firstName ?? null,
     lastName: userData.lastName ?? null,
     profileImageUrl: userData.profileImageUrl ?? null,
-    role: "borrower",
+    role: "aspiring_owner", // Default role for new signups
   });
 }
 
@@ -105,9 +105,9 @@ export async function setupAuth(app: Express) {
       lastName: "User",
     });
 
-    // Ensure demo user always has borrower role for consistent testing
-    if (demoUser.role !== "borrower") {
-      const updatedUser = await storage.updateUserRole(demoUser.id, "borrower");
+    // Ensure demo user always has active_buyer role for consistent testing
+    if (demoUser.role !== "active_buyer") {
+      const updatedUser = await storage.updateUserRole(demoUser.id, "active_buyer");
       if (updatedUser) {
         demoUser = updatedUser;
       }
