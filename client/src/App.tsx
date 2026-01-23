@@ -44,6 +44,7 @@ import RentVsBuyCalculator from "@/pages/calculators/RentVsBuyCalculator";
 import AffordabilityCalculator from "@/pages/calculators/AffordabilityCalculator";
 import MortgageCalculator from "@/pages/calculators/MortgageCalculator";
 import TestLogin from "@/pages/TestLogin";
+import GapCalculator from "@/pages/GapCalculator";
 
 function PublicPage({ children }: { children: React.ReactNode }) {
   return <PublicLayout>{children}</PublicLayout>;
@@ -115,6 +116,9 @@ function Router() {
       {/* Private Pages - Borrower (logged-in clients working on their application) */}
       <Route path="/dashboard">
         <BorrowerPage><Dashboard /></BorrowerPage>
+      </Route>
+      <Route path="/gap-calculator">
+        <BorrowerPage><GapCalculator /></BorrowerPage>
       </Route>
       <Route path="/loan-options/:id">
         {(params) => <BorrowerPage><LoanOptions /></BorrowerPage>}

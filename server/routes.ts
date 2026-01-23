@@ -3914,7 +3914,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/homeownership-goal", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      const goal = await storage.updateHomeownershipGoal(user.id, req.body);
+      
+      // Validate update data using partial insert schema
+      const updateSchema = insertHomeownershipGoalSchema.partial();
+      const validated = updateSchema.parse(req.body);
+      
+      const goal = await storage.updateHomeownershipGoal(user.id, validated);
       
       if (!goal) {
         return res.status(404).json({ error: "Homeownership goal not found" });
@@ -3923,6 +3928,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ goal });
     } catch (error) {
       console.error("Update homeownership goal error:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid data", details: error.errors });
+      }
       res.status(500).json({ error: "Failed to update homeownership goal" });
     }
   });
@@ -4030,7 +4038,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Update credit action
   app.patch("/api/credit-actions/:id", isAuthenticated, async (req, res) => {
     try {
-      const action = await storage.updateCreditAction(req.params.id, req.body);
+      // Validate update data using partial insert schema
+      const updateSchema = insertCreditActionSchema.partial();
+      const validated = updateSchema.parse(req.body);
+      
+      const action = await storage.updateCreditAction(req.params.id, validated);
       
       if (!action) {
         return res.status(404).json({ error: "Credit action not found" });
@@ -4039,6 +4051,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ action });
     } catch (error) {
       console.error("Update credit action error:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid data", details: error.errors });
+      }
       res.status(500).json({ error: "Failed to update credit action" });
     }
   });
