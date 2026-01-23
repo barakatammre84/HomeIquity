@@ -87,6 +87,12 @@ The backend is developed with **Node.js, Express.js, and TypeScript**. It uses *
 -   **Form Validation:** React Hook Form with Zod schema validation for data integrity
 -   **Role-Based Access:** Admin-only access with protected routes
 
+**Admin User Management:** Staff account management for administrators with:
+-   **User Directory:** View all users with search and role-based filtering
+-   **Role Assignment:** Change user roles (Admin, Lender, Broker, Borrower)
+-   **User Stats Dashboard:** Real-time counts of users by role type
+-   **Self-Edit Protection:** Prevents admins from accidentally changing their own role
+
 **Test Login System:** Development authentication at /test-login with predefined test accounts:
 -   Admin, Broker, Lender, and Borrower roles for testing different access levels
 -   Secure role selection without exposing credentials
