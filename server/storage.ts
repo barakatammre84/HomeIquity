@@ -32,6 +32,10 @@ import {
   mortgageRates,
   brokerCommissions,
   calculatorResults,
+  homeownershipGoals,
+  creditActions,
+  savingsTransactions,
+  journeyMilestones,
   type User,
   type UpsertUser,
   type LoanApplication,
@@ -92,6 +96,14 @@ import {
   type InsertBrokerCommission,
   type CalculatorResult,
   type InsertCalculatorResult,
+  type HomeownershipGoal,
+  type InsertHomeownershipGoal,
+  type CreditAction,
+  type InsertCreditAction,
+  type SavingsTransaction,
+  type InsertSavingsTransaction,
+  type JourneyMilestone,
+  type InsertJourneyMilestone,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -335,6 +347,24 @@ export interface IStorage {
   createCalculatorResult(data: InsertCalculatorResult): Promise<CalculatorResult>;
   getCalculatorResultsByUser(userId: string): Promise<CalculatorResult[]>;
   getLatestCalculatorResult(userId: string, type: string): Promise<CalculatorResult | undefined>;
+
+  // Homeownership Goals (Aspiring Owner Journey)
+  getHomeownershipGoal(userId: string): Promise<HomeownershipGoal | undefined>;
+  createHomeownershipGoal(data: InsertHomeownershipGoal): Promise<HomeownershipGoal>;
+  updateHomeownershipGoal(userId: string, data: Partial<HomeownershipGoal>): Promise<HomeownershipGoal | undefined>;
+  
+  // Credit Actions
+  getCreditActions(goalId: string): Promise<CreditAction[]>;
+  createCreditAction(data: InsertCreditAction): Promise<CreditAction>;
+  updateCreditAction(id: string, data: Partial<CreditAction>): Promise<CreditAction | undefined>;
+  
+  // Savings Transactions
+  getSavingsTransactions(goalId: string): Promise<SavingsTransaction[]>;
+  createSavingsTransaction(data: InsertSavingsTransaction): Promise<SavingsTransaction>;
+  
+  // Journey Milestones
+  getJourneyMilestones(goalId: string): Promise<JourneyMilestone[]>;
+  createJourneyMilestone(data: InsertJourneyMilestone): Promise<JourneyMilestone>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -2027,6 +2057,94 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(calculatorResults.createdAt))
       .limit(1);
     return result;
+  }
+
+  // Homeownership Goals (Aspiring Owner Journey)
+  async getHomeownershipGoal(userId: string): Promise<HomeownershipGoal | undefined> {
+    const [goal] = await db
+      .select()
+      .from(homeownershipGoals)
+      .where(eq(homeownershipGoals.userId, userId));
+    return goal;
+  }
+
+  async createHomeownershipGoal(data: InsertHomeownershipGoal): Promise<HomeownershipGoal> {
+    const [goal] = await db
+      .insert(homeownershipGoals)
+      .values(data)
+      .returning();
+    return goal;
+  }
+
+  async updateHomeownershipGoal(userId: string, data: Partial<HomeownershipGoal>): Promise<HomeownershipGoal | undefined> {
+    const { id, createdAt, ...cleanData } = data as any;
+    const [updated] = await db
+      .update(homeownershipGoals)
+      .set({ ...cleanData, updatedAt: new Date() })
+      .where(eq(homeownershipGoals.userId, userId))
+      .returning();
+    return updated;
+  }
+
+  // Credit Actions
+  async getCreditActions(goalId: string): Promise<CreditAction[]> {
+    return await db
+      .select()
+      .from(creditActions)
+      .where(eq(creditActions.goalId, goalId))
+      .orderBy(desc(creditActions.priority), asc(creditActions.createdAt));
+  }
+
+  async createCreditAction(data: InsertCreditAction): Promise<CreditAction> {
+    const [action] = await db
+      .insert(creditActions)
+      .values(data)
+      .returning();
+    return action;
+  }
+
+  async updateCreditAction(id: string, data: Partial<CreditAction>): Promise<CreditAction | undefined> {
+    const { id: actionId, createdAt, ...cleanData } = data as any;
+    const [updated] = await db
+      .update(creditActions)
+      .set({ ...cleanData, updatedAt: new Date() })
+      .where(eq(creditActions.id, id))
+      .returning();
+    return updated;
+  }
+
+  // Savings Transactions
+  async getSavingsTransactions(goalId: string): Promise<SavingsTransaction[]> {
+    return await db
+      .select()
+      .from(savingsTransactions)
+      .where(eq(savingsTransactions.goalId, goalId))
+      .orderBy(desc(savingsTransactions.createdAt));
+  }
+
+  async createSavingsTransaction(data: InsertSavingsTransaction): Promise<SavingsTransaction> {
+    const [transaction] = await db
+      .insert(savingsTransactions)
+      .values(data)
+      .returning();
+    return transaction;
+  }
+
+  // Journey Milestones
+  async getJourneyMilestones(goalId: string): Promise<JourneyMilestone[]> {
+    return await db
+      .select()
+      .from(journeyMilestones)
+      .where(eq(journeyMilestones.goalId, goalId))
+      .orderBy(desc(journeyMilestones.achievedAt));
+  }
+
+  async createJourneyMilestone(data: InsertJourneyMilestone): Promise<JourneyMilestone> {
+    const [milestone] = await db
+      .insert(journeyMilestones)
+      .values(data)
+      .returning();
+    return milestone;
   }
 }
 

@@ -1979,3 +1979,190 @@ export const insertCalculatorResultSchema = createInsertSchema(calculatorResults
 
 export type InsertCalculatorResult = z.infer<typeof insertCalculatorResultSchema>;
 export type CalculatorResult = typeof calculatorResults.$inferSelect;
+
+// ===== ASPIRING OWNER JOURNEY =====
+
+// Homeownership Goals - Main tracking for aspiring owner journey
+export const homeownershipGoals = pgTable("homeownership_goals", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull().unique(),
+  
+  // Current Financial Status (entered by user or pulled from Plaid)
+  currentCreditScore: integer("current_credit_score"),
+  currentMonthlySavings: decimal("current_monthly_savings", { precision: 10, scale: 2 }),
+  currentSavingsBalance: decimal("current_savings_balance", { precision: 12, scale: 2 }).default("0"),
+  monthlyIncome: decimal("monthly_income", { precision: 10, scale: 2 }),
+  monthlyDebts: decimal("monthly_debts", { precision: 10, scale: 2 }),
+  currentRent: decimal("current_rent", { precision: 10, scale: 2 }),
+  
+  // Target Goals
+  targetCreditScore: integer("target_credit_score").default(640),
+  targetDownPayment: decimal("target_down_payment", { precision: 12, scale: 2 }),
+  targetHomePrice: decimal("target_home_price", { precision: 12, scale: 2 }),
+  targetMonthlyPayment: decimal("target_monthly_payment", { precision: 10, scale: 2 }),
+  
+  // Journey Status
+  journeyStartDate: timestamp("journey_start_date").defaultNow(),
+  currentPhase: varchar("current_phase", { length: 50 }).default("discovery"), // discovery, credit_cleanup, saving, ready
+  journeyDay: integer("journey_day").default(1),
+  
+  // Progress Tracking
+  creditScoreChange: integer("credit_score_change").default(0), // cumulative change since start
+  savingsProgress: decimal("savings_progress", { precision: 12, scale: 2 }).default("0"), // total saved toward goal
+  
+  // Preferred location
+  targetCity: varchar("target_city", { length: 100 }),
+  targetState: varchar("target_state", { length: 50 }),
+  targetZipCode: varchar("target_zip_code", { length: 20 }),
+  
+  // Linked agent (if referred)
+  referringAgentId: varchar("referring_agent_id").references(() => agentProfiles.id),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_homeownership_goals_user").on(table.userId),
+  index("idx_homeownership_goals_phase").on(table.currentPhase),
+]);
+
+export const homeownershipGoalsRelations = relations(homeownershipGoals, ({ one, many }) => ({
+  user: one(users, {
+    fields: [homeownershipGoals.userId],
+    references: [users.id],
+  }),
+  referringAgent: one(agentProfiles, {
+    fields: [homeownershipGoals.referringAgentId],
+    references: [agentProfiles.id],
+  }),
+  creditActions: many(creditActions),
+  savingsTransactions: many(savingsTransactions),
+  journeyMilestones: many(journeyMilestones),
+}));
+
+export const insertHomeownershipGoalSchema = createInsertSchema(homeownershipGoals).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertHomeownershipGoal = z.infer<typeof insertHomeownershipGoalSchema>;
+export type HomeownershipGoal = typeof homeownershipGoals.$inferSelect;
+
+// Credit Actions - Track credit improvement actions
+export const creditActions = pgTable("credit_actions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  goalId: varchar("goal_id").references(() => homeownershipGoals.id).notNull(),
+  
+  // Action Details
+  actionType: varchar("action_type", { length: 50 }).notNull(), // pay_down_card, dispute_error, authorized_user, secured_card, on_time_payment
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  
+  // Impact
+  estimatedPointsGain: integer("estimated_points_gain"),
+  actualPointsGain: integer("actual_points_gain"),
+  priority: varchar("priority", { length: 20 }).default("medium"), // high, medium, low
+  
+  // Status
+  status: varchar("status", { length: 50 }).default("pending"), // pending, in_progress, completed, skipped
+  completedAt: timestamp("completed_at"),
+  
+  // Related account info (if applicable)
+  creditorName: varchar("creditor_name", { length: 255 }),
+  accountBalance: decimal("account_balance", { precision: 10, scale: 2 }),
+  recommendedPayment: decimal("recommended_payment", { precision: 10, scale: 2 }),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_credit_actions_goal").on(table.goalId),
+  index("idx_credit_actions_status").on(table.status),
+]);
+
+export const creditActionsRelations = relations(creditActions, ({ one }) => ({
+  goal: one(homeownershipGoals, {
+    fields: [creditActions.goalId],
+    references: [homeownershipGoals.id],
+  }),
+}));
+
+export const insertCreditActionSchema = createInsertSchema(creditActions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertCreditAction = z.infer<typeof insertCreditActionSchema>;
+export type CreditAction = typeof creditActions.$inferSelect;
+
+// Savings Transactions - Track savings deposits and round-ups
+export const savingsTransactions = pgTable("savings_transactions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  goalId: varchar("goal_id").references(() => homeownershipGoals.id).notNull(),
+  
+  // Transaction Details
+  transactionType: varchar("transaction_type", { length: 50 }).notNull(), // manual_deposit, round_up, recurring, bonus
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  description: varchar("description", { length: 255 }),
+  
+  // Running Total
+  runningBalance: decimal("running_balance", { precision: 12, scale: 2 }).notNull(),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_savings_transactions_goal").on(table.goalId),
+]);
+
+export const savingsTransactionsRelations = relations(savingsTransactions, ({ one }) => ({
+  goal: one(homeownershipGoals, {
+    fields: [savingsTransactions.goalId],
+    references: [homeownershipGoals.id],
+  }),
+}));
+
+export const insertSavingsTransactionSchema = createInsertSchema(savingsTransactions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertSavingsTransaction = z.infer<typeof insertSavingsTransactionSchema>;
+export type SavingsTransaction = typeof savingsTransactions.$inferSelect;
+
+// Journey Milestones - Track achieved milestones
+export const journeyMilestones = pgTable("journey_milestones", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  goalId: varchar("goal_id").references(() => homeownershipGoals.id).notNull(),
+  
+  // Milestone Details
+  milestoneType: varchar("milestone_type", { length: 50 }).notNull(), 
+  // Types: first_deposit, credit_score_up_10, credit_score_up_25, savings_500, savings_1000, 
+  // savings_2500, savings_5000, day_7, day_14, day_30, target_credit_reached, target_savings_reached
+  
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  celebrationMessage: text("celebration_message"),
+  
+  // Achievement
+  achievedAt: timestamp("achieved_at").defaultNow(),
+  pointsAwarded: integer("points_awarded").default(0),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_journey_milestones_goal").on(table.goalId),
+  index("idx_journey_milestones_type").on(table.milestoneType),
+]);
+
+export const journeyMilestonesRelations = relations(journeyMilestones, ({ one }) => ({
+  goal: one(homeownershipGoals, {
+    fields: [journeyMilestones.goalId],
+    references: [homeownershipGoals.id],
+  }),
+}));
+
+export const insertJourneyMilestoneSchema = createInsertSchema(journeyMilestones).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertJourneyMilestone = z.infer<typeof insertJourneyMilestoneSchema>;
+export type JourneyMilestone = typeof journeyMilestones.$inferSelect;
