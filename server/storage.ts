@@ -45,6 +45,7 @@ import {
   applicationMilestones,
   slaConfigurations,
   analyticsSnapshots,
+  dealTeamMembers,
   type User,
   type UpsertUser,
   type LoanApplication,
@@ -131,6 +132,8 @@ import {
   type InsertSlaConfiguration,
   type AnalyticsSnapshot,
   type InsertAnalyticsSnapshot,
+  type DealTeamMember,
+  type InsertDealTeamMember,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -290,6 +293,14 @@ export interface IStorage {
   updateApplicationProperty(id: string, data: Partial<ApplicationProperty>): Promise<ApplicationProperty | undefined>;
   switchToProperty(applicationId: string, propertyId: string): Promise<ApplicationProperty | undefined>;
   markDealFellThrough(propertyId: string, reason: string): Promise<ApplicationProperty | undefined>;
+
+  // Deal Team Members
+  createDealTeamMember(data: InsertDealTeamMember): Promise<DealTeamMember>;
+  getDealTeamMembers(applicationId: string): Promise<(DealTeamMember & { user?: User })[]>;
+  getDealTeamMember(id: string): Promise<DealTeamMember | undefined>;
+  updateDealTeamMember(id: string, data: Partial<DealTeamMember>): Promise<DealTeamMember | undefined>;
+  removeDealTeamMember(id: string): Promise<void>;
+  getTeamMembersByUser(userId: string): Promise<(DealTeamMember & { application?: LoanApplication })[]>;
 
   // Plaid Verifications
   createPlaidLinkToken(data: InsertPlaidLinkToken): Promise<PlaidLinkToken>;
@@ -1464,6 +1475,70 @@ export class DatabaseStorage implements IStorage {
       .where(eq(applicationProperties.id, propertyId))
       .returning();
     return updated;
+  }
+
+  // Deal Team Members
+  async createDealTeamMember(data: InsertDealTeamMember): Promise<DealTeamMember> {
+    const [member] = await db.insert(dealTeamMembers).values(data).returning();
+    return member;
+  }
+
+  async getDealTeamMembers(applicationId: string): Promise<(DealTeamMember & { user?: User })[]> {
+    const members = await db
+      .select()
+      .from(dealTeamMembers)
+      .leftJoin(users, eq(dealTeamMembers.userId, users.id))
+      .where(and(
+        eq(dealTeamMembers.applicationId, applicationId),
+        eq(dealTeamMembers.isActive, true)
+      ))
+      .orderBy(asc(dealTeamMembers.teamRole));
+
+    return members.map(row => ({
+      ...row.deal_team_members,
+      user: row.users || undefined,
+    }));
+  }
+
+  async getDealTeamMember(id: string): Promise<DealTeamMember | undefined> {
+    const [member] = await db
+      .select()
+      .from(dealTeamMembers)
+      .where(eq(dealTeamMembers.id, id));
+    return member;
+  }
+
+  async updateDealTeamMember(id: string, data: Partial<DealTeamMember>): Promise<DealTeamMember | undefined> {
+    const [updated] = await db
+      .update(dealTeamMembers)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(dealTeamMembers.id, id))
+      .returning();
+    return updated;
+  }
+
+  async removeDealTeamMember(id: string): Promise<void> {
+    await db
+      .update(dealTeamMembers)
+      .set({ isActive: false, updatedAt: new Date() })
+      .where(eq(dealTeamMembers.id, id));
+  }
+
+  async getTeamMembersByUser(userId: string): Promise<(DealTeamMember & { application?: LoanApplication })[]> {
+    const members = await db
+      .select()
+      .from(dealTeamMembers)
+      .leftJoin(loanApplications, eq(dealTeamMembers.applicationId, loanApplications.id))
+      .where(and(
+        eq(dealTeamMembers.userId, userId),
+        eq(dealTeamMembers.isActive, true)
+      ))
+      .orderBy(desc(dealTeamMembers.assignedAt));
+
+    return members.map(row => ({
+      ...row.deal_team_members,
+      application: row.loan_applications || undefined,
+    }));
   }
 
   // Plaid Verifications

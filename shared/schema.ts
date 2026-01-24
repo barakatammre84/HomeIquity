@@ -174,6 +174,92 @@ export const insertLoanApplicationSchema = createInsertSchema(loanApplications).
 export type InsertLoanApplication = z.infer<typeof insertLoanApplicationSchema>;
 export type LoanApplication = typeof loanApplications.$inferSelect;
 
+// Deal Team Members - tracks all professionals working on a loan application
+export const dealTeamRoles = [
+  "loan_officer",
+  "loan_processor", 
+  "underwriter",
+  "closer",
+  "real_estate_agent",
+  "title_agent",
+  "appraiser",
+  "insurance_agent",
+  "attorney",
+  "escrow_officer",
+] as const;
+
+export const dealTeamRoleLabels: Record<typeof dealTeamRoles[number], string> = {
+  loan_officer: "Loan Officer",
+  loan_processor: "Loan Processor",
+  underwriter: "Underwriter",
+  closer: "Closer/Funder",
+  real_estate_agent: "Real Estate Agent",
+  title_agent: "Title Agent",
+  appraiser: "Appraiser",
+  insurance_agent: "Insurance Agent",
+  attorney: "Attorney",
+  escrow_officer: "Escrow Officer",
+};
+
+export const dealTeamMembers = pgTable("deal_team_members", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  applicationId: varchar("application_id").references(() => loanApplications.id).notNull(),
+  
+  // Team member can be internal staff user OR external partner
+  userId: varchar("user_id").references(() => users.id), // Internal staff user (nullable)
+  
+  // Team role on this deal
+  teamRole: varchar("team_role", { length: 50 }).notNull(), // loan_officer, processor, real_estate_agent, title_agent, etc.
+  
+  // For external partners (when userId is null)
+  externalName: varchar("external_name", { length: 255 }),
+  externalEmail: varchar("external_email", { length: 255 }),
+  externalPhone: varchar("external_phone", { length: 50 }),
+  externalCompany: varchar("external_company", { length: 255 }),
+  
+  // Status
+  isPrimary: boolean("is_primary").default(false), // Primary contact for this role
+  isActive: boolean("is_active").default(true).notNull(),
+  
+  // Assignment info
+  assignedBy: varchar("assigned_by").references(() => users.id),
+  assignedAt: timestamp("assigned_at").defaultNow(),
+  
+  // Notes
+  notes: text("notes"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_deal_team_application").on(table.applicationId),
+  index("idx_deal_team_user").on(table.userId),
+  index("idx_deal_team_role").on(table.teamRole),
+]);
+
+export const dealTeamMembersRelations = relations(dealTeamMembers, ({ one }) => ({
+  application: one(loanApplications, {
+    fields: [dealTeamMembers.applicationId],
+    references: [loanApplications.id],
+  }),
+  user: one(users, {
+    fields: [dealTeamMembers.userId],
+    references: [users.id],
+  }),
+  assignedByUser: one(users, {
+    fields: [dealTeamMembers.assignedBy],
+    references: [users.id],
+  }),
+}));
+
+export const insertDealTeamMemberSchema = createInsertSchema(dealTeamMembers).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertDealTeamMember = z.infer<typeof insertDealTeamMemberSchema>;
+export type DealTeamMember = typeof dealTeamMembers.$inferSelect;
+
 // Application Properties - supports multiple properties per application
 // When deals fall through, borrowers can add new properties without starting over
 export const applicationProperties = pgTable("application_properties", {
