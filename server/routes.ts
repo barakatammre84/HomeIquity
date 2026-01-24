@@ -4834,6 +4834,190 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ===== DEAL TEAM MEMBERS =====
+
+  // Get team members for an application
+  app.get("/api/applications/:applicationId/team", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const { applicationId } = req.params;
+
+      // Verify access to application
+      const app = await storage.getLoanApplicationWithAccess(applicationId, user.id, user.role);
+      if (!app) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+
+      const team = await storage.getDealTeamMembers(applicationId);
+      res.json(team);
+    } catch (error) {
+      console.error("Get deal team error:", error);
+      res.status(500).json({ error: "Failed to get team members" });
+    }
+  });
+
+  // Add team member to application (staff only)
+  app.post("/api/applications/:applicationId/team", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      if (!isStaffRole(user.role)) {
+        return res.status(403).json({ error: "Staff only" });
+      }
+
+      const { applicationId } = req.params;
+      const schema = z.object({
+        userId: z.string().optional(),
+        teamRole: z.string().min(1),
+        externalName: z.string().optional(),
+        externalEmail: z.string().email().optional(),
+        externalPhone: z.string().optional(),
+        externalCompany: z.string().optional(),
+        isPrimary: z.boolean().optional(),
+        notes: z.string().optional(),
+      });
+
+      const result = schema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid input", details: result.error.format() });
+      }
+
+      // Verify application exists
+      const app = await storage.getLoanApplication(applicationId);
+      if (!app) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+
+      const member = await storage.createDealTeamMember({
+        ...result.data,
+        applicationId,
+        assignedBy: user.id,
+        assignedAt: new Date(),
+      });
+
+      // Log activity
+      await storage.createDealActivity({
+        applicationId,
+        activityType: "team_updated",
+        title: "Team member added",
+        description: `${result.data.externalName || 'Team member'} added as ${result.data.teamRole.replace(/_/g, ' ')}`,
+        performedBy: user.id,
+      });
+
+      res.status(201).json(member);
+    } catch (error) {
+      console.error("Add team member error:", error);
+      res.status(500).json({ error: "Failed to add team member" });
+    }
+  });
+
+  // Update team member
+  app.patch("/api/deal-team/:id", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      if (!isStaffRole(user.role)) {
+        return res.status(403).json({ error: "Staff only" });
+      }
+
+      const { id } = req.params;
+      const schema = z.object({
+        teamRole: z.string().optional(),
+        externalName: z.string().optional(),
+        externalEmail: z.string().email().optional(),
+        externalPhone: z.string().optional(),
+        externalCompany: z.string().optional(),
+        isPrimary: z.boolean().optional(),
+        notes: z.string().optional(),
+      });
+
+      const result = schema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid input", details: result.error.format() });
+      }
+
+      const updated = await storage.updateDealTeamMember(id, result.data);
+      if (!updated) {
+        return res.status(404).json({ error: "Team member not found" });
+      }
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Update team member error:", error);
+      res.status(500).json({ error: "Failed to update team member" });
+    }
+  });
+
+  // Remove team member
+  app.delete("/api/deal-team/:id", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      if (!isStaffRole(user.role)) {
+        return res.status(403).json({ error: "Staff only" });
+      }
+
+      const { id } = req.params;
+      
+      const member = await storage.getDealTeamMember(id);
+      if (!member) {
+        return res.status(404).json({ error: "Team member not found" });
+      }
+
+      await storage.removeDealTeamMember(id);
+
+      // Log activity
+      await storage.createDealActivity({
+        applicationId: member.applicationId,
+        activityType: "team_updated",
+        title: "Team member removed",
+        description: `Team member removed from ${member.teamRole.replace(/_/g, ' ')} role`,
+        performedBy: user.id,
+      });
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Remove team member error:", error);
+      res.status(500).json({ error: "Failed to remove team member" });
+    }
+  });
+
+  // Get all applications where user is a team member (for staff)
+  app.get("/api/my-team-assignments", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const assignments = await storage.getTeamMembersByUser(user.id);
+      res.json(assignments);
+    } catch (error) {
+      console.error("Get team assignments error:", error);
+      res.status(500).json({ error: "Failed to get assignments" });
+    }
+  });
+
+  // Get available staff for team assignment
+  app.get("/api/available-staff", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      if (!isStaffRole(user.role)) {
+        return res.status(403).json({ error: "Staff only" });
+      }
+
+      const allUsers = await storage.getAllUsers();
+      const staffMembers = allUsers.filter(u => isStaffRole(u.role));
+      
+      // Return minimal info for privacy
+      const staff = staffMembers.map(s => ({
+        id: s.id,
+        firstName: s.firstName,
+        lastName: s.lastName,
+        email: s.email,
+        role: s.role,
+      }));
+
+      res.json(staff);
+    } catch (error) {
+      console.error("Get available staff error:", error);
+      res.status(500).json({ error: "Failed to get staff" });
+    }
+  });
+
   // ===== ANALYTICS DASHBOARD =====
 
   // Get pipeline metrics
