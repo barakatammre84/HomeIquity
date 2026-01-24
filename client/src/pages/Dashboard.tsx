@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { DealTeam } from "@/components/DealTeam";
 import type { LoanApplication, DealActivity } from "@shared/schema";
 import {
   CheckCircle2,
@@ -188,23 +189,9 @@ export default function Dashboard() {
                           </div>
                         )}
 
-                        {step.consultants && (
-                          <div className="space-y-3 border-t pt-4">
-                            <p className="text-sm font-medium">Meet your team</p>
-                            {step.consultants.map((consultant, i) => (
-                              <div key={i} className="flex items-center justify-between p-3 bg-muted rounded-lg">
-                                <div>
-                                  <p className="text-sm font-medium">{consultant.name}</p>
-                                  <p className="text-xs text-muted-foreground">{consultant.role}</p>
-                                </div>
-                              </div>
-                            ))}
-                            {step.cta && (
-                              <Button className="w-full gap-2 bg-green-600 hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700">
-                                <Phone className="h-4 w-4" />
-                                {step.cta}
-                              </Button>
-                            )}
+                        {index === 0 && activeApplication && (
+                          <div className="border-t pt-4">
+                            <DealTeam applicationId={activeApplication.id} compact />
                           </div>
                         )}
 
@@ -309,35 +296,38 @@ export default function Dashboard() {
               </div>
 
               {activeApplication && (
-                <Card className="mb-8">
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <CardTitle>Current Application</CardTitle>
-                        <CardDescription>
-                          Started {new Date(activeApplication.createdAt!).toLocaleDateString()}
-                        </CardDescription>
+                <div className="grid gap-6 md:grid-cols-2 mb-8">
+                  <Card>
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <CardTitle>Current Application</CardTitle>
+                          <CardDescription>
+                            Started {new Date(activeApplication.createdAt!).toLocaleDateString()}
+                          </CardDescription>
+                        </div>
+                        <Badge className={getStatusColor(activeApplication.status)}>
+                          {getStatusLabel(activeApplication.status)}
+                        </Badge>
                       </div>
-                      <Badge className={getStatusColor(activeApplication.status)}>
-                        {getStatusLabel(activeApplication.status)}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div>
-                        <p className="font-medium mb-2">{formatCurrency(activeApplication.purchasePrice || "0")} Purchase</p>
-                        <p className="text-sm text-muted-foreground">
-                          {activeApplication.propertyCity}, {activeApplication.propertyState}
-                        </p>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        <div>
+                          <p className="font-medium mb-2">{formatCurrency(activeApplication.purchasePrice || "0")} Purchase</p>
+                          <p className="text-sm text-muted-foreground">
+                            {activeApplication.propertyCity}, {activeApplication.propertyState}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium mb-2">Down Payment</p>
+                          <p className="text-base">{formatCurrency(activeApplication.downPayment || "0")}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-sm font-medium mb-2">Down Payment</p>
-                        <p className="text-base">{formatCurrency(activeApplication.downPayment || "0")}</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
+                  <DealTeam applicationId={activeApplication.id} />
+                </div>
               )}
             </div>
           )}
