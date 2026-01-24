@@ -47,6 +47,9 @@ import TestLogin from "@/pages/TestLogin";
 import GapCalculator from "@/pages/GapCalculator";
 import InviteGenerator from "@/pages/InviteGenerator";
 import ApplyInvite from "@/pages/ApplyInvite";
+import AnalyticsDashboard from "@/pages/AnalyticsDashboard";
+import EConsent from "@/pages/EConsent";
+import PartnerServices from "@/pages/PartnerServices";
 
 function PublicPage({ children }: { children: React.ReactNode }) {
   return <PublicLayout>{children}</PublicLayout>;
@@ -177,6 +180,15 @@ function Router() {
       </Route>
       <Route path="/invite-clients">
         <StaffPage><InviteGenerator /></StaffPage>
+      </Route>
+      <Route path="/analytics">
+        <StaffPage><AnalyticsDashboard /></StaffPage>
+      </Route>
+      <Route path="/partner-services">
+        <StaffPage><PartnerServices /></StaffPage>
+      </Route>
+      <Route path="/e-consent">
+        <BorrowerPage><EConsent /></BorrowerPage>
       </Route>
 
       {/* Private Pages - Admin only (manage content, rates, users) */}

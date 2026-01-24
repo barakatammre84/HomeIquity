@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { properties, users, contentCategories, articles, faqs, mortgageRatePrograms, mortgageRates } from "@shared/schema";
+import { properties, users, contentCategories, articles, faqs, mortgageRatePrograms, mortgageRates, consentTemplates, partnerProviders } from "@shared/schema";
 import { sql } from "drizzle-orm";
 
 const sampleProperties = [
@@ -510,6 +510,200 @@ Most improvements take 30-60 days to show on your credit report. Start working o
         });
       }
       console.log(`Seeded ${ratesData.length} mortgage rates`);
+    }
+
+    // Seed consent templates
+    console.log("Seeding consent templates...");
+    const existingConsentTemplates = await db.select().from(consentTemplates).limit(1);
+    if (existingConsentTemplates.length === 0) {
+      const templates = [
+        {
+          consentType: "credit_authorization",
+          version: "1.0",
+          title: "Credit Report Authorization",
+          shortDescription: "Authorization to obtain consumer credit reports from credit bureaus",
+          effectiveDate: new Date(),
+          fullText: `AUTHORIZATION TO OBTAIN CONSUMER CREDIT REPORTS
+
+I hereby authorize the lender, its agents, successors, and assigns, to obtain my credit report from any consumer reporting agency for the purpose of evaluating my creditworthiness in connection with a mortgage loan application.
+
+I understand that:
+1. The lender will obtain credit reports from one or more of the three major credit bureaus (Experian, Equifax, TransUnion)
+2. This authorization is valid for the duration of my loan application process
+3. My credit information will be used solely for the purpose of evaluating my loan application
+4. I have the right to receive a copy of my credit report upon request
+
+This authorization shall remain in effect until my loan transaction is completed or my application is withdrawn.`,
+          regulatoryReference: "FCRA Section 604",
+          isActive: true,
+        },
+        {
+          consentType: "e_disclosure",
+          version: "1.0",
+          title: "eDisclosure Consent",
+          shortDescription: "Consent to receive disclosures and documents electronically",
+          effectiveDate: new Date(),
+          fullText: `ELECTRONIC RECORDS AND SIGNATURES DISCLOSURE
+
+By providing your consent, you agree to receive disclosures, notices, and other documents electronically. This includes:
+
+1. Loan Estimates
+2. Closing Disclosures
+3. Privacy Notices
+4. All other legally required disclosures
+
+HARDWARE AND SOFTWARE REQUIREMENTS:
+- A computer or mobile device with internet access
+- A current web browser (Chrome, Firefox, Safari, Edge)
+- Ability to download and save PDF documents
+
+You have the right to:
+- Withdraw this consent at any time by contacting us
+- Request paper copies of documents (fees may apply)
+- Update your email address on file
+
+This consent applies to all transactions with our company during your loan application process.`,
+          regulatoryReference: "E-SIGN Act",
+          isActive: true,
+        },
+        {
+          consentType: "privacy_policy",
+          version: "1.0",
+          title: "Privacy Policy Acknowledgment",
+          shortDescription: "Acknowledgment of privacy practices and data handling",
+          effectiveDate: new Date(),
+          fullText: `PRIVACY POLICY ACKNOWLEDGMENT
+
+By acknowledging this policy, you confirm that you have reviewed and understand how we collect, use, and protect your personal information.
+
+KEY POINTS:
+1. We collect personal and financial information to process your mortgage application
+2. Your information may be shared with third parties necessary to complete your loan (appraisers, title companies, etc.)
+3. We use industry-standard security measures to protect your data
+4. You have rights regarding your personal information under applicable privacy laws
+5. We will not sell your personal information to unaffiliated third parties for marketing purposes
+
+For our complete privacy policy, please visit our website or request a paper copy.`,
+          regulatoryReference: "GLBA Privacy Rule",
+          isActive: true,
+        },
+        {
+          consentType: "fcra_notice",
+          version: "1.0",
+          title: "FCRA Notice",
+          shortDescription: "Fair Credit Reporting Act rights notification",
+          effectiveDate: new Date(),
+          fullText: `FAIR CREDIT REPORTING ACT NOTICE
+
+Under the Fair Credit Reporting Act (FCRA), you have rights regarding your consumer credit information:
+
+YOUR RIGHTS:
+1. You have the right to know what is in your file
+2. You have the right to dispute incomplete or inaccurate information
+3. Consumer reporting agencies must correct or delete inaccurate information
+4. You can limit prescreened offers of credit and insurance
+5. You can seek damages from violators
+
+ADVERSE ACTION NOTICE:
+If we take adverse action based on information in your credit report, we will provide you with a notice containing:
+- The name and contact information of the credit bureau
+- A statement that the bureau did not make the decision
+- Your right to obtain a free copy of your credit report
+- Your right to dispute the accuracy of the report
+
+For more information, visit www.consumerfinance.gov/learnmore`,
+          regulatoryReference: "FCRA Section 615",
+          isActive: true,
+        },
+      ];
+
+      for (const template of templates) {
+        await db.insert(consentTemplates).values(template);
+      }
+      console.log(`Seeded ${templates.length} consent templates`);
+    }
+
+    // Seed partner providers
+    console.log("Seeding partner providers...");
+    const existingProviders = await db.select().from(partnerProviders).limit(1);
+    if (existingProviders.length === 0) {
+      const providers = [
+        {
+          name: "CoreLogic Credit",
+          code: "corelogic_credit",
+          serviceType: "credit_report",
+          apiEndpoint: "https://api.corelogic.com/credit",
+          baseFee: "35.00",
+          expectedTurnaroundHours: 1,
+          isActive: true,
+          isTestMode: true,
+        },
+        {
+          name: "Experian Mortgage",
+          code: "experian_mortgage",
+          serviceType: "credit_report",
+          apiEndpoint: "https://api.experian.com/mortgage",
+          baseFee: "42.00",
+          expectedTurnaroundHours: 2,
+          isActive: true,
+          isTestMode: true,
+        },
+        {
+          name: "First American Title",
+          code: "first_american",
+          serviceType: "title_search",
+          apiEndpoint: "https://api.firstam.com/title",
+          baseFee: "350.00",
+          expectedTurnaroundHours: 72,
+          isActive: true,
+          isTestMode: true,
+        },
+        {
+          name: "Stewart Title",
+          code: "stewart_title",
+          serviceType: "title_search",
+          apiEndpoint: "https://api.stewart.com/title",
+          baseFee: "375.00",
+          expectedTurnaroundHours: 48,
+          isActive: true,
+          isTestMode: true,
+        },
+        {
+          name: "CoreLogic Appraisal",
+          code: "corelogic_appraisal",
+          serviceType: "appraisal",
+          apiEndpoint: "https://api.corelogic.com/appraisal",
+          baseFee: "550.00",
+          expectedTurnaroundHours: 168,
+          isActive: true,
+          isTestMode: true,
+        },
+        {
+          name: "LANDATA Appraisal",
+          code: "landata_appraisal",
+          serviceType: "appraisal",
+          apiEndpoint: "https://api.landata.com/appraisal",
+          baseFee: "495.00",
+          expectedTurnaroundHours: 120,
+          isActive: true,
+          isTestMode: true,
+        },
+        {
+          name: "CoreLogic Flood",
+          code: "corelogic_flood",
+          serviceType: "flood_cert",
+          apiEndpoint: "https://api.corelogic.com/flood",
+          baseFee: "18.00",
+          expectedTurnaroundHours: 1,
+          isActive: true,
+          isTestMode: true,
+        },
+      ];
+
+      for (const provider of providers) {
+        await db.insert(partnerProviders).values(provider);
+      }
+      console.log(`Seeded ${providers.length} partner providers`);
     }
 
     console.log("Database seeded successfully");

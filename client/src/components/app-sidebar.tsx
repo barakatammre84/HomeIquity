@@ -34,6 +34,9 @@ import {
   Star,
   Calculator,
   Link2,
+  BarChart3,
+  Handshake,
+  FileSignature,
 } from "lucide-react";
 
 // Client navigation - for Aspiring Owners and Active Buyers
@@ -63,6 +66,7 @@ const activeBuyerNavigation = [
       { title: "My Application", href: "/application-summary", icon: FileText, testId: "link-application-summary" },
       { title: "My Tasks", href: "/tasks", icon: CheckSquare, testId: "link-tasks" },
       { title: "Verification", href: "/verification", icon: Shield, testId: "link-verification" },
+      { title: "Consents", href: "/e-consent", icon: FileSignature, testId: "link-econsent" },
     ],
   },
   {
@@ -87,8 +91,15 @@ const staffNavigation = [
     items: [
       { title: "Overview", href: "/staff-dashboard", icon: LayoutDashboard, testId: "link-staff-overview" },
       { title: "Pipeline Queue", href: "/pipeline-queue", icon: GitBranch, testId: "link-pipeline-queue" },
+      { title: "Analytics", href: "/analytics", icon: BarChart3, testId: "link-analytics" },
       { title: "Broker Dashboard", href: "/broker-dashboard", icon: DollarSign, testId: "link-broker-dashboard" },
       { title: "Invite Clients", href: "/invite-clients", icon: Link2, testId: "link-invite-clients" },
+    ],
+  },
+  {
+    section: "Partner Services",
+    items: [
+      { title: "Order Services", href: "/partner-services", icon: Handshake, testId: "link-partner-services" },
     ],
   },
   {

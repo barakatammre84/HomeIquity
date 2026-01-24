@@ -4356,6 +4356,636 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ===== RATE LOCK SYSTEM =====
+
+  // Create a rate lock
+  app.post("/api/rate-locks", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      if (!isStaffRole(user.role)) {
+        return res.status(403).json({ error: "Only staff can create rate locks" });
+      }
+
+      const schema = z.object({
+        applicationId: z.string(),
+        loanOptionId: z.string(),
+        lockPeriodDays: z.number().min(15).max(90).default(30),
+        notes: z.string().optional(),
+      });
+
+      const result = schema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid input", details: result.error.format() });
+      }
+
+      const { applicationId, loanOptionId, lockPeriodDays, notes } = result.data;
+
+      // Check if there's already an active lock
+      const existingLock = await storage.getActiveRateLock(applicationId);
+      if (existingLock) {
+        return res.status(400).json({ error: "Application already has an active rate lock" });
+      }
+
+      // Get the loan option details
+      const options = await storage.getLoanOptionsByApplication(applicationId);
+      const loanOption = options.find(o => o.id === loanOptionId);
+      if (!loanOption) {
+        return res.status(404).json({ error: "Loan option not found" });
+      }
+
+      const lockedAt = new Date();
+      const expiresAt = new Date(lockedAt.getTime() + lockPeriodDays * 24 * 60 * 60 * 1000);
+
+      const rateLock = await storage.createRateLock({
+        applicationId,
+        loanOptionId,
+        interestRate: loanOption.interestRate,
+        points: loanOption.points,
+        loanAmount: loanOption.loanAmount,
+        loanType: loanOption.loanType,
+        loanTerm: loanOption.loanTerm,
+        lockPeriodDays,
+        lockedAt,
+        expiresAt,
+        status: "active",
+        lockedBy: user.id,
+        notes,
+      });
+
+      // Also update the loan option
+      await storage.lockLoanOption(loanOptionId);
+
+      // Log activity
+      await storage.createDealActivity({
+        applicationId,
+        activityType: "rate_locked",
+        title: "Rate Locked",
+        description: `Rate locked at ${loanOption.interestRate}% for ${lockPeriodDays} days`,
+        metadata: { rateLockId: rateLock.id },
+        performedBy: user.id,
+      });
+
+      res.status(201).json(rateLock);
+    } catch (error) {
+      console.error("Create rate lock error:", error);
+      res.status(500).json({ error: "Failed to create rate lock" });
+    }
+  });
+
+  // Get rate locks for an application
+  app.get("/api/rate-locks/application/:applicationId", isAuthenticated, async (req, res) => {
+    try {
+      const { applicationId } = req.params;
+      const locks = await storage.getRateLocksByApplication(applicationId);
+      res.json(locks);
+    } catch (error) {
+      console.error("Get rate locks error:", error);
+      res.status(500).json({ error: "Failed to get rate locks" });
+    }
+  });
+
+  // Get expiring rate locks (for alerts)
+  app.get("/api/rate-locks/expiring", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      if (!isStaffRole(user.role)) {
+        return res.status(403).json({ error: "Staff only" });
+      }
+
+      const withinDays = parseInt(req.query.days as string) || 7;
+      const locks = await storage.getExpiringRateLocks(withinDays);
+      res.json(locks);
+    } catch (error) {
+      console.error("Get expiring locks error:", error);
+      res.status(500).json({ error: "Failed to get expiring locks" });
+    }
+  });
+
+  // Extend a rate lock
+  app.post("/api/rate-locks/:id/extend", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      if (!isStaffRole(user.role)) {
+        return res.status(403).json({ error: "Only staff can extend rate locks" });
+      }
+
+      const { id } = req.params;
+      const { additionalDays, extensionFee } = req.body;
+
+      const lock = await storage.getRateLock(id);
+      if (!lock) {
+        return res.status(404).json({ error: "Rate lock not found" });
+      }
+
+      if (lock.status !== "active") {
+        return res.status(400).json({ error: "Can only extend active rate locks" });
+      }
+
+      const currentExpiry = new Date(lock.expiresAt);
+      const newExpiry = new Date(currentExpiry.getTime() + (additionalDays || 15) * 24 * 60 * 60 * 1000);
+
+      const updated = await storage.updateRateLock(id, {
+        expiresAt: newExpiry,
+        extensionCount: (lock.extensionCount || 0) + 1,
+        originalExpiresAt: lock.originalExpiresAt || lock.expiresAt,
+        extensionFee: extensionFee?.toString(),
+        status: "extended",
+      });
+
+      // Log activity
+      await storage.createDealActivity({
+        applicationId: lock.applicationId,
+        activityType: "rate_lock_extended",
+        title: "Rate Lock Extended",
+        description: `Rate lock extended by ${additionalDays || 15} days`,
+        performedBy: user.id,
+      });
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Extend rate lock error:", error);
+      res.status(500).json({ error: "Failed to extend rate lock" });
+    }
+  });
+
+  // Cancel a rate lock
+  app.post("/api/rate-locks/:id/cancel", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      if (!isStaffRole(user.role)) {
+        return res.status(403).json({ error: "Only staff can cancel rate locks" });
+      }
+
+      const { id } = req.params;
+      const { reason } = req.body;
+
+      const lock = await storage.getRateLock(id);
+      if (!lock) {
+        return res.status(404).json({ error: "Rate lock not found" });
+      }
+
+      const updated = await storage.updateRateLock(id, {
+        status: "cancelled",
+        cancelledBy: user.id,
+        cancelledAt: new Date(),
+        cancelReason: reason,
+      });
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Cancel rate lock error:", error);
+      res.status(500).json({ error: "Failed to cancel rate lock" });
+    }
+  });
+
+  // ===== ECONSENT SYSTEM =====
+
+  // Get consent templates
+  app.get("/api/consent-templates", isAuthenticated, async (req, res) => {
+    try {
+      const { type, state } = req.query;
+      const templates = await storage.getActiveConsentTemplates(
+        type as string | undefined,
+        state as string | undefined
+      );
+      res.json(templates);
+    } catch (error) {
+      console.error("Get consent templates error:", error);
+      res.status(500).json({ error: "Failed to get consent templates" });
+    }
+  });
+
+  // Create consent template (admin only)
+  app.post("/api/consent-templates", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const schema = z.object({
+        consentType: z.string(),
+        version: z.string(),
+        state: z.string().optional(),
+        title: z.string(),
+        shortDescription: z.string().optional(),
+        fullText: z.string(),
+        regulatoryReference: z.string().optional(),
+        requiredForLoanTypes: z.array(z.string()).optional(),
+        effectiveDate: z.string().transform(s => new Date(s)),
+      });
+
+      const result = schema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid input", details: result.error.format() });
+      }
+
+      const template = await storage.createConsentTemplate({
+        ...result.data,
+        isActive: true,
+      });
+
+      res.status(201).json(template);
+    } catch (error) {
+      console.error("Create consent template error:", error);
+      res.status(500).json({ error: "Failed to create consent template" });
+    }
+  });
+
+  // Record borrower consent
+  app.post("/api/consents", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      
+      const schema = z.object({
+        applicationId: z.string().optional(),
+        templateId: z.string().optional(),
+        consentType: z.string(),
+        templateVersion: z.string().optional(),
+        consentGiven: z.boolean(),
+        consentMethod: z.enum(["click", "signature", "verbal", "paper"]),
+        signatureData: z.string().optional(),
+        signatureType: z.enum(["drawn", "typed", "none"]).optional(),
+      });
+
+      const result = schema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid input", details: result.error.format() });
+      }
+
+      // Generate content hash for tamper evidence
+      const contentHash = crypto
+        .createHash("sha256")
+        .update(JSON.stringify(result.data) + new Date().toISOString())
+        .digest("hex");
+
+      const consent = await storage.createBorrowerConsent({
+        userId: user.id,
+        ...result.data,
+        ipAddress: req.ip || req.socket.remoteAddress,
+        userAgent: req.headers["user-agent"],
+        contentHash,
+        consentedAt: new Date(),
+      });
+
+      // Log activity if application-related
+      if (result.data.applicationId) {
+        await storage.createDealActivity({
+          applicationId: result.data.applicationId,
+          activityType: "consent_given",
+          title: `Consent: ${result.data.consentType}`,
+          description: `Borrower provided ${result.data.consentType} consent`,
+          performedBy: user.id,
+        });
+      }
+
+      res.status(201).json(consent);
+    } catch (error) {
+      console.error("Record consent error:", error);
+      res.status(500).json({ error: "Failed to record consent" });
+    }
+  });
+
+  // Get consents for current user
+  app.get("/api/consents/me", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const consents = await storage.getBorrowerConsentsByUser(user.id);
+      res.json(consents);
+    } catch (error) {
+      console.error("Get user consents error:", error);
+      res.status(500).json({ error: "Failed to get consents" });
+    }
+  });
+
+  // Get consents for an application
+  app.get("/api/consents/application/:applicationId", isAuthenticated, async (req, res) => {
+    try {
+      const { applicationId } = req.params;
+      const consents = await storage.getBorrowerConsentsByApplication(applicationId);
+      res.json(consents);
+    } catch (error) {
+      console.error("Get application consents error:", error);
+      res.status(500).json({ error: "Failed to get consents" });
+    }
+  });
+
+  // Check if specific consent exists for application
+  app.get("/api/consents/check/:applicationId/:consentType", isAuthenticated, async (req, res) => {
+    try {
+      const { applicationId, consentType } = req.params;
+      const consent = await storage.getConsentByTypeAndApplication(consentType, applicationId);
+      res.json({ hasConsent: !!consent, consent });
+    } catch (error) {
+      console.error("Check consent error:", error);
+      res.status(500).json({ error: "Failed to check consent" });
+    }
+  });
+
+  // ===== PARTNER API INTEGRATIONS =====
+
+  // Get all partner providers
+  app.get("/api/partner-providers", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      if (!isStaffRole(user.role)) {
+        return res.status(403).json({ error: "Staff only" });
+      }
+
+      const { serviceType } = req.query;
+      let providers;
+      if (serviceType) {
+        providers = await storage.getPartnerProvidersByServiceType(serviceType as string);
+      } else {
+        providers = await storage.getAllPartnerProviders();
+      }
+      res.json(providers);
+    } catch (error) {
+      console.error("Get partner providers error:", error);
+      res.status(500).json({ error: "Failed to get providers" });
+    }
+  });
+
+  // Create partner provider (admin only)
+  app.post("/api/partner-providers", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const schema = z.object({
+        name: z.string(),
+        code: z.string(),
+        serviceType: z.string(),
+        apiBaseUrl: z.string().optional(),
+        apiVersion: z.string().optional(),
+        baseFee: z.string().optional(),
+        contactEmail: z.string().optional(),
+        contactPhone: z.string().optional(),
+        expectedTurnaroundHours: z.number().optional(),
+        isTestMode: z.boolean().default(true),
+      });
+
+      const result = schema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid input", details: result.error.format() });
+      }
+
+      const provider = await storage.createPartnerProvider({
+        ...result.data,
+        isActive: true,
+      });
+
+      res.status(201).json(provider);
+    } catch (error) {
+      console.error("Create partner provider error:", error);
+      res.status(500).json({ error: "Failed to create provider" });
+    }
+  });
+
+  // Create partner order (credit, title, appraisal, etc.)
+  app.post("/api/partner-orders", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      if (!isStaffRole(user.role)) {
+        return res.status(403).json({ error: "Only staff can create partner orders" });
+      }
+
+      const schema = z.object({
+        applicationId: z.string(),
+        providerId: z.string(),
+        serviceType: z.string(),
+        notes: z.string().optional(),
+      });
+
+      const result = schema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid input", details: result.error.format() });
+      }
+
+      const provider = await storage.getPartnerProvider(result.data.providerId);
+      if (!provider) {
+        return res.status(404).json({ error: "Provider not found" });
+      }
+
+      const order = await storage.createPartnerOrder({
+        ...result.data,
+        status: "pending",
+        orderedBy: user.id,
+        orderedAt: new Date(),
+        fee: provider.baseFee,
+      });
+
+      // Log activity
+      await storage.createDealActivity({
+        applicationId: result.data.applicationId,
+        activityType: "partner_order_created",
+        title: `${result.data.serviceType} Order Created`,
+        description: `Order placed with ${provider.name}`,
+        metadata: { orderId: order.id, providerId: provider.id },
+        performedBy: user.id,
+      });
+
+      res.status(201).json(order);
+    } catch (error) {
+      console.error("Create partner order error:", error);
+      res.status(500).json({ error: "Failed to create order" });
+    }
+  });
+
+  // Get partner orders for an application
+  app.get("/api/partner-orders/application/:applicationId", isAuthenticated, async (req, res) => {
+    try {
+      const { applicationId } = req.params;
+      const orders = await storage.getPartnerOrdersByApplication(applicationId);
+      res.json(orders);
+    } catch (error) {
+      console.error("Get partner orders error:", error);
+      res.status(500).json({ error: "Failed to get orders" });
+    }
+  });
+
+  // Update partner order status (webhook simulation / manual update)
+  app.patch("/api/partner-orders/:id", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      if (!isStaffRole(user.role)) {
+        return res.status(403).json({ error: "Staff only" });
+      }
+
+      const { id } = req.params;
+      const schema = z.object({
+        status: z.enum(["pending", "submitted", "in_progress", "completed", "failed", "cancelled"]).optional(),
+        resultSummary: z.record(z.any()).optional(),
+        creditScoreExperian: z.number().optional(),
+        creditScoreEquifax: z.number().optional(),
+        creditScoreTransUnion: z.number().optional(),
+        appraisedValue: z.string().optional(),
+        titleStatus: z.string().optional(),
+        completedAt: z.string().transform(s => new Date(s)).optional(),
+        errorMessage: z.string().optional(),
+      });
+
+      const result = schema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid input", details: result.error.format() });
+      }
+
+      const updated = await storage.updatePartnerOrder(id, result.data as any);
+      if (!updated) {
+        return res.status(404).json({ error: "Order not found" });
+      }
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Update partner order error:", error);
+      res.status(500).json({ error: "Failed to update order" });
+    }
+  });
+
+  // ===== ANALYTICS DASHBOARD =====
+
+  // Get pipeline metrics
+  app.get("/api/analytics/pipeline", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      if (!isStaffRole(user.role)) {
+        return res.status(403).json({ error: "Staff only" });
+      }
+
+      const metrics = await storage.computePipelineMetrics();
+      res.json(metrics);
+    } catch (error) {
+      console.error("Get pipeline metrics error:", error);
+      res.status(500).json({ error: "Failed to get metrics" });
+    }
+  });
+
+  // Get bottleneck analysis
+  app.get("/api/analytics/bottlenecks", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      if (!isStaffRole(user.role)) {
+        return res.status(403).json({ error: "Staff only" });
+      }
+
+      const analysis = await storage.getBottleneckAnalysis();
+      res.json(analysis);
+    } catch (error) {
+      console.error("Get bottleneck analysis error:", error);
+      res.status(500).json({ error: "Failed to get analysis" });
+    }
+  });
+
+  // Get staff workload metrics
+  app.get("/api/analytics/workload", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      if (!isStaffRole(user.role)) {
+        return res.status(403).json({ error: "Staff only" });
+      }
+
+      const metrics = await storage.getStaffWorkloadMetrics();
+      res.json(metrics);
+    } catch (error) {
+      console.error("Get workload metrics error:", error);
+      res.status(500).json({ error: "Failed to get metrics" });
+    }
+  });
+
+  // Get historical snapshots
+  app.get("/api/analytics/history", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      if (!isStaffRole(user.role)) {
+        return res.status(403).json({ error: "Staff only" });
+      }
+
+      const days = parseInt(req.query.days as string) || 30;
+      const snapshots = await storage.getAnalyticsSnapshots(days);
+      res.json(snapshots);
+    } catch (error) {
+      console.error("Get analytics history error:", error);
+      res.status(500).json({ error: "Failed to get history" });
+    }
+  });
+
+  // Get SLA configurations
+  app.get("/api/sla-configurations", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      if (!isStaffRole(user.role)) {
+        return res.status(403).json({ error: "Staff only" });
+      }
+
+      const configs = await storage.getAllSlaConfigurations();
+      res.json(configs);
+    } catch (error) {
+      console.error("Get SLA configs error:", error);
+      res.status(500).json({ error: "Failed to get configurations" });
+    }
+  });
+
+  // Create SLA configuration (admin only)
+  app.post("/api/sla-configurations", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const schema = z.object({
+        name: z.string(),
+        description: z.string().optional(),
+        applicationToProcessingHours: z.number().optional(),
+        processingToUnderwritingHours: z.number().optional(),
+        underwritingDecisionHours: z.number().optional(),
+        conditionalToCtcHours: z.number().optional(),
+        ctcToClosingHours: z.number().optional(),
+        totalApplicationToCloseHours: z.number().optional(),
+        loanType: z.string().optional(),
+        effectiveDate: z.string().transform(s => new Date(s)),
+      });
+
+      const result = schema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid input", details: result.error.format() });
+      }
+
+      const config = await storage.createSlaConfiguration({
+        ...result.data,
+        isActive: true,
+      });
+
+      res.status(201).json(config);
+    } catch (error) {
+      console.error("Create SLA config error:", error);
+      res.status(500).json({ error: "Failed to create configuration" });
+    }
+  });
+
+  // Get application milestones
+  app.get("/api/application-milestones/:applicationId", isAuthenticated, async (req, res) => {
+    try {
+      const { applicationId } = req.params;
+      const milestone = await storage.getApplicationMilestone(applicationId);
+      res.json(milestone || null);
+    } catch (error) {
+      console.error("Get application milestones error:", error);
+      res.status(500).json({ error: "Failed to get milestones" });
+    }
+  });
+
+  // Update application milestones
+  app.patch("/api/application-milestones/:applicationId", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      if (!isStaffRole(user.role)) {
+        return res.status(403).json({ error: "Staff only" });
+      }
+
+      const { applicationId } = req.params;
+      
+      // Get or create milestone record
+      let milestone = await storage.getApplicationMilestone(applicationId);
+      if (!milestone) {
+        milestone = await storage.createApplicationMilestone({ applicationId });
+      }
+
+      const updated = await storage.updateApplicationMilestone(applicationId, req.body);
+      res.json(updated);
+    } catch (error) {
+      console.error("Update application milestones error:", error);
+      res.status(500).json({ error: "Failed to update milestones" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;

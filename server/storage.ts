@@ -37,6 +37,14 @@ import {
   savingsTransactions,
   journeyMilestones,
   applicationInvites,
+  rateLocks,
+  consentTemplates,
+  borrowerConsents,
+  partnerProviders,
+  partnerOrders,
+  applicationMilestones,
+  slaConfigurations,
+  analyticsSnapshots,
   type User,
   type UpsertUser,
   type LoanApplication,
@@ -107,6 +115,22 @@ import {
   type InsertJourneyMilestone,
   type ApplicationInvite,
   type InsertApplicationInvite,
+  type RateLock,
+  type InsertRateLock,
+  type ConsentTemplate,
+  type InsertConsentTemplate,
+  type BorrowerConsent,
+  type InsertBorrowerConsent,
+  type PartnerProvider,
+  type InsertPartnerProvider,
+  type PartnerOrder,
+  type InsertPartnerOrder,
+  type ApplicationMilestone,
+  type InsertApplicationMilestone,
+  type SlaConfiguration,
+  type InsertSlaConfiguration,
+  type AnalyticsSnapshot,
+  type InsertAnalyticsSnapshot,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -2189,6 +2213,430 @@ export class DatabaseStorage implements IStorage {
       .where(eq(applicationInvites.id, id))
       .returning();
     return updated;
+  }
+
+  // ===== RATE LOCKS =====
+  async createRateLock(data: InsertRateLock): Promise<RateLock> {
+    const [lock] = await db.insert(rateLocks).values(data).returning();
+    return lock;
+  }
+
+  async getRateLock(id: string): Promise<RateLock | undefined> {
+    const [lock] = await db.select().from(rateLocks).where(eq(rateLocks.id, id));
+    return lock;
+  }
+
+  async getRateLocksByApplication(applicationId: string): Promise<RateLock[]> {
+    return await db
+      .select()
+      .from(rateLocks)
+      .where(eq(rateLocks.applicationId, applicationId))
+      .orderBy(desc(rateLocks.createdAt));
+  }
+
+  async getActiveRateLock(applicationId: string): Promise<RateLock | undefined> {
+    const [lock] = await db
+      .select()
+      .from(rateLocks)
+      .where(and(eq(rateLocks.applicationId, applicationId), eq(rateLocks.status, "active")));
+    return lock;
+  }
+
+  async updateRateLock(id: string, data: Partial<RateLock>): Promise<RateLock | undefined> {
+    const { id: lockId, createdAt, ...cleanData } = data as any;
+    const [updated] = await db
+      .update(rateLocks)
+      .set({ ...cleanData, updatedAt: new Date() })
+      .where(eq(rateLocks.id, id))
+      .returning();
+    return updated;
+  }
+
+  async getExpiringRateLocks(withinDays: number): Promise<RateLock[]> {
+    const now = new Date();
+    const futureDate = new Date(now.getTime() + withinDays * 24 * 60 * 60 * 1000);
+    return await db
+      .select()
+      .from(rateLocks)
+      .where(
+        and(
+          eq(rateLocks.status, "active"),
+          gte(rateLocks.expiresAt, now),
+          lte(rateLocks.expiresAt, futureDate)
+        )
+      )
+      .orderBy(asc(rateLocks.expiresAt));
+  }
+
+  // ===== CONSENT TEMPLATES =====
+  async createConsentTemplate(data: InsertConsentTemplate): Promise<ConsentTemplate> {
+    const [template] = await db.insert(consentTemplates).values(data).returning();
+    return template;
+  }
+
+  async getConsentTemplate(id: string): Promise<ConsentTemplate | undefined> {
+    const [template] = await db.select().from(consentTemplates).where(eq(consentTemplates.id, id));
+    return template;
+  }
+
+  async getActiveConsentTemplates(consentType?: string, state?: string): Promise<ConsentTemplate[]> {
+    let query = db.select().from(consentTemplates).where(eq(consentTemplates.isActive, true));
+    if (consentType) {
+      query = db
+        .select()
+        .from(consentTemplates)
+        .where(and(eq(consentTemplates.isActive, true), eq(consentTemplates.consentType, consentType)));
+    }
+    return await query.orderBy(desc(consentTemplates.effectiveDate));
+  }
+
+  async updateConsentTemplate(id: string, data: Partial<ConsentTemplate>): Promise<ConsentTemplate | undefined> {
+    const { id: templateId, createdAt, ...cleanData } = data as any;
+    const [updated] = await db
+      .update(consentTemplates)
+      .set({ ...cleanData, updatedAt: new Date() })
+      .where(eq(consentTemplates.id, id))
+      .returning();
+    return updated;
+  }
+
+  // ===== BORROWER CONSENTS =====
+  async createBorrowerConsent(data: InsertBorrowerConsent): Promise<BorrowerConsent> {
+    const [consent] = await db.insert(borrowerConsents).values(data).returning();
+    return consent;
+  }
+
+  async getBorrowerConsent(id: string): Promise<BorrowerConsent | undefined> {
+    const [consent] = await db.select().from(borrowerConsents).where(eq(borrowerConsents.id, id));
+    return consent;
+  }
+
+  async getBorrowerConsentsByUser(userId: string): Promise<BorrowerConsent[]> {
+    return await db
+      .select()
+      .from(borrowerConsents)
+      .where(eq(borrowerConsents.userId, userId))
+      .orderBy(desc(borrowerConsents.consentedAt));
+  }
+
+  async getBorrowerConsentsByApplication(applicationId: string): Promise<BorrowerConsent[]> {
+    return await db
+      .select()
+      .from(borrowerConsents)
+      .where(eq(borrowerConsents.applicationId, applicationId))
+      .orderBy(desc(borrowerConsents.consentedAt));
+  }
+
+  async getConsentByTypeAndApplication(consentType: string, applicationId: string): Promise<BorrowerConsent | undefined> {
+    const [consent] = await db
+      .select()
+      .from(borrowerConsents)
+      .where(
+        and(
+          eq(borrowerConsents.consentType, consentType),
+          eq(borrowerConsents.applicationId, applicationId),
+          eq(borrowerConsents.isRevoked, false)
+        )
+      )
+      .orderBy(desc(borrowerConsents.consentedAt))
+      .limit(1);
+    return consent;
+  }
+
+  // ===== PARTNER PROVIDERS =====
+  async createPartnerProvider(data: InsertPartnerProvider): Promise<PartnerProvider> {
+    const [provider] = await db.insert(partnerProviders).values(data).returning();
+    return provider;
+  }
+
+  async getPartnerProvider(id: string): Promise<PartnerProvider | undefined> {
+    const [provider] = await db.select().from(partnerProviders).where(eq(partnerProviders.id, id));
+    return provider;
+  }
+
+  async getPartnerProviderByCode(code: string): Promise<PartnerProvider | undefined> {
+    const [provider] = await db.select().from(partnerProviders).where(eq(partnerProviders.code, code));
+    return provider;
+  }
+
+  async getPartnerProvidersByServiceType(serviceType: string): Promise<PartnerProvider[]> {
+    return await db
+      .select()
+      .from(partnerProviders)
+      .where(and(eq(partnerProviders.serviceType, serviceType), eq(partnerProviders.isActive, true)));
+  }
+
+  async getAllPartnerProviders(): Promise<PartnerProvider[]> {
+    return await db.select().from(partnerProviders).orderBy(asc(partnerProviders.name));
+  }
+
+  async updatePartnerProvider(id: string, data: Partial<PartnerProvider>): Promise<PartnerProvider | undefined> {
+    const { id: providerId, createdAt, ...cleanData } = data as any;
+    const [updated] = await db
+      .update(partnerProviders)
+      .set({ ...cleanData, updatedAt: new Date() })
+      .where(eq(partnerProviders.id, id))
+      .returning();
+    return updated;
+  }
+
+  // ===== PARTNER ORDERS =====
+  async createPartnerOrder(data: InsertPartnerOrder): Promise<PartnerOrder> {
+    const [order] = await db.insert(partnerOrders).values(data).returning();
+    return order;
+  }
+
+  async getPartnerOrder(id: string): Promise<PartnerOrder | undefined> {
+    const [order] = await db.select().from(partnerOrders).where(eq(partnerOrders.id, id));
+    return order;
+  }
+
+  async getPartnerOrdersByApplication(applicationId: string): Promise<PartnerOrder[]> {
+    return await db
+      .select()
+      .from(partnerOrders)
+      .where(eq(partnerOrders.applicationId, applicationId))
+      .orderBy(desc(partnerOrders.createdAt));
+  }
+
+  async getPartnerOrdersByStatus(status: string): Promise<PartnerOrder[]> {
+    return await db
+      .select()
+      .from(partnerOrders)
+      .where(eq(partnerOrders.status, status))
+      .orderBy(asc(partnerOrders.createdAt));
+  }
+
+  async updatePartnerOrder(id: string, data: Partial<PartnerOrder>): Promise<PartnerOrder | undefined> {
+    const { id: orderId, createdAt, ...cleanData } = data as any;
+    const [updated] = await db
+      .update(partnerOrders)
+      .set({ ...cleanData, updatedAt: new Date() })
+      .where(eq(partnerOrders.id, id))
+      .returning();
+    return updated;
+  }
+
+  // ===== APPLICATION MILESTONES =====
+  async createApplicationMilestone(data: InsertApplicationMilestone): Promise<ApplicationMilestone> {
+    const [milestone] = await db.insert(applicationMilestones).values(data).returning();
+    return milestone;
+  }
+
+  async getApplicationMilestone(applicationId: string): Promise<ApplicationMilestone | undefined> {
+    const [milestone] = await db
+      .select()
+      .from(applicationMilestones)
+      .where(eq(applicationMilestones.applicationId, applicationId));
+    return milestone;
+  }
+
+  async updateApplicationMilestone(applicationId: string, data: Partial<ApplicationMilestone>): Promise<ApplicationMilestone | undefined> {
+    const { id, createdAt, ...cleanData } = data as any;
+    const [updated] = await db
+      .update(applicationMilestones)
+      .set({ ...cleanData, updatedAt: new Date() })
+      .where(eq(applicationMilestones.applicationId, applicationId))
+      .returning();
+    return updated;
+  }
+
+  async getOrCreateApplicationMilestone(applicationId: string): Promise<ApplicationMilestone> {
+    let milestone = await this.getApplicationMilestone(applicationId);
+    if (!milestone) {
+      milestone = await this.createApplicationMilestone({
+        applicationId,
+        applicationReceivedAt: new Date(),
+      });
+    }
+    return milestone;
+  }
+
+  // ===== SLA CONFIGURATIONS =====
+  async createSlaConfiguration(data: InsertSlaConfiguration): Promise<SlaConfiguration> {
+    const [config] = await db.insert(slaConfigurations).values(data).returning();
+    return config;
+  }
+
+  async getActiveSlaConfiguration(loanType?: string): Promise<SlaConfiguration | undefined> {
+    const now = new Date();
+    let query;
+    if (loanType) {
+      query = db
+        .select()
+        .from(slaConfigurations)
+        .where(
+          and(
+            eq(slaConfigurations.isActive, true),
+            lte(slaConfigurations.effectiveDate, now),
+            or(eq(slaConfigurations.loanType, loanType), sql`${slaConfigurations.loanType} IS NULL`)
+          )
+        )
+        .orderBy(desc(slaConfigurations.effectiveDate))
+        .limit(1);
+    } else {
+      query = db
+        .select()
+        .from(slaConfigurations)
+        .where(and(eq(slaConfigurations.isActive, true), lte(slaConfigurations.effectiveDate, now)))
+        .orderBy(desc(slaConfigurations.effectiveDate))
+        .limit(1);
+    }
+    const [config] = await query;
+    return config;
+  }
+
+  async getAllSlaConfigurations(): Promise<SlaConfiguration[]> {
+    return await db.select().from(slaConfigurations).orderBy(desc(slaConfigurations.effectiveDate));
+  }
+
+  async updateSlaConfiguration(id: string, data: Partial<SlaConfiguration>): Promise<SlaConfiguration | undefined> {
+    const { id: configId, createdAt, ...cleanData } = data as any;
+    const [updated] = await db
+      .update(slaConfigurations)
+      .set({ ...cleanData, updatedAt: new Date() })
+      .where(eq(slaConfigurations.id, id))
+      .returning();
+    return updated;
+  }
+
+  // ===== ANALYTICS SNAPSHOTS =====
+  async createAnalyticsSnapshot(data: InsertAnalyticsSnapshot): Promise<AnalyticsSnapshot> {
+    const [snapshot] = await db.insert(analyticsSnapshots).values(data).returning();
+    return snapshot;
+  }
+
+  async getLatestAnalyticsSnapshot(): Promise<AnalyticsSnapshot | undefined> {
+    const [snapshot] = await db
+      .select()
+      .from(analyticsSnapshots)
+      .orderBy(desc(analyticsSnapshots.snapshotDate))
+      .limit(1);
+    return snapshot;
+  }
+
+  async getAnalyticsSnapshots(days: number): Promise<AnalyticsSnapshot[]> {
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+    return await db
+      .select()
+      .from(analyticsSnapshots)
+      .where(gte(analyticsSnapshots.snapshotDate, startDate))
+      .orderBy(asc(analyticsSnapshots.snapshotDate));
+  }
+
+  // ===== ANALYTICS COMPUTED =====
+  async computePipelineMetrics(): Promise<{
+    totalApplications: number;
+    byStatus: { status: string; count: number }[];
+    avgCycleTimeHours: number | null;
+    slaComplianceRate: number | null;
+    closedVolume: string;
+    fundedVolume: string;
+  }> {
+    const apps = await db.select().from(loanApplications);
+    const byStatus: Record<string, number> = {};
+    let closedVolume = 0;
+    let fundedVolume = 0;
+
+    for (const app of apps) {
+      byStatus[app.status] = (byStatus[app.status] || 0) + 1;
+      if (app.status === "closed" || app.status === "funded") {
+        const amount = parseFloat(app.preApprovalAmount || "0");
+        closedVolume += amount;
+        if (app.status === "funded") fundedVolume += amount;
+      }
+    }
+
+    const milestones = await db
+      .select()
+      .from(applicationMilestones)
+      .where(sql`${applicationMilestones.totalCycleTimeHours} IS NOT NULL`);
+    
+    let avgCycleTime = null;
+    if (milestones.length > 0) {
+      const total = milestones.reduce((sum, m) => sum + parseFloat(m.totalCycleTimeHours || "0"), 0);
+      avgCycleTime = total / milestones.length;
+    }
+
+    const slaMet = milestones.filter(m => m.isSlaMet === true).length;
+    const slaComplianceRate = milestones.length > 0 ? (slaMet / milestones.length) * 100 : null;
+
+    return {
+      totalApplications: apps.length,
+      byStatus: Object.entries(byStatus).map(([status, count]) => ({ status, count })),
+      avgCycleTimeHours: avgCycleTime,
+      slaComplianceRate,
+      closedVolume: closedVolume.toFixed(2),
+      fundedVolume: fundedVolume.toFixed(2),
+    };
+  }
+
+  async getStaffWorkloadMetrics(): Promise<{
+    loansPerLO: { userId: string; count: number }[];
+    loansPerProcessor: { userId: string; count: number }[];
+    loansPerUnderwriter: { userId: string; count: number }[];
+  }> {
+    const apps = await db.select().from(loanApplications);
+    const loByLO: Record<string, number> = {};
+    
+    for (const app of apps) {
+      if (app.referringBrokerId) {
+        loByLO[app.referringBrokerId] = (loByLO[app.referringBrokerId] || 0) + 1;
+      }
+    }
+
+    return {
+      loansPerLO: Object.entries(loByLO).map(([userId, count]) => ({ userId, count })),
+      loansPerProcessor: [],
+      loansPerUnderwriter: [],
+    };
+  }
+
+  async getBottleneckAnalysis(): Promise<{
+    stage: string;
+    avgTimeHours: number;
+    count: number;
+    atRisk: number;
+  }[]> {
+    const milestones = await db.select().from(applicationMilestones);
+    
+    const stages = [
+      { name: "Document Collection", start: "applicationReceivedAt", end: "documentCollectionCompletedAt" },
+      { name: "Processing", start: "submittedToProcessingAt", end: "processingCompletedAt" },
+      { name: "Underwriting", start: "submittedToUnderwritingAt", end: "conditionalApprovalAt" },
+      { name: "Closing", start: "clearToCloseAt", end: "closedAt" },
+    ];
+
+    const analysis = stages.map(stage => {
+      const relevantMilestones = milestones.filter(m => {
+        const start = (m as any)[stage.start];
+        const end = (m as any)[stage.end];
+        return start && end;
+      });
+
+      let totalHours = 0;
+      for (const m of relevantMilestones) {
+        const start = new Date((m as any)[stage.start]).getTime();
+        const end = new Date((m as any)[stage.end]).getTime();
+        totalHours += (end - start) / (1000 * 60 * 60);
+      }
+
+      const inProgress = milestones.filter(m => {
+        const start = (m as any)[stage.start];
+        const end = (m as any)[stage.end];
+        return start && !end;
+      });
+
+      return {
+        stage: stage.name,
+        avgTimeHours: relevantMilestones.length > 0 ? totalHours / relevantMilestones.length : 0,
+        count: relevantMilestones.length,
+        atRisk: inProgress.length,
+      };
+    });
+
+    return analysis;
   }
 }
 

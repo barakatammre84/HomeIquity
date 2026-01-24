@@ -2220,3 +2220,508 @@ export const insertApplicationInviteSchema = createInsertSchema(applicationInvit
 
 export type InsertApplicationInvite = z.infer<typeof insertApplicationInviteSchema>;
 export type ApplicationInvite = typeof applicationInvites.$inferSelect;
+
+// ===== RATE LOCK SYSTEM =====
+
+// Rate Lock History - Track all rate locks with full audit trail
+export const rateLocks = pgTable("rate_locks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Links
+  applicationId: varchar("application_id").references(() => loanApplications.id).notNull(),
+  loanOptionId: varchar("loan_option_id").references(() => loanOptions.id).notNull(),
+  
+  // Rate Details at time of lock
+  interestRate: decimal("interest_rate", { precision: 5, scale: 3 }).notNull(),
+  points: decimal("points", { precision: 5, scale: 3 }),
+  loanAmount: decimal("loan_amount", { precision: 12, scale: 2 }).notNull(),
+  loanType: varchar("loan_type", { length: 50 }).notNull(),
+  loanTerm: integer("loan_term").notNull(),
+  
+  // Lock Details
+  lockPeriodDays: integer("lock_period_days").notNull(), // 30, 45, 60 days
+  lockedAt: timestamp("locked_at").defaultNow().notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  
+  // Status
+  status: varchar("status", { length: 50 }).default("active").notNull(), // active, extended, expired, cancelled, exercised
+  
+  // Extension tracking
+  extensionCount: integer("extension_count").default(0),
+  originalExpiresAt: timestamp("original_expires_at"),
+  extensionFee: decimal("extension_fee", { precision: 10, scale: 2 }),
+  
+  // Audit
+  lockedBy: varchar("locked_by").references(() => users.id).notNull(),
+  cancelledBy: varchar("cancelled_by").references(() => users.id),
+  cancelledAt: timestamp("cancelled_at"),
+  cancelReason: text("cancel_reason"),
+  
+  // Notes
+  notes: text("notes"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_rate_locks_application").on(table.applicationId),
+  index("idx_rate_locks_status").on(table.status),
+  index("idx_rate_locks_expires").on(table.expiresAt),
+]);
+
+export const rateLocksRelations = relations(rateLocks, ({ one }) => ({
+  application: one(loanApplications, {
+    fields: [rateLocks.applicationId],
+    references: [loanApplications.id],
+  }),
+  loanOption: one(loanOptions, {
+    fields: [rateLocks.loanOptionId],
+    references: [loanOptions.id],
+  }),
+  lockedByUser: one(users, {
+    fields: [rateLocks.lockedBy],
+    references: [users.id],
+  }),
+  cancelledByUser: one(users, {
+    fields: [rateLocks.cancelledBy],
+    references: [users.id],
+  }),
+}));
+
+export const insertRateLockSchema = createInsertSchema(rateLocks).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertRateLock = z.infer<typeof insertRateLockSchema>;
+export type RateLock = typeof rateLocks.$inferSelect;
+
+// ===== ECONSENT SYSTEM =====
+
+// Consent Types - Define available consent types
+export const CONSENT_TYPES = [
+  "credit_authorization",    // Authorize credit pull
+  "econsent",               // Electronic signature consent  
+  "privacy_policy",         // Privacy policy acknowledgment
+  "terms_of_service",       // Terms acceptance
+  "disclosure",             // General disclosures
+  "appraisal_waiver",       // Waive right to appraisal copy timing
+  "title_acknowledgment",   // Title company selection acknowledgment
+  "rate_lock_agreement",    // Rate lock terms
+  "intent_to_proceed",      // TRID intent to proceed
+  "loan_estimate_receipt",  // Acknowledge loan estimate receipt
+] as const;
+
+export type ConsentType = typeof CONSENT_TYPES[number];
+
+// Consent Templates - Define consent content per type/state
+export const consentTemplates = pgTable("consent_templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Type and Version
+  consentType: varchar("consent_type", { length: 50 }).notNull(),
+  version: varchar("version", { length: 20 }).notNull(), // e.g., "1.0.0"
+  
+  // State-specific (null = federal/all states)
+  state: varchar("state", { length: 2 }),
+  
+  // Content
+  title: varchar("title", { length: 255 }).notNull(),
+  shortDescription: text("short_description"),
+  fullText: text("full_text").notNull(), // Full legal text
+  
+  // Regulatory
+  regulatoryReference: varchar("regulatory_reference", { length: 255 }), // e.g., "TRID Section 4", "FCRA 604"
+  requiredForLoanTypes: text("required_for_loan_types").array(), // ['conventional', 'fha', 'va']
+  
+  // Status
+  isActive: boolean("is_active").default(true).notNull(),
+  effectiveDate: timestamp("effective_date").notNull(),
+  expirationDate: timestamp("expiration_date"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_consent_templates_type").on(table.consentType),
+  index("idx_consent_templates_state").on(table.state),
+  index("idx_consent_templates_active").on(table.isActive),
+]);
+
+export const insertConsentTemplateSchema = createInsertSchema(consentTemplates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertConsentTemplate = z.infer<typeof insertConsentTemplateSchema>;
+export type ConsentTemplate = typeof consentTemplates.$inferSelect;
+
+// Borrower Consents - Audit trail of all consents given
+export const borrowerConsents = pgTable("borrower_consents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Links
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  applicationId: varchar("application_id").references(() => loanApplications.id),
+  templateId: varchar("template_id").references(() => consentTemplates.id),
+  
+  // Consent Details
+  consentType: varchar("consent_type", { length: 50 }).notNull(),
+  templateVersion: varchar("template_version", { length: 20 }),
+  
+  // Consent Capture
+  consentGiven: boolean("consent_given").notNull(),
+  consentMethod: varchar("consent_method", { length: 50 }).notNull(), // 'click', 'signature', 'verbal', 'paper'
+  
+  // Digital Signature (if applicable)
+  signatureData: text("signature_data"), // Base64 signature image or typed name
+  signatureType: varchar("signature_type", { length: 20 }), // 'drawn', 'typed', 'none'
+  
+  // Audit Trail - Immutable
+  ipAddress: varchar("ip_address", { length: 45 }),
+  userAgent: text("user_agent"),
+  browserFingerprint: varchar("browser_fingerprint", { length: 64 }),
+  
+  // Timing
+  consentedAt: timestamp("consented_at").defaultNow().notNull(),
+  
+  // Revocation (if applicable)
+  isRevoked: boolean("is_revoked").default(false),
+  revokedAt: timestamp("revoked_at"),
+  revocationReason: text("revocation_reason"),
+  
+  // Hash for tamper evidence
+  contentHash: varchar("content_hash", { length: 64 }), // SHA-256 of consent content at time of signing
+  
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_borrower_consents_user").on(table.userId),
+  index("idx_borrower_consents_application").on(table.applicationId),
+  index("idx_borrower_consents_type").on(table.consentType),
+]);
+
+export const borrowerConsentsRelations = relations(borrowerConsents, ({ one }) => ({
+  user: one(users, {
+    fields: [borrowerConsents.userId],
+    references: [users.id],
+  }),
+  application: one(loanApplications, {
+    fields: [borrowerConsents.applicationId],
+    references: [loanApplications.id],
+  }),
+  template: one(consentTemplates, {
+    fields: [borrowerConsents.templateId],
+    references: [consentTemplates.id],
+  }),
+}));
+
+export const insertBorrowerConsentSchema = createInsertSchema(borrowerConsents).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertBorrowerConsent = z.infer<typeof insertBorrowerConsentSchema>;
+export type BorrowerConsent = typeof borrowerConsents.$inferSelect;
+
+// ===== PARTNER API INTEGRATIONS =====
+
+// Partner Service Types
+export const PARTNER_SERVICE_TYPES = [
+  "credit_report",     // Credit bureau pull
+  "title_search",      // Title search/insurance
+  "appraisal",         // Property appraisal
+  "flood_cert",        // Flood certification
+  "verification_employment", // VOE
+  "verification_income",     // VOI
+  "verification_assets",     // VOA
+  "tax_transcripts",   // IRS transcripts
+  "homeowners_insurance", // HOI quote
+] as const;
+
+export type PartnerServiceType = typeof PARTNER_SERVICE_TYPES[number];
+
+// Partner Service Providers
+export const partnerProviders = pgTable("partner_providers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Provider Details
+  name: varchar("name", { length: 255 }).notNull(),
+  code: varchar("code", { length: 50 }).unique().notNull(), // e.g., 'experian', 'first_american_title'
+  serviceType: varchar("service_type", { length: 50 }).notNull(),
+  
+  // API Configuration (encrypted in production)
+  apiBaseUrl: varchar("api_base_url", { length: 255 }),
+  apiVersion: varchar("api_version", { length: 20 }),
+  
+  // Credentials (stored in secrets, reference only)
+  credentialSecretKey: varchar("credential_secret_key", { length: 100 }), // Key in secrets store
+  
+  // Status
+  isActive: boolean("is_active").default(true).notNull(),
+  isTestMode: boolean("is_test_mode").default(true).notNull(),
+  
+  // Pricing
+  baseFee: decimal("base_fee", { precision: 10, scale: 2 }),
+  
+  // Contact
+  contactEmail: varchar("contact_email", { length: 255 }),
+  contactPhone: varchar("contact_phone", { length: 20 }),
+  
+  // SLA
+  expectedTurnaroundHours: integer("expected_turnaround_hours"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_partner_providers_type").on(table.serviceType),
+  index("idx_partner_providers_code").on(table.code),
+]);
+
+export const insertPartnerProviderSchema = createInsertSchema(partnerProviders).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertPartnerProvider = z.infer<typeof insertPartnerProviderSchema>;
+export type PartnerProvider = typeof partnerProviders.$inferSelect;
+
+// Partner Orders - Track all third-party service orders
+export const partnerOrders = pgTable("partner_orders", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Links
+  applicationId: varchar("application_id").references(() => loanApplications.id).notNull(),
+  providerId: varchar("provider_id").references(() => partnerProviders.id).notNull(),
+  
+  // Order Details
+  serviceType: varchar("service_type", { length: 50 }).notNull(),
+  orderReference: varchar("order_reference", { length: 100 }), // External order ID from provider
+  
+  // Status
+  status: varchar("status", { length: 50 }).default("pending").notNull(), 
+  // pending, submitted, in_progress, completed, failed, cancelled
+  
+  // Request/Response
+  requestPayload: jsonb("request_payload"), // Sanitized request (no PII)
+  responsePayload: jsonb("response_payload"), // Sanitized response
+  resultSummary: jsonb("result_summary"), // Key findings/data extracted
+  
+  // For credit reports specifically
+  creditScoreExperian: integer("credit_score_experian"),
+  creditScoreEquifax: integer("credit_score_equifax"),
+  creditScoreTransUnion: integer("credit_score_transunion"),
+  
+  // For appraisals
+  appraisedValue: decimal("appraised_value", { precision: 12, scale: 2 }),
+  
+  // For title
+  titleStatus: varchar("title_status", { length: 50 }), // clear, liens_found, issues_found
+  
+  // Fees
+  fee: decimal("fee", { precision: 10, scale: 2 }),
+  feePaidByBorrower: boolean("fee_paid_by_borrower").default(true),
+  
+  // Timing
+  orderedAt: timestamp("ordered_at").defaultNow(),
+  orderedBy: varchar("ordered_by").references(() => users.id).notNull(),
+  submittedAt: timestamp("submitted_at"),
+  completedAt: timestamp("completed_at"),
+  
+  // Error handling
+  errorCode: varchar("error_code", { length: 50 }),
+  errorMessage: text("error_message"),
+  retryCount: integer("retry_count").default(0),
+  
+  // Document storage
+  resultDocumentPath: text("result_document_path"), // Path to stored report/document
+  
+  notes: text("notes"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_partner_orders_application").on(table.applicationId),
+  index("idx_partner_orders_provider").on(table.providerId),
+  index("idx_partner_orders_status").on(table.status),
+  index("idx_partner_orders_type").on(table.serviceType),
+]);
+
+export const partnerOrdersRelations = relations(partnerOrders, ({ one }) => ({
+  application: one(loanApplications, {
+    fields: [partnerOrders.applicationId],
+    references: [loanApplications.id],
+  }),
+  provider: one(partnerProviders, {
+    fields: [partnerOrders.providerId],
+    references: [partnerProviders.id],
+  }),
+  orderedByUser: one(users, {
+    fields: [partnerOrders.orderedBy],
+    references: [users.id],
+  }),
+}));
+
+export const insertPartnerOrderSchema = createInsertSchema(partnerOrders).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertPartnerOrder = z.infer<typeof insertPartnerOrderSchema>;
+export type PartnerOrder = typeof partnerOrders.$inferSelect;
+
+// ===== ANALYTICS & SLA TRACKING =====
+
+// Application Milestones - Track key dates for cycle time analysis
+export const applicationMilestones = pgTable("application_milestones", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  applicationId: varchar("application_id").references(() => loanApplications.id).notNull(),
+  
+  // Pipeline Stage Timestamps
+  applicationReceivedAt: timestamp("application_received_at"),
+  documentCollectionStartedAt: timestamp("document_collection_started_at"),
+  documentCollectionCompletedAt: timestamp("document_collection_completed_at"),
+  submittedToProcessingAt: timestamp("submitted_to_processing_at"),
+  processingCompletedAt: timestamp("processing_completed_at"),
+  submittedToUnderwritingAt: timestamp("submitted_to_underwriting_at"),
+  conditionalApprovalAt: timestamp("conditional_approval_at"),
+  clearToCloseAt: timestamp("clear_to_close_at"),
+  closingScheduledAt: timestamp("closing_scheduled_at"),
+  closedAt: timestamp("closed_at"),
+  fundedAt: timestamp("funded_at"),
+  
+  // Denial tracking
+  deniedAt: timestamp("denied_at"),
+  denialReason: text("denial_reason"),
+  
+  // Withdrawal tracking
+  withdrawnAt: timestamp("withdrawn_at"),
+  withdrawalReason: text("withdrawal_reason"),
+  
+  // Calculated cycle times (in hours, updated by trigger/job)
+  totalCycleTimeHours: decimal("total_cycle_time_hours", { precision: 10, scale: 2 }),
+  processingTimeHours: decimal("processing_time_hours", { precision: 10, scale: 2 }),
+  underwritingTimeHours: decimal("underwriting_time_hours", { precision: 10, scale: 2 }),
+  closingTimeHours: decimal("closing_time_hours", { precision: 10, scale: 2 }),
+  
+  // SLA tracking
+  slaTargetDate: timestamp("sla_target_date"),
+  isSlaMet: boolean("is_sla_met"),
+  slaBreachReason: text("sla_breach_reason"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_application_milestones_app").on(table.applicationId),
+]);
+
+export const applicationMilestonesRelations = relations(applicationMilestones, ({ one }) => ({
+  application: one(loanApplications, {
+    fields: [applicationMilestones.applicationId],
+    references: [loanApplications.id],
+  }),
+}));
+
+export const insertApplicationMilestoneSchema = createInsertSchema(applicationMilestones).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertApplicationMilestone = z.infer<typeof insertApplicationMilestoneSchema>;
+export type ApplicationMilestone = typeof applicationMilestones.$inferSelect;
+
+// SLA Configurations - Define SLA targets
+export const slaConfigurations = pgTable("sla_configurations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // SLA Details
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  
+  // Targets (in business hours)
+  applicationToProcessingHours: integer("application_to_processing_hours").default(24),
+  processingToUnderwritingHours: integer("processing_to_underwriting_hours").default(48),
+  underwritingDecisionHours: integer("underwriting_decision_hours").default(72),
+  conditionalToCtcHours: integer("conditional_to_ctc_hours").default(48),
+  ctcToClosingHours: integer("ctc_to_closing_hours").default(72),
+  totalApplicationToCloseHours: integer("total_application_to_close_hours").default(360), // 15 business days
+  
+  // Loan type specific
+  loanType: varchar("loan_type", { length: 50 }), // null = all types
+  
+  // Status
+  isActive: boolean("is_active").default(true).notNull(),
+  effectiveDate: timestamp("effective_date").notNull(),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_sla_configurations_active").on(table.isActive),
+]);
+
+export const insertSlaConfigurationSchema = createInsertSchema(slaConfigurations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertSlaConfiguration = z.infer<typeof insertSlaConfigurationSchema>;
+export type SlaConfiguration = typeof slaConfigurations.$inferSelect;
+
+// Daily Analytics Snapshots - Pre-computed metrics for dashboard
+export const analyticsSnapshots = pgTable("analytics_snapshots", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Date
+  snapshotDate: timestamp("snapshot_date").notNull(),
+  
+  // Pipeline Metrics
+  totalApplications: integer("total_applications").default(0),
+  applicationsInPipeline: integer("applications_in_pipeline").default(0),
+  applicationsProcessing: integer("applications_processing").default(0),
+  applicationsUnderwriting: integer("applications_underwriting").default(0),
+  applicationsApproved: integer("applications_approved").default(0),
+  applicationsDenied: integer("applications_denied").default(0),
+  applicationsWithdrawn: integer("applications_withdrawn").default(0),
+  applicationsClosed: integer("applications_closed").default(0),
+  applicationsFunded: integer("applications_funded").default(0),
+  
+  // Volume Metrics
+  newApplicationsToday: integer("new_applications_today").default(0),
+  closedVolumeToday: decimal("closed_volume_today", { precision: 14, scale: 2 }).default("0"),
+  fundedVolumeToday: decimal("funded_volume_today", { precision: 14, scale: 2 }).default("0"),
+  
+  // Cycle Time Metrics (averages in hours)
+  avgTotalCycleTime: decimal("avg_total_cycle_time", { precision: 10, scale: 2 }),
+  avgProcessingTime: decimal("avg_processing_time", { precision: 10, scale: 2 }),
+  avgUnderwritingTime: decimal("avg_underwriting_time", { precision: 10, scale: 2 }),
+  
+  // SLA Metrics
+  slaComplianceRate: decimal("sla_compliance_rate", { precision: 5, scale: 2 }), // percentage
+  loansAtRiskOfSlaBreach: integer("loans_at_risk_of_sla_breach").default(0),
+  
+  // Conversion Metrics
+  applicationToApprovalRate: decimal("application_to_approval_rate", { precision: 5, scale: 2 }),
+  approvalToCloseRate: decimal("approval_to_close_rate", { precision: 5, scale: 2 }),
+  pullThroughRate: decimal("pull_through_rate", { precision: 5, scale: 2 }), // app to funded
+  
+  // Staff Metrics
+  avgLoansPerLO: decimal("avg_loans_per_lo", { precision: 5, scale: 1 }),
+  avgLoansPerProcessor: decimal("avg_loans_per_processor", { precision: 5, scale: 1 }),
+  avgLoansPerUnderwriter: decimal("avg_loans_per_underwriter", { precision: 5, scale: 1 }),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_analytics_snapshots_date").on(table.snapshotDate),
+]);
+
+export const insertAnalyticsSnapshotSchema = createInsertSchema(analyticsSnapshots).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertAnalyticsSnapshot = z.infer<typeof insertAnalyticsSnapshotSchema>;
+export type AnalyticsSnapshot = typeof analyticsSnapshots.$inferSelect;
