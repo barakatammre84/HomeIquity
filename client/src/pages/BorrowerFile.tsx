@@ -31,6 +31,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { DealTeam } from "@/components/DealTeam";
+import { DealTeamManagement } from "@/components/DealTeamManagement";
 import {
   FileText,
   User,
@@ -51,8 +53,10 @@ import {
   RefreshCw,
   AlertOctagon,
   FileWarning,
+  Users,
 } from "lucide-react";
 import { format } from "date-fns";
+import { isStaffRole } from "@shared/schema";
 import type { LoanApplication, Document, LoanCondition, UrlaPersonalInfo } from "@shared/schema";
 
 interface ApplicationData {
@@ -385,6 +389,10 @@ export default function BorrowerFile() {
                   <TabsTrigger value="credit" data-testid="tab-credit">
                     <CreditCard className="mr-2 h-4 w-4" />
                     Credit
+                  </TabsTrigger>
+                  <TabsTrigger value="team" data-testid="tab-team">
+                    <Users className="mr-2 h-4 w-4" />
+                    Team
                   </TabsTrigger>
                 </TabsList>
 
@@ -877,6 +885,14 @@ export default function BorrowerFile() {
                       </ScrollArea>
                     </CardContent>
                   </Card>
+                </TabsContent>
+
+                <TabsContent value="team" className="space-y-4">
+                  {isStaffRole(user?.role || "") ? (
+                    <DealTeamManagement applicationId={applicationId} />
+                  ) : (
+                    <DealTeam applicationId={applicationId} />
+                  )}
                 </TabsContent>
               </Tabs>
             </div>
