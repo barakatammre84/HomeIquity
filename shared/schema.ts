@@ -1150,6 +1150,1026 @@ export type InsertDocumentPackageItem = z.infer<typeof insertDocumentPackageItem
 export type DocumentPackageItem = typeof documentPackageItems.$inferSelect;
 
 // ============================================================================
+// DOCUMENT INTELLIGENCE ENGINE (Underwriting-Aware OCR + Classification)
+// ============================================================================
+// This is the backbone of automated document processing. 
+// Rule #1: Build ENGINES, not features.
+// Everything operates at PAGE level, not file level.
+
+// A. Document Taxonomy - All mortgage document types the classifier recognizes
+export const DOCUMENT_TYPE_TAXONOMY = [
+  // Identity / Compliance
+  "drivers_license",
+  "passport",
+  "green_card",
+  "ssn_card",
+  "itin_letter",
+  // Income - W2/Employment
+  "paystub",
+  "w2",
+  "1099_misc",
+  "1099_nec",
+  // Income - Tax Returns
+  "tax_return_1040",
+  "schedule_c",
+  "schedule_e",
+  "schedule_k1",
+  "business_tax_return_1120",
+  "business_tax_return_1120s",
+  "business_tax_return_1065",
+  // Income - Self-Employed
+  "profit_loss_statement",
+  "social_security_award_letter",
+  // Assets
+  "bank_statement_checking",
+  "bank_statement_savings",
+  "business_bank_statement",
+  "retirement_statement_401k",
+  "retirement_statement_ira",
+  "brokerage_statement",
+  "gift_letter",
+  // Liabilities
+  "mortgage_statement",
+  "heloc_statement",
+  "auto_loan_statement",
+  "student_loan_statement",
+  "credit_card_statement",
+  // Property / Transaction
+  "purchase_contract",
+  "lease_agreement",
+  "hoa_statement",
+  "homeowners_insurance_binder",
+  "earnest_money_receipt",
+  "appraisal_report",
+  "title_commitment",
+  // Other
+  "letter_of_explanation",
+  "divorce_decree",
+  "bankruptcy_discharge",
+  "unknown",
+] as const;
+
+export type DocumentTypeTaxonomy = typeof DOCUMENT_TYPE_TAXONOMY[number];
+
+// B. Raw Document Upload (Immutable - Never mutate for audit + fraud)
+export const documentUploads = pgTable("document_uploads", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  loanId: varchar("loan_id").references(() => loanApplications.id),
+  borrowerId: varchar("borrower_id").references(() => users.id).notNull(),
+  
+  // Original file metadata
+  originalFileName: varchar("original_file_name", { length: 500 }).notNull(),
+  mimeType: varchar("mime_type", { length: 100 }).notNull(),
+  fileSizeBytes: integer("file_size_bytes"),
+  
+  // Upload source tracking
+  uploadSource: varchar("upload_source", { length: 50 }).notNull(), // web, mobile, api, email
+  uploadedAt: timestamp("uploaded_at").defaultNow().notNull(),
+  
+  // Storage references (never modify after creation)
+  rawFileUri: text("raw_file_uri").notNull(),  // Original file in object storage
+  checksum: varchar("checksum", { length: 128 }).notNull(), // SHA-256 for integrity
+  
+  // Processing status
+  processingStatus: varchar("processing_status", { length: 50 }).default("pending").notNull(), // pending, processing, completed, failed
+  processingStartedAt: timestamp("processing_started_at"),
+  processingCompletedAt: timestamp("processing_completed_at"),
+  processingError: text("processing_error"),
+  
+  // Metadata
+  pageCount: integer("page_count"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_doc_uploads_loan").on(table.loanId),
+  index("idx_doc_uploads_borrower").on(table.borrowerId),
+  index("idx_doc_uploads_status").on(table.processingStatus),
+]);
+
+export const documentUploadsRelations = relations(documentUploads, ({ one, many }) => ({
+  loan: one(loanApplications, {
+    fields: [documentUploads.loanId],
+    references: [loanApplications.id],
+  }),
+  borrower: one(users, {
+    fields: [documentUploads.borrowerId],
+    references: [users.id],
+  }),
+  pages: many(documentPages),
+}));
+
+// C. Document Page Entity (CRITICAL - All intelligence happens at page level)
+export const documentPages = pgTable("document_pages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  uploadId: varchar("upload_id").references(() => documentUploads.id).notNull(),
+  
+  // Page identification
+  pageNumber: integer("page_number").notNull(), // 1-indexed
+  
+  // Processed image storage
+  imageUri: text("image_uri").notNull(), // Cleaned/normalized page image
+  thumbnailUri: text("thumbnail_uri"), // Smaller preview
+  
+  // Image dimensions (for layout analysis)
+  width: integer("width"),
+  height: integer("height"),
+  
+  // Raw OCR text (before field extraction)
+  rawOcrText: text("raw_ocr_text"),
+  ocrConfidence: decimal("ocr_confidence", { precision: 5, scale: 4 }), // 0.0-1.0
+  ocrEngine: varchar("ocr_engine", { length: 50 }), // gemini, tesseract, etc.
+  
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_doc_pages_upload").on(table.uploadId),
+]);
+
+export const documentPagesRelations = relations(documentPages, ({ one, many }) => ({
+  upload: one(documentUploads, {
+    fields: [documentPages.uploadId],
+    references: [documentUploads.id],
+  }),
+  classifications: many(pageClassifications),
+  extractedFields: many(extractedFields),
+}));
+
+// D. Page Classification Output (Never trust file names - classify each page)
+export const pageClassifications = pgTable("page_classifications", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  pageId: varchar("page_id").references(() => documentPages.id).notNull(),
+  
+  // Classification result
+  documentType: varchar("document_type", { length: 100 }).notNull(), // From DOCUMENT_TYPE_TAXONOMY
+  confidence: decimal("confidence", { precision: 5, scale: 4 }).notNull(), // 0.0-1.0
+  
+  // Alternative classifications (top 3)
+  alternativeTypes: jsonb("alternative_types"), // [{type, confidence}, ...]
+  
+  // Classification method tracking
+  modelVersion: varchar("model_version", { length: 100 }).notNull(),
+  classificationMethod: varchar("classification_method", { length: 50 }).notNull(), // rule_based, ml_classifier, hybrid
+  
+  // Human review status
+  humanReviewed: boolean("human_reviewed").default(false),
+  humanCorrectedType: varchar("human_corrected_type", { length: 100 }),
+  reviewedByUserId: varchar("reviewed_by_user_id").references(() => users.id),
+  reviewedAt: timestamp("reviewed_at"),
+  
+  classifiedAt: timestamp("classified_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_page_class_page").on(table.pageId),
+  index("idx_page_class_type").on(table.documentType),
+  index("idx_page_class_confidence").on(table.confidence),
+]);
+
+export const pageClassificationsRelations = relations(pageClassifications, ({ one }) => ({
+  page: one(documentPages, {
+    fields: [pageClassifications.pageId],
+    references: [documentPages.id],
+  }),
+  reviewer: one(users, {
+    fields: [pageClassifications.reviewedByUserId],
+    references: [users.id],
+  }),
+}));
+
+// E. Logical Document (Reassembled from classified pages)
+export const logicalDocuments = pgTable("logical_documents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  loanId: varchar("loan_id").references(() => loanApplications.id),
+  borrowerId: varchar("borrower_id").references(() => users.id).notNull(),
+  
+  // Document identification
+  documentType: varchar("document_type", { length: 100 }).notNull(), // From DOCUMENT_TYPE_TAXONOMY
+  
+  // Aggregated confidence (average of page confidences)
+  aggregatedConfidence: decimal("aggregated_confidence", { precision: 5, scale: 4 }).notNull(),
+  
+  // Status workflow
+  status: varchar("status", { length: 50 }).default("needs_review").notNull(), // accepted, needs_review, rejected
+  
+  // Document period (for statements/returns)
+  periodStart: timestamp("period_start"),
+  periodEnd: timestamp("period_end"),
+  taxYear: integer("tax_year"),
+  
+  // Institution/employer info (extracted)
+  institutionName: varchar("institution_name", { length: 255 }),
+  accountNumberMasked: varchar("account_number_masked", { length: 50 }),
+  
+  // Completeness
+  expectedPageCount: integer("expected_page_count"),
+  actualPageCount: integer("actual_page_count"),
+  isComplete: boolean("is_complete").default(false),
+  
+  // Human review
+  verifiedByUserId: varchar("verified_by_user_id").references(() => users.id),
+  verifiedAt: timestamp("verified_at"),
+  verificationNotes: text("verification_notes"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_logical_docs_loan").on(table.loanId),
+  index("idx_logical_docs_borrower").on(table.borrowerId),
+  index("idx_logical_docs_type").on(table.documentType),
+  index("idx_logical_docs_status").on(table.status),
+]);
+
+export const logicalDocumentsRelations = relations(logicalDocuments, ({ one, many }) => ({
+  loan: one(loanApplications, {
+    fields: [logicalDocuments.loanId],
+    references: [loanApplications.id],
+  }),
+  borrower: one(users, {
+    fields: [logicalDocuments.borrowerId],
+    references: [users.id],
+  }),
+  verifier: one(users, {
+    fields: [logicalDocuments.verifiedByUserId],
+    references: [users.id],
+  }),
+  pages: many(logicalDocumentPages),
+  extractedFields: many(extractedFields),
+  completenessChecks: many(completenessChecks),
+}));
+
+// Link table: Logical Document to Pages
+export const logicalDocumentPages = pgTable("logical_document_pages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  logicalDocumentId: varchar("logical_document_id").references(() => logicalDocuments.id).notNull(),
+  pageId: varchar("page_id").references(() => documentPages.id).notNull(),
+  pageOrder: integer("page_order").notNull(), // Order within the logical document
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_logical_doc_pages_doc").on(table.logicalDocumentId),
+  index("idx_logical_doc_pages_page").on(table.pageId),
+]);
+
+export const logicalDocumentPagesRelations = relations(logicalDocumentPages, ({ one }) => ({
+  logicalDocument: one(logicalDocuments, {
+    fields: [logicalDocumentPages.logicalDocumentId],
+    references: [logicalDocuments.id],
+  }),
+  page: one(documentPages, {
+    fields: [logicalDocumentPages.pageId],
+    references: [documentPages.id],
+  }),
+}));
+
+// ============================================================================
+// OCR & FIELD EXTRACTION SCHEMAS
+// ============================================================================
+
+// F. Extracted Field (NON-NEGOTIABLE STRUCTURE)
+// Rule: If a value has no confidence or no source page → it does not exist
+export const extractedFields = pgTable("extracted_fields", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  logicalDocumentId: varchar("logical_document_id").references(() => logicalDocuments.id),
+  pageId: varchar("page_id").references(() => documentPages.id).notNull(),
+  
+  // Field identification
+  fieldName: varchar("field_name", { length: 255 }).notNull(), // e.g., "grossMonthlyIncome", "employerName"
+  fieldCategory: varchar("field_category", { length: 100 }), // income, asset, liability, identity, property
+  
+  // Extracted value (polymorphic - store as string, parse based on type)
+  valueString: text("value_string"),
+  valueNumeric: decimal("value_numeric", { precision: 18, scale: 4 }),
+  valueDate: timestamp("value_date"),
+  valueBoolean: boolean("value_boolean"),
+  valueType: varchar("value_type", { length: 50 }).notNull(), // string, number, date, boolean, currency
+  
+  // Confidence & source (REQUIRED - no field exists without these)
+  confidence: decimal("confidence", { precision: 5, scale: 4 }).notNull(), // 0.0-1.0
+  boundingBox: jsonb("bounding_box"), // {x, y, width, height} on source page
+  
+  // MISMO Mapping (Everything maps to MISMO or fails)
+  mismoPath: varchar("mismo_path", { length: 500 }), // e.g., "MISMO.Income.EmploymentIncome.GrossMonthlyIncome"
+  
+  // Extraction metadata
+  extractionMethod: varchar("extraction_method", { length: 50 }).notNull(), // regex, ml_extraction, template_match, gemini
+  modelVersion: varchar("model_version", { length: 100 }),
+  
+  // Human verification
+  humanVerified: boolean("human_verified").default(false),
+  humanCorrectedValue: text("human_corrected_value"),
+  verifiedByUserId: varchar("verified_by_user_id").references(() => users.id),
+  verifiedAt: timestamp("verified_at"),
+  
+  extractedAt: timestamp("extracted_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_extracted_fields_doc").on(table.logicalDocumentId),
+  index("idx_extracted_fields_page").on(table.pageId),
+  index("idx_extracted_fields_name").on(table.fieldName),
+  index("idx_extracted_fields_mismo").on(table.mismoPath),
+  index("idx_extracted_fields_confidence").on(table.confidence),
+]);
+
+export const extractedFieldsRelations = relations(extractedFields, ({ one }) => ({
+  logicalDocument: one(logicalDocuments, {
+    fields: [extractedFields.logicalDocumentId],
+    references: [logicalDocuments.id],
+  }),
+  page: one(documentPages, {
+    fields: [extractedFields.pageId],
+    references: [documentPages.id],
+  }),
+  verifier: one(users, {
+    fields: [extractedFields.verifiedByUserId],
+    references: [users.id],
+  }),
+}));
+
+// G. Completeness Check (Eliminate huge processor time)
+export const completenessChecks = pgTable("completeness_checks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  logicalDocumentId: varchar("logical_document_id").references(() => logicalDocuments.id).notNull(),
+  
+  // Check result
+  documentType: varchar("document_type", { length: 100 }).notNull(),
+  status: varchar("status", { length: 50 }).notNull(), // complete, incomplete, unable_to_determine
+  
+  // Missing items (what's wrong)
+  missingItems: jsonb("missing_items").notNull(), // [{item: "page 2 of 3", severity: "high"}, ...]
+  
+  // Expected vs actual
+  expectedPages: integer("expected_pages"),
+  foundPages: integer("found_pages"),
+  
+  // Required fields check
+  requiredFieldsFound: jsonb("required_fields_found"), // [{field, found: boolean}, ...]
+  requiredFieldsMissing: text("required_fields_missing").array(),
+  
+  // Continuity checks (for statements)
+  balanceContinuityValid: boolean("balance_continuity_valid"),
+  dateRangeContinuous: boolean("date_range_continuous"),
+  
+  checkedAt: timestamp("checked_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_completeness_doc").on(table.logicalDocumentId),
+  index("idx_completeness_status").on(table.status),
+]);
+
+export const completenessChecksRelations = relations(completenessChecks, ({ one }) => ({
+  logicalDocument: one(logicalDocuments, {
+    fields: [completenessChecks.logicalDocumentId],
+    references: [logicalDocuments.id],
+  }),
+}));
+
+// ============================================================================
+// MISMO-CANONICAL DATA MODEL (Everything feeds this)
+// ============================================================================
+// If it doesn't map → it doesn't exist.
+
+// H. Income Stream (Normalized from multiple document types)
+export const INCOME_TYPES = [
+  "w2",
+  "self_employed",
+  "rental",
+  "bonus",
+  "commission",
+  "overtime",
+  "social_security",
+  "pension",
+  "disability",
+  "alimony",
+  "child_support",
+  "investment",
+  "other",
+] as const;
+
+export type IncomeType = typeof INCOME_TYPES[number];
+
+export const incomeStreams = pgTable("income_streams", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  borrowerId: varchar("borrower_id").references(() => users.id).notNull(),
+  loanId: varchar("loan_id").references(() => loanApplications.id),
+  
+  // Income type and source
+  incomeType: varchar("income_type", { length: 50 }).notNull(), // From INCOME_TYPES
+  employerName: varchar("employer_name", { length: 255 }),
+  
+  // Amounts
+  monthlyAmount: decimal("monthly_amount", { precision: 12, scale: 2 }).notNull(),
+  annualAmount: decimal("annual_amount", { precision: 14, scale: 2 }),
+  
+  // Stability assessment
+  stability: varchar("stability", { length: 50 }).notNull(), // stable, variable, declining, increasing
+  yearsAtEmployer: decimal("years_at_employer", { precision: 4, scale: 1 }),
+  
+  // Source documents that support this income
+  sourceDocumentIds: text("source_document_ids").array(),
+  
+  // Calculation details
+  calculationMethod: text("calculation_method"), // How the monthly amount was derived
+  calculationInputs: jsonb("calculation_inputs"), // Raw values used in calculation
+  
+  // MISMO Mapping (Required)
+  mismoPath: varchar("mismo_path", { length: 500 }).notNull(), // e.g., "MISMO.Income.EmploymentIncome"
+  
+  // Verification
+  verificationSource: varchar("verification_source", { length: 50 }), // ocr, plaid, voe, manual
+  verificationDate: timestamp("verification_date"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_income_borrower").on(table.borrowerId),
+  index("idx_income_loan").on(table.loanId),
+  index("idx_income_type").on(table.incomeType),
+]);
+
+export const incomeStreamsRelations = relations(incomeStreams, ({ one }) => ({
+  borrower: one(users, {
+    fields: [incomeStreams.borrowerId],
+    references: [users.id],
+  }),
+  loan: one(loanApplications, {
+    fields: [incomeStreams.loanId],
+    references: [loanApplications.id],
+  }),
+}));
+
+// I. Assets (Normalized)
+export const ASSET_TYPES = [
+  "checking",
+  "savings",
+  "money_market",
+  "cd",
+  "retirement_401k",
+  "retirement_ira",
+  "brokerage",
+  "mutual_fund",
+  "stock",
+  "bond",
+  "gift",
+  "trust",
+  "real_estate_equity",
+  "business_asset",
+  "other",
+] as const;
+
+export type AssetType = typeof ASSET_TYPES[number];
+
+export const canonicalAssets = pgTable("canonical_assets", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  borrowerId: varchar("borrower_id").references(() => users.id).notNull(),
+  loanId: varchar("loan_id").references(() => loanApplications.id),
+  
+  // Asset type and institution
+  assetType: varchar("asset_type", { length: 50 }).notNull(), // From ASSET_TYPES
+  institutionName: varchar("institution_name", { length: 255 }),
+  accountNumberMasked: varchar("account_number_masked", { length: 50 }),
+  
+  // Values
+  cashValue: decimal("cash_value", { precision: 14, scale: 2 }).notNull(),
+  marketValue: decimal("market_value", { precision: 14, scale: 2 }),
+  
+  // For retirement accounts
+  vestedAmount: decimal("vested_amount", { precision: 14, scale: 2 }),
+  
+  // For gifts
+  giftDonorName: varchar("gift_donor_name", { length: 255 }),
+  giftDonorRelationship: varchar("gift_donor_relationship", { length: 100 }),
+  
+  // Source documents
+  sourceDocumentIds: text("source_document_ids").array(),
+  
+  // MISMO Mapping (Required)
+  mismoPath: varchar("mismo_path", { length: 500 }).notNull(), // e.g., "MISMO.Asset.LiquidAsset"
+  
+  // Verification
+  verificationSource: varchar("verification_source", { length: 50 }).notNull(), // ocr, plaid, manual
+  verifiedAt: timestamp("verified_at"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_assets_borrower").on(table.borrowerId),
+  index("idx_assets_loan").on(table.loanId),
+  index("idx_assets_type").on(table.assetType),
+]);
+
+export const canonicalAssetsRelations = relations(canonicalAssets, ({ one }) => ({
+  borrower: one(users, {
+    fields: [canonicalAssets.borrowerId],
+    references: [users.id],
+  }),
+  loan: one(loanApplications, {
+    fields: [canonicalAssets.loanId],
+    references: [loanApplications.id],
+  }),
+}));
+
+// J. Liabilities (Normalized)
+export const LIABILITY_TYPES = [
+  "first_mortgage",
+  "second_mortgage",
+  "heloc",
+  "auto_loan",
+  "student_loan",
+  "credit_card",
+  "personal_loan",
+  "installment_loan",
+  "child_support",
+  "alimony",
+  "other",
+] as const;
+
+export type LiabilityType = typeof LIABILITY_TYPES[number];
+
+export const canonicalLiabilities = pgTable("canonical_liabilities", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  borrowerId: varchar("borrower_id").references(() => users.id).notNull(),
+  loanId: varchar("loan_id").references(() => loanApplications.id),
+  
+  // Liability type and creditor
+  liabilityType: varchar("liability_type", { length: 50 }).notNull(), // From LIABILITY_TYPES
+  creditorName: varchar("creditor_name", { length: 255 }),
+  accountNumberMasked: varchar("account_number_masked", { length: 50 }),
+  
+  // Amounts
+  monthlyPayment: decimal("monthly_payment", { precision: 10, scale: 2 }).notNull(),
+  remainingBalance: decimal("remaining_balance", { precision: 14, scale: 2 }),
+  creditLimit: decimal("credit_limit", { precision: 14, scale: 2 }),
+  
+  // For determining if paid by closing
+  willBePaidOff: boolean("will_be_paid_off").default(false),
+  monthsRemaining: integer("months_remaining"),
+  
+  // Source (credit report or document)
+  sourceType: varchar("source_type", { length: 50 }).notNull(), // credit_report, document, manual
+  sourceDocumentIds: text("source_document_ids").array(),
+  
+  // MISMO Mapping (Required)
+  mismoPath: varchar("mismo_path", { length: 500 }).notNull(), // e.g., "MISMO.Liability.MonthlyPaymentAmount"
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_liabilities_borrower").on(table.borrowerId),
+  index("idx_liabilities_loan").on(table.loanId),
+  index("idx_liabilities_type").on(table.liabilityType),
+]);
+
+export const canonicalLiabilitiesRelations = relations(canonicalLiabilities, ({ one }) => ({
+  borrower: one(users, {
+    fields: [canonicalLiabilities.borrowerId],
+    references: [users.id],
+  }),
+  loan: one(loanApplications, {
+    fields: [canonicalLiabilities.loanId],
+    references: [loanApplications.id],
+  }),
+}));
+
+// ============================================================================
+// UNDERWRITING EVENT ENGINE (This is the secret sauce)
+// ============================================================================
+// This replaces humans asking "what's next?"
+// Event-based architecture for automatic workflow triggering
+
+// K. Underwriting Event Definitions (Rules)
+export const UNDERWRITING_TRIGGER_TYPES = [
+  "document_detected",
+  "field_extracted",
+  "threshold_exceeded",
+  "document_complete",
+  "income_calculated",
+  "dti_changed",
+  "anomaly_detected",
+  "manual_trigger",
+] as const;
+
+export const UNDERWRITING_ACTION_TYPES = [
+  "request_document",
+  "enable_income_logic",
+  "recalculate_dti",
+  "flag_for_review",
+  "create_condition",
+  "send_notification",
+  "update_status",
+] as const;
+
+export const underwritingEventRules = pgTable("underwriting_event_rules", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Rule identification
+  ruleName: varchar("rule_name", { length: 255 }).notNull(),
+  ruleDescription: text("rule_description"),
+  
+  // Trigger condition
+  triggerType: varchar("trigger_type", { length: 50 }).notNull(), // From UNDERWRITING_TRIGGER_TYPES
+  triggerCondition: jsonb("trigger_condition").notNull(), // Expression to evaluate
+  // Example: { documentType: "schedule_e" } or { fieldName: "largeDeposit", operator: ">", value: 5000 }
+  
+  // Actions to take when triggered
+  actions: jsonb("actions").notNull(), // Array of {type, params}
+  // Example: [{ type: "request_document", params: { documentType: "lease_agreement" }}]
+  
+  // Priority and ordering
+  priority: integer("priority").default(0).notNull(),
+  
+  // Rule applicability
+  applicableLoanTypes: text("applicable_loan_types").array(), // conventional, fha, va, etc. or null for all
+  isActive: boolean("is_active").default(true).notNull(),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_uw_rules_trigger").on(table.triggerType),
+  index("idx_uw_rules_active").on(table.isActive),
+]);
+
+// L. Underwriting Event Log (What happened)
+export const underwritingEventLog = pgTable("underwriting_event_log", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  loanId: varchar("loan_id").references(() => loanApplications.id).notNull(),
+  
+  // What rule triggered this
+  ruleId: varchar("rule_id").references(() => underwritingEventRules.id),
+  
+  // Event details
+  triggerType: varchar("trigger_type", { length: 50 }).notNull(),
+  triggerData: jsonb("trigger_data"), // The data that triggered the event
+  
+  // Actions taken
+  actionsTaken: jsonb("actions_taken").notNull(), // What was done
+  
+  // Result
+  status: varchar("status", { length: 50 }).notNull(), // success, partial, failed
+  errorMessage: text("error_message"),
+  
+  triggeredAt: timestamp("triggered_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_uw_events_loan").on(table.loanId),
+  index("idx_uw_events_rule").on(table.ruleId),
+  index("idx_uw_events_trigger").on(table.triggerType),
+]);
+
+export const underwritingEventLogRelations = relations(underwritingEventLog, ({ one }) => ({
+  loan: one(loanApplications, {
+    fields: [underwritingEventLog.loanId],
+    references: [loanApplications.id],
+  }),
+  rule: one(underwritingEventRules, {
+    fields: [underwritingEventLog.ruleId],
+    references: [underwritingEventRules.id],
+  }),
+}));
+
+// ============================================================================
+// DTI / DSCR CALCULATION SCHEMAS
+// ============================================================================
+// DTI = function(data), not function(docs)
+// This allows recalculation when docs change, what-if scenarios, clean AUS submissions
+
+// M. Underwriting Snapshot (Point-in-time calculation inputs)
+export const underwritingSnapshots = pgTable("underwriting_snapshots", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  loanId: varchar("loan_id").references(() => loanApplications.id).notNull(),
+  borrowerId: varchar("borrower_id").references(() => users.id).notNull(),
+  
+  // Snapshot type
+  snapshotType: varchar("snapshot_type", { length: 50 }).notNull(), // initial, update, final, what_if
+  
+  // Aggregated income (from incomeStreams)
+  totalMonthlyIncome: decimal("total_monthly_income", { precision: 12, scale: 2 }).notNull(),
+  incomeBreakdown: jsonb("income_breakdown"), // {w2: x, selfEmployed: y, rental: z}
+  
+  // Aggregated liabilities (from canonicalLiabilities)
+  totalMonthlyLiabilities: decimal("total_monthly_liabilities", { precision: 12, scale: 2 }).notNull(),
+  liabilityBreakdown: jsonb("liability_breakdown"),
+  
+  // Housing expense
+  proposedHousingExpense: decimal("proposed_housing_expense", { precision: 10, scale: 2 }).notNull(), // PITI
+  
+  // Aggregated assets (for reserves calculation)
+  totalLiquidAssets: decimal("total_liquid_assets", { precision: 14, scale: 2 }),
+  totalRetirementAssets: decimal("total_retirement_assets", { precision: 14, scale: 2 }),
+  
+  // Source document IDs (for audit trail)
+  sourceDocumentIds: text("source_document_ids").array(),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_uw_snapshots_loan").on(table.loanId),
+  index("idx_uw_snapshots_borrower").on(table.borrowerId),
+  index("idx_uw_snapshots_type").on(table.snapshotType),
+]);
+
+export const underwritingSnapshotsRelations = relations(underwritingSnapshots, ({ one, many }) => ({
+  loan: one(loanApplications, {
+    fields: [underwritingSnapshots.loanId],
+    references: [loanApplications.id],
+  }),
+  borrower: one(users, {
+    fields: [underwritingSnapshots.borrowerId],
+    references: [users.id],
+  }),
+  results: many(underwritingResults),
+}));
+
+// N. Underwriting Result (Calculated outputs)
+// Explanation is REQUIRED for regulators & lenders
+export const underwritingResults = pgTable("underwriting_results", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  snapshotId: varchar("snapshot_id").references(() => underwritingSnapshots.id).notNull(),
+  loanId: varchar("loan_id").references(() => loanApplications.id).notNull(),
+  
+  // DTI Calculations
+  frontEndDti: decimal("front_end_dti", { precision: 5, scale: 2 }).notNull(), // Housing / Income
+  backEndDti: decimal("back_end_dti", { precision: 5, scale: 2 }).notNull(), // (Housing + Debts) / Income
+  
+  // DSCR (for rental/investment properties)
+  dscr: decimal("dscr", { precision: 5, scale: 3 }), // Rental Income / PITIA
+  
+  // LTV
+  ltv: decimal("ltv", { precision: 5, scale: 2 }),
+  cltv: decimal("cltv", { precision: 5, scale: 2 }),
+  
+  // Reserves
+  monthsOfReserves: decimal("months_of_reserves", { precision: 4, scale: 1 }),
+  reservesRequired: decimal("reserves_required", { precision: 4, scale: 1 }),
+  
+  // Overall eligibility
+  eligibilityStatus: varchar("eligibility_status", { length: 50 }).notNull(), // eligible, ineligible, manual_review
+  
+  // Confidence (How reliable is this calculation?)
+  confidence: decimal("confidence", { precision: 5, scale: 4 }).notNull(), // Based on source field confidences
+  
+  // Explanation (REQUIRED - not optional)
+  explanation: jsonb("explanation").notNull(), // Array of {category, message, impact}
+  // Example: [{ category: "income", message: "Self-employed income requires 24-month history", impact: "warning" }]
+  
+  // Findings that need attention
+  findings: jsonb("findings"), // Array of {type, severity, description, recommendation}
+  
+  calculatedAt: timestamp("calculated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_uw_results_snapshot").on(table.snapshotId),
+  index("idx_uw_results_loan").on(table.loanId),
+  index("idx_uw_results_eligibility").on(table.eligibilityStatus),
+]);
+
+export const underwritingResultsRelations = relations(underwritingResults, ({ one }) => ({
+  snapshot: one(underwritingSnapshots, {
+    fields: [underwritingResults.snapshotId],
+    references: [underwritingSnapshots.id],
+  }),
+  loan: one(loanApplications, {
+    fields: [underwritingResults.loanId],
+    references: [loanApplications.id],
+  }),
+}));
+
+// ============================================================================
+// FRAUD & ANOMALY ENGINE (Passive at first)
+// ============================================================================
+// Build the hooks now even if rules come later
+
+// O. Anomaly Detection
+export const ANOMALY_CATEGORIES = [
+  "identity",           // Name mismatch, SSN issues
+  "income",             // Income inconsistencies
+  "document_integrity", // Edited PDFs, font mismatches
+  "asset_mismatch",     // Balance discrepancies
+  "employment",         // Employer name changes
+  "transaction",        // Unusual cash flows
+  "address",            // Address inconsistencies
+  "timing",             // Suspicious document dates
+] as const;
+
+export const ANOMALY_SEVERITY = ["low", "medium", "high", "critical"] as const;
+
+export const anomalies = pgTable("anomalies", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  loanId: varchar("loan_id").references(() => loanApplications.id).notNull(),
+  
+  // Anomaly classification
+  category: varchar("category", { length: 50 }).notNull(), // From ANOMALY_CATEGORIES
+  severity: varchar("severity", { length: 20 }).notNull(), // From ANOMALY_SEVERITY
+  
+  // Description
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description").notNull(),
+  
+  // Evidence
+  sourceDocumentIds: text("source_document_ids").array(),
+  evidenceDetails: jsonb("evidence_details"), // Specific data points that triggered anomaly
+  
+  // Detection method
+  detectionMethod: varchar("detection_method", { length: 100 }).notNull(), // rule_based, ml_model, cross_validation
+  detectionRuleId: varchar("detection_rule_id", { length: 100 }),
+  
+  // Resolution
+  status: varchar("status", { length: 50 }).default("open").notNull(), // open, investigating, resolved, false_positive
+  resolution: text("resolution"),
+  resolvedByUserId: varchar("resolved_by_user_id").references(() => users.id),
+  resolvedAt: timestamp("resolved_at"),
+  
+  detectedAt: timestamp("detected_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_anomalies_loan").on(table.loanId),
+  index("idx_anomalies_category").on(table.category),
+  index("idx_anomalies_severity").on(table.severity),
+  index("idx_anomalies_status").on(table.status),
+]);
+
+export const anomaliesRelations = relations(anomalies, ({ one }) => ({
+  loan: one(loanApplications, {
+    fields: [anomalies.loanId],
+    references: [loanApplications.id],
+  }),
+  resolver: one(users, {
+    fields: [anomalies.resolvedByUserId],
+    references: [users.id],
+  }),
+}));
+
+// ============================================================================
+// AUDIT & COMPLIANCE LAYER (From Day 1)
+// ============================================================================
+// Required for: FCRA, SOC 2, State regulators, Lender onboarding
+// Immutable storage required
+
+// P. Audit Event Log
+export const AUDIT_ACTOR_ROLES = [
+  "borrower",
+  "loan_officer",
+  "processor",
+  "underwriter",
+  "admin",
+  "system",       // Automated actions
+  "integration",  // Third-party integrations
+] as const;
+
+export const AUDIT_EVENT_CATEGORIES = [
+  "document",      // Document upload, view, delete
+  "data_access",   // PII access
+  "decision",      // Underwriting decisions
+  "consent",       // Credit consent, disclosures
+  "export",        // Data export, GSE submission
+  "authentication",// Login, logout, session
+  "modification",  // Data changes
+] as const;
+
+export const auditEvents = pgTable("audit_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Actor identification
+  actorId: varchar("actor_id").references(() => users.id), // null for system actions
+  actorRole: varchar("actor_role", { length: 50 }).notNull(), // From AUDIT_ACTOR_ROLES
+  actorEmail: varchar("actor_email", { length: 255 }),
+  
+  // What happened
+  eventCategory: varchar("event_category", { length: 50 }).notNull(), // From AUDIT_EVENT_CATEGORIES
+  action: varchar("action", { length: 255 }).notNull(), // e.g., "document.upload", "credit.pull", "application.submit"
+  
+  // Entity affected
+  entityType: varchar("entity_type", { length: 100 }).notNull(), // loan_application, document, user, etc.
+  entityId: varchar("entity_id", { length: 255 }).notNull(),
+  
+  // Context
+  loanId: varchar("loan_id").references(() => loanApplications.id), // null for non-loan events
+  
+  // Details (careful not to log PII)
+  details: jsonb("details"), // Additional context (no PII!)
+  
+  // Request context
+  ipAddress: varchar("ip_address", { length: 45 }),
+  userAgent: text("user_agent"),
+  sessionId: varchar("session_id", { length: 255 }),
+  
+  // Timestamp (critical for audit)
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+  
+  // Immutability marker (for compliance)
+  eventHash: varchar("event_hash", { length: 128 }), // SHA-256 of event content
+  previousEventHash: varchar("previous_event_hash", { length: 128 }), // Chain hash for tamper detection
+}, (table) => [
+  index("idx_audit_actor").on(table.actorId),
+  index("idx_audit_category").on(table.eventCategory),
+  index("idx_audit_action").on(table.action),
+  index("idx_audit_entity").on(table.entityType, table.entityId),
+  index("idx_audit_loan").on(table.loanId),
+  index("idx_audit_timestamp").on(table.timestamp),
+]);
+
+export const auditEventsRelations = relations(auditEvents, ({ one }) => ({
+  actor: one(users, {
+    fields: [auditEvents.actorId],
+    references: [users.id],
+  }),
+  loan: one(loanApplications, {
+    fields: [auditEvents.loanId],
+    references: [loanApplications.id],
+  }),
+}));
+
+// ============================================================================
+// DOCUMENT INTELLIGENCE ENGINE - ZOD SCHEMAS & TYPES
+// ============================================================================
+
+export const insertDocumentUploadSchema = createInsertSchema(documentUploads).omit({
+  id: true,
+  createdAt: true,
+});
+export const insertDocumentPageSchema = createInsertSchema(documentPages).omit({
+  id: true,
+  createdAt: true,
+});
+export const insertPageClassificationSchema = createInsertSchema(pageClassifications).omit({
+  id: true,
+});
+export const insertLogicalDocumentSchema = createInsertSchema(logicalDocuments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export const insertLogicalDocumentPageSchema = createInsertSchema(logicalDocumentPages).omit({
+  id: true,
+  createdAt: true,
+});
+export const insertExtractedFieldSchema = createInsertSchema(extractedFields).omit({
+  id: true,
+});
+export const insertCompletenessCheckSchema = createInsertSchema(completenessChecks).omit({
+  id: true,
+});
+export const insertIncomeStreamSchema = createInsertSchema(incomeStreams).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export const insertCanonicalAssetSchema = createInsertSchema(canonicalAssets).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export const insertCanonicalLiabilitySchema = createInsertSchema(canonicalLiabilities).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export const insertUnderwritingEventRuleSchema = createInsertSchema(underwritingEventRules).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export const insertUnderwritingEventLogSchema = createInsertSchema(underwritingEventLog).omit({
+  id: true,
+});
+export const insertUnderwritingSnapshotSchema = createInsertSchema(underwritingSnapshots).omit({
+  id: true,
+  createdAt: true,
+});
+export const insertUnderwritingResultSchema = createInsertSchema(underwritingResults).omit({
+  id: true,
+});
+export const insertAnomalySchema = createInsertSchema(anomalies).omit({
+  id: true,
+});
+export const insertAuditEventSchema = createInsertSchema(auditEvents).omit({
+  id: true,
+});
+
+// Type exports
+export type InsertDocumentUpload = z.infer<typeof insertDocumentUploadSchema>;
+export type DocumentUpload = typeof documentUploads.$inferSelect;
+export type InsertDocumentPage = z.infer<typeof insertDocumentPageSchema>;
+export type DocumentPage = typeof documentPages.$inferSelect;
+export type InsertPageClassification = z.infer<typeof insertPageClassificationSchema>;
+export type PageClassification = typeof pageClassifications.$inferSelect;
+export type InsertLogicalDocument = z.infer<typeof insertLogicalDocumentSchema>;
+export type LogicalDocument = typeof logicalDocuments.$inferSelect;
+export type InsertLogicalDocumentPage = z.infer<typeof insertLogicalDocumentPageSchema>;
+export type LogicalDocumentPage = typeof logicalDocumentPages.$inferSelect;
+export type InsertExtractedField = z.infer<typeof insertExtractedFieldSchema>;
+export type ExtractedField = typeof extractedFields.$inferSelect;
+export type InsertCompletenessCheck = z.infer<typeof insertCompletenessCheckSchema>;
+export type CompletenessCheck = typeof completenessChecks.$inferSelect;
+export type InsertIncomeStream = z.infer<typeof insertIncomeStreamSchema>;
+export type IncomeStream = typeof incomeStreams.$inferSelect;
+export type InsertCanonicalAsset = z.infer<typeof insertCanonicalAssetSchema>;
+export type CanonicalAsset = typeof canonicalAssets.$inferSelect;
+export type InsertCanonicalLiability = z.infer<typeof insertCanonicalLiabilitySchema>;
+export type CanonicalLiability = typeof canonicalLiabilities.$inferSelect;
+export type InsertUnderwritingEventRule = z.infer<typeof insertUnderwritingEventRuleSchema>;
+export type UnderwritingEventRule = typeof underwritingEventRules.$inferSelect;
+export type InsertUnderwritingEventLog = z.infer<typeof insertUnderwritingEventLogSchema>;
+export type UnderwritingEventLog = typeof underwritingEventLog.$inferSelect;
+export type InsertUnderwritingSnapshot = z.infer<typeof insertUnderwritingSnapshotSchema>;
+export type UnderwritingSnapshot = typeof underwritingSnapshots.$inferSelect;
+export type InsertUnderwritingResult = z.infer<typeof insertUnderwritingResultSchema>;
+export type UnderwritingResult = typeof underwritingResults.$inferSelect;
+export type InsertAnomaly = z.infer<typeof insertAnomalySchema>;
+export type Anomaly = typeof anomalies.$inferSelect;
+export type InsertAuditEvent = z.infer<typeof insertAuditEventSchema>;
+export type AuditEvent = typeof auditEvents.$inferSelect;
+
+// ============================================================================
 // LOAN PIPELINE TRACKING (Fast Closing Optimization)
 // ============================================================================
 
@@ -1318,58 +2338,7 @@ export const insertDocumentRequirementRuleSchema = createInsertSchema(documentRe
 export type InsertDocumentRequirementRule = z.infer<typeof insertDocumentRequirementRuleSchema>;
 export type DocumentRequirementRule = typeof documentRequirementRules.$inferSelect;
 
-// Underwriting Snapshots - audit trail of underwriting calculations
-export const underwritingSnapshots = pgTable("underwriting_snapshots", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  applicationId: varchar("application_id").references(() => loanApplications.id).notNull(),
-  
-  // Snapshot timing
-  snapshotType: varchar("snapshot_type", { length: 50 }).notNull(), // initial, update, final
-  snapshotReason: varchar("snapshot_reason", { length: 255 }), // e.g., "Pre-approval", "Document update", "Final UW"
-  
-  // Underwriting results (stored as JSONB for flexibility)
-  incomeQualification: jsonb("income_qualification"), // IncomeQualificationResult
-  assetVerification: jsonb("asset_verification"), // AssetVerificationResult
-  liabilityAssessment: jsonb("liability_assessment"), // LiabilityAssessmentResult
-  dtiCalculation: jsonb("dti_calculation"), // DTICalculationResult
-  propertyEligibility: jsonb("property_eligibility"), // PropertyEligibilityResult
-  
-  // Summary metrics
-  totalQualifyingIncome: decimal("total_qualifying_income", { precision: 12, scale: 2 }),
-  totalVerifiedAssets: decimal("total_verified_assets", { precision: 12, scale: 2 }),
-  totalMonthlyDebts: decimal("total_monthly_debts", { precision: 10, scale: 2 }),
-  frontEndDTI: decimal("front_end_dti", { precision: 5, scale: 2 }),
-  backEndDTI: decimal("back_end_dti", { precision: 5, scale: 2 }),
-  
-  // Decision
-  underwritingDecision: varchar("underwriting_decision", { length: 50 }), // approved, denied, conditional, needs_review
-  decisionNotes: text("decision_notes"),
-  
-  // Conditions generated from this snapshot
-  conditionsGenerated: integer("conditions_generated").default(0),
-  
-  createdByUserId: varchar("created_by_user_id").references(() => users.id),
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
-export const underwritingSnapshotsRelations = relations(underwritingSnapshots, ({ one }) => ({
-  application: one(loanApplications, {
-    fields: [underwritingSnapshots.applicationId],
-    references: [loanApplications.id],
-  }),
-  createdBy: one(users, {
-    fields: [underwritingSnapshots.createdByUserId],
-    references: [users.id],
-  }),
-}));
-
-export const insertUnderwritingSnapshotSchema = createInsertSchema(underwritingSnapshots).omit({
-  id: true,
-  createdAt: true,
-});
-
-export type InsertUnderwritingSnapshot = z.infer<typeof insertUnderwritingSnapshotSchema>;
-export type UnderwritingSnapshot = typeof underwritingSnapshots.$inferSelect;
+// NOTE: underwritingSnapshots moved to DOCUMENT INTELLIGENCE ENGINE section above
 
 // ============================================================================
 // PLAID VERIFICATION SYSTEM

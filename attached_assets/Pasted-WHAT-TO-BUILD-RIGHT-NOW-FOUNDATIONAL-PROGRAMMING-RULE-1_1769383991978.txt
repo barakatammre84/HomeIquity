@@ -1,0 +1,242 @@
+WHAT TO BUILD RIGHT NOW (FOUNDATIONAL PROGRAMMING)
+🚨 RULE #1
+
+Do NOT build features. Build ENGINES.
+
+Features change. Engines compound.
+
+1️⃣ DOCUMENT INTELLIGENCE ENGINE (CORE)
+
+This is the backbone of everything else.
+
+Services to Build
+A. Document Ingestion Service
+DocumentUpload {
+  fileId
+  borrowerId
+  loanId
+  rawFile
+  uploadSource (mobile/web/api)
+}
+
+
+Responsibilities:
+
+Accept ANY format
+
+Split PDFs into pages
+
+Normalize images
+
+Store raw + processed versions
+
+B. Page-Level Classification Service
+PageClassification {
+  pageId
+  predictedType
+  confidence
+  modelVersion
+}
+
+
+ABSOLUTE REQUIREMENT
+
+Classify at PAGE level
+
+Never trust file names
+
+Never assume one doc per upload
+
+This unlocks:
+
+Mixed PDFs
+
+Automation
+
+Fraud detection
+
+C. OCR + Field Extraction Engine
+ExtractedField {
+  fieldName
+  value
+  confidence
+  sourcePage
+  misoPath
+}
+
+
+Rules:
+
+No field exists without:
+
+Confidence score
+
+Source reference
+
+Everything maps to MISMO or fails
+
+D. Completeness Validator
+CompletenessCheck {
+  documentType
+  status
+  missingItems[]
+}
+
+
+Examples:
+
+Missing bank stmt page
+
+Tax return missing Schedule E
+
+Paystub missing YTD
+
+2️⃣ UNDERWRITING EVENT ENGINE (THIS IS THE SECRET SAUCE)
+
+This replaces humans asking “what’s next?”
+
+Event-Based Architecture
+UnderwritingEvent {
+  trigger
+  condition
+  action
+}
+
+
+Example:
+
+IF document.type == "ScheduleE"
+THEN require LeaseAgreement
+AND enable RentalIncomeLogic
+
+
+This should:
+
+Generate doc requests
+
+Enable income logic
+
+Adjust DTI automatically
+
+Do NOT hardcode logic in UI. Ever.
+
+3️⃣ FINANCIAL CALCULATION ENGINE (DTI / DSCR)
+Inputs Are STRUCTURED — Not Documents
+IncomeStream {
+  type
+  monthlyAmount
+  stability
+  source
+}
+
+Liability {
+  type
+  monthlyPayment
+}
+
+
+DTI = function(data), not function(docs)
+
+This allows:
+
+Recalculation when docs change
+
+What-if scenarios
+
+Clean AUS submissions
+
+4️⃣ MISMO-CANONICAL DATA MODEL (NON-NEGOTIABLE)
+Everything Maps Here
+
+If it doesn’t map → it doesn’t exist.
+
+MISMO.Income.EmploymentIncome.GrossMonthlyIncome
+MISMO.Asset.LiquidAsset.CashOrMarketValueAmount
+MISMO.Liability.MonthlyPaymentAmount
+
+
+Benefits:
+
+GSE compliance
+
+Lender trust
+
+Direct lending readiness
+
+5️⃣ CONFIDENCE & ESCALATION ENGINE
+
+This is how you remove humans safely.
+
+Decision {
+  result
+  confidence
+  explanation[]
+}
+
+
+Rules:
+
+High confidence → auto
+
+Medium → LO review
+
+Low → borrower re-upload
+
+This makes automation defensible.
+
+6️⃣ FRAUD & ANOMALY ENGINE (PASSIVE AT FIRST)
+
+Build the hooks now even if rules come later.
+
+Anomaly {
+  category
+  severity
+  reason
+}
+
+
+Triggers:
+
+Name mismatch
+
+Income variance
+
+Document reuse
+
+7️⃣ AUDIT & COMPLIANCE LAYER (FROM DAY 1)
+Immutable Logs
+AuditEvent {
+  actor
+  action
+  timestamp
+  ip
+  loanId
+}
+
+
+Required for:
+
+FCRA
+
+SOC 2
+
+State regulators
+
+Lender onboarding
+
+WHAT NOT TO BUILD YET
+
+❌ Fancy borrower UI
+❌ Pricing engine
+❌ Lender integrations
+❌ Manual overrides everywhere
+
+These come AFTER engines exist.
+
+HOW TO INSTRUCT YOUR DEVELOPERS (COPY THIS)
+
+“We are building an underwriting-grade decision system, not a form uploader.
+Every document becomes structured data.
+Every decision has confidence and explanation.
+Everything maps to MISMO.
+Humans only handle exceptions.”
