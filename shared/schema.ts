@@ -958,6 +958,10 @@ export const tasks = pgTable("tasks", {
   documentYear: varchar("document_year", { length: 10 }), // e.g., "2024", "2023"
   documentInstructions: text("document_instructions"),
   
+  // Requesting Team - who is requesting this document
+  requestingTeam: varchar("requesting_team", { length: 50 }), // processing, underwriting, title, closing
+  isCustomRequest: boolean("is_custom_request").default(false), // true for custom/unique document requests
+  
   // Status
   status: varchar("status", { length: 50 }).default("pending").notNull(), // pending, in_progress, submitted, verified, rejected, completed
   priority: varchar("priority", { length: 20 }).default("normal"), // low, normal, high, urgent
@@ -1042,6 +1046,108 @@ export const insertTaskDocumentSchema = createInsertSchema(taskDocuments).omit({
 
 export type InsertTaskDocument = z.infer<typeof insertTaskDocumentSchema>;
 export type TaskDocument = typeof taskDocuments.$inferSelect;
+
+// ============================================================================
+// DOCUMENT PACKAGES (Lender-Ready Document Organization)
+// ============================================================================
+
+// Document Package Types
+export const DOCUMENT_PACKAGE_TYPES = [
+  "initial_submission",    // Initial lender submission
+  "condition_response",    // Response to underwriting conditions
+  "final_package",         // Final closing package
+  "title_package",         // Title company package
+  "custom",                // Custom package
+] as const;
+
+export type DocumentPackageType = typeof DOCUMENT_PACKAGE_TYPES[number];
+
+// Document Package - organizes documents for lender delivery
+export const documentPackages = pgTable("document_packages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  applicationId: varchar("application_id").references(() => loanApplications.id).notNull(),
+  createdByUserId: varchar("created_by_user_id").references(() => users.id).notNull(),
+  
+  // Package Details
+  name: varchar("name", { length: 255 }).notNull(),
+  packageType: varchar("package_type", { length: 50 }).notNull(), // initial_submission, condition_response, final_package, title_package, custom
+  description: text("description"),
+  
+  // Organization
+  sections: jsonb("sections"), // Array of section names for organizing documents
+  
+  // Status
+  status: varchar("status", { length: 50 }).default("draft").notNull(), // draft, ready, sent, acknowledged
+  
+  // Delivery
+  recipientType: varchar("recipient_type", { length: 50 }), // lender, title, underwriter, investor
+  recipientName: varchar("recipient_name", { length: 255 }),
+  sentAt: timestamp("sent_at"),
+  acknowledgedAt: timestamp("acknowledged_at"),
+  
+  // Notes
+  internalNotes: text("internal_notes"),
+  deliveryNotes: text("delivery_notes"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const documentPackagesRelations = relations(documentPackages, ({ one, many }) => ({
+  application: one(loanApplications, {
+    fields: [documentPackages.applicationId],
+    references: [loanApplications.id],
+  }),
+  createdBy: one(users, {
+    fields: [documentPackages.createdByUserId],
+    references: [users.id],
+  }),
+  items: many(documentPackageItems),
+}));
+
+// Document Package Items - links documents to packages with organization
+export const documentPackageItems = pgTable("document_package_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  packageId: varchar("package_id").references(() => documentPackages.id).notNull(),
+  documentId: varchar("document_id").references(() => documents.id).notNull(),
+  
+  // Organization within package
+  sectionName: varchar("section_name", { length: 100 }), // e.g., "Income Documents", "Asset Documents"
+  displayOrder: integer("display_order").default(0),
+  customLabel: varchar("custom_label", { length: 255 }), // Override default document name
+  
+  // Notes
+  notes: text("notes"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const documentPackageItemsRelations = relations(documentPackageItems, ({ one }) => ({
+  package: one(documentPackages, {
+    fields: [documentPackageItems.packageId],
+    references: [documentPackages.id],
+  }),
+  document: one(documents, {
+    fields: [documentPackageItems.documentId],
+    references: [documents.id],
+  }),
+}));
+
+export const insertDocumentPackageSchema = createInsertSchema(documentPackages).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertDocumentPackageItemSchema = createInsertSchema(documentPackageItems).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertDocumentPackage = z.infer<typeof insertDocumentPackageSchema>;
+export type DocumentPackage = typeof documentPackages.$inferSelect;
+export type InsertDocumentPackageItem = z.infer<typeof insertDocumentPackageItemSchema>;
+export type DocumentPackageItem = typeof documentPackageItems.$inferSelect;
 
 // ============================================================================
 // LOAN PIPELINE TRACKING (Fast Closing Optimization)

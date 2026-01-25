@@ -46,6 +46,8 @@ import {
   slaConfigurations,
   analyticsSnapshots,
   dealTeamMembers,
+  documentPackages,
+  documentPackageItems,
   type User,
   type UpsertUser,
   type LoanApplication,
@@ -134,6 +136,10 @@ import {
   type InsertAnalyticsSnapshot,
   type DealTeamMember,
   type InsertDealTeamMember,
+  type DocumentPackage,
+  type InsertDocumentPackage,
+  type DocumentPackageItem,
+  type InsertDocumentPackageItem,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -285,6 +291,19 @@ export interface IStorage {
   getTaskDocuments(taskId: string): Promise<(TaskDocument & { document: Document })[]>;
   updateTaskDocument(id: string, data: Partial<TaskDocument>): Promise<TaskDocument | undefined>;
   deleteTaskDocument(id: string): Promise<void>;
+  
+  // Document Packages - lender-ready document organization
+  createDocumentPackage(data: InsertDocumentPackage): Promise<DocumentPackage>;
+  getDocumentPackage(id: string): Promise<DocumentPackage | undefined>;
+  getDocumentPackagesByApplication(applicationId: string): Promise<DocumentPackage[]>;
+  updateDocumentPackage(id: string, data: Partial<DocumentPackage>): Promise<DocumentPackage | undefined>;
+  deleteDocumentPackage(id: string): Promise<void>;
+  
+  // Document Package Items
+  addDocumentToPackage(data: InsertDocumentPackageItem): Promise<DocumentPackageItem>;
+  getDocumentPackageItems(packageId: string): Promise<(DocumentPackageItem & { document: Document })[]>;
+  updateDocumentPackageItem(id: string, data: Partial<DocumentPackageItem>): Promise<DocumentPackageItem | undefined>;
+  removeDocumentFromPackage(id: string): Promise<void>;
   
   // Application Properties - multi-property support
   createApplicationProperty(data: InsertApplicationProperty): Promise<ApplicationProperty>;
@@ -1200,6 +1219,73 @@ export class DatabaseStorage implements IStorage {
 
   async deleteTaskDocument(id: string): Promise<void> {
     await db.delete(taskDocuments).where(eq(taskDocuments.id, id));
+  }
+
+  // Document Packages - lender-ready document organization
+  async createDocumentPackage(data: InsertDocumentPackage): Promise<DocumentPackage> {
+    const [pkg] = await db.insert(documentPackages).values(data).returning();
+    return pkg;
+  }
+
+  async getDocumentPackage(id: string): Promise<DocumentPackage | undefined> {
+    const [pkg] = await db.select().from(documentPackages).where(eq(documentPackages.id, id));
+    return pkg;
+  }
+
+  async getDocumentPackagesByApplication(applicationId: string): Promise<DocumentPackage[]> {
+    return await db
+      .select()
+      .from(documentPackages)
+      .where(eq(documentPackages.applicationId, applicationId))
+      .orderBy(desc(documentPackages.createdAt));
+  }
+
+  async updateDocumentPackage(id: string, data: Partial<DocumentPackage>): Promise<DocumentPackage | undefined> {
+    const [pkg] = await db
+      .update(documentPackages)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(documentPackages.id, id))
+      .returning();
+    return pkg;
+  }
+
+  async deleteDocumentPackage(id: string): Promise<void> {
+    // First delete all items in the package
+    await db.delete(documentPackageItems).where(eq(documentPackageItems.packageId, id));
+    await db.delete(documentPackages).where(eq(documentPackages.id, id));
+  }
+
+  // Document Package Items
+  async addDocumentToPackage(data: InsertDocumentPackageItem): Promise<DocumentPackageItem> {
+    const [item] = await db.insert(documentPackageItems).values(data).returning();
+    return item;
+  }
+
+  async getDocumentPackageItems(packageId: string): Promise<(DocumentPackageItem & { document: Document })[]> {
+    const items = await db
+      .select()
+      .from(documentPackageItems)
+      .innerJoin(documents, eq(documentPackageItems.documentId, documents.id))
+      .where(eq(documentPackageItems.packageId, packageId))
+      .orderBy(asc(documentPackageItems.displayOrder));
+    
+    return items.map(item => ({
+      ...item.document_package_items,
+      document: item.documents,
+    }));
+  }
+
+  async updateDocumentPackageItem(id: string, data: Partial<DocumentPackageItem>): Promise<DocumentPackageItem | undefined> {
+    const [item] = await db
+      .update(documentPackageItems)
+      .set(data)
+      .where(eq(documentPackageItems.id, id))
+      .returning();
+    return item;
+  }
+
+  async removeDocumentFromPackage(id: string): Promise<void> {
+    await db.delete(documentPackageItems).where(eq(documentPackageItems.id, id));
   }
 
   // Agent Profiles

@@ -17,6 +17,8 @@ import {
   insertSavingsTransactionSchema,
   insertJourneyMilestoneSchema,
   insertApplicationInviteSchema,
+  insertDocumentPackageSchema,
+  insertDocumentPackageItemSchema,
   ALL_ROLES,
   isStaffRole,
   type User,
@@ -163,10 +165,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           fileName: uploaded?.fileName,
           uploadedAt: uploaded?.createdAt?.toISOString(),
           notes: uploaded?.notes || task?.verificationNotes,
+          requestingTeam: task?.requestingTeam,
+          isCustomRequest: task?.isCustomRequest,
+          instructions: task?.documentInstructions,
         };
       });
 
-      // Add any additional document tasks not in standard list
+      // Add any additional document tasks not in standard list (custom requests)
       for (const task of documentTasks) {
         if (!standardDocs.find(d => d.type === task.documentCategory)) {
           const uploaded = uploadedDocs.find(u => u.documentType === task.documentCategory);
@@ -178,6 +183,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             fileName: uploaded?.fileName,
             uploadedAt: uploaded?.createdAt?.toISOString(),
             notes: task.documentInstructions,
+            requestingTeam: task.requestingTeam,
+            isCustomRequest: task.isCustomRequest,
+            instructions: task.documentInstructions,
           });
         }
       }
@@ -5498,6 +5506,278 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Apply referral error:", error);
       res.status(500).json({ error: "Failed to apply referral code" });
+    }
+  });
+
+  // ============================================================================
+  // DOCUMENT PACKAGES - Lender-Ready Document Organization
+  // ============================================================================
+
+  // Validation schemas for document packages - using drizzle-zod schemas from shared/schema.ts
+  const createPackageValidation = insertDocumentPackageSchema.omit({ createdByUserId: true });
+  const updatePackageValidation = insertDocumentPackageSchema.partial().omit({ 
+    createdByUserId: true, 
+    applicationId: true 
+  });
+  const addPackageItemValidation = insertDocumentPackageItemSchema.omit({ packageId: true });
+  const updatePackageItemValidation = insertDocumentPackageItemSchema.partial().omit({ 
+    packageId: true, 
+    documentId: true 
+  });
+
+  // Create document package
+  app.post("/api/document-packages", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      if (!isStaffRole(user.role)) {
+        return res.status(403).json({ error: "Staff only" });
+      }
+
+      const parsed = createPackageValidation.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid package data", details: parsed.error.flatten() });
+      }
+
+      // Verify application exists before creating package
+      const application = await storage.getLoanApplication(parsed.data.applicationId);
+      if (!application) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+
+      const packageData = {
+        ...parsed.data,
+        createdByUserId: user.id,
+      };
+
+      const pkg = await storage.createDocumentPackage(packageData);
+
+      await storage.createDealActivity({
+        applicationId: pkg.applicationId,
+        activityType: "note",
+        title: "Document Package Created",
+        description: `Created package: ${pkg.name}`,
+        performedBy: user.id,
+      });
+
+      res.status(201).json(pkg);
+    } catch (error) {
+      console.error("Create document package error:", error);
+      res.status(500).json({ error: "Failed to create document package" });
+    }
+  });
+
+  // Get document packages for application
+  app.get("/api/applications/:applicationId/document-packages", isAuthenticated, async (req, res) => {
+    try {
+      const { applicationId } = req.params;
+      const user = req.user as User;
+
+      const application = await storage.getLoanApplication(applicationId);
+      if (!application) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+      if (application.userId !== user.id && !isStaffRole(user.role)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      const packages = await storage.getDocumentPackagesByApplication(applicationId);
+      res.json(packages);
+    } catch (error) {
+      console.error("Get document packages error:", error);
+      res.status(500).json({ error: "Failed to get document packages" });
+    }
+  });
+
+  // Get single document package with items
+  app.get("/api/document-packages/:id", isAuthenticated, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const user = req.user as User;
+
+      const pkg = await storage.getDocumentPackage(id);
+      if (!pkg) {
+        return res.status(404).json({ error: "Package not found" });
+      }
+
+      const application = await storage.getLoanApplication(pkg.applicationId);
+      if (!application) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+      if (application.userId !== user.id && !isStaffRole(user.role)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      const items = await storage.getDocumentPackageItems(id);
+      res.json({ ...pkg, items });
+    } catch (error) {
+      console.error("Get document package error:", error);
+      res.status(500).json({ error: "Failed to get document package" });
+    }
+  });
+
+  // Update document package
+  app.patch("/api/document-packages/:id", isAuthenticated, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const user = req.user as User;
+      
+      if (!isStaffRole(user.role)) {
+        return res.status(403).json({ error: "Staff only" });
+      }
+
+      // Verify package exists and staff can access
+      const existingPkg = await storage.getDocumentPackage(id);
+      if (!existingPkg) {
+        return res.status(404).json({ error: "Package not found" });
+      }
+
+      const parsed = updatePackageValidation.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid update data", details: parsed.error.flatten() });
+      }
+
+      // Handle status transitions and set timestamps
+      const updateData: any = { ...parsed.data };
+      if (parsed.data.status === "sent" && existingPkg.status !== "sent") {
+        updateData.sentAt = new Date();
+      }
+      if (parsed.data.status === "acknowledged" && existingPkg.status !== "acknowledged") {
+        updateData.acknowledgedAt = new Date();
+      }
+
+      const pkg = await storage.updateDocumentPackage(id, updateData);
+      if (!pkg) {
+        return res.status(404).json({ error: "Package not found" });
+      }
+
+      res.json(pkg);
+    } catch (error) {
+      console.error("Update document package error:", error);
+      res.status(500).json({ error: "Failed to update document package" });
+    }
+  });
+
+  // Delete document package
+  app.delete("/api/document-packages/:id", isAuthenticated, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const user = req.user as User;
+      
+      if (!isStaffRole(user.role)) {
+        return res.status(403).json({ error: "Staff only" });
+      }
+
+      // Verify package exists before deleting
+      const pkg = await storage.getDocumentPackage(id);
+      if (!pkg) {
+        return res.status(404).json({ error: "Package not found" });
+      }
+
+      await storage.deleteDocumentPackage(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Delete document package error:", error);
+      res.status(500).json({ error: "Failed to delete document package" });
+    }
+  });
+
+  // Add document to package
+  app.post("/api/document-packages/:packageId/items", isAuthenticated, async (req, res) => {
+    try {
+      const { packageId } = req.params;
+      const user = req.user as User;
+      
+      if (!isStaffRole(user.role)) {
+        return res.status(403).json({ error: "Staff only" });
+      }
+
+      // Verify package exists
+      const pkg = await storage.getDocumentPackage(packageId);
+      if (!pkg) {
+        return res.status(404).json({ error: "Package not found" });
+      }
+
+      const parsed = addPackageItemValidation.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid item data", details: parsed.error.flatten() });
+      }
+
+      const item = await storage.addDocumentToPackage({
+        ...parsed.data,
+        packageId,
+      });
+
+      res.status(201).json(item);
+    } catch (error) {
+      console.error("Add document to package error:", error);
+      res.status(500).json({ error: "Failed to add document to package" });
+    }
+  });
+
+  // Update package item
+  app.patch("/api/document-package-items/:id", isAuthenticated, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const user = req.user as User;
+      
+      if (!isStaffRole(user.role)) {
+        return res.status(403).json({ error: "Staff only" });
+      }
+
+      const parsed = updatePackageItemValidation.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid update data", details: parsed.error.flatten() });
+      }
+
+      const item = await storage.updateDocumentPackageItem(id, parsed.data);
+      if (!item) {
+        return res.status(404).json({ error: "Item not found" });
+      }
+
+      res.json(item);
+    } catch (error) {
+      console.error("Update package item error:", error);
+      res.status(500).json({ error: "Failed to update package item" });
+    }
+  });
+
+  // Remove document from package
+  app.delete("/api/document-package-items/:id", isAuthenticated, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const user = req.user as User;
+      
+      if (!isStaffRole(user.role)) {
+        return res.status(403).json({ error: "Staff only" });
+      }
+
+      await storage.removeDocumentFromPackage(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Remove document from package error:", error);
+      res.status(500).json({ error: "Failed to remove document from package" });
+    }
+  });
+
+  // Get documents for application (for package builder)
+  app.get("/api/applications/:applicationId/documents", isAuthenticated, async (req, res) => {
+    try {
+      const { applicationId } = req.params;
+      const user = req.user as User;
+
+      const application = await storage.getLoanApplication(applicationId);
+      if (!application) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+      if (application.userId !== user.id && !isStaffRole(user.role)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      const docs = await storage.getDocumentsByApplication(applicationId);
+      res.json(docs);
+    } catch (error) {
+      console.error("Get application documents error:", error);
+      res.status(500).json({ error: "Failed to get documents" });
     }
   });
 
