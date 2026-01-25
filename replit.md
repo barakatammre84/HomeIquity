@@ -47,6 +47,17 @@ The backend is developed with **Node.js, Express.js, and TypeScript**. It uses *
 -   **Action Items:** Priority-sorted to-do list aggregating pending tasks, consent requirements, and outstanding conditions with urgency indicators (urgent/high/normal/low), due dates, and direct action links
 -   **API Endpoints:** `/api/applications/:id/document-checklist` and `/api/applications/:id/action-items` with ownership/staff access control
 -   **Visibility:** Components appear for all borrowers with active applications (both pre-approved and in-progress)
+-   **Team-Based Requests:** Document checklist shows requesting team badges (Processing, Underwriting, Title, Closing) with color coding and custom instructions
+
+**Enhanced Document Management System:** Streamlined document workflow between borrowers, staff teams, and lenders with:
+-   **Custom Document Requests:** Staff can create custom document requests with team assignment (processing/underwriting/title/closing), specific instructions, due dates, and priority levels
+-   **DocumentRequestForm:** Form component for staff to request standard or custom documents with team routing
+-   **Document Package Builder:** 3-step wizard for organizing verified documents into lender-ready packages (package info → select documents → review and organize)
+-   **Package Types:** Initial submission, condition response, final package, title package, and custom types
+-   **Package Status Flow:** draft → ready → sent → acknowledged with automatic timestamp tracking
+-   **Recipient Management:** Track lender contact info, company, and delivery status per package
+-   **API Endpoints:** Full CRUD for `/api/document-packages` and `/api/document-package-items` with Zod validation using drizzle-zod schemas
+-   **Database Schema:** `document_packages` and `document_package_items` tables with XLink-style relationships
 
 **Staff Pipeline Queue:** A management tool for brokers/lenders to view and manage priority-sorted loan queues, condition clearing, and stage advancement.
 
