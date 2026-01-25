@@ -50,6 +50,7 @@ import ApplyInvite from "@/pages/ApplyInvite";
 import AnalyticsDashboard from "@/pages/AnalyticsDashboard";
 import EConsent from "@/pages/EConsent";
 import PartnerServices from "@/pages/PartnerServices";
+import ReferralLanding from "@/pages/ReferralLanding";
 
 function PublicPage({ children }: { children: React.ReactNode }) {
   return <PublicLayout>{children}</PublicLayout>;
@@ -76,6 +77,9 @@ function Router() {
       <Route path="/apply" component={PreApproval} />
       <Route path="/apply/:token">
         {(params) => <ApplyInvite />}
+      </Route>
+      <Route path="/ref/:code">
+        {(params) => <ReferralLanding />}
       </Route>
       <Route path="/resources">
         <PublicPage><Resources /></PublicPage>

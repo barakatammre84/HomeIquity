@@ -23,6 +23,7 @@ import {
   Calendar,
 } from "lucide-react";
 import { format } from "date-fns";
+import ReferralLink from "@/components/ReferralLink";
 
 interface BrokerStats {
   totalReferrals: number;
@@ -143,6 +144,8 @@ export default function BrokerDashboard() {
           </p>
         </div>
       </div>
+
+      <ReferralLink />
 
       <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
         {statCards.map((stat) => (
