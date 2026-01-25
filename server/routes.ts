@@ -112,9 +112,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/loan-applications", isAuthenticated, async (req, res) => {
     try {
-      const userId = req.user!.id;
+      const user = req.user as User;
+      const userId = user.id;
       
       const formData = req.body;
+      
+      // Check if user was referred by someone - set as referring broker for commissions
+      let referringBrokerId: string | undefined = undefined;
+      if (user.referredByUserId) {
+        referringBrokerId = user.referredByUserId;
+      }
       
       const applicationData = {
         userId,
@@ -131,6 +138,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isVeteran: formData.isVeteran || false,
         isFirstTimeBuyer: formData.isFirstTimeBuyer || false,
         propertyState: formData.propertyState,
+        referringBrokerId,
       };
 
       const application = await storage.createLoanApplication(applicationData);
