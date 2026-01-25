@@ -5250,10 +5250,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Invalid referral code" });
       }
       
-      // Return limited public info about the referrer
+      // Return public profile info about the referrer
       res.json({
         valid: true,
         loName: `${referrer.firstName || ''} ${referrer.lastName || ''}`.trim() || 'Your Loan Officer',
+        firstName: referrer.firstName,
+        lastName: referrer.lastName,
+        email: referrer.email,
+        profileImageUrl: referrer.profileImageUrl,
         nmlsId: referrer.nmlsId,
         companyName: referrer.partnerCompanyName,
       });

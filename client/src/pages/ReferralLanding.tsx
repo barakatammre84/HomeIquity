@@ -8,11 +8,16 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { CheckCircle, User, Building2, Shield, ArrowRight, Home } from "lucide-react";
+import { CheckCircle, User, Building2, Shield, ArrowRight, Home, Mail } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface ReferrerInfo {
   valid: boolean;
   loName: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  profileImageUrl?: string;
   nmlsId?: string;
   companyName?: string;
 }
@@ -115,9 +120,14 @@ export default function ReferralLanding() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted/50 p-4">
       <Card className="w-full max-w-lg">
         <CardHeader className="text-center">
-          <div className="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-            <User className="h-8 w-8 text-primary" />
-          </div>
+          <Avatar className="mx-auto w-20 h-20 mb-4">
+            {referrer.profileImageUrl ? (
+              <AvatarImage src={referrer.profileImageUrl} alt={referrer.loName} />
+            ) : null}
+            <AvatarFallback className="text-2xl bg-primary/10 text-primary">
+              {(referrer.firstName?.[0] || 'L')}{(referrer.lastName?.[0] || 'O')}
+            </AvatarFallback>
+          </Avatar>
           <CardTitle className="text-2xl" data-testid="text-welcome">
             {applied ? "You're Connected!" : `Welcome from ${referrer.loName}`}
           </CardTitle>
@@ -152,6 +162,21 @@ export default function ReferralLanding() {
                 <div>
                   <div className="font-medium" data-testid="text-company">{referrer.companyName}</div>
                   <div className="text-sm text-muted-foreground">Company</div>
+                </div>
+              </div>
+            )}
+            {referrer.email && (
+              <div className="flex items-center gap-3">
+                <Mail className="h-5 w-5 text-muted-foreground" />
+                <div>
+                  <a 
+                    href={`mailto:${referrer.email}`} 
+                    className="font-medium text-primary hover:underline"
+                    data-testid="text-email"
+                  >
+                    {referrer.email}
+                  </a>
+                  <div className="text-sm text-muted-foreground">Email</div>
                 </div>
               </div>
             )}
