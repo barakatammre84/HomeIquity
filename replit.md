@@ -42,6 +42,12 @@ The backend is developed with **Node.js, Express.js, and TypeScript**. It uses *
 
 **Borrower Pipeline Dashboard:** Provides visual progress tracking for borrowers, showing stage timelines, outstanding conditions, and document submission status.
 
+**Borrower Dashboard Document Checklist & Action Items:** Enhanced borrower dashboard with:
+-   **Document Checklist:** Interactive checklist showing all required documents (W-2, pay stubs, tax returns, bank statements, ID) with 5 status types (needed, uploaded, verifying, verified, rejected), progress bar with completion percentage, and quick upload actions
+-   **Action Items:** Priority-sorted to-do list aggregating pending tasks, consent requirements, and outstanding conditions with urgency indicators (urgent/high/normal/low), due dates, and direct action links
+-   **API Endpoints:** `/api/applications/:id/document-checklist` and `/api/applications/:id/action-items` with ownership/staff access control
+-   **Visibility:** Components appear for all borrowers with active applications (both pre-approved and in-progress)
+
 **Staff Pipeline Queue:** A management tool for brokers/lenders to view and manage priority-sorted loan queues, condition clearing, and stage advancement.
 
 **MISMO/ULAD Validation Service:** Checks GSE submission readiness, providing URLA section completeness scoring and field-level validation.

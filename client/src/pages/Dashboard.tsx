@@ -8,6 +8,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DealTeam } from "@/components/DealTeam";
+import { DocumentChecklist } from "@/components/DocumentChecklist";
+import { ActionItems } from "@/components/ActionItems";
 import type { LoanApplication, DealActivity } from "@shared/schema";
 import {
   CheckCircle2,
@@ -167,47 +169,40 @@ export default function Dashboard() {
                 </Card>
 
                 <div className="space-y-6">
-                  <h3 className="text-2xl font-bold tracking-tight">Next steps</h3>
+                  <h3 className="text-2xl font-bold tracking-tight">Your to-do list</h3>
+                  
+                  {activeApplication && (
+                    <div className="grid gap-6 md:grid-cols-2">
+                      <ActionItems applicationId={activeApplication.id} compact maxItems={4} />
+                      <DocumentChecklist applicationId={activeApplication.id} compact />
+                    </div>
+                  )}
 
-                  {nextSteps.map((step, index) => (
-                    <Card key={index}>
-                      <CardHeader>
-                        <CardTitle className="text-lg">{step.title}</CardTitle>
-                        {step.description && (
-                          <CardDescription>{step.description}</CardDescription>
-                        )}
-                      </CardHeader>
-                      <CardContent className="space-y-4">
-                        {step.details && (
-                          <div className="space-y-3">
-                            {step.details.map((detail, i) => (
-                              <div key={i} className="flex gap-3 text-sm">
-                                <CheckCheck className="h-5 w-5 text-green-600 dark:text-green-400 shrink-0 mt-0.5" />
-                                <span>{detail}</span>
-                              </div>
-                            ))}
+                  <h3 className="text-2xl font-bold tracking-tight pt-4">Your team</h3>
+                  
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Your Loan Team</CardTitle>
+                      <CardDescription>
+                        Your dedicated team is here to help you every step of the way
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="space-y-3">
+                        {nextSteps[0].details?.map((detail, i) => (
+                          <div key={i} className="flex gap-3 text-sm">
+                            <CheckCheck className="h-5 w-5 text-green-600 dark:text-green-400 shrink-0 mt-0.5" />
+                            <span>{detail}</span>
                           </div>
-                        )}
-
-                        {index === 0 && activeApplication && (
-                          <div className="border-t pt-4">
-                            <DealTeam applicationId={activeApplication.id} compact />
-                          </div>
-                        )}
-
-                        {index === 1 && (
-                          <Button
-                            variant="outline"
-                            className="w-full gap-2"
-                            data-testid="button-view-tasks"
-                          >
-                            View Tasks
-                            <ArrowRight className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </CardContent>
-                    </Card>
-                  ))}
+                        ))}
+                      </div>
+                      {activeApplication && (
+                        <div className="border-t pt-4">
+                          <DealTeam applicationId={activeApplication.id} compact />
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
                 </div>
 
                 <div className="mt-12">
@@ -296,38 +291,46 @@ export default function Dashboard() {
               </div>
 
               {activeApplication && (
-                <div className="grid gap-6 md:grid-cols-2 mb-8">
-                  <Card>
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <CardTitle>Current Application</CardTitle>
-                          <CardDescription>
-                            Started {new Date(activeApplication.createdAt!).toLocaleDateString()}
-                          </CardDescription>
+                <>
+                  <div className="grid gap-6 md:grid-cols-2 mb-8">
+                    <Card>
+                      <CardHeader>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <CardTitle>Current Application</CardTitle>
+                            <CardDescription>
+                              Started {new Date(activeApplication.createdAt!).toLocaleDateString()}
+                            </CardDescription>
+                          </div>
+                          <Badge className={getStatusColor(activeApplication.status)}>
+                            {getStatusLabel(activeApplication.status)}
+                          </Badge>
                         </div>
-                        <Badge className={getStatusColor(activeApplication.status)}>
-                          {getStatusLabel(activeApplication.status)}
-                        </Badge>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        <div>
-                          <p className="font-medium mb-2">{formatCurrency(activeApplication.purchasePrice || "0")} Purchase</p>
-                          <p className="text-sm text-muted-foreground">
-                            {activeApplication.propertyCity}, {activeApplication.propertyState}
-                          </p>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-4">
+                          <div>
+                            <p className="font-medium mb-2">{formatCurrency(activeApplication.purchasePrice || "0")} Purchase</p>
+                            <p className="text-sm text-muted-foreground">
+                              {activeApplication.propertyCity}, {activeApplication.propertyState}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium mb-2">Down Payment</p>
+                            <p className="text-base">{formatCurrency(activeApplication.downPayment || "0")}</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-sm font-medium mb-2">Down Payment</p>
-                          <p className="text-base">{formatCurrency(activeApplication.downPayment || "0")}</p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                  <DealTeam applicationId={activeApplication.id} />
-                </div>
+                      </CardContent>
+                    </Card>
+                    <DealTeam applicationId={activeApplication.id} />
+                  </div>
+                  
+                  <h3 className="text-xl font-bold tracking-tight mb-4">Your to-do list</h3>
+                  <div className="grid gap-6 md:grid-cols-2 mb-8">
+                    <ActionItems applicationId={activeApplication.id} compact maxItems={4} />
+                    <DocumentChecklist applicationId={activeApplication.id} compact />
+                  </div>
+                </>
               )}
             </div>
           )}

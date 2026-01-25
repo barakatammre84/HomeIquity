@@ -110,6 +110,203 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Document Checklist API - shows required documents and their status
+  app.get("/api/applications/:applicationId/document-checklist", isAuthenticated, async (req, res) => {
+    try {
+      const { applicationId } = req.params;
+      const userId = req.user!.id;
+
+      // Verify ownership or staff access
+      const application = await storage.getLoanApplication(applicationId);
+      if (!application) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+      if (application.userId !== userId && !isStaffRole((req.user as User).role)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      // Get uploaded documents for this application
+      const uploadedDocs = await storage.getDocumentsByApplication(applicationId);
+      
+      // Get tasks that request documents
+      const tasks = await storage.getTasksByApplication(applicationId);
+      const documentTasks = tasks.filter(t => t.taskType === "document_request");
+
+      // Define standard document requirements based on loan type
+      const standardDocs = [
+        { type: "w2", label: "W-2 Forms (Last 2 Years)", required: true },
+        { type: "pay_stub", label: "Recent Pay Stubs (Last 30 Days)", required: true },
+        { type: "tax_return", label: "Tax Returns (Last 2 Years)", required: true },
+        { type: "bank_statement", label: "Bank Statements (Last 2 Months)", required: true },
+        { type: "id", label: "Government-Issued ID", required: true },
+      ];
+
+      // Build document checklist
+      const documents = standardDocs.map(doc => {
+        const uploaded = uploadedDocs.find(u => u.documentType === doc.type);
+        const task = documentTasks.find(t => t.documentCategory === doc.type);
+        
+        let status: "needed" | "uploaded" | "verifying" | "verified" | "rejected" = "needed";
+        if (uploaded) {
+          if (uploaded.status === "verified") status = "verified";
+          else if (uploaded.status === "rejected") status = "rejected";
+          else status = "uploaded";
+        } else if (task && task.status === "submitted") {
+          status = "verifying";
+        }
+
+        return {
+          id: uploaded?.id || doc.type,
+          documentType: doc.type,
+          label: doc.label,
+          status,
+          fileName: uploaded?.fileName,
+          uploadedAt: uploaded?.createdAt?.toISOString(),
+          notes: uploaded?.notes || task?.verificationNotes,
+        };
+      });
+
+      // Add any additional document tasks not in standard list
+      for (const task of documentTasks) {
+        if (!standardDocs.find(d => d.type === task.documentCategory)) {
+          const uploaded = uploadedDocs.find(u => u.documentType === task.documentCategory);
+          documents.push({
+            id: task.id,
+            documentType: task.documentCategory || "other",
+            label: task.title,
+            status: uploaded ? (uploaded.status === "verified" ? "verified" : "uploaded") : "needed",
+            fileName: uploaded?.fileName,
+            uploadedAt: uploaded?.createdAt?.toISOString(),
+            notes: task.documentInstructions,
+          });
+        }
+      }
+
+      const stats = {
+        total: documents.length,
+        verified: documents.filter(d => d.status === "verified").length,
+        uploaded: documents.filter(d => d.status === "uploaded" || d.status === "verifying").length,
+        needed: documents.filter(d => d.status === "needed").length,
+        rejected: documents.filter(d => d.status === "rejected").length,
+      };
+
+      res.json({ documents, stats });
+    } catch (error) {
+      console.error("Document checklist error:", error);
+      res.status(500).json({ error: "Failed to load document checklist" });
+    }
+  });
+
+  // Action Items API - shows pending tasks and required actions
+  app.get("/api/applications/:applicationId/action-items", isAuthenticated, async (req, res) => {
+    try {
+      const { applicationId } = req.params;
+      const user = req.user as User;
+
+      // Verify ownership or staff access
+      const application = await storage.getLoanApplication(applicationId);
+      if (!application) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+      if (application.userId !== user.id && !isStaffRole(user.role)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      // Get all tasks for this application that are borrower-relevant
+      // Include tasks assigned to borrower OR unassigned tasks OR document request tasks
+      const allTasks = await storage.getTasksByApplication(applicationId);
+      const borrowerTasks = allTasks.filter(t => 
+        t.assignedToUserId === user.id || 
+        !t.assignedToUserId || 
+        t.taskType === "document_request"
+      );
+
+      // Get conditions that need attention
+      const conditions = await storage.getLoanConditionsByApplication(applicationId);
+      const outstandingConditions = conditions.filter((c: any) => c.status === "outstanding");
+
+      // Get existing consents for this application
+      const existingConsents = await storage.getBorrowerConsentsByApplication(applicationId);
+      
+      // Check for required consent types that haven't been given
+      const requiredConsentTypes = ["credit_pull", "disclosure", "privacy_policy"];
+      const givenConsentTypes = existingConsents
+        .filter((c: any) => c.consentGiven && !c.isRevoked)
+        .map((c: any) => c.consentType);
+      const pendingConsentTypes = requiredConsentTypes.filter(type => !givenConsentTypes.includes(type));
+
+      // Build action items list
+      const items: any[] = [];
+
+      // Add document tasks that aren't completed/verified
+      for (const task of borrowerTasks.filter(t => t.status !== "completed" && t.status !== "verified")) {
+        items.push({
+          id: task.id,
+          type: task.taskType === "document_request" ? "document" : task.taskType,
+          title: task.title,
+          description: task.description || task.documentInstructions,
+          priority: task.priority || "normal",
+          dueDate: task.dueDate?.toISOString(),
+          status: task.status === "submitted" ? "in_progress" : "pending",
+          actionUrl: `/tasks/${task.id}`,
+          actionLabel: task.taskType === "document_request" ? "Upload" : "Complete",
+        });
+      }
+
+      // Add pending consent types as action items
+      if (pendingConsentTypes.length > 0) {
+        items.push({
+          id: `consent-pending`,
+          type: "consent",
+          title: "Sign Required Disclosures",
+          description: `${pendingConsentTypes.length} consent(s) need your signature`,
+          priority: "high",
+          status: "pending",
+          actionUrl: `/econsent/${applicationId}`,
+          actionLabel: "Review & Sign",
+        });
+      }
+
+      // Add outstanding conditions that borrower can address
+      for (const condition of outstandingConditions.slice(0, 3)) {
+        if (condition.requiredDocumentTypes && condition.requiredDocumentTypes.length > 0) {
+          items.push({
+            id: `condition-${condition.id}`,
+            type: "document",
+            title: condition.title,
+            description: condition.description,
+            priority: condition.priority === "prior_to_approval" ? "urgent" : "normal",
+            status: "pending",
+            actionUrl: `/documents`,
+            actionLabel: "Upload Documents",
+          });
+        }
+      }
+
+      // Sort by priority (urgent first) then by due date
+      const priorityOrder = { urgent: 0, high: 1, normal: 2, low: 3 };
+      items.sort((a, b) => {
+        const priorityDiff = (priorityOrder[a.priority as keyof typeof priorityOrder] || 2) - 
+                            (priorityOrder[b.priority as keyof typeof priorityOrder] || 2);
+        if (priorityDiff !== 0) return priorityDiff;
+        if (a.dueDate && b.dueDate) return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+        return 0;
+      });
+
+      const stats = {
+        total: items.length,
+        urgent: items.filter(i => i.priority === "urgent").length,
+        pending: items.filter(i => i.status === "pending").length,
+        completed: borrowerTasks.filter(t => t.status === "completed" || t.status === "verified").length,
+      };
+
+      res.json({ items, stats });
+    } catch (error) {
+      console.error("Action items error:", error);
+      res.status(500).json({ error: "Failed to load action items" });
+    }
+  });
+
   app.post("/api/loan-applications", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
