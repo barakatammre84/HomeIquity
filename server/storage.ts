@@ -1474,7 +1474,7 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(underwritingSnapshots)
-      .where(eq(underwritingSnapshots.applicationId, applicationId))
+      .where(eq(underwritingSnapshots.loanId, applicationId))
       .orderBy(desc(underwritingSnapshots.createdAt));
   }
 
@@ -1482,7 +1482,7 @@ export class DatabaseStorage implements IStorage {
     const [snapshot] = await db
       .select()
       .from(underwritingSnapshots)
-      .where(eq(underwritingSnapshots.applicationId, applicationId))
+      .where(eq(underwritingSnapshots.loanId, applicationId))
       .orderBy(desc(underwritingSnapshots.createdAt))
       .limit(1);
     return snapshot;

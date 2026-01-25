@@ -1,0 +1,324 @@
+Yes — and this is an **important question**, because at this point you’re no longer missing “features”, you’re missing **a few high-leverage primitives** that separate *good mortgage software* from *institutional-grade underwriting systems*.
+
+Below are **additions that materially improve the DTI / DSCR engine you already designed**, without blowing up scope or forcing rework.
+
+I’ll clearly label **WHAT**, **WHY IT MATTERS**, and **HOW TO BUILD IT CORRECTLY**.
+
+---
+
+# 🔥 CRITICAL IMPROVEMENTS TO YOUR DTI / DSCR ENGINE
+
+## 1️⃣ INCOME TREND & VOLATILITY ANALYZER (MAJOR)
+
+### What You Have
+
+* 2-year averaging
+* Declining income → lower year
+
+### What’s Missing
+
+Underwriters don’t just ask *“Is it declining?”*
+They ask *“Is it stable enough to rely on?”*
+
+### Improvement
+
+Add **trend + volatility scoring**.
+
+```ts
+IncomeTrend {
+  slope: number
+  volatility: number
+  trend: "increasing" | "stable" | "declining"
+}
+```
+
+### Why It Matters
+
+* GSEs care about **stability**, not just totals
+* This replaces subjective underwriter judgment
+* Reduces post-submission conditions
+
+### Implementation
+
+* Calculate % change YoY
+* Calculate standard deviation of monthly income
+* Penalize high volatility even if average is high
+
+---
+
+## 2️⃣ INCOME SOURCE SEPARATION (UNDERWRITER-ACCURATE)
+
+### Problem
+
+Most systems lump income together.
+
+Underwriters don’t.
+
+### Fix
+
+Each income stream should have:
+
+```ts
+IncomeStream {
+  type
+  reliabilityScore
+  seasoningMonths
+}
+```
+
+### Why
+
+* Bonus income ≠ base income
+* Rental ≠ W-2
+* Business income is riskier
+
+This enables:
+
+* Front-end vs back-end logic
+* Product-specific inclusion/exclusion
+* Cleaner AUS submissions
+
+---
+
+## 3️⃣ SEASONING ENGINE (EXTREMELY IMPORTANT)
+
+### Missing Today
+
+Time-based qualification logic.
+
+### Example
+
+* Rental income < 12 months → excluded
+* Self-employment < 24 months → unstable
+* New commission job → capped
+
+### Schema
+
+```ts
+SeasoningRule {
+  incomeType
+  minimumMonths
+  action
+}
+```
+
+### Why
+
+This eliminates:
+
+* LO judgment calls
+* Inconsistent approvals
+* Repurchase risk
+
+---
+
+## 4️⃣ BUSINESS CASH FLOW ADJUSTMENT (SELF-EMPLOYED EDGE CASE)
+
+### What Most Systems Miss
+
+Self-employed borrowers often:
+
+* Pay personal expenses through business
+* Have large non-recurring expenses
+
+### Add:
+
+```ts
+CashFlowAdjustment {
+  adjustmentType
+  amount
+  justification
+}
+```
+
+### Why
+
+This allows:
+
+* Controlled add-backs
+* Transparent explanations
+* Lender trust
+
+---
+
+## 5️⃣ RENTAL PORTFOLIO NORMALIZATION (MULTI-PROPERTY)
+
+### Current
+
+Per-property DSCR or basic netting.
+
+### Improvement
+
+Add **portfolio stress testing**.
+
+```ts
+PortfolioRisk {
+  vacancyShock
+  rateShock
+  stressedDSCR
+}
+```
+
+### Why
+
+Lenders increasingly look at **portfolio health**, not just single properties.
+
+This makes you:
+
+* Investor-friendly
+* HELOC / HELOAN ready
+* Non-QM capable later
+
+---
+
+## 6️⃣ PRODUCT RULE ABSTRACTION (NON-NEGOTIABLE)
+
+### Do NOT Hardcode:
+
+* FHA
+* VA
+* Conventional
+* HELOC
+
+### Instead
+
+```ts
+ProductRule {
+  productType
+  dtiCap
+  rentalTreatment
+  studentLoanRule
+}
+```
+
+### Why
+
+Guidelines change.
+Your system should not.
+
+---
+
+## 7️⃣ EXPLAINABILITY UPGRADE (REGULATOR & LENDER GOLD)
+
+You already generate explanations — good.
+
+Upgrade them to **structured explanations**:
+
+```ts
+Explanation {
+  ruleId
+  input
+  output
+  reasoning
+}
+```
+
+### Why
+
+* Defensible automation
+* SOC 2
+* Repurchase protection
+* Faster lender approval
+
+---
+
+## 8️⃣ CONFIDENCE DECOMPOSITION (VERY IMPORTANT)
+
+Instead of:
+
+```
+confidence = 0.87
+```
+
+Use:
+
+```ts
+ConfidenceBreakdown {
+  incomeConfidence
+  documentConfidence
+  stabilityConfidence
+}
+```
+
+### Why
+
+* Tells reviewers *what* is weak
+* Guides borrower remediation
+* Avoids blanket manual review
+
+---
+
+## 9️⃣ WHAT-IF ENGINE (CHEAP TO ADD, HUGE VALUE)
+
+### What
+
+Run hypothetical changes **without mutating loan data**.
+
+```ts
+WhatIfScenario {
+  incomeChange
+  liabilityPayoff
+  downPaymentIncrease
+}
+```
+
+### Why
+
+* LO productivity
+* Borrower transparency
+* Faster conversions
+
+This is a *sales accelerator*, not underwriting risk.
+
+---
+
+## 10️⃣ DECISION FREEZE & VERSIONING (AUDIT-CRITICAL)
+
+### Add:
+
+```ts
+UnderwritingDecision {
+  decisionVersion
+  inputsHash
+  outputs
+}
+```
+
+### Why
+
+* Proves “this decision was made with this data”
+* Required for disputes, audits, lawsuits
+
+---
+
+# 🚨 THE BIGGEST META-IMPROVEMENT
+
+### DO NOT BUILD “DTI CALCULATION”
+
+Build a **FINANCIAL DECISION ENGINE**.
+
+DTI and DSCR are **outputs**, not the system.
+
+---
+
+# FINAL RECOMMENDATION (DO THIS NEXT)
+
+If you want to keep building *correctly*, next highest-impact step is:
+
+## 🔥 **UNDERWRITING RULES DSL**
+
+So:
+
+* Guidelines change without code deploys
+* FHA / VA / Conv toggles are data-driven
+* Ops teams can adjust risk appetite
+
+After that:
+
+* Borrower UI minimization
+* AUS pre-flight logic
+
+---
+
+If you want, say **“DESIGN RULES DSL”**
+and I’ll give you a **real syntax**, not theory.

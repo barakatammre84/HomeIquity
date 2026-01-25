@@ -1532,7 +1532,7 @@ export async function archiveCreditPull(
     await logCreditAction({
       applicationId: pull.applicationId,
       creditPullId: creditPullId,
-      userId: pull.userId,
+      userId: pull.requestedBy,
       action: "credit_pull_archived",
       actionDetails: {
         reason: archiveReason,
