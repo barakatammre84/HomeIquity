@@ -1,0 +1,346 @@
+Great—this is exactly the right place to go deeper. I’ll treat this as **“design the OCR + document classification engine properly”** and give you something you can hand directly to your developers.
+
+Below is a **production-grade OCR + Document Classification architecture** tailored for **mortgage underwriting**, **GSE compliance**, and **staff minimization**.
+
+---
+
+# OCR + DOCUMENT CLASSIFICATION ENGINE
+
+### (Mortgage-Grade, Underwriting-Aware)
+
+## 1. High-Level Goal (What This Engine Must Do)
+
+Your OCR engine is **not just text extraction**. It must become an **underwriting intelligence layer** that:
+
+1. Correctly identifies document type(s)
+2. Detects completeness & tampering
+3. Extracts *underwriting-relevant* fields
+4. Feeds structured data into DTI / DSCR / AUS logic
+5. Triggers **dynamic document requests** automatically
+
+If it does not do all 5, processors will still be required.
+
+---
+
+## 2. Core Architecture (Recommended)
+
+```
+Upload → Pre-Processing → Classification → OCR → Field Extraction
+        → Validation → Confidence Scoring → Underwriting Events
+```
+
+Each stage is modular so you can improve accuracy without re-building the pipeline.
+
+---
+
+## 3. Step-by-Step Engine Design
+
+### A. File Ingestion & Pre-Processing
+
+**Inputs Supported**
+
+* PDF (single & multi-doc)
+* JPG / PNG / HEIC (mobile photos)
+* Mixed uploads (bank stmt + paystub in one PDF)
+
+**Pre-Processing Tasks**
+
+* De-skew & rotate
+* Auto-crop
+* Image enhancement (contrast, noise removal)
+* Page splitting (critical for mixed PDFs)
+
+⚠️ *Mortgage files almost always contain mixed documents.*
+
+**Output**
+
+* Cleaned page-level images ready for classification
+
+---
+
+### B. Document Type Auto-Classification (Critical Upgrade)
+
+This is the missing piece you called out.
+
+#### Classification Granularity (Do NOT classify only at file level)
+
+**Classify at the PAGE level**, then re-assemble.
+
+Example:
+
+```
+PDF Upload →
+  Page 1 → Paystub
+  Page 2 → Paystub
+  Page 3 → Bank Statement
+  Page 4 → Bank Statement
+```
+
+---
+
+### C. Mortgage-Specific Document Taxonomy
+
+Your classifier should recognize **at least** the following:
+
+#### Identity / Compliance
+
+* Driver’s License
+* Passport
+* Green Card
+* SSN Card
+* ITIN Letter
+
+#### Income
+
+* Paystub
+* W-2
+* 1099
+* 1040 (Personal Tax Return)
+* Schedule C
+* Schedule E
+* Schedule K-1
+* Business Tax Return (1120 / 1120S / 1065)
+* Profit & Loss Statement
+* Social Security Award Letter
+
+#### Assets
+
+* Bank Statement (Checking)
+* Bank Statement (Savings)
+* Business Bank Statement
+* Retirement Statement (401k / IRA)
+* Brokerage Statement
+* Gift Letter
+
+#### Liabilities
+
+* Mortgage Statement
+* HELOC Statement
+* Auto Loan Statement
+* Student Loan Statement
+* Credit Card Statement
+
+#### Property / Transaction
+
+* Purchase Contract
+* Lease Agreement
+* HOA Statement
+* Homeowner’s Insurance Binder
+* Earnest Money Receipt
+* Appraisal Report
+* Title Commitment
+
+---
+
+### D. Classification Methods (Recommended Hybrid)
+
+Use **3 layers together** (not one):
+
+#### 1️⃣ Rule-Based Heuristics (Fast & Cheap)
+
+* Keyword presence (“Form W-2”, “Pay Period”)
+* Page layout patterns
+* Known institution headers (Chase, Wells Fargo)
+
+#### 2️⃣ ML Classifier (Core)
+
+* Fine-tuned transformer (LayoutLM / Donut-style)
+* Trained on mortgage documents specifically
+* Outputs:
+
+  * Document type
+  * Confidence score
+
+#### 3️⃣ Cross-Validation Logic
+
+* Does the doc type match the borrower profile?
+* Example:
+
+  * Self-employed borrower uploads “Paystub” → flag anomaly
+  * Schedule E detected → rental income workflow triggered
+
+---
+
+### E. OCR + Field Extraction (Underwriting-Focused)
+
+Once document type is known, extraction becomes deterministic.
+
+#### Example: Paystub Extraction
+
+* Employer name
+* Pay frequency
+* Base pay
+* Overtime
+* Bonus
+* YTD earnings
+* Pay period dates
+
+#### Example: Bank Statement Extraction
+
+* Account holder name
+* Account number (masked)
+* Statement period
+* Beginning / ending balance
+* Deposits
+* Withdrawals
+* NSF events
+* Large deposits
+
+#### Example: Tax Return Extraction
+
+* AGI
+* Schedule C net income
+* Schedule E rental income/loss
+* Depreciation add-backs
+* Business expenses
+
+---
+
+### F. Completeness & Missing Page Detection
+
+This eliminates **huge processor time**.
+
+Examples:
+
+* Bank statement missing page 2 of 3
+* Paystub missing YTD section
+* Tax return missing Schedule E
+
+How:
+
+* Page count expectations per doc type
+* Continuity checks (running balances)
+* Statement date ranges
+
+---
+
+### G. Confidence Scoring & Human Escalation
+
+Every extracted field gets:
+
+* Confidence %
+* Source document
+* Page reference
+
+Rules:
+
+* **≥95% confidence** → auto-approve field
+* **85–95%** → LO review
+* **<85%** → borrower re-upload request
+
+This allows you to:
+
+* Trust the system
+* Still be audit-defensible
+
+---
+
+## 4. Underwriting Event Triggers (Where Automation Pays Off)
+
+This is where OCR becomes **workflow intelligence**.
+
+### Examples:
+
+#### Detected: Schedule E
+
+→ Trigger rental income logic
+→ Request lease agreements
+→ Adjust DTI
+
+#### Detected: Large Deposit > $X
+
+→ Trigger source-of-funds request
+→ Auto-generate LOE request
+
+#### Detected: Multiple Mortgage Statements
+
+→ Identify investment properties
+→ Trigger DSCR analysis
+
+#### Detected: Self-Employed Income
+
+→ Require:
+
+* 2 years tax returns
+* YTD P&L
+* Business bank statements
+
+---
+
+## 5. Fraud & Anomaly Detection Layer
+
+OCR enables **passive fraud detection**:
+
+* Name mismatch between ID & bank stmt
+* Different employer names across paystubs
+* Edited PDFs (metadata anomalies)
+* Income inconsistencies vs credit report
+
+These are flags, **not automatic declines**.
+
+---
+
+## 6. In-House vs Third-Party (Honest Guidance)
+
+### Build In-House (Recommended)
+
+* Document classification
+* Underwriting-specific extraction logic
+* Event trigger rules
+* Confidence scoring
+* Audit logs
+
+### Use Third-Party (Strategically)
+
+* OCR engine base (e.g. vision model)
+* Plaid (VOA)
+* VOE (optional)
+
+**Why:**
+OCR is a commodity.
+Mortgage underwriting logic is your moat.
+
+---
+
+## 7. Data Output (Critical for GSEs)
+
+Every extracted field should map to:
+
+* MISMO data nodes
+* Fannie 3.2 / ULDD equivalents
+
+Example:
+
+```
+Income.GrossMonthlyIncome
+Assets.LiquidAssets
+Liabilities.MonthlyPayment
+```
+
+This makes:
+
+* AUS submissions
+* Loan packaging
+* Investor delivery
+
+…nearly automatic.
+
+---
+
+## 8. What to Tell Your Developers (Short Version)
+
+> “We are not building OCR.
+> We are building an underwriting-aware document intelligence system that classifies documents at the page level, extracts loan-critical fields, assigns confidence scores, and triggers underwriting workflows automatically.”
+
+---
+
+## 9. Next Logical Step (If You Want)
+
+I can next:
+
+1. Design **DTI + DSCR calculation logic** (self-employed + rentals)
+2. Create a **borrower UI flow** that minimizes uploads
+3. Write **pseudo-schemas** for MISMO-aligned data models
+4. Build a **phased MVP roadmap** (what to build first vs later)
+
+If you want, tell me **which one to go deep on next**.
