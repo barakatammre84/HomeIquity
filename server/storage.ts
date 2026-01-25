@@ -2713,6 +2713,83 @@ export class DatabaseStorage implements IStorage {
 
     return analysis;
   }
+
+  // ============================================
+  // Referral Link System Methods
+  // ============================================
+  
+  async generateReferralCode(userId: string): Promise<string> {
+    const user = await this.getUser(userId);
+    if (!user) throw new Error("User not found");
+    
+    // If user already has a referral code, return it
+    if (user.referralCode) {
+      return user.referralCode;
+    }
+    
+    // Generate a unique code based on name and random suffix
+    const baseName = `${user.firstName || 'LO'}-${user.lastName || 'USER'}`.toUpperCase().replace(/[^A-Z]/g, '');
+    const suffix = Math.random().toString(36).substring(2, 6).toUpperCase();
+    const referralCode = `${baseName.substring(0, 8)}-${suffix}`;
+    
+    // Save to user
+    await db.update(users).set({ referralCode }).where(eq(users.id, userId));
+    
+    return referralCode;
+  }
+  
+  async getUserByReferralCode(referralCode: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.referralCode, referralCode));
+    return user;
+  }
+  
+  async setUserReferredBy(userId: string, referringUserId: string): Promise<void> {
+    await db.update(users).set({ referredByUserId: referringUserId }).where(eq(users.id, userId));
+  }
+  
+  async getReferralsByUser(userId: string): Promise<User[]> {
+    return db.select().from(users).where(eq(users.referredByUserId, userId));
+  }
+  
+  async getReferralStats(userId: string): Promise<{
+    totalReferrals: number;
+    referralsThisMonth: number;
+    activeApplications: number;
+    closedLoans: number;
+  }> {
+    // Get all users referred by this user
+    const referredUsers = await this.getReferralsByUser(userId);
+    const referredUserIds = referredUsers.map(u => u.id);
+    
+    if (referredUserIds.length === 0) {
+      return { totalReferrals: 0, referralsThisMonth: 0, activeApplications: 0, closedLoans: 0 };
+    }
+    
+    // Count referrals this month
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1);
+    startOfMonth.setHours(0, 0, 0, 0);
+    
+    const referralsThisMonth = referredUsers.filter(u => 
+      u.createdAt && new Date(u.createdAt) >= startOfMonth
+    ).length;
+    
+    // Get applications from referred users
+    const applications = await db.select()
+      .from(loanApplications)
+      .where(sql`${loanApplications.userId} = ANY(${referredUserIds})`);
+    
+    const activeStatuses = ['draft', 'submitted', 'analyzing', 'pre_approved', 'verified', 'underwriting', 'approved'];
+    const activeApplications = applications.filter(a => activeStatuses.includes(a.status)).length;
+    const closedLoans = applications.filter(a => a.status === 'closed').length;
+    
+    return {
+      totalReferrals: referredUsers.length,
+      referralsThisMonth,
+      activeApplications,
+      closedLoans,
+    };
+  }
 }
 
 export const storage = new DatabaseStorage();
