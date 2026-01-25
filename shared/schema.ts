@@ -92,6 +92,9 @@ export const users = pgTable("users", {
   isPartner: boolean("is_partner").default(false),
   partnerCompanyName: varchar("partner_company_name", { length: 255 }),
   nmlsId: varchar("nmls_id", { length: 20 }), // NMLS license number for loan officers
+  // Referral link system for LOs
+  referralCode: varchar("referral_code", { length: 20 }).unique(), // Unique code for LO referral links (e.g., "JOHN-SMITH-LO")
+  referredByUserId: varchar("referred_by_user_id"), // Who referred this user (references users.id)
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
