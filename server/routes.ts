@@ -5415,6 +5415,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Withdraw/cancel loan application (borrower can withdraw their own apps)
+  app.post("/api/loan-applications/:applicationId/withdraw", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const { applicationId } = req.params;
+
+      const schema = z.object({
+        reason: z.string().min(1),
+        details: z.string().optional(),
+      });
+
+      const result = schema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid input", details: result.error.format() });
+      }
+
+      // Get the application
+      const application = await storage.getLoanApplication(applicationId);
+      if (!application) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+
+      // Check ownership - borrower can only withdraw their own apps, staff can withdraw any
+      if (!isStaffRole(user.role) && application.userId !== user.id) {
+        return res.status(403).json({ error: "You can only withdraw your own applications" });
+      }
+
+      // Check if already withdrawn or in a terminal state
+      if (["withdrawn", "closed", "denied"].includes(application.status)) {
+        return res.status(400).json({ error: "Application cannot be withdrawn in its current state" });
+      }
+
+      // Update application status to withdrawn
+      const updatedApp = await storage.updateLoanApplication(applicationId, {
+        status: "withdrawn",
+      });
+
+      // Log the withdrawal activity
+      await storage.createDealActivity({
+        applicationId,
+        activityType: "application_withdrawn",
+        title: "Application Withdrawn",
+        description: `Application withdrawn by ${user.role === "borrower" ? "borrower" : "staff"}. Reason: ${result.data.reason}${result.data.details ? `. Details: ${result.data.details}` : ""}`,
+        performedBy: user.id,
+        metadata: {
+          reason: result.data.reason,
+          details: result.data.details || "",
+          withdrawnAt: new Date().toISOString(),
+        },
+      });
+
+      res.json({ success: true, application: updatedApp });
+    } catch (error) {
+      console.error("Withdraw application error:", error);
+      res.status(500).json({ error: "Failed to withdraw application" });
+    }
+  });
+
   // Update team member
   app.patch("/api/deal-team/:id", isAuthenticated, async (req, res) => {
     try {
