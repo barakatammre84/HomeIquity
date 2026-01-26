@@ -1,0 +1,256 @@
+DESIGN GOALS (WHY THIS DSL EXISTS)
+
+The Materiality Rules DSL must:
+
+Detect material vs non-material changes
+
+Be guideline-aligned but broker-safe
+
+Trigger actions, not decisions
+
+Be versioned, explainable, and auditable
+
+Never silently re-underwrite
+
+This DSL answers one question only:
+
+“Does this change require action to preserve pre-approval validity?”
+
+2️⃣ CORE CONCEPTS (MENTAL MODEL)
+Inputs (immutable)
+
+Frozen underwriting snapshot
+
+One or more ChangeEvents
+
+Outputs (controlled)
+
+material: true | false
+
+requiredAction
+
+explanation
+
+The DSL never:
+
+Recalculates income
+
+Issues approvals
+
+Modifies snapshots
+
+3️⃣ MATERIALITY RULE DSL — TOP-LEVEL STRUCTURE
+materialityRuleSet:
+  id: CONV_BASELINE_COC
+  product: CONVENTIONAL
+  authority: BROKER_PRE_APPROVAL
+  version: 1.0.0
+  effectiveDate: 2026-01-01
+  rules: []
+
+4️⃣ RULE SCHEMA (CORE OBJECT)
+- id: INCOME_DECREASE_MATERIAL
+  category: INCOME
+  appliesTo:
+    incomeType: [W2, SELF_EMPLOYED, RENTAL]
+  when:
+    metric: income.qualifying
+    change:
+      type: PERCENT_DECREASE
+      value: 10
+  materiality:
+    isMaterial: true
+    severity: HIGH
+  action:
+    required: REUNDERWRITE
+  explanation:
+    message: "Qualifying income decreased by more than 10%"
+    guidelineReference: "Fannie Mae B3-3.1-01"
+
+5️⃣ FULL FIELD DEFINITIONS (AUTHORITATIVE)
+A. RULE IDENTIFIERS
+id: string                      // immutable, unique
+category: "INCOME" | "EMPLOYMENT" | "CREDIT" | "ASSETS" | "LIABILITIES"
+
+B. APPLICABILITY FILTERS (OPTIONAL BUT POWERFUL)
+appliesTo:
+  incomeType?: [W2, BONUS, SELF_EMPLOYED, RENTAL]
+  occupancy?: [PRIMARY, SECOND, INVESTMENT]
+  productType?: [CONV, FHA, VA, HELOC]
+
+
+Rules only fire if applicable.
+
+C. CHANGE CONDITION (when)
+when:
+  metric: string
+  change:
+    type: 
+      - PERCENT_INCREASE
+      - PERCENT_DECREASE
+      - ABSOLUTE_INCREASE
+      - ABSOLUTE_DECREASE
+      - BOOLEAN_CHANGE
+      - NEW_ENTRY
+    value: number | boolean
+
+Examples:
+
+Income ↓ 10%
+
+Assets ↓ $5,000
+
+New tradeline detected
+
+Employment status changed
+
+D. MATERIALITY DECLARATION (IMPORTANT)
+materiality:
+  isMaterial: true | false
+  severity: LOW | MEDIUM | HIGH
+
+
+This allows explicit non-material rules (critical).
+
+E. REQUIRED ACTION (THIS IS THE OUTPUT)
+action:
+  required:
+    - NONE
+    - BORROWER_ATTESTATION
+    - DOCUMENT_REFRESH
+    - CREDIT_REFRESH
+    - REUNDERWRITE
+
+
+🚨 Only REUNDERWRITE invalidates the snapshot.
+
+F. EXPLANATION (AUDIT-CRITICAL)
+explanation:
+  message: string
+  guidelineReference?: string
+
+
+This must be shown internally and logged permanently.
+
+6️⃣ COMPLETE EXAMPLE RULES (USE THESE)
+🔹 INCOME — MATERIAL DECREASE
+- id: INCOME_DROP_10
+  category: INCOME
+  when:
+    metric: income.qualifying
+    change:
+      type: PERCENT_DECREASE
+      value: 10
+  materiality:
+    isMaterial: true
+    severity: HIGH
+  action:
+    required: REUNDERWRITE
+  explanation:
+    message: "Qualifying income decreased more than 10%"
+    guidelineReference: "Fannie Mae B3-3.1-01"
+
+🔹 EMPLOYMENT — EMPLOYER CHANGE
+- id: EMPLOYER_CHANGE
+  category: EMPLOYMENT
+  when:
+    metric: employment.employerName
+    change:
+      type: BOOLEAN_CHANGE
+      value: true
+  materiality:
+    isMaterial: true
+    severity: HIGH
+  action:
+    required: REUNDERWRITE
+  explanation:
+    message: "Employer change detected"
+
+🔹 CREDIT — NEW TRADELINE
+- id: NEW_CREDIT_ACCOUNT
+  category: CREDIT
+  when:
+    metric: credit.newTradeline
+    change:
+      type: NEW_ENTRY
+      value: true
+  materiality:
+    isMaterial: true
+    severity: MEDIUM
+  action:
+    required: CREDIT_REFRESH
+
+🔹 ASSETS — NON-MATERIAL FLUCTUATION
+- id: ASSET_FLUCTUATION_BUFFER
+  category: ASSETS
+  when:
+    metric: assets.total
+    change:
+      type: ABSOLUTE_DECREASE
+      value: 2000
+  materiality:
+    isMaterial: false
+    severity: LOW
+  action:
+    required: NONE
+
+🔹 LIABILITIES — STUDENT LOAN ENTERS REPAYMENT
+- id: STUDENT_LOAN_REPAYMENT
+  category: LIABILITIES
+  when:
+    metric: studentLoan.status
+    change:
+      type: BOOLEAN_CHANGE
+      value: true
+  materiality:
+    isMaterial: true
+    severity: MEDIUM
+  action:
+    required: REUNDERWRITE
+
+7️⃣ EXECUTION SEMANTICS (MANDATORY)
+
+Your engine must:
+
+Compare snapshot metrics vs current metrics
+
+Normalize deltas into ChangeEvents
+
+Evaluate all applicable rules
+
+If any rule returns REUNDERWRITE:
+
+Freeze pre-approval
+
+Require new snapshot
+
+Log every decision
+
+🚨 No short-circuiting allowed — all rules evaluated for audit.
+
+8️⃣ VERSIONING & EFFECTIVE DATES (CRITICAL)
+version: 1.0.0
+effectiveDate: 2026-01-01
+
+
+Old snapshots reference old rule versions
+
+New rules never retroactively apply
+
+This is legal armor.
+
+9️⃣ HARD GUARDRAILS (DO NOT BREAK)
+
+❌ No silent re-underwriting
+❌ No borrower-hidden actions
+❌ No LO overrides of materiality
+❌ No mutable snapshots
+❌ No unversioned rules
+
+🔚 FINAL TRUTH
+
+This DSL is what allows you to say — truthfully:
+
+“We continuously monitor material changes to protect the integrity of our pre-approvals.”
+
+That sentence alone wins lender trust.

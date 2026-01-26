@@ -4902,3 +4902,353 @@ export type InsertPreApprovalCondition = z.infer<typeof insertPreApprovalConditi
 export type PreApprovalCondition = typeof preApprovalConditions.$inferSelect;
 export type InsertLetterGenerationLog = z.infer<typeof insertLetterGenerationLogSchema>;
 export type LetterGenerationLog = typeof letterGenerationLogs.$inferSelect;
+
+// ============================================================================
+// INSTITUTIONAL PLATFORM FEATURES
+// ============================================================================
+
+// 1. EXPIRATION POLICIES - Configurable validity periods per product
+// These are the rules that govern when pre-approvals, credit, and documents expire
+export const expirationPolicies = pgTable("expiration_policies", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Policy identification
+  policyName: varchar("policy_name", { length: 100 }).notNull(),
+  productType: varchar("product_type", { length: 20 }).notNull(), // CONV, FHA, VA, HELOC, DSCR
+  
+  // Validity periods in days
+  preApprovalValidityDays: integer("pre_approval_validity_days").default(90).notNull(),
+  creditValidityDays: integer("credit_validity_days").default(120).notNull(),
+  incomeDocValidityDays: integer("income_doc_validity_days").default(60).notNull(),
+  assetDocValidityDays: integer("asset_doc_validity_days").default(60).notNull(),
+  employmentVerificationValidityDays: integer("employment_verification_validity_days").default(30),
+  
+  // Warning thresholds (days before expiration to alert)
+  preApprovalWarningDays: integer("pre_approval_warning_days").default(14),
+  creditWarningDays: integer("credit_warning_days").default(21),
+  incomeDocWarningDays: integer("income_doc_warning_days").default(10),
+  assetDocWarningDays: integer("asset_doc_warning_days").default(10),
+  
+  // Policy status
+  isActive: boolean("is_active").default(true),
+  effectiveFrom: timestamp("effective_from").notNull(),
+  effectiveTo: timestamp("effective_to"), // null = currently active
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_expiration_policies_product").on(table.productType),
+  index("idx_expiration_policies_active").on(table.isActive),
+]);
+
+export const insertExpirationPolicySchema = createInsertSchema(expirationPolicies).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// 2. CREDIT REFRESH DECISIONS - Soft/Hard pull workflow tracking
+// Tracks every credit refresh decision and consent
+export const CREDIT_REFRESH_TYPES = ["SOFT", "HARD"] as const;
+export type CreditRefreshType = typeof CREDIT_REFRESH_TYPES[number];
+
+export const CREDIT_REFRESH_REASONS = [
+  "credit_expiring",           // Credit report nearing expiration
+  "liability_change_detected", // New debt detected
+  "aus_submission",            // Required for AUS submission
+  "lender_selection",          // Lender selection finalized
+  "borrower_request",          // Borrower requested refresh
+  "rate_lock_required",        // Rate lock requires current credit
+  "compliance_requirement",    // Regulatory requirement
+] as const;
+export type CreditRefreshReason = typeof CREDIT_REFRESH_REASONS[number];
+
+export const creditRefreshDecisions = pgTable("credit_refresh_decisions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  applicationId: varchar("application_id").references(() => loanApplications.id).notNull(),
+  borrowerId: varchar("borrower_id").references(() => users.id).notNull(),
+  
+  // Refresh type and reason
+  refreshType: varchar("refresh_type", { length: 10 }).notNull(), // SOFT or HARD
+  reason: varchar("reason", { length: 50 }).notNull(),
+  reasonDetails: text("reason_details"),
+  
+  // Consent tracking (critical for HARD pulls)
+  consentId: varchar("consent_id").references(() => creditConsents.id),
+  consentObtained: boolean("consent_obtained").default(false),
+  consentObtainedAt: timestamp("consent_obtained_at"),
+  
+  // Pre-decision state
+  previousCreditReportId: varchar("previous_credit_report_id"),
+  previousCreditScore: integer("previous_credit_score"),
+  previousExpirationDate: timestamp("previous_expiration_date"),
+  
+  // Post-decision state
+  newCreditReportId: varchar("new_credit_report_id"),
+  newCreditScore: integer("new_credit_score"),
+  newExpirationDate: timestamp("new_expiration_date"),
+  
+  // Score change tracking
+  scoreChange: integer("score_change"), // positive = improvement
+  significantChange: boolean("significant_change").default(false), // >20 points
+  
+  // Snapshot rule enforcement
+  previousSnapshotId: varchar("previous_snapshot_id").references(() => underwritingDecisions.id),
+  newSnapshotId: varchar("new_snapshot_id").references(() => underwritingDecisions.id),
+  previousLetterId: varchar("previous_letter_id").references(() => preApprovalLetters.id),
+  newLetterId: varchar("new_letter_id").references(() => preApprovalLetters.id),
+  
+  // Decision tracking
+  decisionMadeBy: varchar("decision_made_by").references(() => users.id),
+  decisionMadeBySystem: boolean("decision_made_by_system").default(false),
+  decisionAt: timestamp("decision_at").defaultNow(),
+  
+  // Execution tracking
+  executedAt: timestamp("executed_at"),
+  executionStatus: varchar("execution_status", { length: 20 }), // pending, completed, failed
+  executionError: text("execution_error"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_credit_refresh_decisions_application").on(table.applicationId),
+  index("idx_credit_refresh_decisions_borrower").on(table.borrowerId),
+  index("idx_credit_refresh_decisions_type").on(table.refreshType),
+  index("idx_credit_refresh_decisions_decision_at").on(table.decisionAt),
+]);
+
+export const creditRefreshDecisionsRelations = relations(creditRefreshDecisions, ({ one }) => ({
+  application: one(loanApplications, {
+    fields: [creditRefreshDecisions.applicationId],
+    references: [loanApplications.id],
+  }),
+  borrower: one(users, {
+    fields: [creditRefreshDecisions.borrowerId],
+    references: [users.id],
+  }),
+  consent: one(creditConsents, {
+    fields: [creditRefreshDecisions.consentId],
+    references: [creditConsents.id],
+  }),
+  previousSnapshot: one(underwritingDecisions, {
+    fields: [creditRefreshDecisions.previousSnapshotId],
+    references: [underwritingDecisions.id],
+  }),
+}));
+
+export const insertCreditRefreshDecisionSchema = createInsertSchema(creditRefreshDecisions).omit({
+  id: true,
+  createdAt: true,
+});
+
+// 3. LENDER PRE-APPROVAL FORMATS - Lender-specific letter presentation
+// Same underwriting decision, different presentation per lender
+export const lenderPreApprovalFormats = pgTable("lender_pre_approval_formats", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Lender identification
+  lenderId: varchar("lender_id", { length: 100 }).notNull().unique(),
+  lenderName: varchar("lender_name", { length: 255 }).notNull(),
+  lenderLogo: varchar("lender_logo", { length: 500 }), // URL or storage key
+  
+  // Field visibility rules (what to show/hide)
+  showLoanAmount: boolean("show_loan_amount").default(true),
+  showDti: boolean("show_dti").default(false), // Many lenders don't want DTI shown
+  showCreditScore: boolean("show_credit_score").default(false),
+  showAssetReserves: boolean("show_asset_reserves").default(false),
+  showIncomeDetails: boolean("show_income_details").default(false),
+  showLtv: boolean("show_ltv").default(false),
+  showProductType: boolean("show_product_type").default(true),
+  showOccupancy: boolean("show_occupancy").default(true),
+  showPropertyAddress: boolean("show_property_address").default(true),
+  
+  // Required fields for this lender (validated before generating)
+  requiredFields: jsonb("required_fields").$type<string[]>().default([]),
+  
+  // Disclaimer overrides (lender-specific legal language)
+  disclaimerOverrides: jsonb("disclaimer_overrides").$type<{
+    primary?: string;
+    brokerRole?: string;
+    documentReliance?: string;
+    changeInCircumstance?: string;
+    systemGenerated?: string;
+    lenderSpecific?: string;
+  }>(),
+  
+  // Branding rules
+  brandingRules: jsonb("branding_rules").$type<{
+    primaryColor?: string;
+    secondaryColor?: string;
+    fontFamily?: string;
+    headerStyle?: string;
+    footerText?: string;
+    customWatermark?: string;
+  }>(),
+  
+  // Letter format preferences
+  letterFormat: varchar("letter_format", { length: 20 }).default("standard"), // standard, short, detailed
+  includeConditions: boolean("include_conditions").default(true),
+  maxConditionsToShow: integer("max_conditions_to_show"),
+  
+  // Field ordering (array of field names in display order)
+  fieldOrdering: jsonb("field_ordering").$type<string[]>(),
+  
+  // Template reference
+  templateId: varchar("template_id", { length: 100 }),
+  templateVersion: varchar("template_version", { length: 20 }),
+  
+  // Status
+  isActive: boolean("is_active").default(true),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_lender_pre_approval_formats_lender").on(table.lenderId),
+  index("idx_lender_pre_approval_formats_active").on(table.isActive),
+]);
+
+export const insertLenderPreApprovalFormatSchema = createInsertSchema(lenderPreApprovalFormats).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// 4. AGENT CONFIDENCE VIEWS - Agent-visible, borrower-hidden confidence display
+// Stores the confidence score presentation for agents
+export const CONFIDENCE_LEVELS = ["strong", "solid", "fragile"] as const;
+export type ConfidenceLevel = typeof CONFIDENCE_LEVELS[number];
+
+export const agentConfidenceViews = pgTable("agent_confidence_views", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  applicationId: varchar("application_id").references(() => loanApplications.id).notNull(),
+  confidenceBreakdownId: varchar("confidence_breakdown_id").references(() => confidenceBreakdowns.id).notNull(),
+  
+  // Overall confidence (0.00 - 1.00)
+  overallScore: decimal("overall_score", { precision: 4, scale: 2 }).notNull(),
+  
+  // Component scores (0.00 - 1.00)
+  incomeScore: decimal("income_score", { precision: 4, scale: 2 }),
+  assetsScore: decimal("assets_score", { precision: 4, scale: 2 }),
+  creditScore: decimal("credit_score", { precision: 4, scale: 2 }),
+  documentationScore: decimal("documentation_score", { precision: 4, scale: 2 }),
+  stabilityScore: decimal("stability_score", { precision: 4, scale: 2 }),
+  
+  // Computed confidence level for display
+  confidenceLevel: varchar("confidence_level", { length: 20 }).notNull(), // strong (≥0.90), solid (0.80-0.89), fragile (<0.80)
+  
+  // Risk flags (agent-visible warnings)
+  riskFlags: jsonb("risk_flags").$type<string[]>().default([]),
+  
+  // Tooltip/explanation (counsel-approved language)
+  tooltipText: text("tooltip_text").default("Confidence score reflects the strength and completeness of the loan file based on preliminary analysis. It is not a lender decision."),
+  
+  // Visibility controls
+  visibleToAgents: boolean("visible_to_agents").default(true),
+  visibleToBorrower: boolean("visible_to_borrower").default(false), // ALWAYS FALSE per spec
+  visibleToLO: boolean("visible_to_lo").default(true),
+  visibleToProcessor: boolean("visible_to_processor").default(true),
+  visibleToUnderwriter: boolean("visible_to_underwriter").default(true),
+  
+  // Snapshot reference
+  underwritingSnapshotId: varchar("underwriting_snapshot_id").references(() => underwritingDecisions.id),
+  
+  // Computed at
+  computedAt: timestamp("computed_at").defaultNow(),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_agent_confidence_views_application").on(table.applicationId),
+  index("idx_agent_confidence_views_level").on(table.confidenceLevel),
+  index("idx_agent_confidence_views_computed").on(table.computedAt),
+]);
+
+export const agentConfidenceViewsRelations = relations(agentConfidenceViews, ({ one }) => ({
+  application: one(loanApplications, {
+    fields: [agentConfidenceViews.applicationId],
+    references: [loanApplications.id],
+  }),
+  confidenceBreakdown: one(confidenceBreakdowns, {
+    fields: [agentConfidenceViews.confidenceBreakdownId],
+    references: [confidenceBreakdowns.id],
+  }),
+  underwritingSnapshot: one(underwritingDecisions, {
+    fields: [agentConfidenceViews.underwritingSnapshotId],
+    references: [underwritingDecisions.id],
+  }),
+}));
+
+export const insertAgentConfidenceViewSchema = createInsertSchema(agentConfidenceViews).omit({
+  id: true,
+  createdAt: true,
+});
+
+// 5. DOCUMENT EXPIRATION TRACKING - Tracks when each document expires
+export const documentExpirations = pgTable("document_expirations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  applicationId: varchar("application_id").references(() => loanApplications.id).notNull(),
+  documentId: varchar("document_id").references(() => documents.id).notNull(),
+  
+  // Document type for policy lookup
+  documentType: varchar("document_type", { length: 50 }).notNull(),
+  
+  // Expiration tracking
+  documentDate: timestamp("document_date").notNull(), // Date on the document
+  expirationDate: timestamp("expiration_date").notNull(), // Calculated expiration
+  warningDate: timestamp("warning_date"), // When to start warning
+  
+  // Policy reference
+  policyId: varchar("policy_id").references(() => expirationPolicies.id),
+  
+  // Status
+  status: varchar("status", { length: 20 }).default("valid"), // valid, warning, expired
+  
+  // Notification tracking
+  warningNotifiedAt: timestamp("warning_notified_at"),
+  expirationNotifiedAt: timestamp("expiration_notified_at"),
+  notifiedBorrower: boolean("notified_borrower").default(false),
+  notifiedLO: boolean("notified_lo").default(false),
+  notifiedAgent: boolean("notified_agent").default(false),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_document_expirations_application").on(table.applicationId),
+  index("idx_document_expirations_document").on(table.documentId),
+  index("idx_document_expirations_status").on(table.status),
+  index("idx_document_expirations_expiration").on(table.expirationDate),
+]);
+
+export const documentExpirationsRelations = relations(documentExpirations, ({ one }) => ({
+  application: one(loanApplications, {
+    fields: [documentExpirations.applicationId],
+    references: [loanApplications.id],
+  }),
+  document: one(documents, {
+    fields: [documentExpirations.documentId],
+    references: [documents.id],
+  }),
+  policy: one(expirationPolicies, {
+    fields: [documentExpirations.policyId],
+    references: [expirationPolicies.id],
+  }),
+}));
+
+export const insertDocumentExpirationSchema = createInsertSchema(documentExpirations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// Type exports for institutional platform features
+export type InsertExpirationPolicy = z.infer<typeof insertExpirationPolicySchema>;
+export type ExpirationPolicy = typeof expirationPolicies.$inferSelect;
+export type InsertCreditRefreshDecision = z.infer<typeof insertCreditRefreshDecisionSchema>;
+export type CreditRefreshDecision = typeof creditRefreshDecisions.$inferSelect;
+export type InsertLenderPreApprovalFormat = z.infer<typeof insertLenderPreApprovalFormatSchema>;
+export type LenderPreApprovalFormat = typeof lenderPreApprovalFormats.$inferSelect;
+export type InsertAgentConfidenceView = z.infer<typeof insertAgentConfidenceViewSchema>;
+export type AgentConfidenceView = typeof agentConfidenceViews.$inferSelect;
+export type InsertDocumentExpiration = z.infer<typeof insertDocumentExpirationSchema>;
+export type DocumentExpiration = typeof documentExpirations.$inferSelect;
