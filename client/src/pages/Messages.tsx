@@ -1,11 +1,13 @@
 import { useState, useRef, useEffect } from "react";
 import { useParams, Link } from "wouter";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Send,
   Phone,
@@ -18,48 +20,50 @@ import {
   Clock,
   CheckCheck,
 } from "lucide-react";
+import { queryClient, apiRequest } from "@/lib/queryClient";
+import type { TeamMessage } from "@shared/schema";
 
-// Mock team members data - should match sidebar
-const teamMembers: Record<string, { id: string; name: string; role: string; initials: string; status: string }> = {
-  "lo-1": { id: "lo-1", name: "Sarah Johnson", role: "Loan Officer", initials: "SJ", status: "online" },
-  "proc-1": { id: "proc-1", name: "Mike Chen", role: "Processor", initials: "MC", status: "online" },
-  "uw-1": { id: "uw-1", name: "Emily Davis", role: "Underwriter", initials: "ED", status: "away" },
-  "closer-1": { id: "closer-1", name: "James Wilson", role: "Closer", initials: "JW", status: "offline" },
+interface TeamMember {
+  id: string;
+  name: string;
+  role: string;
+  email: string | null;
+  profileImageUrl: string | null;
+  initials: string;
+}
+
+interface ConversationData {
+  partnerId: string;
+  lastMessage: TeamMessage;
+  unreadCount: number;
+  partner: TeamMember | null;
+}
+
+const ROLE_DISPLAY_NAMES: Record<string, string> = {
+  admin: "Tech/Ops Lead",
+  lo: "Loan Officer",
+  loa: "Loan Officer Assistant",
+  processor: "Processor",
+  underwriter: "Underwriter",
+  closer: "Closer/Funder",
+  aspiring_owner: "Aspiring Owner",
+  active_buyer: "Active Buyer",
 };
 
-// Mock conversation data
-const mockConversations: Record<string, Array<{ id: string; sender: "user" | "team"; message: string; timestamp: Date; read: boolean }>> = {
-  "lo-1": [
-    { id: "1", sender: "team", message: "Hi! I'm Sarah, your dedicated Loan Officer. How can I help you today?", timestamp: new Date(Date.now() - 86400000), read: true },
-    { id: "2", sender: "user", message: "Hi Sarah! I had a question about my pre-approval letter.", timestamp: new Date(Date.now() - 82800000), read: true },
-    { id: "3", sender: "team", message: "Of course! I'd be happy to help. What would you like to know?", timestamp: new Date(Date.now() - 79200000), read: true },
-    { id: "4", sender: "user", message: "The letter shows a different loan amount than I expected. Can you explain?", timestamp: new Date(Date.now() - 3600000), read: true },
-    { id: "5", sender: "team", message: "Great question! The pre-approval amount is based on your verified income and current DTI ratio. Would you like to schedule a call to go over the details?", timestamp: new Date(Date.now() - 1800000), read: true },
-  ],
-  "proc-1": [
-    { id: "1", sender: "team", message: "Hello! I'm Mike, your Processor. I'll be helping manage your loan file.", timestamp: new Date(Date.now() - 172800000), read: true },
-    { id: "2", sender: "user", message: "Thanks Mike! What documents do you still need from me?", timestamp: new Date(Date.now() - 169200000), read: true },
-    { id: "3", sender: "team", message: "I've reviewed your file. We still need your most recent bank statement and proof of employment. You can upload them in the Documents section.", timestamp: new Date(Date.now() - 165600000), read: true },
-  ],
-  "uw-1": [
-    { id: "1", sender: "team", message: "Hi, I'm Emily from underwriting. I'll be reviewing your loan application.", timestamp: new Date(Date.now() - 259200000), read: true },
-  ],
-  "closer-1": [],
-};
-
-function formatMessageTime(date: Date): string {
+function formatMessageTime(date: Date | string): string {
+  const d = new Date(date);
   const now = new Date();
-  const diff = now.getTime() - date.getTime();
+  const diff = now.getTime() - d.getTime();
   const days = Math.floor(diff / 86400000);
   
   if (days === 0) {
-    return date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+    return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
   } else if (days === 1) {
     return "Yesterday";
   } else if (days < 7) {
-    return date.toLocaleDateString("en-US", { weekday: "short" });
+    return d.toLocaleDateString("en-US", { weekday: "short" });
   } else {
-    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   }
 }
 
@@ -83,34 +87,55 @@ export default function Messages() {
   const params = useParams<{ memberId?: string }>();
   const memberId = params.memberId;
   const [message, setMessage] = useState("");
-  const [conversations, setConversations] = useState(mockConversations);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
-  
-  const selectedMember = memberId ? teamMembers[memberId] : null;
-  const currentConversation = memberId ? conversations[memberId] || [] : [];
+
+  // Fetch team members
+  const { data: teamMembers = [], isLoading: isLoadingTeam } = useQuery<TeamMember[]>({
+    queryKey: ["/api/team-members"],
+  });
+
+  // Fetch conversations for list view
+  const { data: conversations = [], isLoading: isLoadingConversations } = useQuery<ConversationData[]>({
+    queryKey: ["/api/messages/conversations"],
+  });
+
+  // Fetch messages for the selected team member
+  const { data: messages = [], isLoading: isLoadingMessages } = useQuery<TeamMessage[]>({
+    queryKey: ["/api/messages", memberId],
+    enabled: !!memberId,
+  });
+
+  // Send message mutation
+  const sendMessageMutation = useMutation({
+    mutationFn: async (data: { recipientId: string; message: string }) => {
+      const response = await apiRequest("POST", "/api/messages", data);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/messages", memberId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/messages/conversations"] });
+    },
+  });
+
+  // Find selected member
+  const selectedMember = memberId 
+    ? teamMembers.find(m => m.id === memberId) || null 
+    : null;
 
   // Scroll to bottom when messages change
   useEffect(() => {
     if (scrollAreaRef.current) {
       scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
     }
-  }, [currentConversation]);
+  }, [messages]);
 
   const handleSendMessage = () => {
     if (!message.trim() || !memberId) return;
     
-    const newMessage = {
-      id: Date.now().toString(),
-      sender: "user" as const,
+    sendMessageMutation.mutate({
+      recipientId: memberId,
       message: message.trim(),
-      timestamp: new Date(),
-      read: false,
-    };
-    
-    setConversations(prev => ({
-      ...prev,
-      [memberId]: [...(prev[memberId] || []), newMessage],
-    }));
+    });
     setMessage("");
   };
 
@@ -121,8 +146,14 @@ export default function Messages() {
     }
   };
 
+  // Helper to get last message for a team member
+  const getLastMessageForMember = (memberId: string) => {
+    const conv = conversations.find(c => c.partnerId === memberId);
+    return conv?.lastMessage;
+  };
+
   // If no member selected, show conversation list
-  if (!selectedMember) {
+  if (!memberId) {
     return (
       <>
         {/* Premium Header */}
@@ -150,54 +181,80 @@ export default function Messages() {
               <CardTitle>Your Team</CardTitle>
             </CardHeader>
             <CardContent className="p-0">
-              <div className="divide-y">
-                {Object.values(teamMembers).map((member) => {
-                  const lastMessage = conversations[member.id]?.[conversations[member.id].length - 1];
-                  return (
-                    <Link 
-                      key={member.id} 
-                      href={`/messages/${member.id}`}
-                      data-testid={`link-conversation-${member.id}`}
-                    >
-                      <div 
-                        className="flex items-center gap-4 p-4 cursor-pointer transition-colors hover-elevate"
-                      >
-                        <div className="relative">
-                          <Avatar className="h-12 w-12" data-testid={`avatar-${member.id}`}>
-                            <AvatarFallback className="bg-primary/10 text-primary font-medium">
-                              {member.initials}
-                            </AvatarFallback>
-                          </Avatar>
-                          <Circle 
-                            className={`absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 fill-current ${getStatusColor(member.status)}`}
-                            data-testid={`status-indicator-${member.id}`}
-                          />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="font-medium" data-testid={`text-member-name-${member.id}`}>{member.name}</span>
-                            {lastMessage && (
-                              <span className="text-xs text-muted-foreground" data-testid={`text-timestamp-${member.id}`}>
-                                {formatMessageTime(lastMessage.timestamp)}
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Badge variant="secondary" className="text-xs shrink-0" data-testid={`badge-role-${member.id}`}>
-                              {member.role}
-                            </Badge>
-                            {lastMessage && (
-                              <span className="text-sm text-muted-foreground truncate" data-testid={`text-last-message-${member.id}`}>
-                                {lastMessage.sender === "user" ? "You: " : ""}{lastMessage.message}
-                              </span>
-                            )}
-                          </div>
-                        </div>
+              {isLoadingTeam ? (
+                <div className="p-4 space-y-4">
+                  {[1, 2, 3].map(i => (
+                    <div key={i} className="flex items-center gap-4">
+                      <Skeleton className="h-12 w-12 rounded-full" />
+                      <div className="flex-1">
+                        <Skeleton className="h-4 w-32 mb-2" />
+                        <Skeleton className="h-3 w-24" />
                       </div>
-                    </Link>
-                  );
-                })}
-              </div>
+                    </div>
+                  ))}
+                </div>
+              ) : teamMembers.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground" data-testid="empty-team">
+                  <MessageCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>No team members assigned yet</p>
+                  <p className="text-sm mt-1">Team members will appear here once assigned to your loan</p>
+                </div>
+              ) : (
+                <div className="divide-y">
+                  {teamMembers.map((member) => {
+                    const lastMessage = getLastMessageForMember(member.id);
+                    const conv = conversations.find(c => c.partnerId === member.id);
+                    return (
+                      <Link 
+                        key={member.id} 
+                        href={`/messages/${member.id}`}
+                        data-testid={`link-conversation-${member.id}`}
+                      >
+                        <div 
+                          className="flex items-center gap-4 p-4 cursor-pointer transition-colors hover-elevate"
+                        >
+                          <div className="relative">
+                            <Avatar className="h-12 w-12" data-testid={`avatar-${member.id}`}>
+                              <AvatarFallback className="bg-primary/10 text-primary font-medium">
+                                {member.initials}
+                              </AvatarFallback>
+                            </Avatar>
+                            <Circle 
+                              className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 fill-current text-muted-foreground"
+                              data-testid={`status-indicator-${member.id}`}
+                            />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="font-medium" data-testid={`text-member-name-${member.id}`}>{member.name}</span>
+                              {lastMessage && (
+                                <span className="text-xs text-muted-foreground" data-testid={`text-timestamp-${member.id}`}>
+                                  {formatMessageTime(lastMessage.createdAt!)}
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Badge variant="secondary" className="text-xs shrink-0" data-testid={`badge-role-${member.id}`}>
+                                {ROLE_DISPLAY_NAMES[member.role] || member.role}
+                              </Badge>
+                              {lastMessage && (
+                                <span className="text-sm text-muted-foreground truncate" data-testid={`text-last-message-${member.id}`}>
+                                  {lastMessage.message}
+                                </span>
+                              )}
+                              {conv && conv.unreadCount > 0 && (
+                                <Badge className="ml-auto shrink-0" data-testid={`badge-unread-${member.id}`}>
+                                  {conv.unreadCount}
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -217,27 +274,35 @@ export default function Messages() {
                 <ArrowLeft className="h-5 w-5" />
               </Button>
             </Link>
-            <div className="relative">
-              <Avatar className="h-10 w-10" data-testid="avatar-chat-member">
-                <AvatarFallback className="bg-primary/10 text-primary font-medium">
-                  {selectedMember.initials}
-                </AvatarFallback>
-              </Avatar>
-              <Circle 
-                className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 fill-current ${getStatusColor(selectedMember.status)}`}
-                data-testid="status-chat-member"
-              />
-            </div>
-            <div>
-              <h2 className="font-semibold" data-testid="text-chat-member-name">{selectedMember.name}</h2>
-              <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                <span data-testid="text-chat-member-role">{selectedMember.role}</span>
-                <span>•</span>
-                <span className={getStatusColor(selectedMember.status)} data-testid="text-chat-member-status">
-                  {getStatusText(selectedMember.status)}
-                </span>
+            {isLoadingTeam || !selectedMember ? (
+              <div className="flex items-center gap-3">
+                <Skeleton className="h-10 w-10 rounded-full" />
+                <div>
+                  <Skeleton className="h-4 w-32 mb-1" />
+                  <Skeleton className="h-3 w-24" />
+                </div>
               </div>
-            </div>
+            ) : (
+              <>
+                <div className="relative">
+                  <Avatar className="h-10 w-10" data-testid="avatar-chat-member">
+                    <AvatarFallback className="bg-primary/10 text-primary font-medium">
+                      {selectedMember.initials}
+                    </AvatarFallback>
+                  </Avatar>
+                  <Circle 
+                    className="absolute -bottom-0.5 -right-0.5 h-3 w-3 fill-current text-muted-foreground"
+                    data-testid="status-chat-member"
+                  />
+                </div>
+                <div>
+                  <h2 className="font-semibold" data-testid="text-chat-member-name">{selectedMember.name}</h2>
+                  <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                    <span data-testid="text-chat-member-role">{ROLE_DISPLAY_NAMES[selectedMember.role] || selectedMember.role}</span>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
           <div className="flex items-center gap-1">
             <Button variant="ghost" size="icon" data-testid="button-call">
@@ -256,53 +321,69 @@ export default function Messages() {
       {/* Messages Area */}
       <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
         <div className="space-y-4 max-w-3xl mx-auto">
-          {currentConversation.length === 0 ? (
+          {isLoadingMessages ? (
+            <div className="space-y-4">
+              {[1, 2, 3].map(i => (
+                <div key={i} className={`flex ${i % 2 === 0 ? 'justify-end' : 'justify-start'}`}>
+                  <Skeleton className="h-16 w-64 rounded-lg" />
+                </div>
+              ))}
+            </div>
+          ) : messages.length === 0 ? (
             <div className="text-center py-12" data-testid="empty-conversation">
               <MessageCircle className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
               <h3 className="text-lg font-medium" data-testid="text-empty-title">Start a conversation</h3>
               <p className="text-sm text-muted-foreground mt-1" data-testid="text-empty-description">
-                Send a message to {selectedMember.name} to get started
+                Send a message to {selectedMember?.name || "this team member"} to get started
               </p>
             </div>
           ) : (
-            currentConversation.map((msg, index) => {
-              const isUser = msg.sender === "user";
+            messages.map((msg, index) => {
+              const isFromCurrentUser = msg.senderId !== memberId;
               const showTimestamp = index === 0 || 
-                (new Date(currentConversation[index - 1].timestamp).getTime() - msg.timestamp.getTime()) > 300000;
-              
+                (new Date(msg.createdAt!).getTime() - new Date(messages[index - 1].createdAt!).getTime()) > 300000;
+
               return (
                 <div key={msg.id}>
                   {showTimestamp && (
                     <div className="flex justify-center my-4">
-                      <span className="text-xs text-muted-foreground bg-muted px-3 py-1 rounded-full">
-                        {formatMessageTime(msg.timestamp)}
+                      <span className="text-xs text-muted-foreground bg-muted/50 px-3 py-1 rounded-full">
+                        {formatMessageTime(msg.createdAt!)}
                       </span>
                     </div>
                   )}
-                  <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
-                    <div className={`flex items-end gap-2 max-w-[80%] ${isUser ? "flex-row-reverse" : ""}`}>
-                      {!isUser && (
-                        <Avatar className="h-8 w-8 shrink-0">
+                  <div 
+                    className={`flex ${isFromCurrentUser ? "justify-end" : "justify-start"}`}
+                    data-testid={`message-${msg.id}`}
+                  >
+                    <div className={`flex items-end gap-2 max-w-[80%] ${isFromCurrentUser ? "flex-row-reverse" : ""}`}>
+                      {!isFromCurrentUser && selectedMember && (
+                        <Avatar className="h-8 w-8 mb-1">
                           <AvatarFallback className="text-xs bg-primary/10 text-primary">
                             {selectedMember.initials}
                           </AvatarFallback>
                         </Avatar>
                       )}
-                      <div
-                        className={`px-4 py-2.5 rounded-2xl ${
-                          isUser
-                            ? "bg-primary text-primary-foreground rounded-br-md"
+                      <div 
+                        className={`rounded-2xl px-4 py-2 ${
+                          isFromCurrentUser 
+                            ? "bg-primary text-primary-foreground rounded-br-md" 
                             : "bg-muted rounded-bl-md"
                         }`}
-                        data-testid={`message-${msg.id}`}
                       >
-                        <p className="text-sm">{msg.message}</p>
+                        <p className="text-sm whitespace-pre-wrap">{msg.message}</p>
                       </div>
-                      {isUser && msg.read && (
-                        <CheckCheck className="h-4 w-4 text-primary shrink-0" />
-                      )}
                     </div>
                   </div>
+                  {isFromCurrentUser && (
+                    <div className="flex justify-end mt-0.5 mr-1">
+                      {msg.isRead ? (
+                        <CheckCheck className="h-3.5 w-3.5 text-primary" />
+                      ) : (
+                        <Clock className="h-3 w-3 text-muted-foreground" />
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })
@@ -317,16 +398,17 @@ export default function Messages() {
             <Paperclip className="h-5 w-5" />
           </Button>
           <Input
+            placeholder="Type a message..."
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             onKeyDown={handleKeyPress}
-            placeholder="Type a message..."
             className="flex-1"
             data-testid="input-message"
           />
           <Button 
+            size="icon" 
             onClick={handleSendMessage}
-            disabled={!message.trim()}
+            disabled={!message.trim() || sendMessageMutation.isPending}
             data-testid="button-send"
           >
             <Send className="h-5 w-5" />

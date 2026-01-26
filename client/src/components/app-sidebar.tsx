@@ -1,5 +1,6 @@
 import { type ComponentType, useState } from "react";
 import { Link, useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import {
   Sidebar,
   SidebarContent,
@@ -48,13 +49,25 @@ import {
   Circle,
 } from "lucide-react";
 
-// Mock team members data - in a real app this would come from an API
-const teamMembers = [
-  { id: "lo-1", name: "Sarah Johnson", role: "Loan Officer", initials: "SJ", status: "online" },
-  { id: "proc-1", name: "Mike Chen", role: "Processor", initials: "MC", status: "online" },
-  { id: "uw-1", name: "Emily Davis", role: "Underwriter", initials: "ED", status: "away" },
-  { id: "closer-1", name: "James Wilson", role: "Closer", initials: "JW", status: "offline" },
-];
+// Team member interface
+interface TeamMember {
+  id: string;
+  name: string;
+  role: string;
+  initials: string;
+  email: string | null;
+  profileImageUrl: string | null;
+}
+
+// Role display names for the sidebar
+const ROLE_DISPLAY_NAMES: Record<string, string> = {
+  admin: "Tech/Ops Lead",
+  lo: "Loan Officer",
+  loa: "Loan Officer Assistant",
+  processor: "Processor",
+  underwriter: "Underwriter",
+  closer: "Closer/Funder",
+};
 
 // Client navigation - for Aspiring Owners and Active Buyers
 const aspiringOwnerNavigation = [
@@ -158,6 +171,12 @@ export function AppSidebar() {
   const [location] = useLocation();
   const { user } = useAuth();
   const [isTeamExpanded, setIsTeamExpanded] = useState(true);
+
+  // Fetch team members from API
+  const { data: teamMembers = [] } = useQuery<TeamMember[]>({
+    queryKey: ["/api/team-members"],
+    enabled: !!user,
+  });
 
   const isActive = (href: string) => location === href;
   
@@ -278,13 +297,13 @@ export function AppSidebar() {
                                 </AvatarFallback>
                               </Avatar>
                               <Circle 
-                                className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 fill-current ${getStatusColor(member.status)}`}
+                                className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 fill-current text-muted-foreground"
                                 data-testid={`status-team-${member.id}`}
                               />
                             </div>
                             <div className="flex flex-col min-w-0">
                               <span className="text-sm truncate" data-testid={`text-team-name-${member.id}`}>{member.name}</span>
-                              <span className="text-xs text-muted-foreground truncate" data-testid={`text-team-role-${member.id}`}>{member.role}</span>
+                              <span className="text-xs text-muted-foreground truncate" data-testid={`text-team-role-${member.id}`}>{ROLE_DISPLAY_NAMES[member.role] || member.role}</span>
                             </div>
                             <MessageCircle className="ml-auto h-3.5 w-3.5 text-muted-foreground" data-testid={`icon-team-message-${member.id}`} />
                           </Link>

@@ -6638,3 +6638,54 @@ export const insertOfferComparisonSessionSchema = createInsertSchema(offerCompar
 
 export type InsertOfferComparisonSession = z.infer<typeof insertOfferComparisonSessionSchema>;
 export type OfferComparisonSession = typeof offerComparisonSessions.$inferSelect;
+
+// TEAM MESSAGES - Internal communication between borrowers and their loan team
+export const teamMessages = pgTable("team_messages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Participants - either between borrower and staff, or staff-to-staff
+  senderId: varchar("sender_id").references(() => users.id).notNull(),
+  recipientId: varchar("recipient_id").references(() => users.id).notNull(),
+  
+  // Optional loan application context
+  applicationId: varchar("application_id").references(() => loanApplications.id),
+  
+  // Message content
+  message: text("message").notNull(),
+  
+  // Read tracking
+  isRead: boolean("is_read").default(false),
+  readAt: timestamp("read_at"),
+  
+  // Metadata
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_team_messages_sender").on(table.senderId),
+  index("idx_team_messages_recipient").on(table.recipientId),
+  index("idx_team_messages_application").on(table.applicationId),
+  index("idx_team_messages_created").on(table.createdAt),
+]);
+
+export const teamMessagesRelations = relations(teamMessages, ({ one }) => ({
+  sender: one(users, {
+    fields: [teamMessages.senderId],
+    references: [users.id],
+  }),
+  recipient: one(users, {
+    fields: [teamMessages.recipientId],
+    references: [users.id],
+  }),
+  application: one(loanApplications, {
+    fields: [teamMessages.applicationId],
+    references: [loanApplications.id],
+  }),
+}));
+
+export const insertTeamMessageSchema = createInsertSchema(teamMessages).omit({
+  id: true,
+  createdAt: true,
+  readAt: true,
+});
+
+export type InsertTeamMessage = z.infer<typeof insertTeamMessageSchema>;
+export type TeamMessage = typeof teamMessages.$inferSelect;

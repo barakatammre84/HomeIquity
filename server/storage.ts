@@ -48,6 +48,7 @@ import {
   dealTeamMembers,
   documentPackages,
   documentPackageItems,
+  teamMessages,
   type User,
   type UpsertUser,
   type LoanApplication,
@@ -140,6 +141,8 @@ import {
   type InsertDocumentPackage,
   type DocumentPackageItem,
   type InsertDocumentPackageItem,
+  type TeamMessage,
+  type InsertTeamMessage,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -2875,6 +2878,114 @@ export class DatabaseStorage implements IStorage {
       activeApplications,
       closedLoans,
     };
+  }
+
+  // ============================================
+  // Team Messaging Methods
+  // ============================================
+  
+  async sendMessage(data: InsertTeamMessage): Promise<TeamMessage> {
+    const [message] = await db.insert(teamMessages).values(data).returning();
+    return message;
+  }
+  
+  async getMessages(userId: string, otherUserId: string): Promise<TeamMessage[]> {
+    return db.select()
+      .from(teamMessages)
+      .where(
+        or(
+          and(
+            eq(teamMessages.senderId, userId),
+            eq(teamMessages.recipientId, otherUserId)
+          ),
+          and(
+            eq(teamMessages.senderId, otherUserId),
+            eq(teamMessages.recipientId, userId)
+          )
+        )
+      )
+      .orderBy(asc(teamMessages.createdAt));
+  }
+  
+  async getConversations(userId: string): Promise<{
+    partnerId: string;
+    lastMessage: TeamMessage;
+    unreadCount: number;
+  }[]> {
+    // Get all messages involving the user
+    const messages = await db.select()
+      .from(teamMessages)
+      .where(
+        or(
+          eq(teamMessages.senderId, userId),
+          eq(teamMessages.recipientId, userId)
+        )
+      )
+      .orderBy(desc(teamMessages.createdAt));
+    
+    // Group by conversation partner
+    const conversationMap = new Map<string, { lastMessage: TeamMessage; unreadCount: number }>();
+    
+    for (const msg of messages) {
+      const partnerId = msg.senderId === userId ? msg.recipientId : msg.senderId;
+      
+      if (!conversationMap.has(partnerId)) {
+        // Count unread messages from this partner
+        const unreadCount = messages.filter(
+          m => m.senderId === partnerId && m.recipientId === userId && !m.isRead
+        ).length;
+        
+        conversationMap.set(partnerId, {
+          lastMessage: msg,
+          unreadCount,
+        });
+      }
+    }
+    
+    return Array.from(conversationMap.entries()).map(([partnerId, data]) => ({
+      partnerId,
+      ...data,
+    }));
+  }
+  
+  async markMessagesAsRead(userId: string, senderId: string): Promise<void> {
+    await db.update(teamMessages)
+      .set({ isRead: true, readAt: new Date() })
+      .where(
+        and(
+          eq(teamMessages.recipientId, userId),
+          eq(teamMessages.senderId, senderId),
+          eq(teamMessages.isRead, false)
+        )
+      );
+  }
+  
+  async getUnreadMessageCount(userId: string): Promise<number> {
+    const result = await db.select({ count: sql<number>`count(*)` })
+      .from(teamMessages)
+      .where(
+        and(
+          eq(teamMessages.recipientId, userId),
+          eq(teamMessages.isRead, false)
+        )
+      );
+    return result[0]?.count || 0;
+  }
+  
+  async getStaffUsersForTeamDisplay(): Promise<User[]> {
+    // Get all staff users who can be part of a borrower's team
+    return db.select()
+      .from(users)
+      .where(
+        or(
+          eq(users.role, 'lo'),
+          eq(users.role, 'loa'),
+          eq(users.role, 'processor'),
+          eq(users.role, 'underwriter'),
+          eq(users.role, 'closer'),
+          eq(users.role, 'admin')
+        )
+      );
   }
 }
 

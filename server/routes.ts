@@ -5781,6 +5781,140 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============================================
+  // Team Messaging API Routes
+  // ============================================
+
+  // Get all staff users for team display
+  app.get("/api/team-members", isAuthenticated, async (req, res) => {
+    try {
+      const staffUsers = await storage.getStaffUsersForTeamDisplay();
+      
+      // Transform to include display info
+      const teamMembers = staffUsers.map(user => ({
+        id: user.id,
+        name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email || 'Team Member',
+        role: user.role,
+        email: user.email,
+        profileImageUrl: user.profileImageUrl,
+        initials: getInitials(user),
+      }));
+      
+      res.json(teamMembers);
+    } catch (error) {
+      console.error("Get team members error:", error);
+      res.status(500).json({ error: "Failed to get team members" });
+    }
+  });
+
+  // Get all conversations for current user
+  app.get("/api/messages/conversations", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const conversations = await storage.getConversations(userId);
+      
+      // Get partner info for each conversation
+      const enrichedConversations = await Promise.all(
+        conversations.map(async (conv) => {
+          const partner = await storage.getUser(conv.partnerId);
+          return {
+            ...conv,
+            partner: partner ? {
+              id: partner.id,
+              name: `${partner.firstName || ''} ${partner.lastName || ''}`.trim() || partner.email || 'User',
+              role: partner.role,
+              email: partner.email,
+              profileImageUrl: partner.profileImageUrl,
+              initials: getInitials(partner),
+            } : null,
+          };
+        })
+      );
+      
+      res.json(enrichedConversations);
+    } catch (error) {
+      console.error("Get conversations error:", error);
+      res.status(500).json({ error: "Failed to get conversations" });
+    }
+  });
+
+  // Get messages with a specific user
+  app.get("/api/messages/:otherUserId", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const { otherUserId } = req.params;
+      
+      const messages = await storage.getMessages(userId, otherUserId);
+      
+      // Mark messages as read
+      await storage.markMessagesAsRead(userId, otherUserId);
+      
+      res.json(messages);
+    } catch (error) {
+      console.error("Get messages error:", error);
+      res.status(500).json({ error: "Failed to get messages" });
+    }
+  });
+
+  // Send a message
+  app.post("/api/messages", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const { recipientId, message, applicationId } = req.body;
+      
+      if (!recipientId || !message) {
+        return res.status(400).json({ error: "recipientId and message are required" });
+      }
+      
+      // Verify recipient exists
+      const recipient = await storage.getUser(recipientId);
+      if (!recipient) {
+        return res.status(404).json({ error: "Recipient not found" });
+      }
+      
+      const newMessage = await storage.sendMessage({
+        senderId: userId,
+        recipientId,
+        message,
+        applicationId: applicationId || null,
+        isRead: false,
+      });
+      
+      res.status(201).json(newMessage);
+    } catch (error) {
+      console.error("Send message error:", error);
+      res.status(500).json({ error: "Failed to send message" });
+    }
+  });
+
+  // Get unread message count
+  app.get("/api/messages/unread/count", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const count = await storage.getUnreadMessageCount(userId);
+      res.json({ count });
+    } catch (error) {
+      console.error("Get unread count error:", error);
+      res.status(500).json({ error: "Failed to get unread count" });
+    }
+  });
+
+  // Helper function to get initials from user
+  function getInitials(user: User): string {
+    const firstName = user.firstName || '';
+    const lastName = user.lastName || '';
+    if (firstName && lastName) {
+      return `${firstName[0]}${lastName[0]}`.toUpperCase();
+    }
+    if (firstName) {
+      return firstName.substring(0, 2).toUpperCase();
+    }
+    if (user.email) {
+      return user.email.substring(0, 2).toUpperCase();
+    }
+    return 'TM';
+  }
+
   const httpServer = createServer(app);
 
   return httpServer;
