@@ -1,0 +1,272 @@
+production-grade Policy Ops Admin UI Spec designed so non-technical compliance, ops, and capital-markets staff can safely maintain policy without engineering involvement, without code deploys, and without breaking GSE alignment.
+
+This is written as instructions you can hand directly to your developers.
+
+🧠 POLICY OPS ADMIN UI SPEC
+
+(Broker-Controlled, Lender-Safe, No-Code Policy Management)
+
+🎯 DESIGN GOALS (NON-NEGOTIABLE)
+
+Zero code changes to update policy
+
+Non-technical users can operate it safely
+
+Every change is versioned, explainable, reversible
+
+No retroactive impact on issued pre-approvals
+
+Aligned to Fannie / Freddie / FHA / VA
+
+Audit-ready at all times
+
+1️⃣ POLICY OPERATIONS DASHBOARD (HOME)
+Primary Widgets
+
+A. Active Policy Profiles
+
+Fannie Mae (v2025-01)
+
+Freddie Mac (v2025-01)
+
+FHA (v2024-12)
+
+VA (v2024-12)
+
+Internal Risk Overlay (Broker)
+
+Each profile shows:
+
+Status: Active / Draft / Deprecated
+
+Effective Date
+
+of Loans Using This Version
+
+Last Updated By
+
+Last Change Summary
+
+B. Alerts Panel
+
+❗ GSE Update Available
+
+⚠ Draft Policy Pending Review
+
+🔄 Expiring Pre-Approvals Under Old Policy
+
+🚨 Material Change Detected
+
+2️⃣ POLICY PROFILE VIEW (CORE OBJECT)
+
+Each Policy Profile is a container for rules.
+
+Header Section
+
+Policy Authority (Fannie / Freddie / FHA / VA / Internal)
+
+Policy Version (Auto-generated)
+
+Effective Date
+
+Status: Draft | Active | Deprecated
+
+Locked Loans Count (read-only)
+
+3️⃣ RULE CATEGORIES (LEFT NAV)
+
+Non-technical users NEVER edit logic — only parameters.
+
+Categories:
+
+Credit
+
+Income (W-2 / Self-Employed / Rental)
+
+Assets
+
+Liabilities
+
+DTI / DSCR
+
+Property
+
+Occupancy
+
+Change-of-Circumstance
+
+Pre-Approval Validity
+
+Broker Risk Overlay
+
+4️⃣ RULE EDITOR (SAFE PARAMETER UI)
+Example: DTI Rule
+
+Visual Controls
+
+Max Back-End DTI: Slider (36% – 50%)
+
+Loan Type Toggle:
+
+☐ Primary
+
+☐ Second Home
+
+☐ Investment
+
+Compensating Factors Toggle:
+
+☐ Reserves ≥ 6 months
+
+☐ Strong credit
+
+No formulas visible.
+Only business language.
+
+Example: Rental Income Rule
+Field	Control Type
+Schedule E Required	Toggle
+Vacancy Factor	Dropdown (25% / 15% / None)
+Allow Loss Offset	Toggle
+Min History	Dropdown (1 yr / 2 yrs)
+5️⃣ CHANGE-OF-CIRCUMSTANCE (COC) RULE BUILDER
+Purpose
+
+Define what invalidates a pre-approval.
+
+Rule Builder UI
+
+Trigger Event
+
+☐ Credit Score Drop ≥ ___ pts
+
+☐ New Tradeline Detected
+
+☐ Income Change ≥ ___%
+
+☐ Asset Decrease ≥ ___%
+
+☐ Employment Change
+
+Severity
+
+Informational
+
+Re-verification Required
+
+Pre-Approval Invalidation
+
+Applies To
+
+Fannie
+
+Freddie
+
+FHA
+
+VA
+
+6️⃣ MATERIALITY THRESHOLD TABLE
+
+Displayed as editable matrix:
+
+Metric	Fannie	Freddie	FHA
+Credit Drop	20 pts	15 pts	20 pts
+DTI Change	3%	2%	3%
+Asset Loss	10%	10%	5%
+
+Tooltips explain source guideline.
+
+7️⃣ PRE-APPROVAL CONFIGURATION PANEL
+Controls
+
+Validity Period (e.g., 90 days)
+
+Auto-Expiration On COC
+
+Re-Pull Requirement Toggle
+
+Confidence Threshold Required (A/B/C)
+
+Lender-Specific Formatting Toggle
+
+8️⃣ VERSIONING & FREEZE LOGIC (CRITICAL)
+When “Publish” Is Clicked:
+
+New immutable policy version created
+
+Old versions remain active for existing loans
+
+No retroactive changes allowed
+
+System displays impact summary:
+
+“23 active pre-approvals remain on v2024-12”
+
+9️⃣ CHANGE LOG & AUDIT TRAIL
+
+Every change logs:
+
+Who
+
+When
+
+What changed
+
+Why (required text field)
+
+Policy authority reference
+
+Auditors LOVE this.
+
+🔐 10️⃣ PERMISSIONS & SAFETY RAILS
+Roles
+Role	Capabilities
+Policy Viewer	Read only
+Policy Editor	Draft edits
+Policy Approver	Publish
+Compliance Admin	Full
+Hard Stops
+
+Cannot edit active policy
+
+Cannot delete policies
+
+Cannot override GSE base rules
+
+Cannot backdate effectiveness
+
+11️⃣ GSE UPDATE INGESTION (SEMI-AUTOMATED)
+Workflow
+
+System flags GSE update
+
+Creates draft policy clone
+
+Highlights changed sections
+
+Requires human approval
+
+Publish when ready
+
+No silent changes. Ever.
+
+12️⃣ UI TECH NOTES (FOR DEVELOPERS)
+
+React + form schema (JSON-driven)
+
+Rule engine reads only published versions
+
+Policy profiles stored immutably
+
+Admin UI is parameter editor, NOT logic editor
+
+🧠 WHY THIS WORKS
+
+Non-technical teams stay in control
+
+Engineering stays out of compliance risk
+
+Lenders trust frozen decisions
+
+You scale without headcount

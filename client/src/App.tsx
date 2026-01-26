@@ -51,6 +51,7 @@ import AnalyticsDashboard from "@/pages/AnalyticsDashboard";
 import EConsent from "@/pages/EConsent";
 import PartnerServices from "@/pages/PartnerServices";
 import ReferralLanding from "@/pages/ReferralLanding";
+import PolicyOps from "@/pages/PolicyOps";
 
 function PublicPage({ children }: { children: React.ReactNode }) {
   return <PublicLayout>{children}</PublicLayout>;
@@ -207,6 +208,9 @@ function Router() {
       </Route>
       <Route path="/admin/users">
         <AdminPage><AdminUsers /></AdminPage>
+      </Route>
+      <Route path="/admin/policy-ops">
+        <AdminPage><PolicyOps /></AdminPage>
       </Route>
 
       <Route component={NotFound} />

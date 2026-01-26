@@ -37,6 +37,7 @@ import {
   BarChart3,
   Handshake,
   FileSignature,
+  Scale,
 } from "lucide-react";
 
 // Client navigation - for Aspiring Owners and Active Buyers
@@ -118,6 +119,7 @@ const adminNavigation = [
       { title: "Manage Users", href: "/admin/users", icon: Users, testId: "link-admin-users" },
       { title: "Manage Rates", href: "/admin/rates", icon: Percent, testId: "link-admin-rates" },
       { title: "Manage Content", href: "/admin/content", icon: PenSquare, testId: "link-admin-content" },
+      { title: "Policy Operations", href: "/admin/policy-ops", icon: Scale, testId: "link-admin-policy-ops" },
     ],
   },
 ];
