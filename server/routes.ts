@@ -2337,6 +2337,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get pending task count for borrower (for sidebar badge)
+  app.get("/api/task-engine/my-tasks/pending-count", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const tasks = await taskEngine.getTasksForUser(userId, "OPEN");
+      const pendingCount = tasks.filter(t => t.ownerRole === "BORROWER").length;
+      res.json({ pendingCount });
+    } catch (error) {
+      console.error("Get pending task count error:", error);
+      res.status(500).json({ error: "Failed to get pending count" });
+    }
+  });
+
   // Create task with SLA (staff only)
   app.post("/api/task-engine/tasks", isAuthenticated, async (req, res) => {
     try {

@@ -11,6 +11,7 @@ import { DealTeam } from "@/components/DealTeam";
 import { DocumentChecklist } from "@/components/DocumentChecklist";
 import { ActionItems } from "@/components/ActionItems";
 import { BorrowerRequests } from "@/components/BorrowerRequests";
+import { ConsentsCard } from "@/components/ConsentsCard";
 import type { LoanApplication, DealActivity } from "@shared/schema";
 import {
   CheckCircle2,
@@ -194,7 +195,10 @@ export default function Dashboard() {
                 
                 {activeApplication && (
                   <div className="space-y-6">
-                    <BorrowerRequests applicationId={activeApplication.id} />
+                    <div className="grid gap-6 md:grid-cols-2">
+                      <BorrowerRequests applicationId={activeApplication.id} />
+                      <ConsentsCard applicationId={activeApplication.id} />
+                    </div>
                     <div className="grid gap-6 md:grid-cols-2">
                       <ActionItems applicationId={activeApplication.id} compact maxItems={4} />
                       <DocumentChecklist applicationId={activeApplication.id} compact />
@@ -387,7 +391,10 @@ export default function Dashboard() {
                   <h3 className="text-xl font-bold tracking-tight">Your To-Do List</h3>
                 </div>
                 <div className="space-y-6">
-                  <BorrowerRequests applicationId={activeApplication.id} />
+                  <div className="grid gap-6 md:grid-cols-2">
+                    <BorrowerRequests applicationId={activeApplication.id} />
+                    <ConsentsCard applicationId={activeApplication.id} />
+                  </div>
                   <div className="grid gap-6 md:grid-cols-2">
                     <ActionItems applicationId={activeApplication.id} compact maxItems={4} />
                     <DocumentChecklist applicationId={activeApplication.id} compact />

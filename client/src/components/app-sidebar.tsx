@@ -94,7 +94,6 @@ const aspiringOwnerNavigation = [
     section: "Get Ready",
     items: [
       { title: "Pre-Approval", href: "/pre-approval", icon: Star, testId: "link-pre-approval" },
-      { title: "Resources", href: "/resources", icon: BookOpen, testId: "link-resources" },
     ],
   },
 ];
@@ -107,7 +106,6 @@ const activeBuyerNavigation = [
       { title: "My Application", href: "/application-summary", icon: FileText, testId: "link-application-summary" },
       { title: "My Tasks", href: "/tasks", icon: CheckSquare, testId: "link-tasks" },
       { title: "Verification", href: "/verification", icon: Shield, testId: "link-verification" },
-      { title: "Consents", href: "/e-consent", icon: FileSignature, testId: "link-econsent" },
     ],
   },
   {
@@ -117,13 +115,12 @@ const activeBuyerNavigation = [
       { title: "Upload Documents", href: "/documents", icon: Upload, testId: "link-documents" },
     ],
   },
-  {
-    section: "Help",
-    items: [
-      { title: "Resources", href: "/resources", icon: BookOpen, testId: "link-resources" },
-      { title: "Contact Staff", href: "/staff", icon: Users, testId: "link-staff" },
-    ],
-  },
+];
+
+// Help items shown at bottom of sidebar for clients
+const clientHelpNavigation = [
+  { title: "Resources", href: "/resources", icon: BookOpen, testId: "link-resources" },
+  { title: "Contact Staff", href: "/staff", icon: Users, testId: "link-staff" },
 ];
 
 const staffNavigation = [
@@ -207,6 +204,15 @@ export function AppSidebar() {
   const isStaff = isStaffRole(userRole);
   const isAdmin = userRole === "admin";
   const isAspiringOwner = userRole === "aspiring_owner";
+  
+  // Fetch pending task count for borrowers
+  const { data: pendingTasksData } = useQuery<{ pendingCount: number }>({
+    queryKey: ["/api/task-engine/my-tasks/pending-count"],
+    enabled: !!user && !isStaff,
+    refetchInterval: 30000, // Refresh every 30 seconds
+  });
+  
+  const pendingTaskCount = pendingTasksData?.pendingCount || 0;
 
   // Select appropriate navigation based on role
   let navigation: NavSection[];
@@ -247,6 +253,11 @@ export function AppSidebar() {
                       <Link href={item.href} className="cursor-pointer" data-testid={item.testId}>
                         <item.icon className="h-4 w-4" />
                         <span>{item.title}</span>
+                        {item.title === "My Tasks" && pendingTaskCount > 0 && (
+                          <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 px-1.5 text-xs font-medium text-white" data-testid="badge-pending-tasks">
+                            {pendingTaskCount > 99 ? '99+' : pendingTaskCount}
+                          </span>
+                        )}
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -355,6 +366,26 @@ export function AppSidebar() {
       </SidebarContent>
 
       <SidebarFooter>
+        {/* Help section for clients - shown at bottom */}
+        {!isStaff && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Help</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {clientHelpNavigation.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild isActive={isActive(item.href)}>
+                      <Link href={item.href} className="cursor-pointer" data-testid={item.testId}>
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton asChild>
