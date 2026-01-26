@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Progress } from "@/components/ui/progress";
 import { useAuth } from "@/hooks/useAuth";
 import type { Document } from "@shared/schema";
 import {
@@ -175,16 +174,56 @@ export default function Documents() {
     return acc;
   }, {} as Record<string, Document[]>);
 
-  // Calculate overall progress
+  // Calculate current status - count pending required items
   const allRequiredDocs = DOCUMENT_CATEGORIES.flatMap(cat =>
     cat.documents.filter(d => d.required)
   );
-  const uploadedRequiredCount = allRequiredDocs.filter(d =>
-    documentsByType[d.type]?.length > 0
-  ).length;
-  const overallProgress = allRequiredDocs.length > 0
-    ? Math.round((uploadedRequiredCount / allRequiredDocs.length) * 100)
-    : 0;
+  const pendingRequiredDocs = allRequiredDocs.filter(d =>
+    !documentsByType[d.type]?.length
+  );
+  const pendingCount = pendingRequiredDocs.length;
+  const isAllCaughtUp = pendingCount === 0;
+
+  // Determine status message and styling
+  const getStatusInfo = () => {
+    if (isAllCaughtUp) {
+      return {
+        icon: CheckCircle2,
+        iconColor: "text-emerald-400",
+        bgColor: "bg-emerald-500/20",
+        borderColor: "border-emerald-400/30",
+        title: "You're all caught up!",
+        subtitle: "All currently requested documents have been submitted",
+        badgeText: "Complete",
+        badgeColor: "bg-emerald-500 text-white",
+      };
+    } else if (pendingCount <= 3) {
+      return {
+        icon: Clock,
+        iconColor: "text-amber-400",
+        bgColor: "bg-amber-500/20",
+        borderColor: "border-amber-400/30",
+        title: "Almost there!",
+        subtitle: `${pendingCount} document${pendingCount > 1 ? "s" : ""} still needed`,
+        badgeText: "Action Needed",
+        badgeColor: "bg-amber-500 text-white",
+      };
+    } else {
+      return {
+        icon: AlertCircle,
+        iconColor: "text-rose-400",
+        bgColor: "bg-rose-500/20",
+        borderColor: "border-rose-400/30",
+        title: "Documents needed",
+        subtitle: `${pendingCount} documents still required`,
+        badgeText: "Pending",
+        badgeColor: "bg-rose-500 text-white",
+      };
+    }
+  };
+
+  const statusInfo = getStatusInfo();
+  const StatusIcon = statusInfo.icon;
 
   return (
     <>
@@ -202,21 +241,22 @@ export default function Documents() {
             Document Checklist
           </h1>
           <p className="mt-1 text-primary-foreground/80">
-            Upload the required documents to complete your application
+            Submit required documents as requested — we may ask for more as your application progresses
           </p>
 
-          {/* Progress Summary */}
-          <div className="mt-6 flex flex-wrap items-center gap-6">
-            <div className="flex items-center gap-3 bg-white/10 rounded-lg px-4 py-2">
-              <div className="text-right">
-                <div className="text-2xl font-bold text-white">{overallProgress}%</div>
-                <div className="text-xs text-primary-foreground/70">Complete</div>
+          {/* Status Summary */}
+          <div className="mt-6">
+            <div className={`inline-flex items-center gap-4 rounded-xl px-5 py-3 ${statusInfo.bgColor} border ${statusInfo.borderColor}`} data-testid="status-summary">
+              <StatusIcon className={`h-8 w-8 ${statusInfo.iconColor}`} />
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-lg font-semibold text-white" data-testid="status-title">{statusInfo.title}</span>
+                  <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${statusInfo.badgeColor}`}>
+                    {statusInfo.badgeText}
+                  </span>
+                </div>
+                <p className="text-sm text-primary-foreground/80">{statusInfo.subtitle}</p>
               </div>
-              <Progress value={overallProgress} className="w-24 h-2 bg-white/20" />
-            </div>
-            <div className="flex items-center gap-2 text-primary-foreground/80">
-              <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-              <span className="text-sm">{uploadedRequiredCount} of {allRequiredDocs.length} required docs uploaded</span>
             </div>
           </div>
         </div>
@@ -228,17 +268,31 @@ export default function Documents() {
           const CategoryIcon = category.icon;
           const isExpanded = expandedCategories.includes(category.id);
 
-          // Calculate category progress
+          // Calculate category status
           const requiredInCategory = category.documents.filter(d => d.required);
-          const uploadedInCategory = requiredInCategory.filter(d =>
-            documentsByType[d.type]?.length > 0
+          const pendingInCategory = requiredInCategory.filter(d =>
+            !documentsByType[d.type]?.length
           ).length;
-          const categoryProgress = requiredInCategory.length > 0
-            ? Math.round((uploadedInCategory / requiredInCategory.length) * 100)
-            : 100;
+          const uploadedCount = category.documents.filter(d => documentsByType[d.type]?.length > 0).length;
 
-          const allUploaded = categoryProgress === 100;
-          const hasUploads = category.documents.some(d => documentsByType[d.type]?.length > 0);
+          const allCaughtUp = pendingInCategory === 0;
+          const hasUploads = uploadedCount > 0;
+
+          // Category status badge
+          const getCategoryStatus = () => {
+            if (requiredInCategory.length === 0) {
+              return { text: "Optional", color: "bg-muted text-muted-foreground" };
+            }
+            if (allCaughtUp) {
+              return { text: "Complete", color: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" };
+            }
+            if (pendingInCategory === 1) {
+              return { text: "1 needed", color: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" };
+            }
+            return { text: `${pendingInCategory} needed`, color: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" };
+          };
+
+          const categoryStatus = getCategoryStatus();
 
           return (
             <Card key={category.id} className="shadow-lg border-0" data-testid={`card-category-${category.id}`}>
@@ -254,7 +308,7 @@ export default function Documents() {
                     <div>
                       <CardTitle className="flex items-center gap-2">
                         {category.name}
-                        {allUploaded && requiredInCategory.length > 0 && (
+                        {allCaughtUp && requiredInCategory.length > 0 && (
                           <CheckCircle2 className="h-5 w-5 text-emerald-500" />
                         )}
                       </CardTitle>
@@ -262,14 +316,9 @@ export default function Documents() {
                     </div>
                   </div>
                   <div className="flex items-center gap-4">
-                    {requiredInCategory.length > 0 && (
-                      <div className="flex items-center gap-2">
-                        <Progress value={categoryProgress} className="w-20 h-2" />
-                        <span className="text-sm text-muted-foreground w-10">
-                          {categoryProgress}%
-                        </span>
-                      </div>
-                    )}
+                    <Badge className={categoryStatus.color}>
+                      {categoryStatus.text}
+                    </Badge>
                     {hasUploads && !isExpanded && (
                       <Badge variant="secondary" className="text-xs">
                         {category.documents.filter(d => documentsByType[d.type]?.length > 0).length} uploaded
