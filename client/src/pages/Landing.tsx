@@ -22,230 +22,219 @@ export default function Landing() {
     <div className="min-h-screen bg-background">
       <Navigation />
 
-      {/* Hero Section - Baranest Soft Canvas */}
-      <section className="relative bg-accent px-4 py-16 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-6xl">
+      {/* Hero Section - Premium Gradient */}
+      <section className="relative overflow-hidden bg-gradient-to-br from-primary via-primary to-[hsl(213,52%,18%)] px-4 py-20 sm:px-6 lg:px-8 lg:py-28">
+        {/* Decorative gradient orbs */}
+        <div className="absolute -left-32 -top-32 h-96 w-96 rounded-full bg-accent/20 blur-3xl" />
+        <div className="absolute -bottom-32 -right-32 h-96 w-96 rounded-full bg-blue-400/10 blur-3xl" />
+        
+        <div className="relative mx-auto max-w-6xl">
           <div className="flex flex-col items-center text-center">
-            <h1 className="text-[34px] font-semibold leading-tight tracking-tight text-foreground sm:text-5xl">
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm text-white/90 backdrop-blur-sm">
+              <Sparkles className="h-4 w-4 text-emerald-400" />
+              Trusted by 50,000+ homebuyers
+            </div>
+            
+            <h1 className="text-4xl font-bold leading-tight tracking-tight text-white sm:text-5xl lg:text-6xl">
               Clear answers.
+              <br />
+              <span className="bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">
+                Confident approvals.
+              </span>
             </h1>
-            <h2 className="mt-1 text-[34px] font-semibold leading-tight tracking-tight sm:text-5xl">
-              <span className="text-primary">Confident approvals.</span>
-            </h2>
 
-            <p className="mx-auto mt-6 max-w-2xl text-[15px] leading-relaxed text-muted-foreground sm:text-base">
-              Mortgage decisions, made clear. Get pre-approved in minutes
+            <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-white/80 sm:text-xl">
+              Get pre-approved in 3 minutes with a process built for certainty.
               <br className="hidden sm:block" />
-              with a process built for certainty, not guesswork.
+              No guesswork. No surprises.
             </p>
 
-            <div className="mt-8 flex flex-col items-center gap-3">
+            <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:gap-4">
               <Link href="/apply">
                 <Button
                   size="lg"
-                  className="gap-2 px-8 py-6 text-base"
+                  className="gap-2 bg-emerald-500 px-8 py-6 text-base font-semibold text-white shadow-lg shadow-emerald-500/25"
                   data-testid="button-hero-preapprove"
                 >
                   Get Pre-Approved
+                  <ArrowRight className="h-4 w-4" />
                 </Button>
               </Link>
-              <span className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Link href="/properties">
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="gap-2 border-white/30 bg-white/10 px-8 py-6 text-base text-white backdrop-blur-sm"
+                  data-testid="button-hero-browse"
+                >
+                  Browse Properties
+                </Button>
+              </Link>
+            </div>
+            
+            <div className="mt-6 flex items-center gap-6 text-sm text-white/70">
+              <span className="flex items-center gap-2">
                 <Clock className="h-4 w-4" />
-                3 min | No hard credit check
+                3 min application
+              </span>
+              <span className="flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                No hard credit check
               </span>
             </div>
           </div>
 
-          {/* Phone Mockup with Feature Cards */}
-          <div className="relative mt-12 flex justify-center">
-            <div className="relative">
-              {/* Phone Frame */}
-              <div className="relative mx-auto w-64 rounded-3xl border-4 border-gray-800 bg-gray-800 p-2 shadow-2xl sm:w-72">
-                <div className="overflow-hidden rounded-2xl bg-white">
-                  {/* Phone Screen Content */}
-                  <div className="bg-primary p-4 text-white">
-                    <div className="flex items-center gap-2">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20">
-                        <span className="text-sm font-bold">680</span>
-                      </div>
-                      <span className="text-sm">You're on track</span>
-                    </div>
-                  </div>
-                  <div className="space-y-3 p-4">
-                    <div className="rounded-lg bg-accent p-3">
-                      <p className="text-xs text-muted-foreground">You don't need perfect credit to qualify</p>
-                    </div>
-                    <div className="rounded-lg bg-secondary p-3">
-                      <p className="text-xs text-muted-foreground">Just one more step</p>
-                    </div>
-                    <div className="border-t pt-3">
-                      <p className="text-xs font-medium text-primary">Congrats, you're pre-approved!</p>
-                      <p className="text-xs text-muted-foreground">for a loan up to</p>
-                      <p className="text-2xl font-bold text-foreground">$450,000</p>
-                    </div>
-                    <div className="rounded-lg bg-secondary p-3">
-                      <p className="text-xs text-muted-foreground">See your customized rate options</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Floating Feature Cards */}
-              <Card className="absolute -right-4 top-8 hidden w-48 border-0 shadow-lg sm:block lg:-right-24">
-                <CardContent className="p-3">
-                  <div className="flex items-start gap-2">
-                    <CheckCircle2 className="h-5 w-5 shrink-0 text-primary" />
-                    <div>
-                      <p className="text-xs font-medium">You don't need</p>
-                      <p className="text-xs text-muted-foreground">perfect credit to qualify</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="absolute -left-4 top-32 hidden w-48 border-0 shadow-lg sm:block lg:-left-24">
-                <CardContent className="p-3">
-                  <div className="flex items-start gap-2">
-                    <Sparkles className="h-5 w-5 shrink-0 text-primary" />
-                    <div>
-                      <p className="text-xs font-medium">We'll let you know</p>
-                      <p className="text-xs text-muted-foreground">if anything changes</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+          {/* Stats Cards */}
+          <div className="relative mt-16 grid gap-4 sm:grid-cols-3 sm:gap-6">
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-center backdrop-blur-sm">
+              <p className="text-3xl font-bold text-white">$12B+</p>
+              <p className="mt-1 text-sm text-white/70">Loans funded</p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-center backdrop-blur-sm">
+              <p className="text-3xl font-bold text-white">50K+</p>
+              <p className="mt-1 text-sm text-white/70">Happy homeowners</p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-center backdrop-blur-sm">
+              <p className="text-3xl font-bold text-emerald-400">4.9</p>
+              <p className="mt-1 text-sm text-white/70">Customer rating</p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Testimonials Section */}
-      <section className="px-4 py-16 sm:px-6 lg:px-8">
+      {/* How It Works Section */}
+      <section className="px-4 py-20 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-6xl">
-          <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
-            {/* Video Testimonial */}
-            <div className="flex flex-col items-center">
-              <div className="relative aspect-[3/4] w-full max-w-xs overflow-hidden rounded-2xl bg-gray-900 shadow-xl">
-                <div className="flex h-full flex-col justify-end bg-gradient-to-t from-black/80 to-transparent p-6">
-                  <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white/20 backdrop-blur">
-                      <div className="h-0 w-0 border-l-[20px] border-t-[12px] border-b-[12px] border-l-white border-t-transparent border-b-transparent ml-1"></div>
-                    </div>
-                  </div>
-                  <p className="text-sm leading-relaxed text-white">
-                    "I used Baranest for my primary residence and just closed on my vacation home. Very simple process. The team was calm and reassuring every step of the way."
-                  </p>
-                  <p className="mt-3 text-xs text-gray-400">Paul, Mortgage Customer</p>
-                </div>
+          <div className="text-center">
+            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
+              How it works
+            </h2>
+            <p className="mt-4 text-lg text-muted-foreground">
+              Get pre-approved in three simple steps
+            </p>
+          </div>
+          
+          <div className="mt-16 grid gap-8 sm:grid-cols-3">
+            <div className="relative text-center">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-primary text-2xl font-bold text-white shadow-lg shadow-primary/25">
+                1
               </div>
+              <h3 className="mt-6 text-xl font-semibold">Answer a few questions</h3>
+              <p className="mt-3 text-muted-foreground">
+                Tell us about your income, assets, and the home you're looking for.
+              </p>
+            </div>
+            
+            <div className="relative text-center">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-primary text-2xl font-bold text-white shadow-lg shadow-primary/25">
+                2
+              </div>
+              <h3 className="mt-6 text-xl font-semibold">Get instant approval</h3>
+              <p className="mt-3 text-muted-foreground">
+                Our system analyzes your profile and delivers a decision in minutes.
+              </p>
+            </div>
+            
+            <div className="relative text-center">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-500 text-2xl font-bold text-white shadow-lg shadow-emerald-500/25">
+                3
+              </div>
+              <h3 className="mt-6 text-xl font-semibold">Start shopping</h3>
+              <p className="mt-3 text-muted-foreground">
+                Use your pre-approval letter to make offers with confidence.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
 
-              {/* Testimonial Tabs */}
-              <div className="mt-6 flex gap-3">
-                {testimonials.map((person) => (
-                  <Button
-                    key={person.name}
-                    variant={person.active ? "default" : "outline"}
-                    size="sm"
-                    className={person.active ? "" : ""}
-                  >
-                    {person.name}
-                  </Button>
+      {/* Social Proof Section */}
+      <section className="border-y bg-muted/30 px-4 py-16 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-6xl">
+          <div className="grid gap-8 md:grid-cols-2 lg:items-center">
+            {/* Quote */}
+            <div>
+              <div className="flex gap-1">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <Star key={i} className="h-5 w-5 fill-amber-400 text-amber-400" />
                 ))}
               </div>
+              <blockquote className="mt-6 text-2xl font-medium leading-relaxed tracking-tight">
+                "The fastest, clearest mortgage process I've ever experienced. I knew exactly where I stood every step of the way."
+              </blockquote>
+              <div className="mt-6">
+                <p className="font-semibold">Sarah M.</p>
+                <p className="text-sm text-muted-foreground">First-time homebuyer, Austin TX</p>
+              </div>
             </div>
 
-            {/* Text Content */}
-            <div className="text-center lg:text-left">
-              <h2 className="text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
-                Find out why
-                <br />
-                we're better.
-              </h2>
-
-              <Button
-                className="mt-8 gap-2"
-                data-testid="button-see-stories"
-              >
-                See all our stories
-              </Button>
-
-              <div className="mt-6 flex items-center justify-center gap-2 lg:justify-start">
-                <div className="flex">
-                  {[1, 2, 3, 4, 5].map((i) => (
-                    <Star key={i} className="h-4 w-4 fill-primary text-primary" />
-                  ))}
-                </div>
-                <span className="text-sm font-medium">Excellent</span>
-                <span className="text-sm text-gray-500">4.8 out of 5</span>
-              </div>
+            {/* Stats */}
+            <div className="grid gap-6 sm:grid-cols-2">
+              <Card className="border-0 bg-white shadow-lg dark:bg-card">
+                <CardContent className="p-6 text-center">
+                  <p className="text-4xl font-bold text-primary">3 min</p>
+                  <p className="mt-2 text-sm text-muted-foreground">Average application time</p>
+                </CardContent>
+              </Card>
+              <Card className="border-0 bg-white shadow-lg dark:bg-card">
+                <CardContent className="p-6 text-center">
+                  <p className="text-4xl font-bold text-emerald-500">97%</p>
+                  <p className="mt-2 text-sm text-muted-foreground">Customer satisfaction</p>
+                </CardContent>
+              </Card>
+              <Card className="border-0 bg-white shadow-lg dark:bg-card">
+                <CardContent className="p-6 text-center">
+                  <p className="text-4xl font-bold text-primary">$450K</p>
+                  <p className="mt-2 text-sm text-muted-foreground">Average approval amount</p>
+                </CardContent>
+              </Card>
+              <Card className="border-0 bg-white shadow-lg dark:bg-card">
+                <CardContent className="p-6 text-center">
+                  <p className="text-4xl font-bold text-emerald-500">24/7</p>
+                  <p className="mt-2 text-sm text-muted-foreground">Support available</p>
+                </CardContent>
+              </Card>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Quick Links Section */}
-      <section className="border-t bg-gray-50 px-4 py-16 dark:bg-gray-900/50 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-6xl">
-          <h2 className="text-2xl font-bold tracking-tight">Get started today</h2>
-          <p className="mt-2 text-muted-foreground">
-            Join thousands who've simplified their mortgage journey
+      {/* CTA Section */}
+      <section className="px-4 py-20 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-4xl text-center">
+          <h2 className="text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
+            Ready to get started?
+          </h2>
+          <p className="mt-6 text-lg text-muted-foreground">
+            Join over 50,000 homebuyers who trust Baranest for clear, confident mortgage decisions.
           </p>
-
-          <div className="mt-8 grid gap-6 sm:grid-cols-3">
+          
+          <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
             <Link href="/apply">
-              <Card className="h-full cursor-pointer transition-shadow hover:shadow-md">
-                <CardContent className="p-6">
-                  <h3 className="font-semibold">Buy a home</h3>
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    Get pre-approved for a home purchase in minutes
-                  </p>
-                  <Button
-                    variant="ghost"
-                    className="mt-4 gap-1 p-0 text-primary hover:text-primary/80 hover:bg-transparent"
-                    data-testid="button-buy-home"
-                  >
-                    Get started <ArrowRight className="h-3 w-3" />
-                  </Button>
-                </CardContent>
-              </Card>
+              <Button
+                size="lg"
+                className="gap-2 bg-emerald-500 px-10 py-6 text-base font-semibold shadow-lg shadow-emerald-500/25"
+                data-testid="button-cta-preapprove"
+              >
+                Get Pre-Approved Now
+                <ArrowRight className="h-4 w-4" />
+              </Button>
             </Link>
-
-            <Link href="/apply">
-              <Card className="h-full cursor-pointer transition-shadow hover:shadow-md">
-                <CardContent className="p-6">
-                  <h3 className="font-semibold">Refinance</h3>
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    Lower your rate or change your loan terms
-                  </p>
-                  <Button
-                    variant="ghost"
-                    className="mt-4 gap-1 p-0 text-primary hover:text-primary/80 hover:bg-transparent"
-                    data-testid="button-refinance"
-                  >
-                    Get started <ArrowRight className="h-3 w-3" />
-                  </Button>
-                </CardContent>
-              </Card>
-            </Link>
-
             <Link href="/properties">
-              <Card className="h-full cursor-pointer transition-shadow hover:shadow-md">
-                <CardContent className="p-6">
-                  <h3 className="font-semibold">Browse properties</h3>
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    Find your dream home with instant pre-approval
-                  </p>
-                  <Button
-                    variant="ghost"
-                    className="mt-4 gap-1 p-0 text-primary hover:text-primary/80 hover:bg-transparent"
-                    data-testid="button-browse-properties"
-                  >
-                    Browse <ArrowRight className="h-3 w-3" />
-                  </Button>
-                </CardContent>
-              </Card>
+              <Button
+                variant="outline"
+                size="lg"
+                className="gap-2 px-10 py-6 text-base"
+                data-testid="button-cta-browse"
+              >
+                Browse Properties
+              </Button>
             </Link>
           </div>
+          
+          <p className="mt-6 text-sm text-muted-foreground">
+            No commitment required. No hard credit check.
+          </p>
         </div>
       </section>
 

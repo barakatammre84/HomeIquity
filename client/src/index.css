@@ -2,82 +2,82 @@
 @tailwind components;
 @tailwind utilities;
 
-/* LIGHT MODE - Institutional Calm */
+/* LIGHT MODE - Premium & Distinctive */
 :root {
   --button-outline: rgba(0,0,0, .08);
   --badge-outline: rgba(0,0,0, .05);
   --opaque-button-border-intensity: -8;
   --elevate-1: rgba(0,0,0, .03);
   --elevate-2: rgba(0,0,0, .06);
-  /* Surface: Porcelain #FAFBFC */
-  --background: 210 20% 99%;
-  /* Primary Text: Ink #0F172A */
-  --foreground: 222 47% 11%;
-  /* Subtle Border: Fog Line #E6EBF0 */
-  --border: 210 22% 92%;
+  /* Background: Clean white with warmth */
+  --background: 0 0% 100%;
+  /* Primary Text: Rich charcoal */
+  --foreground: 220 25% 10%;
+  /* Subtle Border */
+  --border: 220 15% 90%;
   --card: 0 0% 100%;
-  /* Primary Text: Ink #0F172A */
-  --card-foreground: 222 47% 11%;
-  --card-border: 210 22% 92%;
-  /* Sidebar: Slightly darker Porcelain */
-  --sidebar: 210 20% 97%;
-  --sidebar-foreground: 222 47% 11%;
-  --sidebar-border: 210 22% 92%;
-  /* Primary: Midnight Slate #162A3A */
-  --sidebar-primary: 203 47% 16%;
+  --card-foreground: 220 25% 10%;
+  --card-border: 220 15% 90%;
+  /* Sidebar: Warm off-white */
+  --sidebar: 40 20% 98%;
+  --sidebar-foreground: 220 25% 10%;
+  --sidebar-border: 220 15% 90%;
+  /* Primary: Deep Navy Blue #1e3a5f - Rich and confident */
+  --sidebar-primary: 213 52% 24%;
   --sidebar-primary-foreground: 0 0% 100%;
-  /* Accent: Soft Moss tint for sidebar */
-  --sidebar-accent: 159 15% 94%;
-  --sidebar-accent-foreground: 222 47% 11%;
-  --sidebar-ring: 203 47% 16%;
+  /* Accent: Warm sand for sidebar */
+  --sidebar-accent: 35 30% 95%;
+  --sidebar-accent-foreground: 220 25% 10%;
+  --sidebar-ring: 213 52% 24%;
   --popover: 0 0% 100%;
-  --popover-foreground: 222 47% 11%;
-  --popover-border: 210 22% 90%;
-  /* Primary: Midnight Slate #162A3A */
-  --primary: 203 47% 16%;
+  --popover-foreground: 220 25% 10%;
+  --popover-border: 220 15% 88%;
+  /* Primary: Deep Navy Blue #1e3a5f */
+  --primary: 213 52% 24%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 210 20% 96%;
-  --secondary-foreground: 222 47% 11%;
-  --muted: 210 20% 96%;
-  /* Secondary Text: Ash #475569 */
-  --muted-foreground: 215 19% 35%;
-  /* Accent: Soft Moss #6F9E90 tint for accent backgrounds */
-  --accent: 159 20% 94%;
-  --accent-foreground: 222 47% 11%;
-  /* Error: Oxide Red #9F3A38 */
-  --destructive: 1 47% 42%;
+  /* Secondary: Warm neutral */
+  --secondary: 35 20% 96%;
+  --secondary-foreground: 220 25% 10%;
+  --muted: 220 15% 96%;
+  /* Secondary Text: Warm gray */
+  --muted-foreground: 220 10% 45%;
+  /* Accent: Vibrant Emerald #10b981 - Eye-catching but professional */
+  --accent: 160 84% 39%;
+  --accent-foreground: 0 0% 100%;
+  /* Error: Refined Red */
+  --destructive: 0 72% 51%;
   --destructive-foreground: 0 0% 100%;
-  --input: 210 22% 90%;
-  --ring: 203 47% 16%;
-  /* Charts: Soft Moss and Midnight Slate variants */
-  --chart-1: 159 20% 53%;
-  --chart-2: 203 47% 16%;
-  --chart-3: 159 25% 45%;
-  --chart-4: 203 40% 30%;
-  --chart-5: 159 15% 40%;
-  /* Success: Evergreen #3E7C6A */
-  --success: 159 33% 36%;
+  --input: 220 15% 88%;
+  --ring: 213 52% 24%;
+  /* Charts: Vibrant but harmonious */
+  --chart-1: 160 84% 39%;
+  --chart-2: 213 52% 24%;
+  --chart-3: 35 92% 55%;
+  --chart-4: 280 65% 60%;
+  --chart-5: 190 80% 45%;
+  /* Success: Vibrant Emerald */
+  --success: 160 84% 39%;
   --success-foreground: 0 0% 100%;
-  /* Warning: Muted Amber #B08945 */
-  --warning: 36 44% 48%;
-  --warning-foreground: 222 47% 11%;
-  /* Info: Steel Blue #3B5C7E */
-  --info: 209 36% 36%;
+  /* Warning: Rich Amber */
+  --warning: 38 92% 50%;
+  --warning-foreground: 220 25% 10%;
+  /* Info: Ocean Blue */
+  --info: 200 80% 50%;
   --info-foreground: 0 0% 100%;
   --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-serif: Georgia, serif;
   --font-mono: "JetBrains Mono", monospace;
-  /* Rounded corners 12px per brand guide */
+  /* Rounded corners 12px */
   --radius: .75rem;
-  /* Institutional shadow: subtle, premium */
-  --shadow-2xs: 0 1px 2px 0 hsl(0 0% 0% / 0.02);
-  --shadow-xs: 0 1px 3px 0 hsl(0 0% 0% / 0.03), 0 1px 2px -1px hsl(0 0% 0% / 0.02);
-  --shadow-sm: 0 2px 4px -1px hsl(0 0% 0% / 0.04), 0 1px 2px -1px hsl(0 0% 0% / 0.03);
-  --shadow: 0 4px 6px -1px hsl(0 0% 0% / 0.05), 0 2px 4px -2px hsl(0 0% 0% / 0.03);
-  --shadow-md: 0 6px 20px 0 hsl(222 47% 11% / 0.06);
-  --shadow-lg: 0 10px 20px -3px hsl(0 0% 0% / 0.08), 0 4px 8px -4px hsl(0 0% 0% / 0.05);
-  --shadow-xl: 0 16px 32px -4px hsl(0 0% 0% / 0.10), 0 8px 16px -6px hsl(0 0% 0% / 0.06);
-  --shadow-2xl: 0 24px 48px -6px hsl(0 0% 0% / 0.12);
+  /* Premium shadows with color */
+  --shadow-2xs: 0 1px 2px 0 hsl(213 52% 24% / 0.03);
+  --shadow-xs: 0 1px 3px 0 hsl(213 52% 24% / 0.04), 0 1px 2px -1px hsl(213 52% 24% / 0.03);
+  --shadow-sm: 0 2px 4px -1px hsl(213 52% 24% / 0.06), 0 1px 2px -1px hsl(213 52% 24% / 0.04);
+  --shadow: 0 4px 6px -1px hsl(213 52% 24% / 0.08), 0 2px 4px -2px hsl(213 52% 24% / 0.05);
+  --shadow-md: 0 8px 24px 0 hsl(213 52% 24% / 0.10);
+  --shadow-lg: 0 12px 28px -4px hsl(213 52% 24% / 0.12), 0 4px 12px -4px hsl(213 52% 24% / 0.08);
+  --shadow-xl: 0 20px 40px -8px hsl(213 52% 24% / 0.15), 0 8px 16px -6px hsl(213 52% 24% / 0.10);
+  --shadow-2xl: 0 32px 64px -12px hsl(213 52% 24% / 0.20);
   --tracking-normal: 0em;
   --spacing: 0.25rem;
 
@@ -110,75 +110,75 @@
   --destructive-border: hsl(from hsl(var(--destructive)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
 }
 
-/* DARK MODE - Professional Dashboard */
+/* DARK MODE - Premium & Rich */
 .dark {
-  --button-outline: rgba(255,255,255, .08);
-  --badge-outline: rgba(255,255,255, .05);
+  --button-outline: rgba(255,255,255, .10);
+  --badge-outline: rgba(255,255,255, .06);
   --opaque-button-border-intensity: 9;
-  --elevate-1: rgba(255,255,255, .04);
-  --elevate-2: rgba(255,255,255, .08);
-  /* Background: #0B1220 - Professional dark */
-  --background: 217 51% 8%;
-  /* Primary Text: #E5E7EB */
-  --foreground: 220 14% 91%;
-  /* Borders: #1F2937 */
-  --border: 217 33% 17%;
-  /* Surface: #111827 */
-  --card: 222 47% 11%;
-  --card-foreground: 220 14% 91%;
-  --card-border: 217 33% 17%;
-  --sidebar: 222 47% 11%;
-  --sidebar-foreground: 220 14% 91%;
-  --sidebar-border: 217 33% 17%;
-  /* Primary: Lighter Midnight Slate for dark mode */
-  --sidebar-primary: 203 40% 40%;
+  --elevate-1: rgba(255,255,255, .05);
+  --elevate-2: rgba(255,255,255, .10);
+  /* Background: Rich dark blue */
+  --background: 222 47% 8%;
+  /* Primary Text: Bright white */
+  --foreground: 0 0% 98%;
+  /* Borders: Subtle blue */
+  --border: 220 30% 18%;
+  /* Surface: Elevated dark */
+  --card: 222 40% 12%;
+  --card-foreground: 0 0% 98%;
+  --card-border: 220 30% 20%;
+  --sidebar: 222 47% 10%;
+  --sidebar-foreground: 0 0% 98%;
+  --sidebar-border: 220 30% 18%;
+  /* Primary: Brighter navy for dark mode */
+  --sidebar-primary: 213 70% 50%;
   --sidebar-primary-foreground: 0 0% 100%;
-  /* Accent: Soft Moss tint for dark mode */
-  --sidebar-accent: 159 15% 18%;
-  --sidebar-accent-foreground: 220 14% 91%;
-  --sidebar-ring: 203 40% 40%;
-  --popover: 222 47% 13%;
-  --popover-foreground: 220 14% 91%;
-  --popover-border: 217 33% 20%;
-  /* Primary: Lighter Midnight Slate for dark mode */
-  --primary: 203 40% 40%;
+  /* Accent: Emerald tint for sidebar */
+  --sidebar-accent: 160 50% 20%;
+  --sidebar-accent-foreground: 0 0% 98%;
+  --sidebar-ring: 213 70% 50%;
+  --popover: 222 40% 14%;
+  --popover-foreground: 0 0% 98%;
+  --popover-border: 220 30% 22%;
+  /* Primary: Brighter navy for visibility */
+  --primary: 213 70% 50%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 217 33% 17%;
-  --secondary-foreground: 220 14% 91%;
-  --muted: 217 33% 15%;
-  /* Secondary Text: #9CA3AF */
-  --muted-foreground: 218 11% 65%;
-  /* Accent: Soft Moss tint for dark mode */
-  --accent: 159 15% 18%;
-  --accent-foreground: 220 14% 91%;
-  /* Error: Oxide Red */
-  --destructive: 1 47% 48%;
+  --secondary: 220 30% 18%;
+  --secondary-foreground: 0 0% 98%;
+  --muted: 220 25% 16%;
+  /* Secondary Text: Light gray */
+  --muted-foreground: 220 15% 65%;
+  /* Accent: Vibrant Emerald */
+  --accent: 160 84% 45%;
+  --accent-foreground: 0 0% 100%;
+  /* Error: Bright red */
+  --destructive: 0 72% 55%;
   --destructive-foreground: 0 0% 100%;
-  --input: 217 33% 20%;
-  --ring: 203 40% 40%;
-  /* Charts: Muted tones for dark mode */
-  --chart-1: 159 20% 50%;
-  --chart-2: 203 40% 50%;
-  --chart-3: 159 18% 45%;
-  --chart-4: 203 35% 45%;
-  --chart-5: 159 15% 40%;
-  /* Success: Evergreen (slightly brighter for dark) */
-  --success: 159 33% 42%;
+  --input: 220 30% 20%;
+  --ring: 213 70% 50%;
+  /* Charts: Vibrant for dark mode */
+  --chart-1: 160 84% 45%;
+  --chart-2: 213 70% 55%;
+  --chart-3: 35 92% 60%;
+  --chart-4: 280 65% 65%;
+  --chart-5: 190 80% 50%;
+  /* Success: Bright Emerald */
+  --success: 160 84% 45%;
   --success-foreground: 0 0% 100%;
-  /* Warning: Muted Amber */
-  --warning: 36 44% 52%;
-  --warning-foreground: 222 47% 11%;
-  /* Info: Steel Blue */
-  --info: 209 36% 45%;
+  /* Warning: Bright Amber */
+  --warning: 38 92% 55%;
+  --warning-foreground: 220 25% 10%;
+  /* Info: Bright Blue */
+  --info: 200 80% 55%;
   --info-foreground: 0 0% 100%;
-  --shadow-2xs: 0 1px 2px 0 hsl(0 0% 0% / 0.15);
-  --shadow-xs: 0 1px 3px 0 hsl(0 0% 0% / 0.20), 0 1px 2px -1px hsl(0 0% 0% / 0.15);
-  --shadow-sm: 0 2px 4px -1px hsl(0 0% 0% / 0.25), 0 1px 2px -1px hsl(0 0% 0% / 0.18);
-  --shadow: 0 4px 6px -1px hsl(0 0% 0% / 0.30), 0 2px 4px -2px hsl(0 0% 0% / 0.20);
-  --shadow-md: 0 6px 20px 0 hsl(0 0% 0% / 0.30);
-  --shadow-lg: 0 10px 20px -3px hsl(0 0% 0% / 0.40), 0 4px 8px -4px hsl(0 0% 0% / 0.30);
-  --shadow-xl: 0 16px 32px -4px hsl(0 0% 0% / 0.45), 0 8px 16px -6px hsl(0 0% 0% / 0.35);
-  --shadow-2xl: 0 24px 48px -6px hsl(0 0% 0% / 0.50);
+  --shadow-2xs: 0 1px 2px 0 hsl(0 0% 0% / 0.20);
+  --shadow-xs: 0 1px 3px 0 hsl(0 0% 0% / 0.25), 0 1px 2px -1px hsl(0 0% 0% / 0.20);
+  --shadow-sm: 0 2px 4px -1px hsl(0 0% 0% / 0.30), 0 1px 2px -1px hsl(0 0% 0% / 0.22);
+  --shadow: 0 4px 6px -1px hsl(0 0% 0% / 0.35), 0 2px 4px -2px hsl(0 0% 0% / 0.25);
+  --shadow-md: 0 8px 24px 0 hsl(0 0% 0% / 0.40);
+  --shadow-lg: 0 12px 28px -4px hsl(0 0% 0% / 0.45), 0 4px 12px -4px hsl(0 0% 0% / 0.35);
+  --shadow-xl: 0 20px 40px -8px hsl(0 0% 0% / 0.50), 0 8px 16px -6px hsl(0 0% 0% / 0.40);
+  --shadow-2xl: 0 32px 64px -12px hsl(0 0% 0% / 0.55);
 
 /* Fallback for older browsers */
   --sidebar-primary-border: hsl(var(--sidebar-primary));
