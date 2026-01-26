@@ -53,6 +53,7 @@ import PartnerServices from "@/pages/PartnerServices";
 import ReferralLanding from "@/pages/ReferralLanding";
 import PolicyOps from "@/pages/PolicyOps";
 import BorrowerDealComparison from "@/pages/BorrowerDealComparison";
+import Messages from "@/pages/Messages";
 
 function PublicPage({ children }: { children: React.ReactNode }) {
   return <PublicLayout>{children}</PublicLayout>;
@@ -163,6 +164,12 @@ function Router() {
       </Route>
       <Route path="/compare-offers/:id">
         {(params) => <BorrowerPage><BorrowerDealComparison /></BorrowerPage>}
+      </Route>
+      <Route path="/messages">
+        <BorrowerPage><Messages /></BorrowerPage>
+      </Route>
+      <Route path="/messages/:memberId">
+        {(params) => <BorrowerPage><Messages /></BorrowerPage>}
       </Route>
 
       {/* Private Pages - Staff (brokers, lenders processing mortgage applications) */}
