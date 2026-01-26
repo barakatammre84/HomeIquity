@@ -234,10 +234,20 @@ export default function BorrowerDealComparison() {
   };
 
   const handleSelectOffer = (offer: LenderOffer) => {
+    if (eligibility.cocStatus === "PENDING") {
+      toast({
+        title: "Selection Not Available",
+        description: "We're reviewing changes to your information. Please wait until the review is complete.",
+        variant: "destructive",
+      });
+      return;
+    }
     setSelectedOffer(offer);
     setShowConfirmModal(true);
     setAttestationChecked(false);
   };
+
+  const isCocBlocked = eligibility.cocStatus === "PENDING";
 
   const handleConfirmSelection = () => {
     if (!attestationChecked || !selectedOffer) return;
@@ -291,6 +301,14 @@ export default function BorrowerDealComparison() {
               </div>
               <Separator orientation="vertical" className="h-10 hidden md:block" />
               <div className="flex items-center gap-2">
+                <Home className="h-4 w-4 text-muted-foreground" />
+                <div>
+                  <p className="text-xs text-muted-foreground">Occupancy</p>
+                  <p className="font-semibold text-sm" data-testid="text-occupancy">{eligibility.occupancy}</p>
+                </div>
+              </div>
+              <Separator orientation="vertical" className="h-10 hidden md:block" />
+              <div className="flex items-center gap-2">
                 <CreditCard className="h-4 w-4 text-muted-foreground" />
                 <div>
                   <p className="text-xs text-muted-foreground">Credit Tier</p>
@@ -324,9 +342,19 @@ export default function BorrowerDealComparison() {
       </div>
 
       <div className="container mx-auto px-4 py-6 max-w-5xl">
+        {eligibility.cocStatus === "PENDING" && (
+          <Alert className="mb-6" variant="destructive" data-testid="alert-coc-pending">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Review in Progress</AlertTitle>
+            <AlertDescription>
+              We're reviewing potential changes to your financial information. You can view offers but cannot lock a rate until the review is complete.
+            </AlertDescription>
+          </Alert>
+        )}
+
         <div className="mb-6">
           <h1 className="text-2xl font-bold mb-2" data-testid="text-page-title">Your Loan Options</h1>
-          <p className="text-muted-foreground">
+          <p className="text-muted-foreground" data-testid="text-page-description">
             Compare your personalized offers and select the best option for your situation.
           </p>
         </div>
@@ -605,7 +633,7 @@ export default function BorrowerDealComparison() {
                     <Button
                       className="w-full"
                       onClick={() => handleSelectOffer(offer)}
-                      disabled={isDisabled}
+                      disabled={isDisabled || isCocBlocked}
                       data-testid={`button-select-${offer.id}`}
                     >
                       {isSelected ? (
