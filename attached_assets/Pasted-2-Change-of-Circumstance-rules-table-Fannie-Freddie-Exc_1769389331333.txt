@@ -1,0 +1,171 @@
+2️⃣ Change-of-Circumstance rules table (Fannie/Freddie)
+
+Excellent choice. This is one of the highest-risk, highest-value artifacts you can give both your developers and your compliance team.
+
+Below is a broker-correct, GSE-aligned Change-of-Circumstance (COC) Rules Table that you can implement as data, not code, and operate without engineers.
+
+I will give you:
+
+The conceptual model
+
+The actual rules table (Fannie vs Freddie)
+
+How the engine evaluates it
+
+What ops can safely update
+
+What is frozen for legal defense
+
+1️⃣ WHAT A “CHANGE OF CIRCUMSTANCE” IS (IN SYSTEM TERMS)
+
+A Change of Circumstance (COC) is not “anything changed”.
+
+It is:
+
+A change that is material enough under the applicable investor policy to require re-review, re-disclosure, or invalidation of a pre-approval.
+
+Your system detects deltas, then checks materiality thresholds.
+
+2️⃣ CORE COC DATA MODEL (STABLE, CODED ONCE)
+ChangeOfCircumstanceRule {
+  dimension            // income, credit, assets, employment, property
+  eventType             // decrease, increase, change, inquiry, etc.
+  metric                // %, points, boolean, count
+  thresholdRef          // policy-controlled
+  severity              // NONE | REVIEW | MATERIAL
+  action                // IGNORE | FLAG | INVALIDATE
+  explanationTemplate
+}
+
+
+⚠️ Developers hardcode the engine, not the values.
+
+3️⃣ CHANGE-OF-CIRCUMSTANCE RULES TABLE
+🔹 FANNIE MAE vs FREDDIE MAC (BROKER-SAFE)
+
+Important: These are materiality classifications, not approval rules.
+
+🧮 INCOME
+Dimension	Event	Metric	Fannie	Freddie	Action
+Income	Decrease	% decline	≥10% = MATERIAL	≥8% = MATERIAL	Invalidate
+Income	Increase	% increase	Any	Any	Ignore
+Income	Source Removed	Boolean	MATERIAL	MATERIAL	Invalidate
+Income	Bonus/OT Loss	Boolean	REVIEW	REVIEW	Flag
+Income	Variable Income Volatility	Std Dev	REVIEW	MATERIAL	Flag / Invalidate
+💼 EMPLOYMENT
+Dimension	Event	Metric	Fannie	Freddie	Action
+Employment	Employer Change	Boolean	REVIEW	MATERIAL	Flag / Invalidate
+Employment	Position Change	Boolean	REVIEW	REVIEW	Flag
+Employment	Job Gap > 30 days	Days	REVIEW	REVIEW	Flag
+Employment	Industry Change	Boolean	REVIEW	MATERIAL	Flag / Invalidate
+💳 CREDIT
+Dimension	Event	Metric	Fannie	Freddie	Action
+Credit	Score Drop	Points	≥20 = MATERIAL	≥15 = MATERIAL	Invalidate
+Credit	New Inquiry	Count	REVIEW	REVIEW	Flag
+Credit	New Tradeline	Boolean	REVIEW	MATERIAL	Flag / Invalidate
+Credit	New Derogatory	Boolean	MATERIAL	MATERIAL	Invalidate
+🏦 ASSETS
+Dimension	Event	Metric	Fannie	Freddie	Action
+Assets	Balance Decrease	%	≥10% = REVIEW	≥10% = MATERIAL	Flag / Invalidate
+Assets	Large Deposit	$	REVIEW	REVIEW	Flag
+Assets	NSF/Overdraft	Count	MATERIAL	MATERIAL	Invalidate
+Assets	Gift Funds Removed	Boolean	MATERIAL	MATERIAL	Invalidate
+🏠 PROPERTY / TRANSACTION
+Dimension	Event	Metric	Fannie	Freddie	Action
+Property	Purchase Price Increase	%	REVIEW	REVIEW	Flag
+Property	Loan Amount Increase	%	MATERIAL	MATERIAL	Invalidate
+Property	Occupancy Change	Boolean	MATERIAL	MATERIAL	Invalidate
+Property	Property Type Change	Boolean	MATERIAL	MATERIAL	Invalidate
+4️⃣ HOW THE ENGINE USES THIS (VERY IMPORTANT)
+Evaluation Flow (Code)
+
+Compare Snapshot vs Current
+
+Detect deltas
+
+Look up:
+
+Policy Profile (Fannie / Freddie)
+
+Applicable COC rules
+
+Determine severity
+
+Take action
+
+Example
+
+Income dropped 9%
+
+Fannie: REVIEW → Flag LO
+
+Freddie: MATERIAL → Auto-invalidate
+
+Same borrower, different investor.
+That’s why this must be policy-driven.
+
+5️⃣ WHAT OPS CAN UPDATE (NO CODING)
+
+Ops can change:
+
+% thresholds
+
+Severity classification
+
+Action mapping
+
+Effective dates
+
+They cannot:
+
+Add new dimensions
+
+Change evaluation logic
+
+Override snapshots
+
+6️⃣ SNAPSHOT FREEZE (LEGAL DEFENSE)
+
+Each pre-approval stores:
+
+{
+  "policyAuthority": "FREDDIE",
+  "policyVersion": "2026.03",
+  "changeRulesVersion": "1.0",
+  "issuedAt": "2026-03-12"
+}
+
+
+This proves:
+
+What rules applied
+
+When they applied
+
+Why action was taken
+
+7️⃣ WHY THIS IS BROKER-SAFE
+
+You are NOT saying:
+
+“The loan is approved”
+
+You are saying:
+
+“Eligibility is confirmed unless a material change, as defined by investor policy, occurs.”
+
+That language:
+
+Protects you legally
+
+Satisfies lenders
+
+Aligns with GSE expectations
+
+8️⃣ WHAT YOUR DEVELOPERS SHOULD BUILD NEXT (LOGICAL ORDER)
+
+1️⃣ COC Rule Table (data-driven)
+2️⃣ Delta detection engine
+3️⃣ Severity resolver
+4️⃣ Action executor
+5️⃣ Audit + explanation generator

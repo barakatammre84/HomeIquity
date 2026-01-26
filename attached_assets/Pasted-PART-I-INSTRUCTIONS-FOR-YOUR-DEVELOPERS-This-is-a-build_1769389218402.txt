@@ -1,0 +1,238 @@
+PART I — INSTRUCTIONS FOR YOUR DEVELOPERS
+
+(This is a build spec, not theory)
+
+🎯 GOAL
+
+Build a Policy-Driven Underwriting & Pre-Approval System where:
+
+underwriting logic is fixed code
+
+guidelines are editable data
+
+decisions are frozen, explainable, and auditable
+
+no future guideline change requires code
+
+1️⃣ CORE SYSTEMS TO BUILD (IN THIS ORDER)
+A. POLICY PROFILE SERVICE (CRITICAL)
+
+Purpose:
+Store and version investor / GSE policy thresholds as data.
+
+Data Model (High Level)
+PolicyProfile {
+  id
+  authority            // FANNIE | FREDDIE | FHA | LENDER
+  version
+  effectiveDate
+  status               // DRAFT | APPROVED | ACTIVE | RETIRED
+  thresholds           // structured, not free-form
+  createdBy
+  approvedBy
+  createdAt
+}
+
+
+🚫 Do NOT allow free-text logic
+✅ Only controlled fields + enums
+
+B. RULE INTERPRETER (ENGINE – CODE, NEVER EDITED)
+
+Purpose:
+Apply stable underwriting rules using policy thresholds.
+
+Example (conceptual):
+
+if incomeDecrease >= policy.thresholds.income.decrease.material:
+    trigger("MATERIAL_CHANGE")
+
+
+Rules:
+
+No hardcoded numbers
+
+Always resolve values from Policy Profile
+
+Deterministic output only
+
+This engine should never change once built.
+
+C. BORROWER SNAPSHOT + FREEZE SYSTEM (LEGAL ARMOR)
+
+Purpose:
+Freeze borrower state at pre-approval issuance.
+
+BorrowerSnapshot {
+  snapshotId
+  borrowerDataHash
+  policyProfileId
+  decisionType          // Pre-Approval
+  issuedAt
+  expiresAt
+}
+
+
+Rules:
+
+Immutable
+
+Cannot be overwritten
+
+Used for audits and disputes
+
+D. CHANGE-OF-CIRCUMSTANCE ENGINE
+
+Purpose:
+Detect changes without re-underwriting everything.
+
+Flow:
+
+Compare new data vs snapshot
+
+Identify deltas
+
+Evaluate materiality using frozen policy
+
+Produce action:
+
+NONE
+
+REVIEW
+
+INVALIDATE
+
+This is how you stay compliant without constant re-pulls.
+
+E. PRE-APPROVAL LETTER GENERATOR
+
+Purpose:
+Generate defensible, broker-safe letters.
+
+System must:
+
+Inject expiration date
+
+Reference snapshot date
+
+Include standard disclaimer (locked template)
+
+Support lender-specific formats later
+
+⚠️ Confidence score:
+
+Visible to LO / agent
+
+NEVER shown to borrower
+
+2️⃣ WHAT DEVELOPERS MUST NOT DO
+
+❌ Hardcode Fannie/Freddie numbers
+❌ Let ops edit logic
+❌ Allow retroactive policy edits
+❌ Auto-invalidate old approvals on new policy
+
+These are lender deal-killers.
+
+PART II — NON-TECHNICAL TEAM OPERATIONS
+
+(This is how compliance/ops will actually run it)
+
+Your ops team never touches code.
+They operate through a Policy Ops UI.
+
+3️⃣ POLICY OPS UI (WHAT THEY SEE)
+A. POLICY PROFILE DASHBOARD
+
+They can:
+
+View active policies
+
+Clone existing policies
+
+See effective dates
+
+See impact warnings
+
+They cannot:
+
+Edit active profiles
+
+Delete history
+
+Change logic
+
+B. GUIDELINE UPDATE WORKFLOW (NO TECH SKILLS)
+
+Step-by-step:
+
+New Fannie / Freddie bulletin detected
+
+System flags affected areas (income, credit, assets)
+
+Ops clicks “Create Draft Policy”
+
+Adjusts thresholds via dropdowns / number fields
+
+Adds justification + bulletin reference
+
+Submits for approval
+
+Secondary approver clicks Approve
+
+Policy activates on set date
+
+That’s it.
+
+4️⃣ WHAT OPS IS ALLOWED TO CHANGE
+
+✅ Threshold values (within bounds)
+✅ Toggles (material / review / ignore)
+✅ Effective dates
+✅ Lender overlays
+
+🚫 No formulas
+🚫 No conditional logic
+🚫 No retroactive edits
+
+5️⃣ HOW YOU STAY “ALWAYS COMPLIANT”
+
+This is the exact compliance posture regulators expect:
+
+Decisions are time-bound
+
+Policies are versioned
+
+Changes are prospective only
+
+Material changes are re-evaluated
+
+Everything is logged
+
+You are not promising to lend — you are certifying eligibility at a moment in time.
+
+PART III — WHAT TO TELL YOUR TEAM (COPY/PASTE)
+To Developers:
+
+“We are building a policy-driven underwriting engine. All guidelines are data. Code never changes for guideline updates. Ops controls policy profiles through UI. Decisions are immutable.”
+
+To Ops / Compliance:
+
+“You control thresholds and overlays through the Policy Ops dashboard. You never touch logic. Every change is versioned and approved.”
+
+PART IV — DELIVERY CHECKLIST (VERY IMPORTANT)
+
+Before launch, confirm you have:
+
+☑ Policy Profile Service
+☑ Snapshot & Freeze logic
+☑ Change-of-Circumstance engine
+☑ Pre-Approval generator
+☑ Approval workflow
+☑ Immutable audit logs
+
+If one is missing, stop and build it.
+
+NEXT STEP (I RECOMMEND THIS)
+
+If you want, next I can deliver one of these as a concrete artifact:

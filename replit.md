@@ -155,3 +155,81 @@ requiredAction: NONE
 - No unversioned rules
 - Old snapshots reference old rule versions
 - New rules never retroactively apply
+
+## POLICY PROFILE SERVICE
+
+The CRITICAL foundation for policy-driven underwriting where:
+- **Underwriting logic = fixed code** (Rule Interpreter - never changes)
+- **Guidelines = editable data** (Policy Profiles - ops controls)
+- **Decisions = frozen, explainable, auditable**
+- **No future guideline change requires code changes**
+
+### Database Tables (4 tables)
+
+**1. `policy_profiles`** - Top-level versioned policy containers:
+- Profile ID (e.g., "FNMA_CONV_2026_Q1")
+- Authority: FANNIE, FREDDIE, FHA, VA, LENDER, BROKER
+- Product type: CONVENTIONAL, FHA, VA, HELOC
+- Version control with effective/expiration dates
+- Status workflow: DRAFT → PENDING_APPROVAL → APPROVED → ACTIVE → RETIRED
+- Bulletin reference and source URL
+- Full audit trail (created/approved/activated/retired by/at)
+
+**2. `policy_thresholds`** - Structured threshold values (NOT formulas):
+- Category: INCOME, CREDIT, ASSETS, LIABILITIES, DTI, LTV, RESERVES, PROPERTY
+- Threshold key (e.g., "min_credit_score", "max_dti_front")
+- Value types: numeric, percent, boolean, enum
+- Min/max bounds (ops cannot exceed)
+- Materiality action: NONE, REVIEW, MATERIAL, INVALIDATE
+- Guideline reference for audit
+
+**3. `policy_approval_workflow`** - Approval workflow audit trail:
+- Status transitions with justification
+- Actions: SUBMIT, APPROVE, REJECT, ACTIVATE, RETIRE
+- Bulletin reference for each change
+- Impact assessment (affected categories, threshold changes)
+- Rejection reasons
+
+**4. `policy_lender_overlays`** - Lender-specific adjustments:
+- Overlays on GSE baseline policies
+- Stricter thresholds only (never looser)
+- Additional lender requirements
+- Separate approval workflow
+
+### Guideline Update Workflow (Non-Technical)
+
+1. New Fannie/Freddie bulletin detected
+2. System flags affected areas (income, credit, assets)
+3. Ops clicks "Create Draft Policy"
+4. Adjusts thresholds via dropdowns/number fields (NOT formulas)
+5. Adds justification + bulletin reference
+6. Submits for approval
+7. Secondary approver clicks Approve
+8. Policy activates on set date
+
+### What Ops CAN Change
+- Threshold values (within bounds)
+- Toggles (material/review/ignore)
+- Effective dates
+- Lender overlays
+
+### What Ops CANNOT Do
+- Edit formulas or conditional logic
+- Delete history
+- Make retroactive edits
+- Change active profiles directly
+
+### What Developers Must NOT Do
+- Hardcode Fannie/Freddie numbers
+- Let ops edit logic
+- Allow retroactive policy edits
+- Auto-invalidate old approvals on new policy
+
+### Compliance Posture (What Regulators Expect)
+- Decisions are time-bound
+- Policies are versioned
+- Changes are prospective only
+- Material changes are re-evaluated
+- Everything is logged
+
+"We are not promising to lend — we are certifying eligibility at a moment in time."
