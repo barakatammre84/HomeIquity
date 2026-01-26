@@ -52,3 +52,58 @@ The backend is developed with Node.js, Express.js, and TypeScript, utilizing Pos
 -   **vaul:** Drawer component.
 -   **lucide-react:** Icon library.
 -   **framer-motion:** Animation library.
+
+## DTI/DSCR ENGINE - Institutional Grade Underwriting
+
+The DTI/DSCR Engine is a financial decision engine that calculates Debt-to-Income and Debt Service Coverage Ratios using normalized income streams (not raw documents). This engine implements underwriting logic as software rules, replacing manual calculations and junior underwriter labor.
+
+### Core Formulas
+- **DTI** = Total Monthly Liabilities / Total Qualifying Monthly Income
+- **DSCR** = Net Rental Income / Property PITIA
+
+### Engine Components
+
+**Income Stream Enhancement:**
+- Trend & Volatility Analyzer: YoY % change (slope), standard deviation, trend direction
+- Reliability Scoring: 0-100 score based on income source type and consistency
+- Seasoning Tracking: Months of income history, qualification status
+
+**Seasoning Rules (`seasoning_rules`):**
+Time-based qualification logic per income type and product. Actions: include, exclude, cap, prorate, flag_review.
+
+**Cash Flow Adjustments (`cash_flow_adjustments`):**
+Self-employed edge cases: depreciation addbacks, amortization, meals disallowance, one-time expenses/income, owner compensation adjustments, K-1/S-Corp distributions.
+
+**Portfolio Stress Testing (`portfolio_stress_tests`):**
+Multi-property DSCR analysis with vacancy shock, rate shock, and combined stress scenarios.
+
+**Product Rules (`product_rules`):**
+Data-driven FHA/VA/Conventional/HELOC/DSCR abstraction with DTI limits, rental income treatment, student loan rules, self-employment minimums, and reserve requirements. NO HARDCODING.
+
+**Structured Explanations (`underwriting_explanations`):**
+Every calculation produces structured explanations with ruleId, input, output, reasoning, and DTI/DSCR impact for regulators and lenders.
+
+**Confidence Decomposition (`confidence_breakdowns`):**
+Breaks overall confidence into: income, document, stability, asset, liability, property components. Identifies weakest component and remediation suggestions. Thresholds: ≥90% auto-approve, 80-89% LO review, <80% manual underwriting.
+
+**What-If Scenarios (`what_if_scenarios`):**
+Hypothetical calculations without mutating loan data. Supports income changes, liability payoffs, down payment changes, rate changes. Shows resulting DTI/DSCR/payment deltas and qualification status.
+
+**Decision Freeze & Versioning (`underwriting_decisions`):**
+Immutable decision records with SHA-256 input hash, frozen metrics (DTI/DSCR/LTV/credit score), full input JSON, and hash chain for audit trail. Required for disputes, audits, and lawsuits.
+
+**Underwriting Rules DSL (`underwriting_rules_dsl`):**
+Data-driven guideline management so non-engineers can add rules, toggle FHA/VA/Conv settings, and update guidelines without code deploys. Features:
+- Trigger types: income_evaluated, liability_evaluated, dti_calculated, dscr_calculated, document_processed, field_extracted, threshold_exceeded, seasoning_checked, stability_assessed, portfolio_analyzed
+- Action types: set_qualification_status, apply_cap, apply_proration, require_document, flag_for_review, trigger_recalculation, add_condition, adjust_confidence, log_explanation, escalate_to_underwriter
+- DSL syntax stored as structured JSONB for flexible condition evaluation
+
+**Rule Execution Log (`rule_execution_log`):**
+Tracks every rule that fired, including trigger context, conditions met, actions executed, and impacted entities.
+
+### What This Eliminates
+- Spreadsheets for DTI calculation
+- Junior underwriter math
+- Inconsistent DTI across LOs
+- Human math errors
+- Lender disputes over calculations
