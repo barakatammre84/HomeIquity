@@ -1,7 +1,7 @@
 # MortgageAI - Next-Generation MISMO 3.4 Mortgage Brokerage Platform
 
 ## Overview
-MortgageAI is a deterministic mortgage brokerage platform designed to automate and streamline the mortgage process, aiming for 3-minute pre-approvals. It is built on MISMO 3.4 standards and leverages graph-based underwriting logic. The platform uses AI solely for data extraction, with all underwriting decisions based on hard-coded deterministic rules to ensure regulatory compliance and mitigate Fair Lending risks. Key capabilities include MISMO 3.4 and ULAD compliant deterministic underwriting, graph-based data models, advanced income/property eligibility, LLPA pricing, and multi-tenant support. The project's vision is to provide an institutional-grade platform that transforms the mortgage brokerage industry, offering rapid, compliant, and transparent mortgage processing.
+MortgageAI is a deterministic mortgage brokerage platform that automates and streamlines the mortgage process, aiming for 3-minute pre-approvals. It is built on MISMO 3.4 standards and utilizes graph-based underwriting logic. The platform uses AI solely for data extraction, with all underwriting decisions based on hard-coded deterministic rules to ensure regulatory compliance and mitigate Fair Lending risks. Key capabilities include MISMO 3.4 and ULAD compliant deterministic underwriting, graph-based data models, advanced income/property eligibility, LLPA pricing, and multi-tenant support. The project's vision is to provide an institutional-grade platform that transforms the mortgage brokerage industry, offering rapid, compliant, and transparent mortgage processing.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
@@ -9,7 +9,7 @@ Preferred communication style: Simple, everyday language.
 ## System Architecture
 
 ### UI/UX Decisions
-The frontend uses React 18, TypeScript, Vite, Wouter, and TanStack Query, featuring a custom design system with Shadcn/ui (Radix UI) and Tailwind CSS, supporting light/dark themes. Key UI components include a conversational pre-approval form, a user dashboard, loan options comparison, a properties marketplace with "Can I buy?" checks, and various compliance forms.
+The frontend uses React 18, TypeScript, Vite, Wouter, and TanStack Query. It features a custom design system with Shadcn/ui (Radix UI) and Tailwind CSS, supporting light/dark themes. Key UI components include a conversational pre-approval form, a user dashboard, loan options comparison, a properties marketplace with "Can I buy?" checks, and various compliance forms.
 
 ### Technical Implementations
 The backend is built with Node.js, Express.js, and TypeScript, utilizing PostgreSQL (Neon serverless) with Drizzle ORM. Passport.js provides session-based authentication with role-based access control. The API is RESTful with structured error handling and robust logging.
@@ -51,6 +51,15 @@ The backend is built with Node.js, Express.js, and TypeScript, utilizing Postgre
 - **Versioning & Publish Workflow:** Impact summary showing affected loans, required justification, immutable policy versions
 - **Audit Trail:** Complete change history with who/when/what/why/policy reference
 
+**Offer Bridge Architecture:** This marketplace layer connects borrower ↔ broker ↔ lender, orchestrating the shopping experience.
+- **Core Principle:** Eligibility is controlled by deterministic underwriting, lenders control pricing, and clients control selection. The system orchestrates without making credit or pricing decisions.
+- **Lender Integration Strategy:** Supports Manual, Semi-Automated, and API integrations with lenders.
+- **Change-of-Circumstance Protection:** Invalidates existing offers and alerts lenders if borrower's credit, income, or assets change, requiring a re-shop with a new snapshot.
+
+**Materiality Rules DSL Engine:** Detects material vs. non-material changes, triggers actions (not decisions), and is versioned, explainable, and auditable. It never recalculates income, issues approvals, or modifies snapshots.
+
+**Policy Profile Service:** The foundation for policy-driven underwriting where underwriting logic is fixed code, guidelines are editable data, and decisions are frozen, explainable, and auditable. It ensures no future guideline change requires code changes. Ops can change threshold values within bounds, toggles, effective dates, and lender overlays, but cannot edit formulas or conditional logic, delete history, make retroactive edits, or change active profiles directly.
+
 ## External Dependencies
 
 ### Third-Party Services
@@ -67,177 +76,3 @@ The backend is built with Node.js, Express.js, and TypeScript, utilizing Postgre
 -   **vaul:** Drawer component.
 -   **lucide-react:** Icon library.
 -   **framer-motion:** Animation library.
-
-## MATERIALITY RULES DSL ENGINE
-
-The Materiality Rules DSL answers ONE question: "Does this change require action to preserve pre-approval validity?"
-
-### Design Goals
-- Detect material vs non-material changes
-- Be guideline-aligned but broker-safe
-- Trigger actions, not decisions
-- Be versioned, explainable, and auditable
-- Never silently re-underwrite
-
-### Core Principle
-The DSL NEVER: recalculates income, issues approvals, or modifies snapshots.
-
-### Database Tables (4 tables)
-
-**1. `materiality_rule_sets`** - Versioned rule containers:
-- Rule set ID (e.g., "CONV_BASELINE_COC")
-- Product type (CONV, FHA, VA, HELOC)
-- Authority (BROKER_PRE_APPROVAL, LENDER_SPECIFIC, REGULATORY)
-- Version control with effective/expiration dates (legal compliance)
-- Draft vs published status
-
-**2. `materiality_rules`** - Individual rules with full DSL schema:
-- Category: INCOME, EMPLOYMENT, CREDIT, ASSETS, LIABILITIES
-- AppliesTo filters: incomeType, occupancy, productType
-- When condition: metric, change type (PERCENT_DECREASE, ABSOLUTE_DECREASE, BOOLEAN_CHANGE, NEW_ENTRY)
-- Materiality declaration: isMaterial (true/false), severity (LOW, MEDIUM, HIGH)
-- Required action: NONE, BORROWER_ATTESTATION, DOCUMENT_REFRESH, CREDIT_REFRESH, REUNDERWRITE
-- Explanation with guideline reference
-
-**3. `change_events`** - Normalized delta inputs:
-- Snapshot vs current state comparison
-- Metric changes with previous/current values
-- Change type and computed deltas (absolute, percent)
-- Source tracking (PLAID_REFRESH, DOCUMENT_UPLOAD, CREDIT_REFRESH)
-
-**4. `materiality_evaluations`** - Audit-complete decision logs:
-- Every rule evaluated (NO short-circuiting for audit)
-- Rule matched status, materiality, severity, required action
-- Evaluation context with all values compared
-- Aggregated result across all rules
-- Action taken tracking with timestamps
-
-### Example Rules
-
-**Income 10% Decrease (Material):**
-```
-category: INCOME
-metric: income.qualifying
-changeType: PERCENT_DECREASE
-value: 10
-isMaterial: true
-severity: HIGH
-requiredAction: REUNDERWRITE
-guidelineReference: "Fannie Mae B3-3.1-01"
-```
-
-**New Credit Account (Material):**
-```
-category: CREDIT
-metric: credit.newTradeline
-changeType: NEW_ENTRY
-isMaterial: true
-severity: MEDIUM
-requiredAction: CREDIT_REFRESH
-```
-
-**Asset Fluctuation <$2K (Non-Material):**
-```
-category: ASSETS
-metric: assets.total
-changeType: ABSOLUTE_DECREASE
-value: 2000
-isMaterial: false
-severity: LOW
-requiredAction: NONE
-```
-
-### Execution Semantics
-
-1. Compare snapshot metrics vs current metrics
-2. Normalize deltas into ChangeEvents
-3. Evaluate ALL applicable rules (no short-circuiting)
-4. If any rule returns REUNDERWRITE: freeze pre-approval, require new snapshot
-5. Log every decision
-
-### Hard Guardrails (DO NOT BREAK)
-- No silent re-underwriting
-- No borrower-hidden actions
-- No LO overrides of materiality
-- No mutable snapshots
-- No unversioned rules
-- Old snapshots reference old rule versions
-- New rules never retroactively apply
-
-## POLICY PROFILE SERVICE
-
-The CRITICAL foundation for policy-driven underwriting where:
-- **Underwriting logic = fixed code** (Rule Interpreter - never changes)
-- **Guidelines = editable data** (Policy Profiles - ops controls)
-- **Decisions = frozen, explainable, auditable**
-- **No future guideline change requires code changes**
-
-### Database Tables (4 tables)
-
-**1. `policy_profiles`** - Top-level versioned policy containers:
-- Profile ID (e.g., "FNMA_CONV_2026_Q1")
-- Authority: FANNIE, FREDDIE, FHA, VA, LENDER, BROKER
-- Product type: CONVENTIONAL, FHA, VA, HELOC
-- Version control with effective/expiration dates
-- Status workflow: DRAFT → PENDING_APPROVAL → APPROVED → ACTIVE → RETIRED
-- Bulletin reference and source URL
-- Full audit trail (created/approved/activated/retired by/at)
-
-**2. `policy_thresholds`** - Structured threshold values (NOT formulas):
-- Category: INCOME, CREDIT, ASSETS, LIABILITIES, DTI, LTV, RESERVES, PROPERTY
-- Threshold key (e.g., "min_credit_score", "max_dti_front")
-- Value types: numeric, percent, boolean, enum
-- Min/max bounds (ops cannot exceed)
-- Materiality action: NONE, REVIEW, MATERIAL, INVALIDATE
-- Guideline reference for audit
-
-**3. `policy_approval_workflow`** - Approval workflow audit trail:
-- Status transitions with justification
-- Actions: SUBMIT, APPROVE, REJECT, ACTIVATE, RETIRE
-- Bulletin reference for each change
-- Impact assessment (affected categories, threshold changes)
-- Rejection reasons
-
-**4. `policy_lender_overlays`** - Lender-specific adjustments:
-- Overlays on GSE baseline policies
-- Stricter thresholds only (never looser)
-- Additional lender requirements
-- Separate approval workflow
-
-### Guideline Update Workflow (Non-Technical)
-
-1. New Fannie/Freddie bulletin detected
-2. System flags affected areas (income, credit, assets)
-3. Ops clicks "Create Draft Policy"
-4. Adjusts thresholds via dropdowns/number fields (NOT formulas)
-5. Adds justification + bulletin reference
-6. Submits for approval
-7. Secondary approver clicks Approve
-8. Policy activates on set date
-
-### What Ops CAN Change
-- Threshold values (within bounds)
-- Toggles (material/review/ignore)
-- Effective dates
-- Lender overlays
-
-### What Ops CANNOT Do
-- Edit formulas or conditional logic
-- Delete history
-- Make retroactive edits
-- Change active profiles directly
-
-### What Developers Must NOT Do
-- Hardcode Fannie/Freddie numbers
-- Let ops edit logic
-- Allow retroactive policy edits
-- Auto-invalidate old approvals on new policy
-
-### Compliance Posture (What Regulators Expect)
-- Decisions are time-bound
-- Policies are versioned
-- Changes are prospective only
-- Material changes are re-evaluated
-- Everything is logged
-
-"We are not promising to lend — we are certifying eligibility at a moment in time."
