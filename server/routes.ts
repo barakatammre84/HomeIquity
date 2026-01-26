@@ -5788,22 +5788,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get all staff users for team display
   app.get("/api/team-members", isAuthenticated, async (req, res) => {
     try {
-      const staffUsers = await storage.getStaffUsersForTeamDisplay();
+      const staffUsersWithPresence = await storage.getTeamMembersWithPresence();
       
-      // Transform to include display info
-      const teamMembers = staffUsers.map(user => ({
+      // Transform to include display info and presence
+      const teamMembers = staffUsersWithPresence.map(user => ({
         id: user.id,
         name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email || 'Team Member',
         role: user.role,
         email: user.email,
         profileImageUrl: user.profileImageUrl,
         initials: getInitials(user),
+        presenceStatus: user.presenceStatus,
       }));
       
       res.json(teamMembers);
     } catch (error) {
       console.error("Get team members error:", error);
       res.status(500).json({ error: "Failed to get team members" });
+    }
+  });
+  
+  // Update presence (heartbeat endpoint)
+  app.post("/api/presence/heartbeat", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      await storage.updateUserPresence(userId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Presence update error:", error);
+      res.status(500).json({ error: "Failed to update presence" });
     }
   });
 
@@ -5856,11 +5869,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Send a message
+  // Send a message (supports regular text and document requests)
   app.post("/api/messages", isAuthenticated, async (req, res) => {
     try {
       const userId = req.user!.id;
-      const { recipientId, message, applicationId } = req.body;
+      const { recipientId, message, applicationId, messageType, documentRequestData } = req.body;
       
       if (!recipientId || !message) {
         return res.status(400).json({ error: "recipientId and message are required" });
@@ -5877,6 +5890,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         recipientId,
         message,
         applicationId: applicationId || null,
+        messageType: messageType || 'text',
+        documentRequestData: documentRequestData || null,
         isRead: false,
       });
       
@@ -5884,6 +5899,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Send message error:", error);
       res.status(500).json({ error: "Failed to send message" });
+    }
+  });
+  
+  // Update document request status (when borrower uploads or staff approves)
+  app.patch("/api/messages/:messageId/document-request", isAuthenticated, async (req, res) => {
+    try {
+      const { messageId } = req.params;
+      const { status, documentId } = req.body;
+      
+      if (!status || !['pending', 'submitted', 'approved', 'rejected'].includes(status)) {
+        return res.status(400).json({ error: "Valid status is required" });
+      }
+      
+      const updated = await storage.updateDocumentRequestStatus(messageId, status, documentId);
+      
+      if (!updated) {
+        return res.status(404).json({ error: "Document request not found" });
+      }
+      
+      res.json(updated);
+    } catch (error) {
+      console.error("Update document request error:", error);
+      res.status(500).json({ error: "Failed to update document request" });
+    }
+  });
+  
+  // Get pending document requests for current user
+  app.get("/api/messages/document-requests/pending", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const pendingRequests = await storage.getPendingDocumentRequests(userId);
+      res.json(pendingRequests);
+    } catch (error) {
+      console.error("Get pending document requests error:", error);
+      res.status(500).json({ error: "Failed to get pending document requests" });
     }
   });
 

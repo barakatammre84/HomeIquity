@@ -2987,6 +2987,101 @@ export class DatabaseStorage implements IStorage {
         )
       );
   }
+  
+  // ============================================
+  // Presence Tracking Methods
+  // ============================================
+  
+  async updateUserPresence(userId: string): Promise<void> {
+    await db.update(users)
+      .set({ lastActiveAt: new Date() })
+      .where(eq(users.id, userId));
+  }
+  
+  async getUserPresenceStatus(userId: string): Promise<'online' | 'away' | 'offline'> {
+    const [user] = await db.select({ lastActiveAt: users.lastActiveAt })
+      .from(users)
+      .where(eq(users.id, userId));
+    
+    if (!user?.lastActiveAt) return 'offline';
+    
+    const now = new Date();
+    const lastActive = new Date(user.lastActiveAt);
+    const diffMinutes = (now.getTime() - lastActive.getTime()) / 60000;
+    
+    if (diffMinutes < 2) return 'online';
+    if (diffMinutes < 10) return 'away';
+    return 'offline';
+  }
+  
+  async getTeamMembersWithPresence(): Promise<(User & { presenceStatus: 'online' | 'away' | 'offline' })[]> {
+    const staffUsers = await this.getStaffUsersForTeamDisplay();
+    const now = new Date();
+    
+    return staffUsers.map(user => {
+      let presenceStatus: 'online' | 'away' | 'offline' = 'offline';
+      
+      if (user.lastActiveAt) {
+        const lastActive = new Date(user.lastActiveAt);
+        const diffMinutes = (now.getTime() - lastActive.getTime()) / 60000;
+        
+        if (diffMinutes < 2) presenceStatus = 'online';
+        else if (diffMinutes < 10) presenceStatus = 'away';
+      }
+      
+      return { ...user, presenceStatus };
+    });
+  }
+  
+  // ============================================
+  // Document Request Integration
+  // ============================================
+  
+  async updateDocumentRequestStatus(
+    messageId: string, 
+    status: 'pending' | 'submitted' | 'approved' | 'rejected',
+    documentId?: string
+  ): Promise<TeamMessage | null> {
+    const [message] = await db.select().from(teamMessages).where(eq(teamMessages.id, messageId));
+    
+    if (!message || message.messageType !== 'document_request') {
+      return null;
+    }
+    
+    const requestData = message.documentRequestData as any;
+    if (!requestData) return null;
+    
+    const updatedData = {
+      ...requestData,
+      status,
+      documentId: documentId || requestData.documentId,
+    };
+    
+    const [updated] = await db.update(teamMessages)
+      .set({ documentRequestData: updatedData })
+      .where(eq(teamMessages.id, messageId))
+      .returning();
+    
+    return updated;
+  }
+  
+  async getPendingDocumentRequests(userId: string): Promise<TeamMessage[]> {
+    const messages = await db.select()
+      .from(teamMessages)
+      .where(
+        and(
+          eq(teamMessages.recipientId, userId),
+          eq(teamMessages.messageType, 'document_request')
+        )
+      )
+      .orderBy(desc(teamMessages.createdAt));
+    
+    // Filter to only pending requests
+    return messages.filter(msg => {
+      const data = msg.documentRequestData as any;
+      return data?.status === 'pending';
+    });
+  }
 }
 
 export const storage = new DatabaseStorage();

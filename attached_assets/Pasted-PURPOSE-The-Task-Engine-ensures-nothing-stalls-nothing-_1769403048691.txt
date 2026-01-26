@@ -1,0 +1,262 @@
+PURPOSE
+
+The Task Engine ensures nothing stalls, nothing is forgotten, and humans only work exceptions.
+
+It does this by:
+
+Auto-creating tasks
+
+Assigning ownership
+
+Enforcing SLAs
+
+Escalating automatically
+
+Logging everything for compliance
+
+1️⃣ TASK CREATION (EVENT-DRIVEN, NOT MANUAL)
+
+Tasks are never created manually by staff unless explicitly allowed.
+
+Core Task Triggers
+A. Document Intelligence Triggers
+Event	Task
+OCR missing page	“Request missing page 2 of bank statement”
+Unreadable doc	“Request clearer document image”
+Expired doc	“Request updated pay stub”
+
+📌 Generated after OCR + classification, not upload.
+
+B. Change-of-Circumstance Triggers
+Change Detected	Task
+Credit score drop	“Re-evaluate credit eligibility”
+New tradeline	“Assess new liability impact”
+Income variance	“Recalculate income stability”
+Bank balance change	“Confirm asset sufficiency”
+
+📌 These tasks may freeze the file automatically until resolved.
+
+C. Workflow State Triggers
+State Transition	Task
+Intake → Docs	“Complete initial document set”
+Verified → Underwritten	“Underwriting review”
+Shopped → Accepted	“Prepare lender submission package”
+D. Lender Interaction Triggers
+Event	Task
+Lender condition	“Clear lender condition #123”
+Lender question	“Respond to lender inquiry”
+Pricing expiration	“Re-lock or refresh pricing”
+2️⃣ TASK OBJECT MODEL (BUILD THIS EXACTLY)
+
+Each task is a first-class object, not a note.
+
+Core Fields
+{
+  "task_id": "uuid",
+  "loan_id": "uuid",
+  "task_type": "DOCUMENT_REQUEST | REVIEW | FOLLOW_UP | ESCALATION",
+  "trigger_source": "OCR | POLICY | LENDER | SYSTEM",
+  "owner_role": "LO | PROCESSOR | UW | SYSTEM",
+  "assigned_user_id": "uuid | null",
+  "status": "OPEN | IN_PROGRESS | BLOCKED | COMPLETED | EXPIRED",
+  "priority": "LOW | NORMAL | HIGH | CRITICAL",
+  "sla_due_at": "timestamp",
+  "escalation_level": 0,
+  "created_at": "timestamp",
+  "completed_at": "timestamp",
+  "resolution_notes": "string"
+}
+
+
+📌 Tasks are immutable after completion.
+Edits create a new task version.
+
+3️⃣ OWNERSHIP LOGIC (NO CONFUSION)
+
+Ownership is role-based first, then user-based.
+
+Example
+
+“Request missing doc” → Processor role
+
+“Income anomaly” → Underwriter role
+
+“Borrower follow-up” → LO role
+
+If multiple users exist:
+
+Auto-assign based on:
+
+Load balancing
+
+Territory
+
+Lender relationship
+
+SLA history
+
+📌 No shared responsibility. Ever.
+
+4️⃣ SLA ENGINE (TIME IS ENFORCED BY CODE)
+SLA Definition
+
+Each task type has:
+
+Target resolution time
+
+Escalation path
+
+Auto-actions on breach
+
+Example SLA Table
+Task Type	SLA	Escalation
+Missing doc	48 hrs	Notify borrower → LO
+Income review	24 hrs	Escalate to senior UW
+Lender condition	12 hrs	Manager alert
+Change-of-circ	Immediate	Freeze file
+SLA States
+
+Green: On track
+
+Amber: 75% time elapsed
+
+Red: Breached
+
+📌 SLA color shows everywhere in the UI.
+
+5️⃣ ESCALATION ENGINE (NO MANUAL FOLLOW-UPS)
+
+Escalation is automatic and progressive.
+
+Escalation Levels
+Level	Action
+0	Owner notified
+1	Owner + Manager
+2	Reassign task
+3	Freeze loan state
+4	Compliance alert
+
+📌 Escalation actions are configurable without code.
+
+6️⃣ AUTO-RESOLUTION (THE SYSTEM CLOSES TASKS)
+
+Some tasks close themselves.
+
+Examples
+
+Borrower uploads requested doc → task auto-completed
+
+Credit refreshed → review task auto-created, old closed
+
+Lender clears condition → task auto-resolved
+
+📌 Humans should never click “complete” if data proves completion.
+
+7️⃣ TASK PRIORITIZATION (WHAT STAFF SEE FIRST)
+
+Tasks are sorted by:
+
+SLA breach risk
+
+Loan stage criticality
+
+Revenue impact
+
+Borrower lock expiration
+
+No custom sorting.
+No personal preferences.
+
+📌 This eliminates “I didn’t know what to work on.”
+
+8️⃣ BORROWER-FACING TASKS (CONTROLLED TRANSPARENCY)
+
+Borrowers see requests, not tasks.
+
+Example:
+
+“We need an updated pay stub (last 30 days).”
+
+They do NOT see:
+
+SLA timers
+
+Internal notes
+
+Risk flags
+
+Borrower actions:
+
+Upload
+
+Ask clarification
+
+Mark as unavailable (creates LO task)
+
+9️⃣ COMPLIANCE & AUDIT (WHY BANKS TRUST YOU)
+
+Every task:
+
+Has a trigger reason
+
+Is timestamped
+
+Has resolution proof
+
+This creates:
+
+Full audit trail
+
+Defensible timelines
+
+Proof of due diligence
+
+📌 This alone reduces repurchase exposure.
+
+🔟 MANAGEMENT VIEW (REPLACES MEETINGS)
+
+Managers see:
+
+Tasks by SLA risk
+
+Bottleneck heatmaps
+
+Reassignments
+
+Repeated failure patterns
+
+They do not need to ask:
+
+“Why is this file stuck?”
+
+The system already knows.
+
+1️⃣1️⃣ WHAT MAKES THIS A COMPETITIVE MOAT
+
+Banks:
+
+Use human reminders
+
+Use email follow-ups
+
+Lose visibility
+
+You:
+
+Enforce progress by code
+
+Guarantee response times
+
+Surface risk early
+
+This is how you:
+
+Close faster
+
+Operate with fewer people
+
+Earn higher lender comp
+
+FINAL OPERATOR RULE
+
+If a manager has to ask a human what’s going on — the Task Engine failed.

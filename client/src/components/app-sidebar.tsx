@@ -57,6 +57,16 @@ interface TeamMember {
   initials: string;
   email: string | null;
   profileImageUrl: string | null;
+  presenceStatus: 'online' | 'away' | 'offline';
+}
+
+// Get presence status color
+function getStatusColor(status: string) {
+  switch (status) {
+    case "online": return "text-emerald-500";
+    case "away": return "text-amber-500";
+    default: return "text-muted-foreground";
+  }
 }
 
 // Role display names for the sidebar
@@ -172,21 +182,23 @@ export function AppSidebar() {
   const { user } = useAuth();
   const [isTeamExpanded, setIsTeamExpanded] = useState(true);
 
-  // Fetch team members from API
+  // Fetch team members from API with presence (refresh every 30s)
   const { data: teamMembers = [] } = useQuery<TeamMember[]>({
     queryKey: ["/api/team-members"],
     enabled: !!user,
+    refetchInterval: 30000,
   });
+  
+  // Fetch unread message count
+  const { data: unreadData } = useQuery<{ count: number }>({
+    queryKey: ["/api/messages/unread/count"],
+    enabled: !!user,
+    refetchInterval: 10000, // Refresh every 10 seconds
+  });
+  
+  const unreadCount = unreadData?.count || 0;
 
   const isActive = (href: string) => location === href;
-  
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "online": return "text-emerald-500";
-      case "away": return "text-amber-500";
-      default: return "text-muted-foreground";
-    }
-  };
   
   // Use the isStaffRole helper from schema
   const userRole = user?.role || "";
@@ -262,6 +274,28 @@ export function AppSidebar() {
           </SidebarGroup>
         ))}
 
+        {/* Messages Section */}
+        <SidebarGroup>
+          <SidebarGroupLabel>Communication</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={isActive("/messages") || location.startsWith("/messages/")}>
+                  <Link href="/messages" className="cursor-pointer" data-testid="link-messages">
+                    <MessageCircle className="h-4 w-4" />
+                    <span>Messages</span>
+                    {unreadCount > 0 && (
+                      <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-medium text-primary-foreground" data-testid="badge-unread-count">
+                        {unreadCount > 99 ? '99+' : unreadCount}
+                      </span>
+                    )}
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
         {/* Your Team Section */}
         <SidebarGroup>
           <SidebarGroupLabel>Your Team</SidebarGroupLabel>
@@ -297,7 +331,7 @@ export function AppSidebar() {
                                 </AvatarFallback>
                               </Avatar>
                               <Circle 
-                                className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 fill-current text-muted-foreground"
+                                className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 fill-current ${getStatusColor(member.presenceStatus)}`}
                                 data-testid={`status-team-${member.id}`}
                               />
                             </div>

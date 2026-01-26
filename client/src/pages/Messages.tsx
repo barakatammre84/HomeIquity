@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { useParams, Link } from "wouter";
+import { useParams, Link, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,19 +9,40 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
   Send,
   Phone,
   Video,
   MoreVertical,
-  Paperclip,
   ArrowLeft,
   Circle,
   MessageCircle,
   Clock,
   CheckCheck,
+  FileText,
+  Upload,
+  AlertCircle,
+  CheckCircle2,
+  FileUp,
 } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import type { TeamMessage } from "@shared/schema";
+import type { TeamMessage, DocumentRequestData } from "@shared/schema";
 
 interface TeamMember {
   id: string;
@@ -30,6 +51,7 @@ interface TeamMember {
   email: string | null;
   profileImageUrl: string | null;
   initials: string;
+  presenceStatus: 'online' | 'away' | 'offline';
 }
 
 interface ConversationData {
@@ -38,6 +60,18 @@ interface ConversationData {
   unreadCount: number;
   partner: TeamMember | null;
 }
+
+// Document types for requesting
+const DOCUMENT_TYPES = [
+  { value: "paystub", label: "Recent Pay Stubs", category: "Income" },
+  { value: "w2", label: "W-2 Forms", category: "Income" },
+  { value: "tax_return_1040", label: "Tax Returns (1040)", category: "Income" },
+  { value: "bank_statement_checking", label: "Checking Account Statements", category: "Assets" },
+  { value: "bank_statement_savings", label: "Savings Account Statements", category: "Assets" },
+  { value: "drivers_license", label: "Driver's License", category: "Identity" },
+  { value: "purchase_contract", label: "Purchase Contract", category: "Property" },
+  { value: "homeowners_insurance_binder", label: "Homeowners Insurance", category: "Property" },
+];
 
 const ROLE_DISPLAY_NAMES: Record<string, string> = {
   admin: "Tech/Ops Lead",
@@ -83,26 +117,226 @@ function getStatusText(status: string) {
   }
 }
 
+// Document Request Dialog Component
+function DocumentRequestDialog({ 
+  recipientId, 
+  recipientName 
+}: { 
+  recipientId: string; 
+  recipientName: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [selectedDocType, setSelectedDocType] = useState("");
+  const [description, setDescription] = useState("");
+  const [, navigate] = useLocation();
+  
+  const sendDocRequestMutation = useMutation({
+    mutationFn: async (data: { 
+      recipientId: string; 
+      message: string; 
+      messageType: string;
+      documentRequestData: DocumentRequestData;
+    }) => {
+      const response = await apiRequest("POST", "/api/messages", data);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/messages", recipientId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/messages/conversations"] });
+      setOpen(false);
+      setSelectedDocType("");
+      setDescription("");
+    },
+  });
+  
+  const handleSendRequest = () => {
+    if (!selectedDocType) return;
+    
+    const docType = DOCUMENT_TYPES.find(d => d.value === selectedDocType);
+    if (!docType) return;
+    
+    const documentRequestData: DocumentRequestData = {
+      documentType: selectedDocType,
+      documentName: docType.label,
+      description: description || undefined,
+      status: "pending",
+    };
+    
+    sendDocRequestMutation.mutate({
+      recipientId,
+      message: `Document Request: ${docType.label}`,
+      messageType: "document_request",
+      documentRequestData,
+    });
+  };
+  
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="ghost" size="icon" data-testid="button-request-doc">
+          <FileUp className="h-5 w-5" />
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Request Document</DialogTitle>
+          <DialogDescription>
+            Request a document from {recipientName}. They'll receive a notification to upload it.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="doc-type">Document Type</Label>
+            <Select value={selectedDocType} onValueChange={setSelectedDocType}>
+              <SelectTrigger data-testid="select-doc-type">
+                <SelectValue placeholder="Select document type" />
+              </SelectTrigger>
+              <SelectContent>
+                {DOCUMENT_TYPES.map((doc) => (
+                  <SelectItem key={doc.value} value={doc.value}>
+                    <div className="flex items-center gap-2">
+                      <span>{doc.label}</span>
+                      <Badge variant="secondary" className="text-xs">{doc.category}</Badge>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="description">Additional Notes (Optional)</Label>
+            <Textarea
+              id="description"
+              placeholder="Any specific requirements or notes..."
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              data-testid="input-doc-description"
+            />
+          </div>
+        </div>
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" onClick={() => setOpen(false)} data-testid="button-cancel-request">
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleSendRequest}
+            disabled={!selectedDocType || sendDocRequestMutation.isPending}
+            data-testid="button-send-request"
+          >
+            <FileText className="h-4 w-4 mr-2" />
+            Send Request
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// Document Request Message Card Component
+function DocumentRequestCard({ 
+  data, 
+  isFromCurrentUser,
+  messageId,
+}: { 
+  data: DocumentRequestData; 
+  isFromCurrentUser: boolean;
+  messageId: string;
+}) {
+  const [, navigate] = useLocation();
+  
+  const getStatusBadge = () => {
+    switch (data.status) {
+      case "pending":
+        return <Badge variant="secondary" className="gap-1"><Clock className="h-3 w-3" />Pending</Badge>;
+      case "submitted":
+        return <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 gap-1"><Upload className="h-3 w-3" />Submitted</Badge>;
+      case "approved":
+        return <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 gap-1"><CheckCircle2 className="h-3 w-3" />Approved</Badge>;
+      case "rejected":
+        return <Badge variant="destructive" className="gap-1"><AlertCircle className="h-3 w-3" />Rejected</Badge>;
+      default:
+        return null;
+    }
+  };
+  
+  const handleUploadClick = () => {
+    navigate("/documents");
+  };
+  
+  return (
+    <Card className={`max-w-sm ${isFromCurrentUser ? 'bg-primary/5' : 'bg-muted/50'}`}>
+      <CardContent className="p-3">
+        <div className="flex items-start gap-3">
+          <div className="p-2 rounded-lg bg-primary/10">
+            <FileText className="h-5 w-5 text-primary" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between gap-2 mb-1">
+              <span className="font-medium text-sm">{data.documentName}</span>
+              {getStatusBadge()}
+            </div>
+            {data.description && (
+              <p className="text-xs text-muted-foreground mb-2">{data.description}</p>
+            )}
+            {!isFromCurrentUser && data.status === "pending" && (
+              <Button 
+                size="sm" 
+                onClick={handleUploadClick}
+                className="w-full mt-2"
+                data-testid="button-upload-doc"
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Upload Document
+              </Button>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function Messages() {
   const params = useParams<{ memberId?: string }>();
   const memberId = params.memberId;
   const [message, setMessage] = useState("");
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
-  // Fetch team members
+  // Presence heartbeat - update every 30 seconds
+  useEffect(() => {
+    const sendHeartbeat = async () => {
+      try {
+        await apiRequest("POST", "/api/presence/heartbeat", {});
+      } catch (error) {
+        // Silently fail - presence is not critical
+      }
+    };
+    
+    // Send immediately on mount
+    sendHeartbeat();
+    
+    // Then every 30 seconds
+    const interval = setInterval(sendHeartbeat, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Fetch team members with real-time updates (every 30 seconds for presence)
   const { data: teamMembers = [], isLoading: isLoadingTeam } = useQuery<TeamMember[]>({
     queryKey: ["/api/team-members"],
+    refetchInterval: 30000, // Refresh presence every 30 seconds
   });
 
-  // Fetch conversations for list view
+  // Fetch conversations for list view with real-time updates
   const { data: conversations = [], isLoading: isLoadingConversations } = useQuery<ConversationData[]>({
     queryKey: ["/api/messages/conversations"],
+    refetchInterval: 5000, // Refresh every 5 seconds
   });
 
-  // Fetch messages for the selected team member
+  // Fetch messages for the selected team member with real-time updates
   const { data: messages = [], isLoading: isLoadingMessages } = useQuery<TeamMessage[]>({
     queryKey: ["/api/messages", memberId],
     enabled: !!memberId,
+    refetchInterval: 3000, // Refresh every 3 seconds for active chats
   });
 
   // Send message mutation
@@ -220,7 +454,7 @@ export default function Messages() {
                               </AvatarFallback>
                             </Avatar>
                             <Circle 
-                              className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 fill-current text-muted-foreground"
+                              className={`absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 fill-current ${getStatusColor(member.presenceStatus)}`}
                               data-testid={`status-indicator-${member.id}`}
                             />
                           </div>
@@ -291,7 +525,7 @@ export default function Messages() {
                     </AvatarFallback>
                   </Avatar>
                   <Circle 
-                    className="absolute -bottom-0.5 -right-0.5 h-3 w-3 fill-current text-muted-foreground"
+                    className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 fill-current ${getStatusColor(selectedMember.presenceStatus)}`}
                     data-testid="status-chat-member"
                   />
                 </div>
@@ -299,6 +533,10 @@ export default function Messages() {
                   <h2 className="font-semibold" data-testid="text-chat-member-name">{selectedMember.name}</h2>
                   <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
                     <span data-testid="text-chat-member-role">{ROLE_DISPLAY_NAMES[selectedMember.role] || selectedMember.role}</span>
+                    <span className="text-xs">·</span>
+                    <span className={`text-xs ${getStatusColor(selectedMember.presenceStatus)}`} data-testid="text-presence-status">
+                      {getStatusText(selectedMember.presenceStatus)}
+                    </span>
                   </div>
                 </div>
               </>
@@ -342,6 +580,7 @@ export default function Messages() {
               const isFromCurrentUser = msg.senderId !== memberId;
               const showTimestamp = index === 0 || 
                 (new Date(msg.createdAt!).getTime() - new Date(messages[index - 1].createdAt!).getTime()) > 300000;
+              const isDocumentRequest = msg.messageType === 'document_request' && msg.documentRequestData;
 
               return (
                 <div key={msg.id}>
@@ -364,18 +603,26 @@ export default function Messages() {
                           </AvatarFallback>
                         </Avatar>
                       )}
-                      <div 
-                        className={`rounded-2xl px-4 py-2 ${
-                          isFromCurrentUser 
-                            ? "bg-primary text-primary-foreground rounded-br-md" 
-                            : "bg-muted rounded-bl-md"
-                        }`}
-                      >
-                        <p className="text-sm whitespace-pre-wrap">{msg.message}</p>
-                      </div>
+                      {isDocumentRequest ? (
+                        <DocumentRequestCard 
+                          data={msg.documentRequestData as DocumentRequestData}
+                          isFromCurrentUser={isFromCurrentUser}
+                          messageId={msg.id}
+                        />
+                      ) : (
+                        <div 
+                          className={`rounded-2xl px-4 py-2 ${
+                            isFromCurrentUser 
+                              ? "bg-primary text-primary-foreground rounded-br-md" 
+                              : "bg-muted rounded-bl-md"
+                          }`}
+                        >
+                          <p className="text-sm whitespace-pre-wrap">{msg.message}</p>
+                        </div>
+                      )}
                     </div>
                   </div>
-                  {isFromCurrentUser && (
+                  {isFromCurrentUser && !isDocumentRequest && (
                     <div className="flex justify-end mt-0.5 mr-1">
                       {msg.isRead ? (
                         <CheckCheck className="h-3.5 w-3.5 text-primary" />
@@ -394,9 +641,10 @@ export default function Messages() {
       {/* Message Input */}
       <div className="border-t bg-background p-4">
         <div className="flex items-center gap-2 max-w-3xl mx-auto">
-          <Button variant="ghost" size="icon" data-testid="button-attach">
-            <Paperclip className="h-5 w-5" />
-          </Button>
+          <DocumentRequestDialog 
+            recipientId={memberId!}
+            recipientName={selectedMember?.name || "Team Member"}
+          />
           <Input
             placeholder="Type a message..."
             value={message}

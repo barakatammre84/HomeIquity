@@ -96,6 +96,8 @@ export const users = pgTable("users", {
   // Referral link system for LOs
   referralCode: varchar("referral_code", { length: 20 }).unique(), // Unique code for LO referral links (e.g., "JOHN-SMITH-LO")
   referredByUserId: varchar("referred_by_user_id"), // Who referred this user (references users.id)
+  // Presence tracking - for online/away status
+  lastActiveAt: timestamp("last_active_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -6639,6 +6641,20 @@ export const insertOfferComparisonSessionSchema = createInsertSchema(offerCompar
 export type InsertOfferComparisonSession = z.infer<typeof insertOfferComparisonSessionSchema>;
 export type OfferComparisonSession = typeof offerComparisonSessions.$inferSelect;
 
+// Message types for team messages
+export const MESSAGE_TYPES = ["text", "document_request", "document_submitted"] as const;
+export type MessageType = typeof MESSAGE_TYPES[number];
+
+// Document request data embedded in messages
+export interface DocumentRequestData {
+  documentType: string;
+  documentName: string;
+  description?: string;
+  dueDate?: string;
+  status: "pending" | "submitted" | "approved" | "rejected";
+  documentId?: string; // Linked when document is uploaded
+}
+
 // TEAM MESSAGES - Internal communication between borrowers and their loan team
 export const teamMessages = pgTable("team_messages", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -6652,6 +6668,10 @@ export const teamMessages = pgTable("team_messages", {
   
   // Message content
   message: text("message").notNull(),
+  
+  // Message type for special messages (document requests, etc.)
+  messageType: varchar("message_type", { length: 50 }).default("text"),
+  documentRequestData: jsonb("document_request_data"), // DocumentRequestData when messageType is document_request
   
   // Read tracking
   isRead: boolean("is_read").default(false),
