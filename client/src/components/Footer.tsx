@@ -11,7 +11,7 @@ export function Footer() {
               <span className="text-xl font-semibold text-primary tracking-tight">baranest</span>
             </Link>
             <p className="mt-4 max-w-xs text-sm text-muted-foreground">
-              A simpler way to get home-ready. We make homeownership feel clear, calm, and achievable.
+              Clear answers. Confident approvals. Pre-approvals you can trust.
             </p>
           </div>
 

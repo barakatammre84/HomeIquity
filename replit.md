@@ -1,30 +1,57 @@
-# Baranest - A Simpler Way to Get Home-Ready
+# Baranest - Clear Answers. Confident Approvals.
 
 ## Overview
-Baranest is a modern mortgage platform designed to make homeownership feel clear, calm, and achievable. Built on MISMO 3.4 standards with graph-based underwriting logic, Baranest automates and streamlines the mortgage process for 3-minute pre-approvals. The platform uses document intelligence for data extraction, with all underwriting decisions based on deterministic rules to ensure regulatory compliance and mitigate Fair Lending risks. Key capabilities include MISMO 3.4 and ULAD compliant underwriting, graph-based data models, advanced income/property eligibility, LLPA pricing, and multi-tenant support.
+Baranest is a modern mortgage platform designed to make mortgage decisions clear and trustworthy. Built on MISMO 3.4 standards with graph-based underwriting logic, Baranest automates and streamlines the mortgage process for 3-minute pre-approvals. The platform uses document intelligence for data extraction, with all underwriting decisions based on deterministic rules to ensure regulatory compliance and mitigate Fair Lending risks. Key capabilities include MISMO 3.4 and ULAD compliant underwriting, graph-based data models, advanced income/property eligibility, LLPA pricing, and multi-tenant support.
 
-## Brand Identity
-**Brand Promise:** A simpler way to get home-ready.
-**Personality:** Calm, Trustworthy, Clear, Human, Confident (never flashy)
-**Voice:** Reassuring, direct, supportive - plain English, no jargon, no hype.
+## Brand Identity — Institutional Calm
+**Brand Promise:** Clear answers. Confident approvals.
+**Personality:** Institutional, Mature, Trustworthy (never flashy or startup-ish)
+**Voice:** Authoritative, direct, professional - plain English, no jargon, no marketing hype.
+**Taglines:** "Mortgage decisions, made clear." / "Built for certainty, not guesswork." / "Pre-approvals you can trust."
 
-### Color Palette
-- **Nest Blue (Primary):** #1F3A5F - Used for primary CTAs, links, and key actions
-- **Warm Sage (Accent):** #7FA89C - Used for progress states, highlights, success moments
-- **Soft Canvas (Background):** #F7F9FB - App and section backgrounds
-- **Primary Text:** #1E293B
-- **Secondary Text:** #64748B
+### Color Palette (Muted, Mature)
+**Primary Palette:**
+- **Midnight Slate (Primary):** #162A3A - Deep trust/navy for CTAs and primary actions
+- **Porcelain (Surface):** #FAFBFC - Near-white, removes "app" feel
+- **Fog Line (Border):** #E6EBF0 - Subtle borders, replaces shadows where possible
+- **Ink (Primary Text):** #0F172A - Strong contrast
+- **Ash (Secondary Text):** #475569 - Softer hierarchy
 
-### Typography
-**Primary Font:** Inter (or DM Sans)
-- H1: 32-40px, H2: 24-28px, H3: 18-20px
-- Body: 14-16px, line-height 1.5-1.6
+**Accent Palette (Used Sparingly):**
+- **Soft Moss:** #6F9E90 - Primary CTAs, progress indicators, confirmation moments
+- **Deep Moss:** #4E7F73 - Hover/focus states
 
-### UI Style
-- Rounded corners (10-12px on buttons, 12px on cards)
-- Soft shadows, no harsh borders
-- Clean cards with breathing room
-- Guided, step-by-step flows
+**Status Colors (De-Saturated = Professional):**
+- **Evergreen (Success):** #3E7C6A
+- **Muted Amber (Warning):** #B08945
+- **Oxide Red (Error):** #9F3A38
+- **Steel Blue (Info):** #3B5C7E
+
+**Dark Mode (Professional Dashboard):**
+- Background: #0B1220
+- Surface: #111827
+- Primary Text: #E5E7EB
+- Secondary Text: #9CA3AF
+- Borders: #1F2937
+
+### Typography (Quiet Confidence)
+**Primary Font:** Inter (alternative: Source Sans 3)
+- H1: 34px, weight 600
+- H2: 26px, weight 500
+- H3: 20px, weight 500
+- Body: 15-16px, weight 400
+- Meta/Labels: 13px, weight 400
+- Line Height (Headings): 1.25
+- Line Height (Body): 1.55
+
+### UI Style (Institutional)
+- **Cards:** Border instead of shadow (default), shadow on hover only
+- **Card Padding:** 24-32px, Radius: 12px consistent everywhere
+- **Buttons:** Solid primary (no gradients), outline secondary, text+icon destructive
+- **Button Shape:** Rounded (12px), no pill shapes
+- **Input Height:** 44-48px, labels always visible
+- **Shadows:** Subtle when used: `box-shadow: 0 6px 20px rgba(15, 23, 42, 0.06)`
+- **Motion:** 120-180ms, ease-in-out, directional (no bounce/elastic)
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.

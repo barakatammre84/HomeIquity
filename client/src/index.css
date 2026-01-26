@@ -2,77 +2,82 @@
 @tailwind components;
 @tailwind utilities;
 
-/* LIGHT MODE - Baranest Brand Colors */
+/* LIGHT MODE - Institutional Calm */
 :root {
   --button-outline: rgba(0,0,0, .08);
   --badge-outline: rgba(0,0,0, .05);
   --opaque-button-border-intensity: -8;
   --elevate-1: rgba(0,0,0, .03);
   --elevate-2: rgba(0,0,0, .06);
-  /* Soft Canvas background #F7F9FB */
-  --background: 210 33% 98%;
-  /* Primary Text #1E293B */
-  --foreground: 222 47% 17%;
-  --border: 210 20% 90%;
+  /* Surface: Porcelain #FAFBFC */
+  --background: 210 20% 99%;
+  /* Primary Text: Ink #0F172A */
+  --foreground: 222 47% 11%;
+  /* Subtle Border: Fog Line #E6EBF0 */
+  --border: 210 22% 92%;
   --card: 0 0% 100%;
-  /* Primary Text #1E293B */
-  --card-foreground: 222 47% 17%;
-  --card-border: 210 20% 92%;
-  /* Soft Canvas slightly darker for sidebar */
-  --sidebar: 210 25% 96%;
-  --sidebar-foreground: 222 47% 17%;
-  --sidebar-border: 210 20% 90%;
-  /* Nest Blue #1F3A5F */
-  --sidebar-primary: 215 50% 25%;
+  /* Primary Text: Ink #0F172A */
+  --card-foreground: 222 47% 11%;
+  --card-border: 210 22% 92%;
+  /* Sidebar: Slightly darker Porcelain */
+  --sidebar: 210 20% 97%;
+  --sidebar-foreground: 222 47% 11%;
+  --sidebar-border: 210 22% 92%;
+  /* Primary: Midnight Slate #162A3A */
+  --sidebar-primary: 203 47% 16%;
   --sidebar-primary-foreground: 0 0% 100%;
-  /* Warm Sage tint for sidebar accent */
-  --sidebar-accent: 158 15% 92%;
-  --sidebar-accent-foreground: 222 47% 17%;
-  --sidebar-ring: 215 50% 25%;
+  /* Accent: Soft Moss tint for sidebar */
+  --sidebar-accent: 159 15% 94%;
+  --sidebar-accent-foreground: 222 47% 11%;
+  --sidebar-ring: 203 47% 16%;
   --popover: 0 0% 100%;
-  --popover-foreground: 222 47% 17%;
-  --popover-border: 210 20% 88%;
-  /* Nest Blue #1F3A5F - Primary CTA */
-  --primary: 215 50% 25%;
+  --popover-foreground: 222 47% 11%;
+  --popover-border: 210 22% 90%;
+  /* Primary: Midnight Slate #162A3A */
+  --primary: 203 47% 16%;
   --primary-foreground: 0 0% 100%;
   --secondary: 210 20% 96%;
-  --secondary-foreground: 222 47% 17%;
+  --secondary-foreground: 222 47% 11%;
   --muted: 210 20% 96%;
-  /* Secondary Text #64748B */
-  --muted-foreground: 215 16% 47%;
-  /* Warm Sage #7FA89C tint for accent backgrounds */
-  --accent: 158 20% 94%;
-  --accent-foreground: 222 47% 17%;
-  /* Error #D64545 */
-  --destructive: 0 63% 55%;
+  /* Secondary Text: Ash #475569 */
+  --muted-foreground: 215 19% 35%;
+  /* Accent: Soft Moss #6F9E90 tint for accent backgrounds */
+  --accent: 159 20% 94%;
+  --accent-foreground: 222 47% 11%;
+  /* Error: Oxide Red #9F3A38 */
+  --destructive: 1 47% 42%;
   --destructive-foreground: 0 0% 100%;
-  --input: 210 20% 88%;
-  --ring: 215 50% 25%;
-  /* Warm Sage #7FA89C for charts */
-  --chart-1: 158 20% 58%;
-  --chart-2: 215 50% 25%;
-  --chart-3: 158 25% 50%;
-  --chart-4: 215 40% 35%;
-  --chart-5: 158 15% 45%;
-  /* Success #2F9E44 */
-  --success: 134 54% 40%;
+  --input: 210 22% 90%;
+  --ring: 203 47% 16%;
+  /* Charts: Soft Moss and Midnight Slate variants */
+  --chart-1: 159 20% 53%;
+  --chart-2: 203 47% 16%;
+  --chart-3: 159 25% 45%;
+  --chart-4: 203 40% 30%;
+  --chart-5: 159 15% 40%;
+  /* Success: Evergreen #3E7C6A */
+  --success: 159 33% 36%;
   --success-foreground: 0 0% 100%;
-  /* Warning #E9B949 */
-  --warning: 43 79% 60%;
-  --warning-foreground: 222 47% 17%;
+  /* Warning: Muted Amber #B08945 */
+  --warning: 36 44% 48%;
+  --warning-foreground: 222 47% 11%;
+  /* Info: Steel Blue #3B5C7E */
+  --info: 209 36% 36%;
+  --info-foreground: 0 0% 100%;
   --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-serif: Georgia, serif;
   --font-mono: "JetBrains Mono", monospace;
-  /* Rounded corners 10-12px per brand guide */
+  /* Rounded corners 12px per brand guide */
   --radius: .75rem;
-  --shadow-2xs: 0 1px 2px 0 hsl(0 0% 0% / 0.03);
-  --shadow-xs: 0 1px 3px 0 hsl(0 0% 0% / 0.04), 0 1px 2px -1px hsl(0 0% 0% / 0.03);
-  --shadow-sm: 0 2px 4px -1px hsl(0 0% 0% / 0.06), 0 1px 2px -1px hsl(0 0% 0% / 0.04);
-  --shadow: 0 4px 6px -1px hsl(0 0% 0% / 0.08), 0 2px 4px -2px hsl(0 0% 0% / 0.05);
-  --shadow-md: 0 6px 12px -2px hsl(0 0% 0% / 0.10), 0 3px 6px -3px hsl(0 0% 0% / 0.06);
-  --shadow-lg: 0 10px 20px -3px hsl(0 0% 0% / 0.12), 0 4px 8px -4px hsl(0 0% 0% / 0.08);
-  --shadow-xl: 0 16px 32px -4px hsl(0 0% 0% / 0.15), 0 8px 16px -6px hsl(0 0% 0% / 0.10);
-  --shadow-2xl: 0 24px 48px -6px hsl(0 0% 0% / 0.20);
+  /* Institutional shadow: subtle, premium */
+  --shadow-2xs: 0 1px 2px 0 hsl(0 0% 0% / 0.02);
+  --shadow-xs: 0 1px 3px 0 hsl(0 0% 0% / 0.03), 0 1px 2px -1px hsl(0 0% 0% / 0.02);
+  --shadow-sm: 0 2px 4px -1px hsl(0 0% 0% / 0.04), 0 1px 2px -1px hsl(0 0% 0% / 0.03);
+  --shadow: 0 4px 6px -1px hsl(0 0% 0% / 0.05), 0 2px 4px -2px hsl(0 0% 0% / 0.03);
+  --shadow-md: 0 6px 20px 0 hsl(222 47% 11% / 0.06);
+  --shadow-lg: 0 10px 20px -3px hsl(0 0% 0% / 0.08), 0 4px 8px -4px hsl(0 0% 0% / 0.05);
+  --shadow-xl: 0 16px 32px -4px hsl(0 0% 0% / 0.10), 0 8px 16px -6px hsl(0 0% 0% / 0.06);
+  --shadow-2xl: 0 24px 48px -6px hsl(0 0% 0% / 0.12);
   --tracking-normal: 0em;
   --spacing: 0.25rem;
 
@@ -105,64 +110,72 @@
   --destructive-border: hsl(from hsl(var(--destructive)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
 }
 
-/* DARK MODE - Baranest Brand Colors */
+/* DARK MODE - Professional Dashboard */
 .dark {
   --button-outline: rgba(255,255,255, .08);
   --badge-outline: rgba(255,255,255, .05);
   --opaque-button-border-intensity: 9;
   --elevate-1: rgba(255,255,255, .04);
   --elevate-2: rgba(255,255,255, .08);
-  /* Deep Nest Blue background */
-  --background: 215 35% 10%;
-  --foreground: 210 20% 96%;
-  --border: 215 25% 18%;
-  --card: 215 30% 12%;
-  --card-foreground: 210 20% 96%;
-  --card-border: 215 25% 16%;
-  --sidebar: 215 30% 12%;
-  --sidebar-foreground: 210 20% 96%;
-  --sidebar-border: 215 25% 16%;
-  /* Lighter Nest Blue for dark mode visibility */
-  --sidebar-primary: 215 45% 45%;
+  /* Background: #0B1220 - Professional dark */
+  --background: 217 51% 8%;
+  /* Primary Text: #E5E7EB */
+  --foreground: 220 14% 91%;
+  /* Borders: #1F2937 */
+  --border: 217 33% 17%;
+  /* Surface: #111827 */
+  --card: 222 47% 11%;
+  --card-foreground: 220 14% 91%;
+  --card-border: 217 33% 17%;
+  --sidebar: 222 47% 11%;
+  --sidebar-foreground: 220 14% 91%;
+  --sidebar-border: 217 33% 17%;
+  /* Primary: Lighter Midnight Slate for dark mode */
+  --sidebar-primary: 203 40% 40%;
   --sidebar-primary-foreground: 0 0% 100%;
-  /* Warm Sage tint for dark mode */
-  --sidebar-accent: 158 15% 18%;
-  --sidebar-accent-foreground: 210 20% 96%;
-  --sidebar-ring: 215 45% 45%;
-  --popover: 215 30% 14%;
-  --popover-foreground: 210 20% 96%;
-  --popover-border: 215 25% 20%;
-  /* Lighter Nest Blue for dark mode CTAs */
-  --primary: 215 45% 45%;
+  /* Accent: Soft Moss tint for dark mode */
+  --sidebar-accent: 159 15% 18%;
+  --sidebar-accent-foreground: 220 14% 91%;
+  --sidebar-ring: 203 40% 40%;
+  --popover: 222 47% 13%;
+  --popover-foreground: 220 14% 91%;
+  --popover-border: 217 33% 20%;
+  /* Primary: Lighter Midnight Slate for dark mode */
+  --primary: 203 40% 40%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 215 25% 18%;
-  --secondary-foreground: 210 20% 96%;
-  --muted: 215 25% 16%;
-  --muted-foreground: 215 16% 60%;
-  /* Warm Sage tint for dark mode accents */
-  --accent: 158 15% 18%;
-  --accent-foreground: 210 20% 96%;
-  --destructive: 0 63% 55%;
+  --secondary: 217 33% 17%;
+  --secondary-foreground: 220 14% 91%;
+  --muted: 217 33% 15%;
+  /* Secondary Text: #9CA3AF */
+  --muted-foreground: 218 11% 65%;
+  /* Accent: Soft Moss tint for dark mode */
+  --accent: 159 15% 18%;
+  --accent-foreground: 220 14% 91%;
+  /* Error: Oxide Red */
+  --destructive: 1 47% 48%;
   --destructive-foreground: 0 0% 100%;
-  --input: 215 25% 22%;
-  --ring: 215 45% 45%;
-  /* Warm Sage and Nest Blue for dark charts */
-  --chart-1: 158 25% 55%;
-  --chart-2: 215 45% 55%;
-  --chart-3: 158 20% 50%;
-  --chart-4: 215 35% 50%;
-  --chart-5: 158 15% 45%;
-  /* Success #2F9E44 */
-  --success: 134 54% 45%;
+  --input: 217 33% 20%;
+  --ring: 203 40% 40%;
+  /* Charts: Muted tones for dark mode */
+  --chart-1: 159 20% 50%;
+  --chart-2: 203 40% 50%;
+  --chart-3: 159 18% 45%;
+  --chart-4: 203 35% 45%;
+  --chart-5: 159 15% 40%;
+  /* Success: Evergreen (slightly brighter for dark) */
+  --success: 159 33% 42%;
   --success-foreground: 0 0% 100%;
-  /* Warning #E9B949 */
-  --warning: 43 79% 55%;
-  --warning-foreground: 222 47% 17%;
+  /* Warning: Muted Amber */
+  --warning: 36 44% 52%;
+  --warning-foreground: 222 47% 11%;
+  /* Info: Steel Blue */
+  --info: 209 36% 45%;
+  --info-foreground: 0 0% 100%;
   --shadow-2xs: 0 1px 2px 0 hsl(0 0% 0% / 0.15);
   --shadow-xs: 0 1px 3px 0 hsl(0 0% 0% / 0.20), 0 1px 2px -1px hsl(0 0% 0% / 0.15);
   --shadow-sm: 0 2px 4px -1px hsl(0 0% 0% / 0.25), 0 1px 2px -1px hsl(0 0% 0% / 0.18);
   --shadow: 0 4px 6px -1px hsl(0 0% 0% / 0.30), 0 2px 4px -2px hsl(0 0% 0% / 0.20);
-  --shadow-md: 0 6px 12px -2px hsl(0 0% 0% / 0.35), 0 3px 6px -3px hsl(0 0% 0% / 0.25);
+  --shadow-md: 0 6px 20px 0 hsl(0 0% 0% / 0.30);
   --shadow-lg: 0 10px 20px -3px hsl(0 0% 0% / 0.40), 0 4px 8px -4px hsl(0 0% 0% / 0.30);
   --shadow-xl: 0 16px 32px -4px hsl(0 0% 0% / 0.45), 0 8px 16px -6px hsl(0 0% 0% / 0.35);
   --shadow-2xl: 0 24px 48px -6px hsl(0 0% 0% / 0.50);

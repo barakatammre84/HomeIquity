@@ -20,17 +20,17 @@ export default function Home() {
       <section className="relative bg-accent px-4 py-16 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-6xl">
           <div className="flex flex-col items-center text-center">
-            <h1 className="text-4xl font-bold tracking-tight text-foreground sm:text-5xl lg:text-6xl">
-              A simpler way to
+            <h1 className="text-[34px] font-semibold leading-tight tracking-tight text-foreground sm:text-5xl">
+              Clear answers.
             </h1>
-            <h2 className="mt-1 text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
-              <span className="text-primary">get home-ready</span>
+            <h2 className="mt-1 text-[34px] font-semibold leading-tight tracking-tight sm:text-5xl">
+              <span className="text-primary">Confident approvals.</span>
             </h2>
 
-            <p className="mx-auto mt-6 max-w-2xl text-base text-muted-foreground sm:text-lg">
-              Clear, calm, and achievable. Get pre-approved in minutes
+            <p className="mx-auto mt-6 max-w-2xl text-[15px] leading-relaxed text-muted-foreground sm:text-base">
+              Mortgage decisions, made clear. Get pre-approved in minutes
               <br className="hidden sm:block" />
-              with a mortgage experience designed around you.
+              with a process built for certainty, not guesswork.
             </p>
 
             <div className="mt-8 flex flex-col items-center gap-3">
