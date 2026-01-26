@@ -47,6 +47,7 @@ import {
   ChevronRight,
   MessageCircle,
   Circle,
+  ListTodo,
 } from "lucide-react";
 
 // Team member interface
@@ -131,6 +132,7 @@ const staffNavigation = [
     items: [
       { title: "Overview", href: "/staff-dashboard", icon: LayoutDashboard, testId: "link-staff-overview" },
       { title: "Pipeline Queue", href: "/pipeline-queue", icon: GitBranch, testId: "link-pipeline-queue" },
+      { title: "Task Operations", href: "/task-operations", icon: ListTodo, testId: "link-task-operations" },
       { title: "Analytics", href: "/analytics", icon: BarChart3, testId: "link-analytics" },
       { title: "Broker Dashboard", href: "/broker-dashboard", icon: DollarSign, testId: "link-broker-dashboard" },
       { title: "Invite Clients", href: "/invite-clients", icon: Link2, testId: "link-invite-clients" },

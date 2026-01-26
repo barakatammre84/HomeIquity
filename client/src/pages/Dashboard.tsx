@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { DealTeam } from "@/components/DealTeam";
 import { DocumentChecklist } from "@/components/DocumentChecklist";
 import { ActionItems } from "@/components/ActionItems";
+import { BorrowerRequests } from "@/components/BorrowerRequests";
 import type { LoanApplication, DealActivity } from "@shared/schema";
 import {
   CheckCircle2,
@@ -192,9 +193,12 @@ export default function Dashboard() {
                 </div>
                 
                 {activeApplication && (
-                  <div className="grid gap-6 md:grid-cols-2">
-                    <ActionItems applicationId={activeApplication.id} compact maxItems={4} />
-                    <DocumentChecklist applicationId={activeApplication.id} compact />
+                  <div className="space-y-6">
+                    <BorrowerRequests applicationId={activeApplication.id} />
+                    <div className="grid gap-6 md:grid-cols-2">
+                      <ActionItems applicationId={activeApplication.id} compact maxItems={4} />
+                      <DocumentChecklist applicationId={activeApplication.id} compact />
+                    </div>
                   </div>
                 )}
               </section>
@@ -382,9 +386,12 @@ export default function Dashboard() {
                   </div>
                   <h3 className="text-xl font-bold tracking-tight">Your To-Do List</h3>
                 </div>
-                <div className="grid gap-6 md:grid-cols-2">
-                  <ActionItems applicationId={activeApplication.id} compact maxItems={4} />
-                  <DocumentChecklist applicationId={activeApplication.id} compact />
+                <div className="space-y-6">
+                  <BorrowerRequests applicationId={activeApplication.id} />
+                  <div className="grid gap-6 md:grid-cols-2">
+                    <ActionItems applicationId={activeApplication.id} compact maxItems={4} />
+                    <DocumentChecklist applicationId={activeApplication.id} compact />
+                  </div>
                 </div>
               </>
             )}

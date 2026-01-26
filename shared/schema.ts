@@ -944,17 +944,105 @@ export const preApprovalFormSchema = z.object({
 
 export type PreApprovalFormData = z.infer<typeof preApprovalFormSchema>;
 
+// ============================================================================
+// TASK ENGINE - Event-driven task management with SLA enforcement
+// ============================================================================
+
+// SLA Classes (S0-S5) - defines urgency and escalation timing
+export const SLA_CLASSES = [
+  "S0", // Immediate: 0-1 hour, escalation at 15 min
+  "S1", // Critical: 4 hours, escalation at 2 hours
+  "S2", // High: 12 hours, escalation at 8 hours
+  "S3", // Standard: 48 hours, escalation at 36 hours
+  "S4", // Low: 72 hours, escalation at 60 hours
+  "S5", // Informational: No SLA
+] as const;
+
+export type SlaClass = typeof SLA_CLASSES[number];
+
+// Trigger sources - what created the task
+export const TASK_TRIGGER_SOURCES = [
+  "OCR",           // Document Intelligence triggered
+  "POLICY",        // Policy rule triggered
+  "LENDER",        // Lender interaction triggered
+  "SYSTEM",        // System/workflow triggered
+  "MANUAL",        // Staff manually created
+  "COC",           // Change-of-Circumstance triggered
+] as const;
+
+export type TaskTriggerSource = typeof TASK_TRIGGER_SOURCES[number];
+
+// Owner roles - who is responsible for the task
+export const TASK_OWNER_ROLES = [
+  "LO",           // Loan Officer
+  "LOA",          // Loan Officer Assistant
+  "PROCESSOR",    // Processor
+  "UW",           // Underwriter
+  "CLOSER",       // Closer
+  "ADMIN",        // Admin
+  "BORROWER",     // Borrower-facing task
+  "SYSTEM",       // System auto-resolved
+] as const;
+
+export type TaskOwnerRole = typeof TASK_OWNER_ROLES[number];
+
+// Task type codes for SLA mapping
+export const TASK_TYPE_CODES = [
+  // Intake & Identity
+  "INTAKE_CONSENT_CREDIT", "INTAKE_KYC_REVIEW", "INTAKE_ID_VERIFY", "INTAKE_SSN_VERIFY",
+  "INTAKE_NAME_MISMATCH", "INTAKE_RESIDENCY_VERIFY", "INTAKE_INITIAL_DISCLOSURES",
+  // Document Collection
+  "DOC_PAYSTUB_REQUEST", "DOC_BANK_STATEMENT_REQUEST", "DOC_BANK_MISSING_PAGE",
+  "DOC_TAX_RETURN_REQUEST", "DOC_PURCHASE_CONTRACT", "DOC_INSURANCE_BINDER", "DOC_GIFT_LETTER",
+  // OCR & Data Integrity
+  "OCR_EXTRACTION_REVIEW", "OCR_MISSING_FIELDS", "OCR_DOC_MISCLASSIFIED",
+  "OCR_NAME_MISMATCH", "OCR_DOC_TAMPER_FLAG",
+  // Income & Employment
+  "INC_W2_VERIFY", "INC_SELFEMP_PNL", "INC_SCHED_C", "INC_SCHED_E", "INC_ADD_BACK_REVIEW",
+  "INC_DECLINING", "INC_EMP_GAP", "INC_INCOME_LOCK",
+  // Assets
+  "AST_BANK_ANALYSIS", "AST_LARGE_DEPOSIT", "AST_OVERDRAFT", "AST_RETIREMENT_ACCESS",
+  "AST_EARNEST_MONEY", "AST_ASSET_LOCK",
+  // Credit
+  "CRD_CREDIT_PULL", "CRD_SCORE_REVIEW", "CRD_NEW_TRADELINE", "CRD_INQUIRY_LOE", "CRD_CREDIT_LOCK",
+  // Eligibility
+  "ELIG_DTI_CALC", "ELIG_DSCR_CALC", "ELIG_AUS_PRECHECK", "ELIG_EXCEPTION_REVIEW",
+  // Pre-Approval
+  "PA_APPROVAL_REVIEW", "PA_LETTER_GEN", "PA_EXPIRATION_SET", "PA_FREEZE_FILE", "PA_RELOCK",
+  // Lender
+  "LND_DEAL_PACKAGE", "LND_CONDITION_CLEAR", "LND_PRICING_EXP", "LND_ACCEPT",
+  // Compliance
+  "CMP_ADVERSE_ACTION", "CMP_POLICY_EXCEPTION", "CMP_AUDIT_REVIEW", "CMP_DATA_RETENTION", "CMP_INCIDENT_REVIEW",
+  // General
+  "DOCUMENT_REQUEST", "VERIFICATION", "REVIEW", "FOLLOW_UP", "ESCALATION",
+] as const;
+
+export type TaskTypeCode = typeof TASK_TYPE_CODES[number];
+
+// Escalation levels
+export const ESCALATION_LEVELS = [0, 1, 2, 3, 4] as const;
+export type EscalationLevel = typeof ESCALATION_LEVELS[number];
+
 // Tasks for document requests and workflow items
 export const tasks = pgTable("tasks", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   applicationId: varchar("application_id").references(() => loanApplications.id).notNull(),
-  assignedToUserId: varchar("assigned_to_user_id").references(() => users.id).notNull(),
-  createdByUserId: varchar("created_by_user_id").references(() => users.id).notNull(),
+  assignedToUserId: varchar("assigned_to_user_id").references(() => users.id),
+  createdByUserId: varchar("created_by_user_id").references(() => users.id),
   
   // Task Details
   title: varchar("title", { length: 255 }).notNull(),
   description: text("description"),
   taskType: varchar("task_type", { length: 50 }).notNull(), // document_request, verification, review, action
+  taskTypeCode: varchar("task_type_code", { length: 50 }), // Specific task code for SLA mapping
+  
+  // Task Engine Fields
+  triggerSource: varchar("trigger_source", { length: 20 }).default("MANUAL"), // OCR, POLICY, LENDER, SYSTEM, MANUAL, COC
+  ownerRole: varchar("owner_role", { length: 20 }).default("PROCESSOR"), // Role responsible
+  slaClass: varchar("sla_class", { length: 5 }).default("S3"), // S0-S5
+  slaDueAt: timestamp("sla_due_at"), // Computed deadline based on SLA class
+  escalationLevel: integer("escalation_level").default(0), // 0-4
+  escalatedAt: timestamp("escalated_at"), // When last escalated
   
   // Document Request Specific
   documentCategory: varchar("document_category", { length: 50 }), // tax_return, pay_stub, bank_statement, w2, id, other
@@ -966,8 +1054,8 @@ export const tasks = pgTable("tasks", {
   isCustomRequest: boolean("is_custom_request").default(false), // true for custom/unique document requests
   
   // Status
-  status: varchar("status", { length: 50 }).default("pending").notNull(), // pending, in_progress, submitted, verified, rejected, completed
-  priority: varchar("priority", { length: 20 }).default("normal"), // low, normal, high, urgent
+  status: varchar("status", { length: 50 }).default("OPEN").notNull(), // OPEN, IN_PROGRESS, BLOCKED, COMPLETED, EXPIRED
+  priority: varchar("priority", { length: 20 }).default("NORMAL"), // LOW, NORMAL, HIGH, CRITICAL
   
   // Due Date
   dueDate: timestamp("due_date"),
@@ -978,12 +1066,27 @@ export const tasks = pgTable("tasks", {
   verifiedByUserId: varchar("verified_by_user_id").references(() => users.id),
   verifiedAt: timestamp("verified_at"),
   
+  // Resolution
+  resolutionNotes: text("resolution_notes"),
+  resolvedByUserId: varchar("resolved_by_user_id").references(() => users.id),
+  completedAt: timestamp("completed_at"),
+  
+  // Auto-resolution tracking
+  autoResolved: boolean("auto_resolved").default(false),
+  autoResolveCondition: varchar("auto_resolve_condition", { length: 100 }), // What condition triggered auto-resolution
+  
+  // Blocking behavior
+  blocksLoanProgress: boolean("blocks_loan_progress").default(false), // If true, loan cannot advance until resolved
+  
   // AI Analysis Results
   aiAnalysisResult: jsonb("ai_analysis_result"),
   aiAnalyzedAt: timestamp("ai_analyzed_at"),
   
   // Extracted Data (for income verification, etc.)
   extractedData: jsonb("extracted_data"),
+  
+  // Trigger metadata (what event created this task)
+  triggerMetadata: jsonb("trigger_metadata"), // Details about what triggered the task
   
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -1049,6 +1152,202 @@ export const insertTaskDocumentSchema = createInsertSchema(taskDocuments).omit({
 
 export type InsertTaskDocument = z.infer<typeof insertTaskDocumentSchema>;
 export type TaskDocument = typeof taskDocuments.$inferSelect;
+
+// Task Events - records what triggered task creation (event outbox)
+export const taskEvents = pgTable("task_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Event Details
+  eventType: varchar("event_type", { length: 100 }).notNull(), // e.g., DOC_UPLOAD, CREDIT_CHANGE, WORKFLOW_TRANSITION
+  eventSource: varchar("event_source", { length: 50 }).notNull(), // OCR, POLICY, LENDER, SYSTEM, COC
+  
+  // Context
+  applicationId: varchar("application_id").references(() => loanApplications.id),
+  documentId: varchar("document_id").references(() => documents.id),
+  
+  // Event payload
+  eventPayload: jsonb("event_payload").notNull(), // Full event details
+  
+  // Processing
+  processed: boolean("processed").default(false),
+  processedAt: timestamp("processed_at"),
+  resultingTaskId: varchar("resulting_task_id").references(() => tasks.id),
+  
+  // Idempotency
+  idempotencyKey: varchar("idempotency_key", { length: 255 }).unique(), // Prevents duplicate task creation
+  
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const taskEventsRelations = relations(taskEvents, ({ one }) => ({
+  application: one(loanApplications, {
+    fields: [taskEvents.applicationId],
+    references: [loanApplications.id],
+  }),
+  document: one(documents, {
+    fields: [taskEvents.documentId],
+    references: [documents.id],
+  }),
+  resultingTask: one(tasks, {
+    fields: [taskEvents.resultingTaskId],
+    references: [tasks.id],
+  }),
+}));
+
+export const insertTaskEventSchema = createInsertSchema(taskEvents).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertTaskEvent = z.infer<typeof insertTaskEventSchema>;
+export type TaskEvent = typeof taskEvents.$inferSelect;
+
+// Task Audit Log - immutable compliance audit trail
+export const taskAuditLog = pgTable("task_audit_log", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  taskId: varchar("task_id").references(() => tasks.id).notNull(),
+  
+  // Action Details
+  action: varchar("action", { length: 50 }).notNull(), // created, assigned, status_change, escalated, completed, auto_resolved
+  previousValue: jsonb("previous_value"), // Previous state
+  newValue: jsonb("new_value"), // New state
+  
+  // Actor
+  actorUserId: varchar("actor_user_id").references(() => users.id),
+  actorRole: varchar("actor_role", { length: 50 }),
+  actorType: varchar("actor_type", { length: 20 }).default("user"), // user, system, auto
+  
+  // Reason/Notes
+  reason: text("reason"),
+  
+  // Compliance metadata
+  ipAddress: varchar("ip_address", { length: 45 }),
+  userAgent: text("user_agent"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const taskAuditLogRelations = relations(taskAuditLog, ({ one }) => ({
+  task: one(tasks, {
+    fields: [taskAuditLog.taskId],
+    references: [tasks.id],
+  }),
+  actor: one(users, {
+    fields: [taskAuditLog.actorUserId],
+    references: [users.id],
+  }),
+}));
+
+export const insertTaskAuditLogSchema = createInsertSchema(taskAuditLog).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertTaskAuditLog = z.infer<typeof insertTaskAuditLogSchema>;
+export type TaskAuditLog = typeof taskAuditLog.$inferSelect;
+
+// SLA Class Configurations - defines timing for each SLA class
+export const slaClassConfigs = pgTable("sla_class_configs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // SLA Class (S0-S5)
+  slaClass: varchar("sla_class", { length: 5 }).notNull().unique(), // S0, S1, S2, S3, S4, S5
+  name: varchar("name", { length: 50 }).notNull(), // Immediate, Critical, High, Standard, Low, Informational
+  description: text("description"),
+  
+  // Timing (in minutes)
+  targetResolutionMinutes: integer("target_resolution_minutes"), // null for S5
+  escalationStartMinutes: integer("escalation_start_minutes"), // When escalation begins
+  hardBreachMinutes: integer("hard_breach_minutes"), // When hard breach occurs
+  
+  // Behavior
+  blocksLoanProgress: boolean("blocks_loan_progress").default(false), // S0-S3 typically block
+  
+  // Display
+  displayOrder: integer("display_order").default(0),
+  colorCode: varchar("color_code", { length: 20 }).default("gray"), // For UI display
+  
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertSlaClassConfigSchema = createInsertSchema(slaClassConfigs).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertSlaClassConfig = z.infer<typeof insertSlaClassConfigSchema>;
+export type SlaClassConfig = typeof slaClassConfigs.$inferSelect;
+
+// Task Type SLA Mappings - maps task types to SLA classes with auto-actions
+export const taskTypeSlaMapping = pgTable("task_type_sla_mapping", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Task type code
+  taskTypeCode: varchar("task_type_code", { length: 50 }).notNull().unique(),
+  taskTypeName: varchar("task_type_name", { length: 255 }).notNull(),
+  category: varchar("category", { length: 50 }), // intake, document, ocr, income, assets, credit, eligibility, pre_approval, lender, compliance
+  
+  // SLA Assignment
+  slaClass: varchar("sla_class", { length: 5 }).notNull(), // S0-S5
+  
+  // Default ownership
+  defaultOwnerRole: varchar("default_owner_role", { length: 20 }).notNull(),
+  
+  // Auto-actions on breach
+  autoActionOnBreach: jsonb("auto_action_on_breach"), // What happens when SLA is breached
+  
+  // Auto-resolution conditions
+  autoResolveConditions: jsonb("auto_resolve_conditions"), // Conditions that auto-complete the task
+  
+  // Borrower visibility
+  visibleToBorrower: boolean("visible_to_borrower").default(false),
+  borrowerDisplayText: text("borrower_display_text"), // Simplified text for borrower
+  
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertTaskTypeSlaMapping = createInsertSchema(taskTypeSlaMapping).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertTaskTypeSlaMapping = z.infer<typeof insertTaskTypeSlaMapping>;
+export type TaskTypeSlaMapping = typeof taskTypeSlaMapping.$inferSelect;
+
+// Escalation Actions - configurable actions at each escalation level
+export const escalationActions = pgTable("escalation_actions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Scope (can be global or task-type specific)
+  taskTypeCode: varchar("task_type_code", { length: 50 }), // null = global default
+  
+  // Escalation level (0-4)
+  escalationLevel: integer("escalation_level").notNull(),
+  
+  // Actions
+  actionType: varchar("action_type", { length: 50 }).notNull(), // notify, reassign, freeze, alert
+  actionConfig: jsonb("action_config").notNull(), // Configuration for the action
+  
+  // Description
+  description: text("description"),
+  
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertEscalationActionSchema = createInsertSchema(escalationActions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertEscalationAction = z.infer<typeof insertEscalationActionSchema>;
+export type EscalationAction = typeof escalationActions.$inferSelect;
 
 // ============================================================================
 // DOCUMENT PACKAGES (Lender-Ready Document Organization)

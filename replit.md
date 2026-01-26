@@ -111,6 +111,18 @@ The backend is built with Node.js, Express.js, and TypeScript, utilizing Postgre
 
 **Policy Profile Service:** The foundation for policy-driven underwriting where underwriting logic is fixed code, guidelines are editable data, and decisions are frozen, explainable, and auditable. It ensures no future guideline change requires code changes. Ops can change threshold values within bounds, toggles, effective dates, and lender overlays, but cannot edit formulas or conditional logic, delete history, make retroactive edits, or change active profiles directly.
 
+**Task Engine:** Event-driven task management system ensuring nothing stalls, nothing is forgotten, and humans only work exceptions.
+- **Event-Driven Task Creation:** Tasks auto-created from Document Intelligence (OCR issues), Change-of-Circumstance events (credit changes, new tradelines), Workflow state transitions, and Lender interactions - never manually unless explicitly allowed.
+- **SLA Classes (S0-S5):** S0 Immediate (1 hour), S1 Critical (4 hours), S2 High (12 hours), S3 Standard (48 hours), S4 Low (72 hours), S5 Informational (no SLA). Only S0-S3 block loan progression.
+- **SLA Status Colors:** Green (on track), Amber (75% elapsed), Red (breached) - displayed everywhere in UI.
+- **Task Type SLA Mappings:** Each task type (INTAKE_*, DOC_*, OCR_*, INC_*, AST_*, CRD_*, ELIG_*, PA_*, LND_*, CMP_*) mapped to appropriate SLA class and default owner role.
+- **Escalation Engine:** 5 progressive levels (0-4): Level 0 = Owner notified, Level 1 = Owner + Manager, Level 2 = Reassign task, Level 3 = Freeze loan state, Level 4 = Compliance alert. Configurable without code.
+- **Auto-Resolution:** Tasks close themselves when conditions are met (e.g., borrower uploads requested doc, credit refreshed, lender clears condition).
+- **Task Prioritization:** Sorted by SLA breach risk, loan stage criticality, revenue impact, lock expiration - no custom sorting.
+- **Borrower-Facing Requests:** Borrowers see simplified "requests" (not internal tasks) with friendly language, without SLA timers, internal notes, or risk flags.
+- **Compliance & Audit:** Every task has trigger reason, timestamps, resolution proof - full audit trail for defensible timelines.
+- **Staff Task Operations Dashboard:** SLA heatmap by role, bottleneck visibility, task table with time remaining, escalation controls.
+
 ## External Dependencies
 
 ### Third-Party Services

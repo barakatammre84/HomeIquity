@@ -54,6 +54,7 @@ import ReferralLanding from "@/pages/ReferralLanding";
 import PolicyOps from "@/pages/PolicyOps";
 import BorrowerDealComparison from "@/pages/BorrowerDealComparison";
 import Messages from "@/pages/Messages";
+import TaskOperations from "@/pages/TaskOperations";
 
 function PublicPage({ children }: { children: React.ReactNode }) {
   return <PublicLayout>{children}</PublicLayout>;
@@ -205,6 +206,9 @@ function Router() {
       </Route>
       <Route path="/policy-ops">
         <StaffPage><PolicyOps /></StaffPage>
+      </Route>
+      <Route path="/task-operations">
+        <StaffPage><TaskOperations /></StaffPage>
       </Route>
       <Route path="/e-consent">
         <BorrowerPage><EConsent /></BorrowerPage>
