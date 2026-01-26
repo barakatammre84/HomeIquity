@@ -1,0 +1,196 @@
+Baranest UI Direction — Institutional Calm
+
+This is not a “colorful app.”
+It’s a decision system borrowers trust and lenders respect.
+
+1️⃣ Color System (Less Color, More Authority)
+Core Principle
+
+Color should confirm state, not decorate the interface.
+
+Primary Palette (Muted, Mature)
+Role	Name	Hex	Notes
+Primary	Midnight Slate	#162A3A	Deeper than blue, closer to trust/navy
+Surface	Porcelain	#FAFBFC	Near-white, removes “app” feel
+Subtle Border	Fog Line	#E6EBF0	Replaces shadows where possible
+Primary Text	Ink	#0F172A	Strong contrast, no gray mush
+Secondary Text	Ash	#475569	Softer hierarchy, still readable
+
+✅ Drop “brand blue” dominance
+Baranest should feel neutral-first, not brand-first.
+
+Accent Palette (Used Sparingly)
+Use	Color	Hex
+Accent	Soft Moss	#6F9E90
+Hover / Focus	Deep Moss	#4E7F73
+
+⚠️ Accent should appear only in:
+
+Primary CTAs
+
+Progress indicators
+
+Confirmation moments
+
+Status Colors (De-Saturated = Professional)
+Status	Color Name	Hex
+Success / Verified	Evergreen	#3E7C6A
+Warning	Muted Amber	#B08945
+Error	Oxide Red	#9F3A38
+Info	Steel Blue	#3B5C7E
+
+❌ No neon
+❌ No bright greens
+❌ No “startup red”
+
+These colors should feel like audit reports, not alerts.
+
+2️⃣ Typography (Quiet Confidence)
+Font Choice
+
+Primary: Inter
+Alternative (more premium): Source Sans 3
+
+Avoid “personality fonts.” This is financial infrastructure.
+
+Type Scale (Reduced Drama)
+Element	Size	Weight
+H1	34px	600
+H2	26px	600
+H3	20px	500
+Body	15–16px	400
+Meta / Labels	13px	400
+
+Line Height:
+
+Headings: 1.25
+
+Body: 1.55
+
+📌 No ultra-bold headlines
+📌 No oversized hero text
+
+3️⃣ Layout & Surfaces (Remove “Card Spam”)
+Cards
+
+Border instead of shadow (default)
+
+Shadow only on hover or focus
+
+Padding: 24–32px
+
+Radius: 12px, consistent everywhere
+
+Shadows (If Used)
+box-shadow: 0 6px 20px rgba(15, 23, 42, 0.06);
+
+
+If you see shadows everywhere → it feels cheap.
+
+4️⃣ Interaction Design (Feels Expensive)
+Buttons
+
+Primary buttons: solid, no gradient
+
+Secondary: outline only
+
+Destructive: text + icon only
+
+No rounded pills
+This is not consumer social UI.
+
+Inputs
+
+Height: 44–48px
+
+Labels always visible (never placeholder-only)
+
+Helper text under field, not inline
+
+Validation:
+
+Show only after interaction
+
+Use text + subtle color, never red borders alone
+
+5️⃣ Motion (Subtle = Premium)
+
+Animations should be:
+
+120–180ms
+
+Ease-in-out
+
+Directional (up/down, left/right)
+
+Examples:
+
+Step transitions
+
+Status confirmation
+
+Expanding details
+
+❌ No bounce
+❌ No elastic
+❌ No flashy loaders
+
+6️⃣ Brand Voice (More Authority, Less Marketing)
+Replace:
+
+“A simpler way to get home-ready”
+
+With:
+
+“Clear answers. Confident approvals.”
+
+Or:
+
+“Mortgage decisions, made clear.”
+
+“Built for certainty, not guesswork.”
+
+“Pre-approvals you can trust.”
+
+7️⃣ Dark Mode (Professional, Not Trendy)
+
+Dark mode should feel like:
+
+A lender dashboard at 10pm, not a crypto app.
+
+Dark Palette
+Role	Hex
+Background	#0B1220
+Surface	#111827
+Primary Text	#E5E7EB
+Secondary Text	#9CA3AF
+Borders	#1F2937
+
+Accent colors stay muted.
+
+8️⃣ Why This Wins
+Borrowers feel:
+
+Calm
+
+Guided
+
+Not rushed or sold to
+
+Lenders feel:
+
+Data discipline
+
+Audit readiness
+
+Institutional seriousness
+
+Regulators feel:
+
+Order
+
+Intent
+
+Predictability
+
+This is how you get lenders to trust broker-issued pre-approvals.
