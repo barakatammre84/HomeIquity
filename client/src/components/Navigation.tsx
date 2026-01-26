@@ -9,129 +9,123 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  NavigationMenu,
-  NavigationMenuContent,
-  NavigationMenuItem,
-  NavigationMenuLink,
-  NavigationMenuList,
-  NavigationMenuTrigger,
-} from "@/components/ui/navigation-menu";
-import { Home, LayoutDashboard, Users, Menu, X, Phone, ChevronDown } from "lucide-react";
+import { LayoutDashboard, Users, Menu, X, Phone, ChevronDown, Home, Calculator, FileText, HelpCircle, TrendingDown, DollarSign, Percent } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 
-const buyMenuItems = [
-  { href: "/apply", label: "Apply Now" },
-  { href: "/rates/purchase", label: "Purchase Rates" },
-  { href: "/calculators/affordability", label: "Affordability Calculator" },
-  { href: "/calculators/mortgage", label: "Mortgage Calculator" },
-  { href: "/calculators/rent-vs-buy", label: "Rent vs Buy Calculator" },
-  { href: "/agents", label: "Find an Agent" },
-  { href: "/rates/va", label: "VA Loans" },
-  { href: "/learn", label: "Learning Center" },
-  { href: "/faq", label: "FAQs" },
+interface NavItem {
+  href: string;
+  label: string;
+  description?: string;
+  icon?: React.ComponentType<{ className?: string }>;
+}
+
+const buyMenuItems: NavItem[] = [
+  { href: "/apply", label: "Get Pre-Approved", description: "Start your home buying journey", icon: FileText },
+  { href: "/rates/purchase", label: "Today's Rates", description: "See current purchase rates", icon: Percent },
+  { href: "/calculators/affordability", label: "Affordability Calculator", description: "What can you afford?", icon: Calculator },
+  { href: "/properties", label: "Browse Homes", description: "Find your dream home", icon: Home },
 ];
 
-const refinanceMenuItems = [
-  { href: "/apply?type=refinance", label: "Apply Now" },
-  { href: "/rates/refinance", label: "Refinance Rates" },
-  { href: "/rates/cash-out", label: "Cash-out Refinance Rates" },
-  { href: "/calculators/cashout", label: "Cash-out Calculator" },
-  { href: "/learn", label: "Learning Center" },
+const refinanceMenuItems: NavItem[] = [
+  { href: "/apply?type=refinance", label: "Apply to Refinance", description: "Lower your monthly payment", icon: FileText },
+  { href: "/rates/refinance", label: "Refinance Rates", description: "Compare today's rates", icon: Percent },
+  { href: "/calculators/cashout", label: "Cash-out Calculator", description: "Access your home equity", icon: DollarSign },
 ];
 
-const helocMenuItems = [
-  { href: "/apply?type=heloc", label: "Apply Now" },
-  { href: "/rates/heloc", label: "HELOC Rates" },
-  { href: "/calculators/heloc", label: "Calculate Your Cash" },
-  { href: "/heloc-vs-cashout", label: "HELOC vs. Cash-out Refinance" },
-  { href: "/learn", label: "Learning Center" },
-];
-
-const ratesMenuItems = [
-  { href: "/rates", label: "All Rates" },
-  { href: "/rates/purchase", label: "Purchase Rates" },
-  { href: "/rates/refinance", label: "Refinance Rates" },
-  { href: "/rates/cash-out", label: "Cash-out Refinance Rates" },
-  { href: "/rates/heloc", label: "HELOC Rates" },
-  { href: "/rates/va", label: "VA Loan Rates" },
+const helocMenuItems: NavItem[] = [
+  { href: "/apply?type=heloc", label: "Apply for HELOC", description: "Flexible home equity line", icon: FileText },
+  { href: "/rates/heloc", label: "HELOC Rates", description: "Current HELOC rates", icon: Percent },
+  { href: "/heloc-vs-cashout", label: "HELOC vs Cash-out", description: "Compare your options", icon: TrendingDown },
 ];
 
 interface NavDropdownProps {
   label: string;
-  items: { href: string; label: string }[];
+  items: NavItem[];
   testId: string;
 }
 
-function NavDropdownItem({ href, label, parentLabel }: { href: string; label: string; parentLabel: string }) {
-  const [, navigate] = useLocation();
-  
-  return (
-    <li>
-      <NavigationMenuLink
-        className={cn(
-          "block select-none rounded-lg px-4 py-3 leading-none no-underline outline-none transition-all duration-200 cursor-pointer",
-          "text-foreground hover:bg-muted hover:text-primary focus:bg-muted focus:text-primary"
-        )}
-        onClick={() => navigate(href)}
-        data-testid={`nav-dropdown-${parentLabel.toLowerCase()}-${label.toLowerCase().replace(/\s+/g, '-')}`}
-      >
-        <span className="text-sm font-medium">{label}</span>
-      </NavigationMenuLink>
-    </li>
-  );
-}
-
 function NavDropdown({ label, items, testId }: NavDropdownProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [, navigate] = useLocation();
+
   return (
-    <NavigationMenuItem>
-      <NavigationMenuTrigger 
-        className="bg-transparent text-white/90 hover:text-white hover:bg-white/10 data-[state=open]:bg-white/15 data-[state=open]:text-white font-medium"
+    <div 
+      className="relative"
+      onMouseEnter={() => setIsOpen(true)}
+      onMouseLeave={() => setIsOpen(false)}
+    >
+      <button
+        className={cn(
+          "flex items-center gap-1.5 px-4 py-2 text-sm font-medium transition-colors",
+          "text-foreground/80 hover:text-foreground",
+          isOpen && "text-foreground"
+        )}
         data-testid={testId}
       >
         {label}
-      </NavigationMenuTrigger>
-      <NavigationMenuContent>
-        <ul className="grid w-[240px] gap-0.5 p-3">
-          {items.map((item) => (
-            <NavDropdownItem 
-              key={item.href + item.label} 
-              href={item.href} 
-              label={item.label} 
-              parentLabel={label} 
-            />
-          ))}
-        </ul>
-      </NavigationMenuContent>
-    </NavigationMenuItem>
+        <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-200", isOpen && "rotate-180")} />
+      </button>
+      
+      {isOpen && (
+        <div className="absolute left-0 top-full pt-2">
+          <div className="w-72 rounded-xl border bg-card p-2 shadow-xl">
+            {items.map((item) => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.href + item.label}
+                  onClick={() => {
+                    navigate(item.href);
+                    setIsOpen(false);
+                  }}
+                  className="flex w-full items-start gap-3 rounded-lg px-3 py-3 text-left transition-colors hover:bg-muted"
+                  data-testid={`nav-dropdown-${label.toLowerCase()}-${item.label.toLowerCase().replace(/\s+/g, '-')}`}
+                >
+                  {Icon && (
+                    <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                      <Icon className="h-4 w-4 text-primary" />
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-sm font-medium text-foreground">{item.label}</p>
+                    {item.description && (
+                      <p className="text-xs text-muted-foreground">{item.description}</p>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
-function MobileNavSection({ label, items, onItemClick }: { label: string; items: { href: string; label: string }[]; onItemClick: () => void }) {
+function MobileNavSection({ label, items, onItemClick }: { label: string; items: NavItem[]; onItemClick: () => void }) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div className="border-b border-white/10 pb-2">
+    <div className="border-b border-border py-2">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex w-full items-center justify-between py-2 text-left text-white/90 hover:text-white transition-colors"
+        className="flex w-full items-center justify-between py-2 text-left"
         data-testid={`mobile-nav-${label.toLowerCase()}`}
       >
-        <span className="font-medium">{label}</span>
-        <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", isOpen && "rotate-180")} />
+        <span className="font-medium text-foreground">{label}</span>
+        <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform duration-200", isOpen && "rotate-180")} />
       </button>
       {isOpen && (
-        <div className="ml-4 flex flex-col gap-1 pb-2">
+        <div className="flex flex-col gap-1 pb-2 pl-4">
           {items.map((item) => (
             <Link key={item.href + item.label} href={item.href}>
-              <Button
-                variant="ghost"
-                className="w-full justify-start text-white/80 hover:text-white hover:bg-white/10"
+              <button
+                className="w-full py-2 text-left text-sm text-muted-foreground hover:text-foreground"
                 onClick={onItemClick}
               >
                 {item.label}
-              </Button>
+              </button>
             </Link>
           ))}
         </div>
@@ -142,65 +136,76 @@ function MobileNavSection({ label, items, onItemClick }: { label: string; items:
 
 export function Navigation() {
   const { user, isAuthenticated, isLoading } = useAuth();
-  const [location] = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <nav className="sticky top-0 z-50 w-full bg-primary">
+    <nav className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex h-16 items-center justify-between gap-4">
-          <div className="flex items-center gap-6">
-            <Link href="/" className="flex items-center gap-2">
-              <span className="text-xl font-semibold text-white tracking-tight">baranest</span>
-            </Link>
+        <div className="flex h-16 items-center justify-between">
+          {/* Logo */}
+          <Link href="/" className="flex items-center">
+            <span className="text-2xl font-bold tracking-tight text-primary">baranest</span>
+          </Link>
 
-            <div className="hidden lg:block">
-              <NavigationMenu>
-                <NavigationMenuList className="gap-0">
-                  <NavDropdown label="Buy" items={buyMenuItems} testId="nav-dropdown-buy" />
-                  <NavDropdown label="Refinance" items={refinanceMenuItems} testId="nav-dropdown-refinance" />
-                  <NavDropdown label="HELOC" items={helocMenuItems} testId="nav-dropdown-heloc" />
-                  <NavDropdown label="Rates" items={ratesMenuItems} testId="nav-dropdown-rates" />
-                  <NavigationMenuItem>
-                    <NavigationMenuLink 
-                      className="group inline-flex h-10 w-max items-center justify-center rounded-full bg-transparent px-4 py-2 text-sm font-medium text-white/90 transition-all duration-200 hover:bg-white/10 hover:text-white focus:bg-white/10 focus:text-white focus:outline-none cursor-pointer"
-                      onClick={() => window.location.href = '/resources'}
-                    >
-                      Resources
-                    </NavigationMenuLink>
-                  </NavigationMenuItem>
-                </NavigationMenuList>
-              </NavigationMenu>
-            </div>
+          {/* Desktop Navigation */}
+          <div className="hidden items-center gap-1 lg:flex">
+            <NavDropdown label="Buy" items={buyMenuItems} testId="nav-dropdown-buy" />
+            <NavDropdown label="Refinance" items={refinanceMenuItems} testId="nav-dropdown-refinance" />
+            <NavDropdown label="HELOC" items={helocMenuItems} testId="nav-dropdown-heloc" />
+            <Link href="/rates">
+              <button className="px-4 py-2 text-sm font-medium text-foreground/80 hover:text-foreground">
+                Rates
+              </button>
+            </Link>
+            <Link href="/resources">
+              <button className="px-4 py-2 text-sm font-medium text-foreground/80 hover:text-foreground">
+                Resources
+              </button>
+            </Link>
           </div>
 
-          <div className="flex items-center gap-3">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="hidden text-white/80 hover:text-white hover:bg-white/10 sm:flex"
-              data-testid="button-phone"
-            >
-              <Phone className="h-5 w-5" />
-            </Button>
+          {/* Right side actions */}
+          <div className="flex items-center gap-2">
+            {/* Phone - hidden on mobile */}
+            <a href="tel:1-800-BARANEST" className="hidden sm:block">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="gap-2 text-muted-foreground hover:text-foreground"
+                data-testid="button-phone"
+              >
+                <Phone className="h-4 w-4" />
+                <span className="hidden md:inline">1-800-BARANEST</span>
+              </Button>
+            </a>
 
             {isLoading ? (
-              <div className="h-10 w-24 animate-pulse rounded-full bg-white/10" />
+              <div className="h-9 w-20 animate-pulse rounded-lg bg-muted" />
             ) : isAuthenticated && user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-9 w-9 rounded-full" data-testid="user-menu-button">
-                    <Avatar className="h-9 w-9">
+                  <Button variant="ghost" size="sm" className="gap-2" data-testid="user-menu-button">
+                    <Avatar className="h-7 w-7">
                       <AvatarImage src={user.profileImageUrl || undefined} alt={user.firstName || "User"} />
-                      <AvatarFallback className="bg-primary/80 text-white">
+                      <AvatarFallback className="bg-primary text-xs text-primary-foreground">
                         {user.firstName?.[0] || user.email?.[0]?.toUpperCase() || "U"}
                       </AvatarFallback>
                     </Avatar>
+                    <span className="hidden text-sm font-medium md:inline">
+                      {user.firstName || "Account"}
+                    </span>
+                    <ChevronDown className="h-3.5 w-3.5" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
-                  <div className="flex items-center justify-start gap-2 p-2">
-                    <div className="flex flex-col space-y-0.5 leading-none">
+                  <div className="flex items-center gap-3 p-3">
+                    <Avatar className="h-10 w-10">
+                      <AvatarImage src={user.profileImageUrl || undefined} />
+                      <AvatarFallback className="bg-primary text-primary-foreground">
+                        {user.firstName?.[0] || user.email?.[0]?.toUpperCase() || "U"}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex flex-col">
                       {user.firstName && (
                         <p className="text-sm font-medium" data-testid="text-user-name">
                           {user.firstName} {user.lastName}
@@ -231,18 +236,18 @@ export function Navigation() {
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
                     <a href="/api/logout" className="w-full cursor-pointer text-destructive" data-testid="button-logout">
-                      Log out
+                      Sign out
                     </a>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
                 <a href="/api/login">
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="text-white/90 hover:text-white hover:bg-white/10"
+                    className="hidden text-foreground/80 hover:text-foreground sm:inline-flex"
                     data-testid="button-login"
                   >
                     Sign in
@@ -251,19 +256,20 @@ export function Navigation() {
                 <Link href="/apply">
                   <Button
                     size="sm"
-                    className="bg-white text-primary hover:bg-white/90 shadow-md"
+                    className="bg-emerald-500 font-semibold text-white shadow-md shadow-emerald-500/20 hover:bg-emerald-600"
                     data-testid="button-get-started"
                   >
-                    Get Started
+                    Get Pre-Approved
                   </Button>
                 </Link>
               </div>
             )}
 
+            {/* Mobile menu button */}
             <Button
               variant="ghost"
               size="icon"
-              className="text-white/90 hover:text-white hover:bg-white/10 lg:hidden"
+              className="lg:hidden"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               data-testid="button-mobile-menu"
             >
@@ -272,22 +278,44 @@ export function Navigation() {
           </div>
         </div>
 
+        {/* Mobile menu */}
         {mobileMenuOpen && (
-          <div className="border-t border-white/10 py-4 lg:hidden">
-            <div className="flex flex-col gap-2">
+          <div className="border-t py-4 lg:hidden">
+            <div className="flex flex-col">
               <MobileNavSection label="Buy" items={buyMenuItems} onItemClick={() => setMobileMenuOpen(false)} />
               <MobileNavSection label="Refinance" items={refinanceMenuItems} onItemClick={() => setMobileMenuOpen(false)} />
               <MobileNavSection label="HELOC" items={helocMenuItems} onItemClick={() => setMobileMenuOpen(false)} />
-              <MobileNavSection label="Rates" items={ratesMenuItems} onItemClick={() => setMobileMenuOpen(false)} />
+              <Link href="/rates">
+                <button
+                  className="w-full border-b border-border py-4 text-left font-medium text-foreground"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Rates
+                </button>
+              </Link>
               <Link href="/resources">
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start text-white/90 hover:text-white hover:bg-white/10"
+                <button
+                  className="w-full py-4 text-left font-medium text-foreground"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   Resources
-                </Button>
+                </button>
               </Link>
+              
+              {!isAuthenticated && (
+                <div className="mt-4 flex flex-col gap-2">
+                  <a href="/api/login">
+                    <Button variant="outline" className="w-full" onClick={() => setMobileMenuOpen(false)}>
+                      Sign in
+                    </Button>
+                  </a>
+                  <Link href="/apply">
+                    <Button className="w-full bg-emerald-500 font-semibold hover:bg-emerald-600" onClick={() => setMobileMenuOpen(false)}>
+                      Get Pre-Approved
+                    </Button>
+                  </Link>
+                </div>
+              )}
             </div>
           </div>
         )}
