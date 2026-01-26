@@ -4597,3 +4597,308 @@ export const insertAnalyticsSnapshotSchema = createInsertSchema(analyticsSnapsho
 
 export type InsertAnalyticsSnapshot = z.infer<typeof insertAnalyticsSnapshotSchema>;
 export type AnalyticsSnapshot = typeof analyticsSnapshots.$inferSelect;
+
+// ============================================================================
+// PRE-APPROVAL LETTER GENERATOR (Lender-Grade, Broker-Safe)
+// ============================================================================
+
+// Disclaimer Versions - versioned legal text with counsel approval
+// Critical for legal defense - every letter stores which version was used
+export const disclaimerVersions = pgTable("disclaimer_versions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Version identifier (e.g., "2026.01")
+  version: varchar("version", { length: 20 }).notNull().unique(),
+  
+  // Disclaimer types
+  disclaimerType: varchar("disclaimer_type", { length: 50 }).notNull(), // primary, broker_role, document_reliance, change_in_circumstance, system_generated
+  
+  // The actual disclaimer text
+  text: text("text").notNull(),
+  
+  // Legal approval tracking
+  approvedByCounsel: boolean("approved_by_counsel").default(false),
+  counselApprovalDate: timestamp("counsel_approval_date"),
+  counselName: varchar("counsel_name", { length: 255 }),
+  
+  // Effective dates
+  effectiveFrom: timestamp("effective_from").notNull(),
+  effectiveTo: timestamp("effective_to"), // null = currently active
+  
+  // Audit
+  createdAt: timestamp("created_at").defaultNow(),
+  createdBy: varchar("created_by").references(() => users.id),
+}, (table) => [
+  index("idx_disclaimer_versions_type_version").on(table.disclaimerType, table.version),
+  index("idx_disclaimer_versions_effective").on(table.effectiveFrom, table.effectiveTo),
+]);
+
+export const insertDisclaimerVersionSchema = createInsertSchema(disclaimerVersions).omit({
+  id: true,
+  createdAt: true,
+});
+
+// Pre-Approval Product Types
+export const PRE_APPROVAL_PRODUCT_TYPES = ["CONV", "FHA", "VA", "HELOC", "DSCR"] as const;
+export type PreApprovalProductType = typeof PRE_APPROVAL_PRODUCT_TYPES[number];
+
+// Pre-Approval Occupancy Types
+export const PRE_APPROVAL_OCCUPANCY_TYPES = ["Primary", "Second", "Investment"] as const;
+export type PreApprovalOccupancyType = typeof PRE_APPROVAL_OCCUPANCY_TYPES[number];
+
+// Pre-Approval Letter Status
+export const PRE_APPROVAL_LETTER_STATUS = [
+  "draft",       // Letter being prepared
+  "issued",      // Letter issued to borrower
+  "superseded",  // Replaced by newer letter
+  "expired",     // Past expiration date
+  "revoked",     // Manually revoked due to change in circumstances
+] as const;
+export type PreApprovalLetterStatus = typeof PRE_APPROVAL_LETTER_STATUS[number];
+
+// Pre-Approval Letters - the controlled credit artifact
+// Key rule: The letter references a frozen underwriting snapshot — never live data
+export const preApprovalLetters = pgTable("pre_approval_letters", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Letter identification
+  letterNumber: varchar("letter_number", { length: 50 }).notNull().unique(), // Human-readable letter ID
+  
+  // Borrower info (frozen at time of letter generation)
+  borrowerName: varchar("borrower_name", { length: 255 }).notNull(),
+  applicationId: varchar("application_id").references(() => loanApplications.id).notNull(),
+  
+  // Loan terms (non-binding)
+  loanAmount: decimal("loan_amount", { precision: 14, scale: 2 }).notNull(),
+  productType: varchar("product_type", { length: 20 }).notNull(), // CONV, FHA, VA, HELOC, DSCR
+  occupancy: varchar("occupancy", { length: 20 }).notNull(), // Primary, Second, Investment
+  loanPurpose: varchar("loan_purpose", { length: 50 }), // Purchase, Refinance, Cash-Out
+  
+  // ⚠️ Rate is NOT included unless locked - per spec
+  rateLockedAt: timestamp("rate_locked_at"), // Only populated if rate is locked
+  lockedRate: decimal("locked_rate", { precision: 5, scale: 3 }), // Only if locked
+  
+  // Frozen underwriting snapshot reference (CRITICAL)
+  underwritingSnapshotId: varchar("underwriting_snapshot_id").references(() => underwritingDecisions.id).notNull(),
+  
+  // Disclaimer versions used (for legal defense)
+  primaryDisclaimerId: varchar("primary_disclaimer_id").references(() => disclaimerVersions.id).notNull(),
+  brokerRoleDisclaimerId: varchar("broker_role_disclaimer_id").references(() => disclaimerVersions.id).notNull(),
+  documentRelianceDisclaimerId: varchar("document_reliance_disclaimer_id").references(() => disclaimerVersions.id).notNull(),
+  changeInCircumstanceDisclaimerId: varchar("change_in_circumstance_disclaimer_id").references(() => disclaimerVersions.id).notNull(),
+  systemGeneratedDisclaimerId: varchar("system_generated_disclaimer_id").references(() => disclaimerVersions.id).notNull(),
+  
+  // Expiration
+  expirationDate: timestamp("expiration_date").notNull(),
+  
+  // Letter status
+  status: varchar("status", { length: 20 }).notNull().default("issued"),
+  
+  // Generation info
+  generatedBySystem: boolean("generated_by_system").default(true),
+  generatedAt: timestamp("generated_at").defaultNow(),
+  
+  // Company info (frozen at generation)
+  companyLegalName: varchar("company_legal_name", { length: 255 }).notNull(),
+  companyNmlsId: varchar("company_nmls_id", { length: 50 }).notNull(),
+  companyContactInfo: text("company_contact_info"),
+  
+  // LO info (optional)
+  loanOfficerId: varchar("loan_officer_id").references(() => users.id),
+  loanOfficerNmlsId: varchar("loan_officer_nmls_id", { length: 50 }),
+  
+  // PDF storage
+  pdfStorageKey: varchar("pdf_storage_key", { length: 500 }), // Object storage key
+  pdfGeneratedAt: timestamp("pdf_generated_at"),
+  watermarkApplied: boolean("watermark_applied").default(true), // "Pre-Approval — Subject to Lender Review"
+  
+  // Lock against edits (once issued, cannot be modified)
+  isLocked: boolean("is_locked").default(true),
+  
+  // Revocation info (if revoked)
+  revokedAt: timestamp("revoked_at"),
+  revokedBy: varchar("revoked_by").references(() => users.id),
+  revocationReason: text("revocation_reason"),
+  
+  // Superseded info (if replaced by newer letter)
+  supersededAt: timestamp("superseded_at"),
+  supersededBy: varchar("superseded_by"), // references another preApprovalLetters.id
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_pre_approval_letters_application").on(table.applicationId),
+  index("idx_pre_approval_letters_borrower").on(table.borrowerName),
+  index("idx_pre_approval_letters_status").on(table.status),
+  index("idx_pre_approval_letters_expiration").on(table.expirationDate),
+  index("idx_pre_approval_letters_snapshot").on(table.underwritingSnapshotId),
+]);
+
+export const preApprovalLettersRelations = relations(preApprovalLetters, ({ one, many }) => ({
+  application: one(loanApplications, {
+    fields: [preApprovalLetters.applicationId],
+    references: [loanApplications.id],
+  }),
+  underwritingSnapshot: one(underwritingDecisions, {
+    fields: [preApprovalLetters.underwritingSnapshotId],
+    references: [underwritingDecisions.id],
+  }),
+  loanOfficer: one(users, {
+    fields: [preApprovalLetters.loanOfficerId],
+    references: [users.id],
+  }),
+  conditions: many(preApprovalConditions),
+}));
+
+export const insertPreApprovalLetterSchema = createInsertSchema(preApprovalLetters).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// Pre-Approval Conditions - auto-generated from rules engine
+// These are the conditions attached to each pre-approval letter
+// Uses CONDITION_CATEGORIES from underwriting conditions (line ~2942) plus additional pre-approval specific categories
+export const PRE_APPROVAL_CONDITION_CATEGORIES = [
+  ...CONDITION_CATEGORIES,
+  "lender_underwriting",  // Final lender underwriting approval
+  "appraisal",            // Satisfactory appraisal
+  "verification",         // Verification of unchanged financial condition
+  "documentation",        // Additional documentation if requested
+] as const;
+export type PreApprovalConditionCategory = typeof PRE_APPROVAL_CONDITION_CATEGORIES[number];
+
+export const preApprovalConditions = pgTable("pre_approval_conditions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  letterId: varchar("letter_id").references(() => preApprovalLetters.id).notNull(),
+  
+  // Condition details
+  category: varchar("category", { length: 50 }).notNull(),
+  conditionText: text("condition_text").notNull(),
+  
+  // Source of condition
+  autoGenerated: boolean("auto_generated").default(true), // From rules engine
+  sourceRuleId: varchar("source_rule_id").references(() => underwritingRulesDsl.id), // Which rule generated this
+  
+  // Standard conditions (always included)
+  isStandardCondition: boolean("is_standard_condition").default(false),
+  
+  // Ordering
+  displayOrder: integer("display_order").default(0),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_pre_approval_conditions_letter").on(table.letterId),
+  index("idx_pre_approval_conditions_category").on(table.category),
+]);
+
+export const preApprovalConditionsRelations = relations(preApprovalConditions, ({ one }) => ({
+  letter: one(preApprovalLetters, {
+    fields: [preApprovalConditions.letterId],
+    references: [preApprovalLetters.id],
+  }),
+  sourceRule: one(underwritingRulesDsl, {
+    fields: [preApprovalConditions.sourceRuleId],
+    references: [underwritingRulesDsl.id],
+  }),
+}));
+
+export const insertPreApprovalConditionSchema = createInsertSchema(preApprovalConditions).omit({
+  id: true,
+  createdAt: true,
+});
+
+// Letter Generation Log - audit trail of letter creation events
+// Tracks every letter generation attempt for compliance
+export const LETTER_GENERATION_EVENTS = [
+  "generation_started",    // Letter generation initiated
+  "validation_passed",     // All trigger conditions met
+  "validation_failed",     // Trigger conditions not met
+  "pdf_generated",         // PDF successfully created
+  "pdf_failed",            // PDF generation failed
+  "letter_issued",         // Letter officially issued
+  "letter_revoked",        // Letter revoked
+  "letter_superseded",     // Letter replaced by new version
+  "letter_expired",        // Letter expired automatically
+  "reanalysis_triggered",  // Re-analysis triggered (new snapshot needed)
+] as const;
+export type LetterGenerationEvent = typeof LETTER_GENERATION_EVENTS[number];
+
+export const letterGenerationLogs = pgTable("letter_generation_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  applicationId: varchar("application_id").references(() => loanApplications.id).notNull(),
+  letterId: varchar("letter_id").references(() => preApprovalLetters.id), // null if generation failed
+  
+  // Event details
+  eventType: varchar("event_type", { length: 50 }).notNull(),
+  eventDetails: jsonb("event_details"), // Additional event context
+  
+  // Trigger conditions evaluation
+  triggerConditions: jsonb("trigger_conditions"), // What conditions were checked
+  conditionsMet: boolean("conditions_met"),
+  failedConditions: jsonb("failed_conditions"), // Which conditions failed
+  
+  // For reanalysis events
+  reanalysisReason: varchar("reanalysis_reason", { length: 100 }), // new_document, credit_expired, employment_change, liability_change, lo_request
+  previousSnapshotId: varchar("previous_snapshot_id").references(() => underwritingDecisions.id),
+  newSnapshotId: varchar("new_snapshot_id").references(() => underwritingDecisions.id),
+  
+  // Actor
+  triggeredBy: varchar("triggered_by").references(() => users.id),
+  triggeredBySystem: boolean("triggered_by_system").default(false),
+  
+  // Timing
+  eventAt: timestamp("event_at").defaultNow(),
+  processingTimeMs: integer("processing_time_ms"),
+  
+  // Error tracking
+  errorMessage: text("error_message"),
+  errorStack: text("error_stack"),
+}, (table) => [
+  index("idx_letter_generation_logs_application").on(table.applicationId),
+  index("idx_letter_generation_logs_letter").on(table.letterId),
+  index("idx_letter_generation_logs_event").on(table.eventType),
+  index("idx_letter_generation_logs_time").on(table.eventAt),
+]);
+
+export const letterGenerationLogsRelations = relations(letterGenerationLogs, ({ one }) => ({
+  application: one(loanApplications, {
+    fields: [letterGenerationLogs.applicationId],
+    references: [loanApplications.id],
+  }),
+  letter: one(preApprovalLetters, {
+    fields: [letterGenerationLogs.letterId],
+    references: [preApprovalLetters.id],
+  }),
+  triggeredByUser: one(users, {
+    fields: [letterGenerationLogs.triggeredBy],
+    references: [users.id],
+  }),
+}));
+
+export const insertLetterGenerationLogSchema = createInsertSchema(letterGenerationLogs).omit({
+  id: true,
+});
+
+// Standard Pre-Approval Conditions (seeded data)
+// These are the conditions that ALWAYS appear on every pre-approval letter
+export const STANDARD_PRE_APPROVAL_CONDITIONS = [
+  { category: "lender_underwriting", text: "Final lender underwriting approval", order: 1 },
+  { category: "appraisal", text: "Satisfactory appraisal of the subject property", order: 2 },
+  { category: "verification", text: "Verification of unchanged financial condition prior to closing", order: 3 },
+  { category: "documentation", text: "Receipt of any additional documentation as requested by the lender", order: 4 },
+  { category: "title", text: "Clear and marketable title to the subject property", order: 5 },
+  { category: "insurance", text: "Proof of adequate homeowner's insurance", order: 6 },
+] as const;
+
+// Type exports
+export type InsertDisclaimerVersion = z.infer<typeof insertDisclaimerVersionSchema>;
+export type DisclaimerVersion = typeof disclaimerVersions.$inferSelect;
+export type InsertPreApprovalLetter = z.infer<typeof insertPreApprovalLetterSchema>;
+export type PreApprovalLetter = typeof preApprovalLetters.$inferSelect;
+export type InsertPreApprovalCondition = z.infer<typeof insertPreApprovalConditionSchema>;
+export type PreApprovalCondition = typeof preApprovalConditions.$inferSelect;
+export type InsertLetterGenerationLog = z.infer<typeof insertLetterGenerationLogSchema>;
+export type LetterGenerationLog = typeof letterGenerationLogs.$inferSelect;

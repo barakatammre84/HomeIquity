@@ -107,3 +107,61 @@ Tracks every rule that fired, including trigger context, conditions met, actions
 - Inconsistent DTI across LOs
 - Human math errors
 - Lender disputes over calculations
+
+## PRE-APPROVAL LETTER GENERATOR (Lender-Grade, Broker-Safe)
+
+A controlled credit artifact system that generates credible pre-approvals trusted by real estate agents, survives wholesale lender review, and does not expose the broker to lender liability.
+
+### Core Principle
+**The letter references a frozen underwriting snapshot — never live data.**
+
+### Components
+
+**Disclaimer Versions (`disclaimer_versions`):**
+Versioned legal text with counsel approval tracking. Every letter stores which disclaimer version was used (critical for legal defense). Disclaimer types:
+- Primary: "This pre-approval is not a commitment to lend..."
+- Broker Role: "We are acting as a mortgage broker and not as the lender..."
+- Document Reliance: "This determination is based on documentation and information provided..."
+- Change-in-Circumstance: "This pre-approval is contingent upon no material change..."
+- System-Generated: "This pre-approval was generated using automated underwriting analysis..."
+
+**Pre-Approval Letters (`pre_approval_letters`):**
+The main letter artifact with:
+- Frozen borrower info and loan terms (non-binding)
+- Reference to immutable underwriting snapshot (via `underwriting_decisions`)
+- All 5 disclaimer version references
+- PDF storage with watermark: "Pre-Approval — Subject to Lender Review"
+- Lock against edits once issued
+- Status tracking: draft, issued, superseded, expired, revoked
+
+**Pre-Approval Conditions (`pre_approval_conditions`):**
+Auto-generated conditions from the rules engine. Standard conditions always included:
+1. Final lender underwriting approval
+2. Satisfactory appraisal of the subject property
+3. Verification of unchanged financial condition prior to closing
+4. Receipt of additional documentation as requested by lender
+5. Clear and marketable title
+6. Proof of adequate homeowner's insurance
+
+**Letter Generation Logs (`letter_generation_logs`):**
+Complete audit trail of letter creation events with:
+- Trigger conditions evaluation
+- Failed conditions tracking
+- Reanalysis triggers (new document, credit expired, employment change, LO request)
+- Previous/new snapshot references for re-analysis events
+
+### Decision Freeze Rules
+No recalculation unless:
+1. Borrower uploads new document
+2. Credit expires (typically 90-120 days)
+3. Borrower reports change in employment, income, or liabilities
+4. LO explicitly requests re-analysis (logged)
+
+Every re-run = new snapshot + new letter
+
+### Hard Rules (DO NOT BREAK)
+- Never say "approved" without "subject to lender underwriting"
+- Never change a pre-approval without generating a new snapshot
+- Never let LOs edit letters manually
+- Never backdate or overwrite snapshots
+- Never hide conditions
