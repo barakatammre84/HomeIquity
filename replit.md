@@ -43,6 +43,14 @@ The backend is built with Node.js, Express.js, and TypeScript, utilizing Postgre
 
 **Aspiring Owner Journey:** A gamified program for renters, featuring a Gap Calculator Dashboard, Financial Snapshot Onboarding, Credit Coach, Savings Vault, 30-Day Roadmap, and Achievements & Milestones.
 
+**Policy Operations Admin UI:** A production-grade admin interface for non-technical compliance, ops, and capital-markets staff to safely maintain policy without engineering involvement. Features include:
+- **Policy Dashboard:** Shows active policy profiles (Fannie Mae, Freddie Mac, FHA, VA, Broker Overlay) with status, loan counts, and alerts panel
+- **Safe Parameter Rule Editor:** 10 rule categories (Credit, Income, Assets, Liabilities, DTI/DSCR, Property, Occupancy, COC, Pre-Approval, Broker Overlay) with sliders, toggles, and dropdowns - NO formulas visible
+- **COC Rule Builder:** Visual builder for Change-of-Circumstance rules with trigger events (credit drop, new tradeline, income change, asset decrease, employment change), severity levels, and GSE-specific applicability
+- **Materiality Threshold Matrix:** Editable matrix showing thresholds by GSE with tooltips for guideline sources
+- **Versioning & Publish Workflow:** Impact summary showing affected loans, required justification, immutable policy versions
+- **Audit Trail:** Complete change history with who/when/what/why/policy reference
+
 ## External Dependencies
 
 ### Third-Party Services
