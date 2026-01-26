@@ -5794,3 +5794,153 @@ export type InsertPolicyApprovalWorkflow = z.infer<typeof insertPolicyApprovalWo
 export type PolicyApprovalWorkflow = typeof policyApprovalWorkflow.$inferSelect;
 export type InsertPolicyLenderOverlay = z.infer<typeof insertPolicyLenderOverlaySchema>;
 export type PolicyLenderOverlay = typeof policyLenderOverlays.$inferSelect;
+
+// =============================================================================
+// LENDER DATA PACKAGES
+// =============================================================================
+// Standardized, defensible underwriting packets sent to lenders
+// Consists of 5 layers: Borrower Summary, Underwriting Metrics, Decision Snapshot,
+// Document Index, and Change-of-Circumstance Monitoring Status
+
+// LENDER DATA PACKAGES - Complete submission packages for wholesale/correspondent lenders
+export const lenderDataPackages = pgTable("lender_data_packages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Package identification
+  packageId: varchar("package_id", { length: 100 }).notNull().unique(),
+  applicationId: varchar("application_id").references(() => loanApplications.id).notNull(),
+  snapshotId: varchar("snapshot_id").references(() => underwritingSnapshots.id).notNull(),
+  
+  // Target lender
+  lenderId: varchar("lender_id", { length: 100 }).notNull(),
+  lenderName: varchar("lender_name", { length: 255 }).notNull(),
+  lenderFormatId: varchar("lender_format_id").references(() => lenderPreApprovalFormats.id),
+  
+  // Package status
+  status: varchar("status", { length: 30 }).default("DRAFT"), // DRAFT, READY, SUBMITTED, ACCEPTED, REJECTED
+  
+  // Layer 1: Borrower Summary (Human-readable orientation)
+  borrowerSummary: jsonb("borrower_summary").$type<{
+    borrowerType: string;
+    occupancy: string;
+    loanPurpose: string;
+    productType: string;
+    confidenceScore?: number; // Internal - not always shared
+    preApprovalAmount: number;
+    expirationDate: string;
+  }>(),
+  
+  // Layer 2: Underwriting Metrics (Core numbers)
+  underwritingMetrics: jsonb("underwriting_metrics").$type<{
+    DTI: {
+      frontEnd: number;
+      backEnd: number;
+      calculationMethod: string;
+      confidence?: number;
+    };
+    DSCR?: {
+      applicable: boolean;
+      value?: number;
+      method?: string;
+      confidence?: number;
+    };
+    LTV: number;
+    CLTV: number;
+    creditScore?: number;
+    reserves?: number;
+  }>(),
+  
+  // Layer 3: Decision Snapshot (Legal armor)
+  decisionSnapshot: jsonb("decision_snapshot").$type<{
+    decisionType: string;
+    snapshotId: string;
+    policyAuthority: string;
+    policyVersion: string;
+    issuedAt: string;
+    expiresAt: string;
+    decisionStatus: string;
+  }>(),
+  
+  // Layer 4: Document Index + Extracted Data
+  documentIndex: jsonb("document_index").$type<{
+    documents: {
+      documentId: string;
+      type: string;
+      borrower: string;
+      dateRange?: string;
+      confidence: number;
+      pages: number;
+    }[];
+    extractedData: {
+      income: Record<string, number>;
+      assets: Record<string, number | boolean>;
+    };
+  }>(),
+  
+  // Layer 5: Change-of-Circumstance Monitoring Status
+  cocStatus: jsonb("coc_status").$type<{
+    monitoringActive: boolean;
+    lastChecked: string;
+    materialChangesDetected: boolean;
+    rulesetVersion: string;
+    events?: {
+      dimension: string;
+      event: string;
+      severity: string;
+      actionTaken: string;
+      timestamp: string;
+    }[];
+  }>(),
+  
+  // Optional: Explanation object for lender questions
+  explanations: jsonb("explanations").$type<{
+    metric: string;
+    method: string;
+    inputs: string[];
+    reasoning: string;
+  }[]>(),
+  
+  // Delivery tracking
+  submittedAt: timestamp("submitted_at"),
+  submittedBy: varchar("submitted_by"),
+  responseReceivedAt: timestamp("response_received_at"),
+  lenderResponse: jsonb("lender_response").$type<{
+    status: string;
+    conditions?: string[];
+    notes?: string;
+    respondedBy?: string;
+  }>(),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_lender_data_packages_application").on(table.applicationId),
+  index("idx_lender_data_packages_snapshot").on(table.snapshotId),
+  index("idx_lender_data_packages_lender").on(table.lenderId),
+  index("idx_lender_data_packages_status").on(table.status),
+]);
+
+export const lenderDataPackagesRelations = relations(lenderDataPackages, ({ one }) => ({
+  application: one(loanApplications, {
+    fields: [lenderDataPackages.applicationId],
+    references: [loanApplications.id],
+  }),
+  snapshot: one(underwritingSnapshots, {
+    fields: [lenderDataPackages.snapshotId],
+    references: [underwritingSnapshots.id],
+  }),
+  lenderFormat: one(lenderPreApprovalFormats, {
+    fields: [lenderDataPackages.lenderFormatId],
+    references: [lenderPreApprovalFormats.id],
+  }),
+}));
+
+export const insertLenderDataPackageSchema = createInsertSchema(lenderDataPackages).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// Type exports for Lender Data Packages
+export type InsertLenderDataPackage = z.infer<typeof insertLenderDataPackageSchema>;
+export type LenderDataPackage = typeof lenderDataPackages.$inferSelect;

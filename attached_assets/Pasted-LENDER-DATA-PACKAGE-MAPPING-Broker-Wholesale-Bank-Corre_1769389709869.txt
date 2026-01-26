@@ -1,0 +1,853 @@
+LENDER DATA PACKAGE MAPPING
+
+(Broker → Wholesale / Bank / Correspondent)
+
+🎯 GOAL
+
+Deliver a standardized, defensible underwriting packet that:
+
+Matches how lenders think
+
+Reduces re-underwrites
+
+Speeds conditional approval
+
+Survives audits and QC
+
+1️⃣ PACKAGE OVERVIEW (WHAT YOU SEND)
+
+Every lender package consists of 5 layers:
+
+1. Borrower Summary (Human-readable)
+2. Underwriting Metrics (DTI / DSCR / LTV)
+3. Decision Snapshot & Policy Version
+4. Document Index + Extracted Data
+5. Change-of-Circumstance Monitoring Status
+
+
+Each layer maps cleanly to lender review workflows.
+
+2️⃣ LAYER 1 — BORROWER SUMMARY (LO / UW VIEW)
+
+This is what underwriters read first.
+
+{
+  "borrowerSummary": {
+    "borrowerType": "Individual",
+    "occupancy": "Primary",
+    "loanPurpose": "Purchase",
+    "productType": "Conventional",
+    "confidenceScore": 0.89,
+    "preApprovalAmount": 650000,
+    "expirationDate": "2026-04-17"
+  }
+}
+
+Why lenders care
+
+Fast orientation
+
+Clear scope
+
+No guessing what you’re sending
+
+3️⃣ LAYER 2 — UNDERWRITING METRICS (CORE NUMBERS)
+
+These must match GSE mental models.
+
+{
+  "underwritingMetrics": {
+    "DTI": {
+      "frontEnd": 28.4,
+      "backEnd": 41.9,
+      "calculationMethod": "GSE_STANDARD",
+      "confidence": 0.92
+    },
+    "DSCR": {
+      "applicable": true,
+      "value": 1.32,
+      "method": "SCHEDULE_E_NET",
+      "confidence": 0.88
+    },
+    "LTV": 78,
+    "CLTV": 78
+  }
+}
+
+Important
+
+Always state method
+
+Never send “magic numbers”
+
+Confidence is internal unless lender requests
+
+4️⃣ LAYER 3 — DECISION SNAPSHOT (LEGAL ARMOR)
+
+This is what protects you and the lender.
+
+{
+  "decisionSnapshot": {
+    "decisionType": "Eligibility-Based Pre-Approval",
+    "snapshotId": "SNAP_abc123",
+    "policyAuthority": "FREDDIE_MAC",
+    "policyVersion": "2026.03",
+    "issuedAt": "2026-03-18",
+    "expiresAt": "2026-04-17",
+    "decisionStatus": "ACTIVE"
+  }
+}
+
+Why lenders love this
+
+Clear “as-of” decision
+
+No retroactive ambiguity
+
+Investor-aligned
+
+5️⃣ LAYER 4 — DOCUMENT INDEX + EXTRACTION MAP
+
+You send documents + structured data.
+
+A. Document Index
+{
+  "documents": [
+    {
+      "documentId": "DOC_001",
+      "type": "PAY_STUB",
+      "borrower": "Primary",
+      "dateRange": "2026-02",
+      "confidence": 0.97,
+      "pages": 2
+    },
+    {
+      "documentId": "DOC_014",
+      "type": "BANK_STATEMENT",
+      "accountType": "Checking",
+      "dateRange": "Jan–Feb 2026",
+      "confidence": 0.93
+    }
+  ]
+}
+
+B. Extracted MISMO-Aligned Data
+{
+  "extractedData": {
+    "income": {
+      "w2Annualized": 142000,
+      "bonusIncome": 12000,
+      "rentalIncome": 18500
+    },
+    "assets": {
+      "totalVerified": 215000,
+      "largeDepositsFlagged": false
+    }
+  }
+}
+
+Why this matters
+
+Lenders can trust the math
+
+They can re-run AUS faster
+
+Fewer clarification conditions
+
+6️⃣ LAYER 5 — CHANGE-OF-CIRCUMSTANCE STATUS
+
+This is huge for lenders.
+
+{
+  "changeOfCircumstance": {
+    "monitoringActive": true,
+    "lastChecked": "2026-03-25",
+    "materialChangesDetected": false,
+    "rulesetVersion": "COC_1.0"
+  }
+}
+
+If something changed:
+{
+  "materialChangesDetected": true,
+  "events": [
+    {
+      "dimension": "CREDIT",
+      "event": "Score Drop",
+      "severity": "MATERIAL",
+      "actionTaken": "Pre-Approval Invalidated",
+      "timestamp": "2026-03-24"
+    }
+  ]
+}
+
+
+Lenders LOVE this because:
+
+It reduces surprise denials
+
+It lowers repurchase risk
+
+It shows active risk management
+
+7️⃣ OPTIONAL (HIGH-END) — EXPLANATION OBJECT
+
+If lender questions a number:
+
+{
+  "explanations": [
+    {
+      "metric": "DTI",
+      "method": "Standard GSE",
+      "inputs": ["W2 Income", "Auto Loan", "Mortgage"],
+      "reasoning": "Variable income averaged over 24 months per policy"
+    }
+  ]
+}
+
+
+This prevents:
+
+Back-and-forth
+
+Phone calls
+
+Re-work
+
+8️⃣ WHAT LENDERS DO NOT WANT
+
+❌ Raw OCR dumps
+❌ Unversioned calculations
+❌ Editable PDFs
+❌ “Trust us” decisions
+❌ Borrower-visible risk scores
+
+Your package avoids all of that.
+
+9️⃣ DELIVERY FORMAT (IMPORTANT)
+
+You should support:
+
+📦 Secure JSON bundle (API / SFTP)
+
+📄 Human-readable PDF summary
+
+🧾 Original documents (read-only)
+
+🔒 Audit log on request
+
+10️⃣ WHAT TO TELL LENDERS (SCRIPT)
+
+“We deliver a policy-versioned, snapshot-based pre-approval package with structured underwriting metrics, document extraction, and active change-of-circumstance monitoring aligned to GSE guidance.”
+
+That sentence clears most lender tech reviews.
+
+✅ YOU NOW HAVE A COMPLETE BROKER → LENDER PIPELINE
+
+You have:
+
+Policy-driven underwriting
+
+Frozen, defensible pre-approvals
+
+GSE-aligned COC logic
+
+Lender-ready data packages
+
+This is exactly how serious mortgage platforms are built.
+
+WHAT I RECOMMEND NEXT (FINAL BUILD PIECES)
+
+If you want to finish this properly, next best artifacts are:
+
+1️⃣ Pre-Approval Letter Templates + Legal Disclaimers
+2️⃣ Policy Ops Admin UI Wireframes
+3️⃣ TypeScript COC Evaluation Pseudocode
+
+Say the number and we’ll lock it in.
+
+WHAT CAN IMPROVE THIS FOR ME TO SCALE AND GET MORE LENDERS USING US AS I REACH OUT TO GET THEM ON BOARD
+
+You’re already at ~80–85% of what top wholesale lenders expect.
+What gets you from “impressive” to “we should onboard them” is de-risking the lender’s decision to trust you and making you cheap to adopt.
+
+Below are concrete, high-leverage improvements that directly increase lender adoption and scale — not abstract “nice to haves”.
+
+🔑 THE LENDER ADOPTION PROBLEM (REALITY)
+
+When a lender evaluates you, they are silently asking:
+
+Will this increase repurchase risk?
+
+Will this increase my ops cost?
+
+Will this create compliance exposure?
+
+Will my underwriters trust it?
+
+How hard is this to integrate?
+
+Everything below answers those questions.
+
+1️⃣ LENDER-VISIBLE TRANSPARENCY LAYER (HUGE WIN)
+What You Add
+
+A read-only lender dashboard / package viewer.
+
+Not full access. Not borrower access.
+Just controlled visibility.
+
+They See:
+
+Snapshot date + policy version
+
+COC monitoring status
+
+DTI / DSCR breakdown
+
+Document index
+
+Confidence bands (not raw scores)
+
+Why This Scales
+
+Underwriters trust what they can see
+
+Reduces re-underwriting
+
+Differentiates you from 99% of brokers
+
+Implementation Cost
+
+Low.
+You already have the data.
+
+2️⃣ CONFIDENCE BAND STANDARDIZATION (NOT A SCORE)
+
+Raw confidence scores scare lenders.
+
+Replace:
+confidence = 0.89
+
+With:
+Confidence Band = A / B / C
+
+Band	Meaning
+A	Full doc, stable, low volatility
+B	Minor review likely
+C	Manual UW expected
+
+This aligns with how UWs think.
+
+3️⃣ LENDER-SPECIFIC OUTPUT ADAPTERS (ADOPTION GOLD)
+Problem
+
+Each lender wants data “their way”.
+
+Solution
+
+Build a thin adapter layer:
+
+mapToLenderFormat(lenderId, standardPackage)
+
+
+You keep:
+
+One internal standard
+
+Multiple output skins
+
+Why This Scales
+
+No custom underwriting logic
+
+No forked workflows
+
+Fast onboarding
+
+4️⃣ “UNDERWRITER MODE” EXPLANATIONS
+
+Add an optional expanded explanation object.
+
+Example:
+
+“Rental income derived from Schedule E, averaged 24 months, vacancy factor applied per policy.”
+
+This:
+
+Builds trust
+
+Reduces calls
+
+Makes junior UWs comfortable approving
+
+5️⃣ PRE-UNDERWRITE READINESS SCORE (SECRET WEAPON)
+
+Different from confidence.
+
+This answers:
+
+“If this hit my pipeline today, how painful would it be?”
+
+Example
+Readiness: READY / MINOR CONDITIONS / HEAVY REVIEW
+
+
+Lenders LOVE this because it helps them:
+
+Triage files
+
+Allocate UW resources
+
+Move faster
+
+6️⃣ LIVE COC WEBHOOKS (ENTERPRISE-FRIENDLY)
+
+Offer lenders:
+
+Webhook when material change occurs
+
+Or daily digest
+
+This shows:
+
+You actively manage risk
+
+You don’t dump surprises
+
+7️⃣ LENDER ONBOARDING PACK (THIS IS CRITICAL)
+
+You should proactively provide:
+
+A. Technical Pack
+
+Data schema
+
+Sample payloads
+
+Security overview
+
+B. Risk Pack
+
+Policy versioning explanation
+
+COC logic overview
+
+Snapshot immutability
+
+C. Compliance Pack
+
+FCRA consent flow
+
+Data retention
+
+Audit logs
+
+Most brokers don’t have this.
+
+8️⃣ “SAFE PRE-APPROVAL” BRANDING (LANGUAGE MATTERS)
+
+Never say:
+
+“Automated underwriting”
+
+Say:
+
+“Eligibility-based, policy-versioned pre-approval with active change-of-circumstance monitoring.”
+
+This language:
+
+Reduces legal anxiety
+
+Signals maturity
+
+Gets compliance buy-in
+
+9️⃣ PILOT MODE FOR NEW LENDERS
+
+Offer:
+
+Shadow mode (they review outcomes vs yours)
+
+No production risk
+
+30–60 day trial
+
+This dramatically increases yes-rates.
+
+10️⃣ WHAT NOT TO DO (THIS KILLS SCALE)
+
+❌ Claim AUS replacement
+❌ Hide calculations
+❌ Force lenders into your UI
+❌ Over-promise certainty
+❌ Show borrower risk scores
+
+📈 SCALING FLYWHEEL (THIS IS HOW YOU WIN)
+Cleaner packages
+   ↓
+Faster lender approvals
+   ↓
+Higher trust
+   ↓
+More overlays supported
+   ↓
+More lender partners
+   ↓
+More borrower volume
+
+🧭 FINAL STRATEGIC ADVICE
+
+You are building:
+
+A risk-reduction platform
+
+Not a flashy borrower app
+
+If lenders trust you, borrowers follow.
+
+NEXT STEP (IF YOU WANT TO GO ALL THE WAY)
+
+The single highest leverage thing left is:
+
+Lender Trust Pack (PDF + JSON samples)
+
+I can generate:
+
+The pitch narrative
+
+Sample data payload
+
+Compliance explanation
+
+Say “BUILD LENDER TRUST PACK” and I’ll do it end-to-end.
+
+BUILD LENDER TRUST PACK
+
+Below is a complete, lender-ready Trust Pack you can hand to Wholesale, Bank, Correspondent, and Investor partners.
+This is written from a broker perspective, positioned to reduce lender risk, speed onboarding, and win credit/compliance approval.
+
+You can deliver this as:
+
+PDF (sales + compliance)
+
+JSON samples (tech)
+
+Live walkthrough deck
+
+🏦 LENDER TRUST PACK
+
+Broker-Delivered, Policy-Versioned Pre-Approval & Underwriting Intelligence
+
+1️⃣ EXECUTIVE SUMMARY (WHAT YOU ARE)
+
+Who we are
+We are a technology-enabled mortgage brokerage platform that delivers:
+
+Eligibility-based pre-approvals
+
+Policy-versioned underwriting snapshots
+
+Clean, lender-ready loan packages
+
+Active change-of-circumstance (COC) monitoring
+
+What we are not
+
+❌ Not an AUS replacement
+
+❌ Not a credit decision engine
+
+❌ Not delegating credit risk
+
+Our role
+
+Reduce friction, improve data quality, and deliver files that underwriters can approve faster with fewer conditions.
+
+2️⃣ CORE VALUE TO LENDERS (WHY THIS MATTERS)
+We help lenders:
+
+Reduce re-underwriting
+
+Reduce surprise denials
+
+Reduce repurchase risk
+
+Reduce ops time per file
+
+By delivering:
+
+Structured data + original documents
+
+Frozen decision snapshots
+
+Transparent calculation logic
+
+Continuous monitoring post-issuance
+
+3️⃣ PRE-APPROVAL MODEL (LEGAL & OPERATIONAL)
+What Our Pre-Approval Is
+
+An eligibility-based, non-binding pre-approval issued:
+
+Based on verified borrower data
+
+Using GSE-aligned policy logic
+
+Frozen to a specific policy version and timestamp
+
+What It Is NOT
+
+Not a loan commitment
+
+Not an underwriting approval
+
+Not a substitute for lender AUS / credit decision
+
+Legal Positioning
+
+Each pre-approval includes:
+
+Clear borrower disclaimers
+
+Expiration date
+
+Change-of-circumstance invalidation clauses
+
+Policy authority reference (FNMA / FHLMC)
+
+4️⃣ DECISION SNAPSHOT (RISK CONTROL)
+
+Every decision is immutable.
+
+Snapshot Includes:
+
+Policy authority (Fannie / Freddie)
+
+Policy version
+
+Issued timestamp
+
+Expiration timestamp
+
+Data inputs used
+
+Decision outcome
+
+Why This Protects Lenders
+
+No retroactive logic changes
+
+Clear audit trail
+
+Defensible underwriting lineage
+
+5️⃣ CHANGE-OF-CIRCUMSTANCE (COC) MONITORING
+Continuous Monitoring Covers:
+
+Credit score changes
+
+New tradelines
+
+Income volatility
+
+Asset depletion
+
+Employment changes
+
+Material Changes Trigger:
+
+Automatic pre-approval invalidation
+
+Re-pull workflows
+
+Lender notification (optional webhook)
+
+Result
+
+No stale approvals entering your pipeline.
+
+6️⃣ DATA PACKAGE STRUCTURE (WHAT YOU RECEIVE)
+
+Each loan file includes 5 standardized layers:
+
+Borrower Summary
+
+Underwriting Metrics (DTI / DSCR / LTV)
+
+Decision Snapshot & Policy Version
+
+Document Index + Extracted Data
+
+COC Monitoring Status
+
+Delivery Formats:
+
+Secure JSON bundle (API / SFTP)
+
+Human-readable PDF summary
+
+Original documents (read-only)
+
+Optional lender portal (read-only)
+
+7️⃣ UNDERWRITING METRICS (TRANSPARENCY)
+
+All calculations include:
+
+Methodology reference
+
+Input sources
+
+Confidence band (A/B/C)
+
+Explanation objects (optional)
+
+Example Metrics:
+
+DTI (front / back)
+
+DSCR (if applicable)
+
+LTV / CLTV
+
+Income stability indicators
+
+No black boxes.
+
+8️⃣ CONFIDENCE & READINESS SIGNALS (OPS FRIENDLY)
+Confidence Bands (Internal / UW View)
+
+A – Full doc, stable
+
+B – Minor review expected
+
+C – Manual underwriting likely
+
+File Readiness Indicator
+
+READY
+
+MINOR CONDITIONS
+
+HEAVY REVIEW
+
+These help lenders:
+
+Triage files
+
+Assign UW resources
+
+Move faster
+
+9️⃣ DOCUMENT HANDLING & FRAUD CONTROLS
+Document Controls
+
+Page-level classification
+
+Missing page detection
+
+Statement continuity checks
+
+PDF metadata review
+
+Fraud Signals (Non-Determinative)
+
+Name mismatches
+
+Income anomalies
+
+Large unexplained deposits
+
+These flag risk — they do not auto-decline.
+
+🔐 10️⃣ COMPLIANCE & SECURITY OVERVIEW
+Consumer Compliance
+
+FCRA-compliant consent
+
+Clear adverse action separation
+
+Borrower-visible disclosures only
+
+Data Security
+
+Encryption at rest & in transit
+
+Role-based access
+
+Audit logging
+
+Retention policies configurable per lender
+
+Regulatory Alignment
+
+MISMO 3.4 mapping
+
+GSE terminology alignment
+
+Audit-ready decision logs
+
+11️⃣ LENDER INTEGRATION OPTIONS
+Low-Friction Onboarding
+
+No LOS replacement required
+
+No workflow disruption
+
+Read-only access available
+
+Integration Paths
+
+Manual package delivery
+
+Secure file transfer
+
+API ingestion
+
+Lender-specific data adapters
+
+12️⃣ PILOT & RISK-FREE ADOPTION
+Pilot Options
+
+Shadow underwriting comparison
+
+Limited volume trial
+
+Non-binding evaluation phase
+
+Result
+
+Lenders can validate quality before trusting production volume.
+
+13️⃣ WHY LENDERS CHOOSE US
+
+Cleaner files
+
+Fewer conditions
+
+Faster approvals
+
+Lower risk
+
+Better broker-lender alignment
+
+We make brokers easier to work with.
+
+14️⃣ CONTACT & NEXT STEPS
+
+We typically onboard lenders in:
+
+2–4 weeks technical review
+
+30–60 day pilot
+
+Full production rollout
+
+🧠 FINAL STRATEGIC NOTE (IMPORTANT)
+
+This Trust Pack positions you as:
+
+A risk-aware, policy-driven broker platform — not a tech experiment.
+
+That’s what lenders say yes to.
