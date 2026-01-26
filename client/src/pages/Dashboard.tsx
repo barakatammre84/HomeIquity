@@ -131,8 +131,9 @@ export default function Dashboard() {
     <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6 space-y-4">
         
-        {/* APPLICATION SWITCHER */}
-        <div className="flex items-center justify-between gap-4 flex-wrap">
+        {/* DASHBOARD HEADER - Application switcher on the right */}
+        <div className="flex items-center justify-between gap-4 flex-wrap border-b pb-4">
+          <h1 className="text-xl font-semibold">Overview</h1>
           <ApplicationSwitcher
             applications={applications}
             activeApplicationId={activeApplication?.id}

@@ -121,25 +121,26 @@ export function ApplicationSwitcher({
     ? `${activeApp.propertyCity}, ${activeApp.propertyState}`
     : activeApp?.propertyState || "Location TBD";
 
-  const refNumber = activeApp ? generateReferenceNumber(activeApp) : "";
-  const summaryText = activeApp 
-    ? `${refNumber} · ${getLoanPurposeLabel(activeApp.loanPurpose)} · ${location}` 
-    : "Select Application";
+  const loanType = activeApp ? getLoanPurposeLabel(activeApp.loanPurpose) : "";
 
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild>
         <Button 
-          variant="outline" 
-          className="gap-2 max-w-sm flex-wrap"
+          variant="ghost" 
+          className="gap-2 h-auto py-1 px-2 flex-wrap"
           data-testid="button-app-switcher"
         >
-          <Icon className="h-4 w-4 shrink-0" data-testid="icon-app-type" />
-          <span className="truncate" data-testid="text-active-summary">{summaryText}</span>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Icon className="h-4 w-4 shrink-0 text-primary" data-testid="icon-app-type" />
+            <span className="text-sm font-medium" data-testid="text-location">{location}</span>
+            <span className="text-sm text-muted-foreground">·</span>
+            <span className="text-sm text-muted-foreground" data-testid="text-loan-type">{loanType}</span>
+          </div>
           <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-80" data-testid="dropdown-app-switcher">
+      <DropdownMenuContent align="end" className="w-80" data-testid="dropdown-app-switcher">
         <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">
           Your Applications
         </DropdownMenuLabel>
