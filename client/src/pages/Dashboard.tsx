@@ -14,9 +14,7 @@ import {
   CheckCircle2,
   Clock,
   FileText,
-  Upload,
   ArrowRight,
-  Shield,
   Lock,
   TrendingUp,
   Activity,
@@ -80,6 +78,9 @@ function formatActivityTime(timestamp: string | Date): string {
 export default function Dashboard() {
   const { user, isLoading: authLoading } = useAuth();
   const [, navigate] = useLocation();
+  
+  // ALL HOOKS MUST BE CALLED BEFORE ANY EARLY RETURNS
+  const [selectedAppId, setSelectedAppId] = useState<string | null>(null);
 
   const isStaff = ["admin", "lender", "broker"].includes(user?.role || "");
 
@@ -94,6 +95,7 @@ export default function Dashboard() {
     enabled: !authLoading && !isStaff,
   });
 
+  // Early return AFTER all hooks
   if (authLoading || isLoading || isStaff) {
     return (
       <div className="p-8 max-w-2xl mx-auto space-y-4">
@@ -107,9 +109,6 @@ export default function Dashboard() {
   const applications = data?.applications || [];
   const activities = data?.activities || [];
 
-  // Track selected application (default to first non-closed/denied app)
-  const [selectedAppId, setSelectedAppId] = useState<string | null>(null);
-  
   // Find the active application based on selection or default
   const defaultApp = applications.find(
     (app) => !["closed", "denied"].includes(app.status)
@@ -141,40 +140,41 @@ export default function Dashboard() {
           />
         </div>
         
-        {/* 1. YOUR APPROVAL STATUS (PRIMARY CARD) */}
-        <Card className="overflow-hidden" data-testid="card-approval-status">
-          <CardContent className="p-0">
+        {/* 1. YOUR APPROVAL STATUS (PRIMARY CARD) - Clean design with border accent */}
+        <Card 
+          className={`shadow-lg ${isPreApproved ? 'border-l-4 border-l-emerald-500' : 'border-l-4 border-l-primary'}`} 
+          data-testid="card-approval-status"
+        >
+          <CardContent className="p-6">
             {activeApplication ? (
-              <div className={`p-6 ${isPreApproved ? 'bg-emerald-50 dark:bg-emerald-950/30' : 'bg-muted/30'}`}>
-                <div className="flex items-start gap-4 flex-wrap">
-                  <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full ${isPreApproved ? 'bg-emerald-100 dark:bg-emerald-900/50' : 'bg-muted'}`}>
-                    {isPreApproved ? (
-                      <CheckCircle2 className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
-                    ) : (
-                      <Clock className="h-6 w-6 text-muted-foreground" />
+              <div className="flex items-start gap-4 flex-wrap">
+                <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 ${isPreApproved ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400' : 'border-primary/30 text-primary'}`}>
+                  {isPreApproved ? (
+                    <CheckCircle2 className="h-6 w-6" />
+                  ) : (
+                    <Clock className="h-6 w-6" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="text-lg font-semibold" data-testid="text-approval-stage">
+                      {isPreApproved ? "Pre-Approval Verified" : getStatusLabel(activeApplication.status)}
+                    </h2>
+                    {confidence && (
+                      <Badge variant="outline" className={confidence.color} data-testid="badge-confidence">
+                        {confidence.label}
+                      </Badge>
                     )}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h2 className="text-lg font-semibold" data-testid="text-approval-stage">
-                        {isPreApproved ? "Pre-Approval Verified" : getStatusLabel(activeApplication.status)}
-                      </h2>
-                      {confidence && (
-                        <Badge variant="secondary" className={confidence.color} data-testid="badge-confidence">
-                          {confidence.label}
-                        </Badge>
-                      )}
-                    </div>
-                    {expirationDate && (
-                      <p className="text-sm text-muted-foreground mt-1" data-testid="text-expiration">
-                        Valid until {expirationDate}
-                      </p>
-                    )}
-                  </div>
+                  {expirationDate && (
+                    <p className="text-sm text-muted-foreground mt-1" data-testid="text-expiration">
+                      Valid until {expirationDate}
+                    </p>
+                  )}
                 </div>
               </div>
             ) : (
-              <div className="p-6 text-center">
+              <div className="text-center py-4">
                 <p className="text-muted-foreground mb-4">No active application</p>
                 <Link href="/apply">
                   <Button data-testid="button-start-application">
@@ -195,10 +195,10 @@ export default function Dashboard() {
           />
         )}
 
-        {/* 3. YOUR LOAN SNAPSHOT */}
+        {/* 3. YOUR LOAN SNAPSHOT - Clean grid with dividers */}
         {activeApplication && (
-          <Card data-testid="card-loan-snapshot">
-            <CardHeader className="pb-2">
+          <Card className="shadow-md" data-testid="card-loan-snapshot">
+            <CardHeader className="pb-2 border-b">
               <CardTitle className="text-base font-semibold flex items-center gap-2 flex-wrap">
                 Your Loan Snapshot
                 {isPreApproved && (
@@ -206,9 +206,9 @@ export default function Dashboard() {
                 )}
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="pt-4">
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
+                <div className="space-y-1 p-3 border rounded-md">
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground flex-wrap">
                     <Home className="h-3.5 w-3.5" />
                     Max Purchase Price
@@ -217,7 +217,7 @@ export default function Dashboard() {
                     {formatCurrency(activeApplication.preApprovalAmount || activeApplication.purchasePrice || "0")}
                   </p>
                 </div>
-                <div className="space-y-1">
+                <div className="space-y-1 p-3 border rounded-md">
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground flex-wrap">
                     <Calendar className="h-3.5 w-3.5" />
                     Est. Payment
@@ -230,7 +230,7 @@ export default function Dashboard() {
                     )}/mo
                   </p>
                 </div>
-                <div className="space-y-1">
+                <div className="space-y-1 p-3 border rounded-md">
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground flex-wrap">
                     <DollarSign className="h-3.5 w-3.5" />
                     Down Payment
@@ -239,7 +239,7 @@ export default function Dashboard() {
                     {formatCurrency(activeApplication.downPayment || "0")}
                   </p>
                 </div>
-                <div className="space-y-1">
+                <div className="space-y-1 p-3 border rounded-md">
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground flex-wrap">
                     <Percent className="h-3.5 w-3.5" />
                     Loan Type
@@ -250,7 +250,7 @@ export default function Dashboard() {
                 </div>
               </div>
               {isPreApproved && (
-                <p className="text-xs text-muted-foreground flex items-center gap-1 flex-wrap">
+                <p className="text-xs text-muted-foreground flex items-center gap-1 mt-4 flex-wrap">
                   <Lock className="h-3 w-3" />
                   Numbers locked from your pre-approval
                 </p>
@@ -259,13 +259,13 @@ export default function Dashboard() {
           </Card>
         )}
 
-        {/* 4. OFFERS AVAILABLE - Hidden until shop-ready */}
+        {/* 4. OFFERS AVAILABLE - Clean card with emerald accent */}
         {hasOffers && activeApplication && (
-          <Card data-testid="card-offers">
+          <Card className="shadow-md border-l-4 border-l-emerald-500" data-testid="card-offers">
             <CardContent className="p-4">
-              <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center justify-between gap-4 flex-wrap">
                 <div className="flex items-center gap-3 flex-wrap">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-emerald-500">
                     <TrendingUp className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
                   </div>
                   <div>
@@ -288,50 +288,52 @@ export default function Dashboard() {
           </Card>
         )}
 
-        {/* 5. RECENT ACTIVITY */}
+        {/* 5. RECENT ACTIVITY - Clean with dividers */}
         {activities.length > 0 && (
-          <Card data-testid="card-recent-activity">
-            <CardHeader className="pb-2">
+          <Card className="shadow-md" data-testid="card-recent-activity">
+            <CardHeader className="pb-2 border-b">
               <CardTitle className="text-base font-semibold flex items-center gap-2 flex-wrap">
                 <Activity className="h-4 w-4" />
                 Recent Activity
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
-              {activities.slice(0, 3).map((activity, index) => (
-                <div key={activity.id} className="flex items-start gap-3 flex-wrap" data-testid={`row-activity-${index}`}>
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted">
-                    {!activity.performedBy ? (
-                      <Bot className="h-4 w-4 text-muted-foreground" />
-                    ) : (
-                      <User className="h-4 w-4 text-muted-foreground" />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm" data-testid={`text-activity-desc-${index}`}>
-                      {activity.description || activity.title}
-                    </p>
-                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                      <span className="text-xs text-muted-foreground" data-testid={`text-activity-time-${index}`}>
-                        {formatActivityTime(activity.createdAt!)}
-                      </span>
-                      <span className="text-xs text-muted-foreground">·</span>
-                      <span className="text-xs text-muted-foreground" data-testid={`text-activity-actor-${index}`}>
-                        {!activity.performedBy ? "System" : "Team"}
-                      </span>
+            <CardContent className="pt-4">
+              <div className="divide-y">
+                {activities.slice(0, 3).map((activity, index) => (
+                  <div key={activity.id} className="flex items-start gap-3 py-3 first:pt-0 last:pb-0 flex-wrap" data-testid={`row-activity-${index}`}>
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border">
+                      {!activity.performedBy ? (
+                        <Bot className="h-4 w-4 text-muted-foreground" />
+                      ) : (
+                        <User className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm" data-testid={`text-activity-desc-${index}`}>
+                        {activity.description || activity.title}
+                      </p>
+                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                        <span className="text-xs text-muted-foreground" data-testid={`text-activity-time-${index}`}>
+                          {formatActivityTime(activity.createdAt!)}
+                        </span>
+                        <span className="text-xs text-muted-foreground">·</span>
+                        <span className="text-xs text-muted-foreground" data-testid={`text-activity-actor-${index}`}>
+                          {!activity.performedBy ? "System" : "Team"}
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </CardContent>
           </Card>
         )}
 
         {/* Empty state for no application */}
         {!activeApplication && (
-          <Card data-testid="card-empty-state">
+          <Card className="shadow-lg" data-testid="card-empty-state">
             <CardContent className="py-12 text-center">
-              <div className="flex h-16 w-16 mx-auto items-center justify-center rounded-full bg-muted mb-4">
+              <div className="flex h-16 w-16 mx-auto items-center justify-center rounded-full border-2 border-dashed mb-4">
                 <FileText className="h-8 w-8 text-muted-foreground" />
               </div>
               <h3 className="text-lg font-semibold mb-2">Ready to get started?</h3>

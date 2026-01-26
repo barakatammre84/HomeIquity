@@ -86,14 +86,14 @@ export function BorrowerRequests({ applicationId, "data-testid": testId }: Borro
   const displayTasks = pendingTasks.slice(0, 3);
 
   return (
-    <Card data-testid={testId || "card-what-we-need"}>
-      <CardHeader className="pb-3">
+    <Card className="shadow-md border-l-4 border-l-amber-500" data-testid={testId || "card-what-we-need"}>
+      <CardHeader className="pb-3 border-b">
         <CardTitle className="text-base font-semibold flex items-center gap-2 flex-wrap">
           <FileText className="h-4 w-4" />
           What We Need From You
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="pt-4 space-y-3">
         {displayTasks.map((task) => {
           const friendlyName = FRIENDLY_TASK_NAMES[task.taskTypeCode || ""] || task.title;
           const dueText = formatDueDate(task.timeRemaining);
@@ -102,12 +102,12 @@ export function BorrowerRequests({ applicationId, "data-testid": testId }: Borro
           return (
             <div 
               key={task.id}
-              className="flex items-center justify-between gap-3 p-3 rounded-lg bg-muted/50"
+              className="flex items-center justify-between gap-3 p-3 rounded-md border"
               data-testid={`row-request-${task.id}`}
             >
               <div className="flex items-center gap-3 min-w-0 flex-wrap">
-                <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
-                  isUrgent ? "bg-amber-100 dark:bg-amber-900/30" : "bg-primary/10"
+                <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 ${
+                  isUrgent ? "border-amber-500 text-amber-600 dark:text-amber-400" : "border-primary/50 text-primary"
                 }`}>
                   {isUrgent ? (
                     <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400" />
