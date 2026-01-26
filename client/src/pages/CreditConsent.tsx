@@ -391,7 +391,7 @@ export default function CreditConsent() {
                 />
                 <Label htmlFor="acknowledge" className="text-sm leading-relaxed cursor-pointer">
                   I have read and understand the Credit Authorization Disclosure above. I authorize 
-                  MortgageAI to obtain my credit report from one or more consumer reporting agencies 
+                  Baranest to obtain my credit report from one or more consumer reporting agencies 
                   for the purpose of evaluating my mortgage loan application.
                 </Label>
               </div>

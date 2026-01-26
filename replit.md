@@ -1,7 +1,30 @@
-# MortgageAI - Next-Generation MISMO 3.4 Mortgage Brokerage Platform
+# Baranest - A Simpler Way to Get Home-Ready
 
 ## Overview
-MortgageAI is a deterministic mortgage brokerage platform that automates and streamlines the mortgage process, aiming for 3-minute pre-approvals. It is built on MISMO 3.4 standards and utilizes graph-based underwriting logic. The platform uses AI solely for data extraction, with all underwriting decisions based on hard-coded deterministic rules to ensure regulatory compliance and mitigate Fair Lending risks. Key capabilities include MISMO 3.4 and ULAD compliant deterministic underwriting, graph-based data models, advanced income/property eligibility, LLPA pricing, and multi-tenant support. The project's vision is to provide an institutional-grade platform that transforms the mortgage brokerage industry, offering rapid, compliant, and transparent mortgage processing.
+Baranest is a modern mortgage platform designed to make homeownership feel clear, calm, and achievable. Built on MISMO 3.4 standards with graph-based underwriting logic, Baranest automates and streamlines the mortgage process for 3-minute pre-approvals. The platform uses document intelligence for data extraction, with all underwriting decisions based on deterministic rules to ensure regulatory compliance and mitigate Fair Lending risks. Key capabilities include MISMO 3.4 and ULAD compliant underwriting, graph-based data models, advanced income/property eligibility, LLPA pricing, and multi-tenant support.
+
+## Brand Identity
+**Brand Promise:** A simpler way to get home-ready.
+**Personality:** Calm, Trustworthy, Clear, Human, Confident (never flashy)
+**Voice:** Reassuring, direct, supportive - plain English, no jargon, no hype.
+
+### Color Palette
+- **Nest Blue (Primary):** #1F3A5F - Used for primary CTAs, links, and key actions
+- **Warm Sage (Accent):** #7FA89C - Used for progress states, highlights, success moments
+- **Soft Canvas (Background):** #F7F9FB - App and section backgrounds
+- **Primary Text:** #1E293B
+- **Secondary Text:** #64748B
+
+### Typography
+**Primary Font:** Inter (or DM Sans)
+- H1: 32-40px, H2: 24-28px, H3: 18-20px
+- Body: 14-16px, line-height 1.5-1.6
+
+### UI Style
+- Rounded corners (10-12px on buttons, 12px on cards)
+- Soft shadows, no harsh borders
+- Clean cards with breathing room
+- Guided, step-by-step flows
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.

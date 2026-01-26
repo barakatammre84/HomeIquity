@@ -8,11 +8,10 @@ export function Footer() {
         <div className="grid gap-8 md:grid-cols-4">
           <div>
             <Link href="/" className="flex items-center gap-2">
-              <Home className="h-6 w-6 text-green-700" />
-              <span className="text-xl font-bold text-green-700">MortgageAI</span>
+              <span className="text-xl font-semibold text-primary tracking-tight">baranest</span>
             </Link>
             <p className="mt-4 max-w-xs text-sm text-muted-foreground">
-              MortgageAI is a direct lender dedicated to providing a fast, transparent digital mortgage experience backed by superior customer support.
+              A simpler way to get home-ready. We make homeownership feel clear, calm, and achievable.
             </p>
           </div>
 
@@ -20,9 +19,9 @@ export function Footer() {
             <h3 className="text-sm font-semibold">Contact Us</h3>
             <ul className="mt-4 space-y-3 text-sm text-muted-foreground">
               <li>
-                <a href="mailto:hello@mortgageai.com" className="flex items-center gap-2 hover:text-foreground transition-colors">
+                <a href="mailto:hello@baranest.com" className="flex items-center gap-2 hover:text-foreground transition-colors">
                   <Mail className="h-4 w-4" />
-                  hello@mortgageai.com
+                  hello@baranest.com
                 </a>
               </li>
               <li>
@@ -61,12 +60,12 @@ export function Footer() {
 
         <div className="mt-12 border-t pt-8">
           <p className="text-xs text-muted-foreground leading-relaxed">
-            © {new Date().getFullYear()} MortgageAI Corporation is a direct lender. NMLS #123456. 
+            © {new Date().getFullYear()} Baranest Corporation is a direct lender. NMLS #123456. 
             World Trade Center, 200 State Street, New York, NY 10000. Loans made or arranged pursuant to a California Finance Lenders Law License. 
             Not available in all states. Equal Housing Lender.
           </p>
           <p className="mt-4 text-xs text-muted-foreground leading-relaxed">
-            Home lending products offered by MortgageAI Corporation are direct loans. MortgageAI is a licensed lender (NMLS #123456). 
+            Home lending products offered by Baranest Corporation are direct loans. Baranest is a licensed lender (NMLS #123456). 
             Loans made or arranged pursuant to a California Finance Lenders Law License. Not available in all states. Equal Housing Lender. 
             NMLS Consumer Access.
           </p>

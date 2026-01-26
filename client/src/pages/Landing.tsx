@@ -22,35 +22,34 @@ export default function Landing() {
     <div className="min-h-screen bg-background">
       <Navigation />
 
-      {/* Hero Section - Light Green */}
-      <section className="relative bg-green-100 px-4 py-16 sm:px-6 lg:px-8">
+      {/* Hero Section - Baranest Soft Canvas */}
+      <section className="relative bg-accent px-4 py-16 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-6xl">
           <div className="flex flex-col items-center text-center">
-            <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl lg:text-6xl">
-              The first
+            <h1 className="text-4xl font-bold tracking-tight text-foreground sm:text-5xl lg:text-6xl">
+              A simpler way to
             </h1>
             <h2 className="mt-1 text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
-              <span className="text-green-600">AI-powered</span>{" "}
-              <span className="text-gray-900">Mortgage</span>
+              <span className="text-primary">get home-ready</span>
             </h2>
 
-            <p className="mx-auto mt-6 max-w-2xl text-base text-gray-600 sm:text-lg">
-              Our tech unlocks lower rates, higher chances of approval,
+            <p className="mx-auto mt-6 max-w-2xl text-base text-muted-foreground sm:text-lg">
+              Clear, calm, and achievable. Get pre-approved in minutes
               <br className="hidden sm:block" />
-              and a lightning-fast process from approval to closing. Over $100 billion funded.
+              with a mortgage experience designed around you.
             </p>
 
             <div className="mt-8 flex flex-col items-center gap-3">
               <Link href="/apply">
                 <Button
                   size="lg"
-                  className="gap-2 bg-green-800 px-8 py-6 text-base hover:bg-green-900"
+                  className="gap-2 px-8 py-6 text-base"
                   data-testid="button-hero-preapprove"
                 >
-                  Start my pre-approval
+                  Get Pre-Approved
                 </Button>
               </Link>
-              <span className="flex items-center gap-2 text-sm text-gray-500">
+              <span className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Clock className="h-4 w-4" />
                 3 min | No hard credit check
               </span>
@@ -64,28 +63,28 @@ export default function Landing() {
               <div className="relative mx-auto w-64 rounded-3xl border-4 border-gray-800 bg-gray-800 p-2 shadow-2xl sm:w-72">
                 <div className="overflow-hidden rounded-2xl bg-white">
                   {/* Phone Screen Content */}
-                  <div className="bg-green-600 p-4 text-white">
+                  <div className="bg-primary p-4 text-white">
                     <div className="flex items-center gap-2">
                       <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20">
                         <span className="text-sm font-bold">680</span>
                       </div>
-                      <span className="text-sm">Credit score updated</span>
+                      <span className="text-sm">You're on track</span>
                     </div>
                   </div>
                   <div className="space-y-3 p-4">
-                    <div className="rounded-lg bg-green-50 p-3">
-                      <p className="text-xs text-gray-500">You don't need perfect credit to qualify</p>
+                    <div className="rounded-lg bg-accent p-3">
+                      <p className="text-xs text-muted-foreground">You don't need perfect credit to qualify</p>
                     </div>
-                    <div className="rounded-lg bg-gray-50 p-3">
-                      <p className="text-xs text-gray-500">Instant answers - smarter, simpler with Betsy AI</p>
+                    <div className="rounded-lg bg-secondary p-3">
+                      <p className="text-xs text-muted-foreground">Just one more step</p>
                     </div>
                     <div className="border-t pt-3">
-                      <p className="text-xs font-medium text-green-700">Congrats, you're pre-approved!</p>
-                      <p className="text-xs text-gray-500">for a loan up to</p>
-                      <p className="text-2xl font-bold text-gray-900">$450,000</p>
+                      <p className="text-xs font-medium text-primary">Congrats, you're pre-approved!</p>
+                      <p className="text-xs text-muted-foreground">for a loan up to</p>
+                      <p className="text-2xl font-bold text-foreground">$450,000</p>
                     </div>
-                    <div className="rounded-lg bg-gray-100 p-3">
-                      <p className="text-xs text-gray-600">See your customized rate options in seconds</p>
+                    <div className="rounded-lg bg-secondary p-3">
+                      <p className="text-xs text-muted-foreground">See your customized rate options</p>
                     </div>
                   </div>
                 </div>
@@ -95,10 +94,10 @@ export default function Landing() {
               <Card className="absolute -right-4 top-8 hidden w-48 border-0 shadow-lg sm:block lg:-right-24">
                 <CardContent className="p-3">
                   <div className="flex items-start gap-2">
-                    <CheckCircle2 className="h-5 w-5 shrink-0 text-green-600" />
+                    <CheckCircle2 className="h-5 w-5 shrink-0 text-primary" />
                     <div>
                       <p className="text-xs font-medium">You don't need</p>
-                      <p className="text-xs text-gray-500">perfect credit to qualify</p>
+                      <p className="text-xs text-muted-foreground">perfect credit to qualify</p>
                     </div>
                   </div>
                 </CardContent>
@@ -107,10 +106,10 @@ export default function Landing() {
               <Card className="absolute -left-4 top-32 hidden w-48 border-0 shadow-lg sm:block lg:-left-24">
                 <CardContent className="p-3">
                   <div className="flex items-start gap-2">
-                    <Sparkles className="h-5 w-5 shrink-0 text-green-600" />
+                    <Sparkles className="h-5 w-5 shrink-0 text-primary" />
                     <div>
-                      <p className="text-xs font-medium">Instant answers</p>
-                      <p className="text-xs text-gray-500">smarter, simpler with Betsy AI</p>
+                      <p className="text-xs font-medium">We'll let you know</p>
+                      <p className="text-xs text-muted-foreground">if anything changes</p>
                     </div>
                   </div>
                 </CardContent>
@@ -134,7 +133,7 @@ export default function Landing() {
                     </div>
                   </div>
                   <p className="text-sm leading-relaxed text-white">
-                    "I used MortgageAI three years ago for my primary residence and just closed on my vacation home. Very simple process. Each time it took about two weeks to close."
+                    "I used Baranest for my primary residence and just closed on my vacation home. Very simple process. The team was calm and reassuring every step of the way."
                   </p>
                   <p className="mt-3 text-xs text-gray-400">Paul, Mortgage Customer</p>
                 </div>
@@ -147,7 +146,7 @@ export default function Landing() {
                     key={person.name}
                     variant={person.active ? "default" : "outline"}
                     size="sm"
-                    className={person.active ? "bg-green-800 hover:bg-green-900" : ""}
+                    className={person.active ? "" : ""}
                   >
                     {person.name}
                   </Button>
@@ -164,7 +163,7 @@ export default function Landing() {
               </h2>
 
               <Button
-                className="mt-8 gap-2 bg-green-800 hover:bg-green-900"
+                className="mt-8 gap-2"
                 data-testid="button-see-stories"
               >
                 See all our stories
@@ -173,7 +172,7 @@ export default function Landing() {
               <div className="mt-6 flex items-center justify-center gap-2 lg:justify-start">
                 <div className="flex">
                   {[1, 2, 3, 4, 5].map((i) => (
-                    <Star key={i} className="h-4 w-4 fill-green-600 text-green-600" />
+                    <Star key={i} className="h-4 w-4 fill-primary text-primary" />
                   ))}
                 </div>
                 <span className="text-sm font-medium">Excellent</span>
@@ -202,7 +201,7 @@ export default function Landing() {
                   </p>
                   <Button
                     variant="ghost"
-                    className="mt-4 gap-1 p-0 text-green-700 hover:text-green-800 hover:bg-transparent"
+                    className="mt-4 gap-1 p-0 text-primary hover:text-primary/80 hover:bg-transparent"
                     data-testid="button-buy-home"
                   >
                     Get started <ArrowRight className="h-3 w-3" />
@@ -220,7 +219,7 @@ export default function Landing() {
                   </p>
                   <Button
                     variant="ghost"
-                    className="mt-4 gap-1 p-0 text-green-700 hover:text-green-800 hover:bg-transparent"
+                    className="mt-4 gap-1 p-0 text-primary hover:text-primary/80 hover:bg-transparent"
                     data-testid="button-refinance"
                   >
                     Get started <ArrowRight className="h-3 w-3" />
@@ -238,7 +237,7 @@ export default function Landing() {
                   </p>
                   <Button
                     variant="ghost"
-                    className="mt-4 gap-1 p-0 text-green-700 hover:text-green-800 hover:bg-transparent"
+                    className="mt-4 gap-1 p-0 text-primary hover:text-primary/80 hover:bg-transparent"
                     data-testid="button-browse-properties"
                   >
                     Browse <ArrowRight className="h-3 w-3" />

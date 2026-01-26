@@ -43,7 +43,7 @@ const resources = [
     items: [
       {
         title: "Pre-approval letter",
-        description: "Start your search with a pre-approval letter from MortgageAI",
+        description: "Start your search with a pre-approval letter from Baranest",
         icon: undefined,
         action: "Read more",
       },
