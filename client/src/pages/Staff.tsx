@@ -30,7 +30,7 @@ const teamMembers = [
   {
     role: "Real Estate Agent",
     title: "Find your dream home",
-    description: "Better has a network of trusted real estate agents who can help you with your home search. Start getting matched with agents in your area.",
+    description: "Baranest has a network of trusted real estate agents who can help you with your home search. Start getting matched with agents in your area.",
   },
 ];
 

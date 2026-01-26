@@ -349,7 +349,7 @@ export default function ApplicationSummary() {
                           className="mt-2 w-full gap-2"
                           data-testid="button-find-agent"
                         >
-                          Find a Better agent
+                          Find a Baranest agent
                           <ChevronRight className="h-4 w-4" />
                         </Button>
                       </div>

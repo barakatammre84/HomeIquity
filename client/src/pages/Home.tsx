@@ -153,7 +153,7 @@ export default function Home() {
               <h2 className="text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
                 Find out why
                 <br />
-                we're better.
+                customers love us.
               </h2>
 
               <Button

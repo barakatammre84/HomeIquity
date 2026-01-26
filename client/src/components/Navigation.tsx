@@ -166,7 +166,7 @@ export function Navigation() {
                       className="group inline-flex h-10 w-max items-center justify-center rounded-full bg-transparent px-4 py-2 text-sm font-medium text-white/90 transition-all duration-200 hover:bg-white/10 hover:text-white focus:bg-white/10 focus:text-white focus:outline-none cursor-pointer"
                       onClick={() => window.location.href = '/resources'}
                     >
-                      Better+
+                      Resources
                     </NavigationMenuLink>
                   </NavigationMenuItem>
                 </NavigationMenuList>
@@ -285,7 +285,7 @@ export function Navigation() {
                   className="w-full justify-start text-white/90 hover:text-white hover:bg-white/10"
                   onClick={() => setMobileMenuOpen(false)}
                 >
-                  Better+
+                  Resources
                 </Button>
               </Link>
             </div>
