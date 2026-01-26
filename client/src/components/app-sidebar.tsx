@@ -181,8 +181,7 @@ export function AppSidebar() {
   const [location] = useLocation();
   const { user } = useAuth();
   const [isHelpExpanded, setIsHelpExpanded] = useState(false);
-  const [isLearnExpanded, setIsLearnExpanded] = useState(false);
-
+  
   // Fetch team members from API with presence (refresh every 30s)
   const { data: teamMembers = [] } = useQuery<TeamMember[]>({
     queryKey: ["/api/team-members"],
@@ -416,97 +415,14 @@ export function AppSidebar() {
                   )}
                 </SidebarMenuItem>
 
-                {/* Learn with Team Dropdown */}
+                {/* Learn - Links to Resources page */}
                 <SidebarMenuItem>
-                  <SidebarMenuButton 
-                    onClick={() => setIsLearnExpanded(!isLearnExpanded)}
-                    data-testid="button-learn-toggle"
-                  >
-                    <GraduationCap className="h-4 w-4" />
-                    <span>Learn</span>
-                    <div className="ml-auto flex items-center gap-1.5">
-                      {hasMissingTeamMembers && (
-                        <Badge variant="outline" className="text-xs text-amber-600 border-amber-300 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-700" data-testid="badge-learn-incomplete">
-                          Incomplete
-                        </Badge>
-                      )}
-                      {isLearnExpanded ? (
-                        <ChevronDown className="h-4 w-4" />
-                      ) : (
-                        <ChevronRight className="h-4 w-4" />
-                      )}
-                    </div>
+                  <SidebarMenuButton asChild isActive={isActive("/resources")}>
+                    <Link href="/resources" className="cursor-pointer" data-testid="link-learn">
+                      <GraduationCap className="h-4 w-4" />
+                      <span>Learn</span>
+                    </Link>
                   </SidebarMenuButton>
-                  {isLearnExpanded && (
-                    <SidebarMenuSub>
-                      <SidebarMenuSubItem>
-                        <div className="px-2 py-1.5 text-xs text-muted-foreground font-medium">Your Team</div>
-                      </SidebarMenuSubItem>
-                      {teamMembers.length > 0 ? (
-                        teamMembers.map((member) => (
-                          <SidebarMenuSubItem key={member.id}>
-                            <SidebarMenuSubButton asChild>
-                              <Link 
-                                href={`/messages/${member.id}`} 
-                                className="cursor-pointer flex items-center gap-2"
-                                data-testid={`link-learn-team-${member.id}`}
-                              >
-                                <div className="relative">
-                                  <Avatar className="h-6 w-6">
-                                    <AvatarFallback className="text-xs bg-primary/10 text-primary">
-                                      {member.initials}
-                                    </AvatarFallback>
-                                  </Avatar>
-                                  <Circle 
-                                    className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 fill-current ${getStatusColor(member.presenceStatus)}`}
-                                  />
-                                </div>
-                                <div className="flex flex-col min-w-0">
-                                  <span className="text-sm truncate">{member.name}</span>
-                                  <span className="text-xs text-muted-foreground truncate">{ROLE_DISPLAY_NAMES[member.role] || member.role}</span>
-                                </div>
-                              </Link>
-                            </SidebarMenuSubButton>
-                          </SidebarMenuSubItem>
-                        ))
-                      ) : (
-                        <SidebarMenuSubItem>
-                          <div className="px-2 py-2 flex items-center gap-2 text-sm text-muted-foreground">
-                            <AlertCircle className="h-4 w-4 text-amber-500" />
-                            <span>No team assigned yet</span>
-                          </div>
-                        </SidebarMenuSubItem>
-                      )}
-                      {missingRoles.length > 0 && teamMembers.length > 0 && (
-                        <>
-                          <SidebarMenuSubItem>
-                            <div className="px-2 py-1.5 text-xs text-muted-foreground font-medium border-t mt-1 pt-2">Pending Assignment</div>
-                          </SidebarMenuSubItem>
-                          {missingRoles.map((role) => (
-                            <SidebarMenuSubItem key={role}>
-                              <div className="px-2 py-1.5 flex items-center gap-2 text-sm text-muted-foreground">
-                                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-muted">
-                                  <AlertCircle className="h-3.5 w-3.5 text-amber-500" />
-                                </div>
-                                <span>{ROLE_DISPLAY_NAMES[role] || role}</span>
-                                <Badge variant="outline" className="ml-auto text-[10px] text-amber-600 border-amber-300">
-                                  TBD
-                                </Badge>
-                              </div>
-                            </SidebarMenuSubItem>
-                          ))}
-                        </>
-                      )}
-                      <SidebarMenuSubItem>
-                        <SidebarMenuSubButton asChild>
-                          <Link href="/resources" className="cursor-pointer" data-testid="link-resources">
-                            <BookOpen className="h-4 w-4" />
-                            <span>Resources</span>
-                          </Link>
-                        </SidebarMenuSubButton>
-                      </SidebarMenuSubItem>
-                    </SidebarMenuSub>
-                  )}
                 </SidebarMenuItem>
               </SidebarMenu>
             </SidebarGroupContent>
