@@ -59,3 +59,99 @@ The backend is built with Node.js, Express.js, and TypeScript, utilizing Postgre
 -   **vaul:** Drawer component.
 -   **lucide-react:** Icon library.
 -   **framer-motion:** Animation library.
+
+## MATERIALITY RULES DSL ENGINE
+
+The Materiality Rules DSL answers ONE question: "Does this change require action to preserve pre-approval validity?"
+
+### Design Goals
+- Detect material vs non-material changes
+- Be guideline-aligned but broker-safe
+- Trigger actions, not decisions
+- Be versioned, explainable, and auditable
+- Never silently re-underwrite
+
+### Core Principle
+The DSL NEVER: recalculates income, issues approvals, or modifies snapshots.
+
+### Database Tables (4 tables)
+
+**1. `materiality_rule_sets`** - Versioned rule containers:
+- Rule set ID (e.g., "CONV_BASELINE_COC")
+- Product type (CONV, FHA, VA, HELOC)
+- Authority (BROKER_PRE_APPROVAL, LENDER_SPECIFIC, REGULATORY)
+- Version control with effective/expiration dates (legal compliance)
+- Draft vs published status
+
+**2. `materiality_rules`** - Individual rules with full DSL schema:
+- Category: INCOME, EMPLOYMENT, CREDIT, ASSETS, LIABILITIES
+- AppliesTo filters: incomeType, occupancy, productType
+- When condition: metric, change type (PERCENT_DECREASE, ABSOLUTE_DECREASE, BOOLEAN_CHANGE, NEW_ENTRY)
+- Materiality declaration: isMaterial (true/false), severity (LOW, MEDIUM, HIGH)
+- Required action: NONE, BORROWER_ATTESTATION, DOCUMENT_REFRESH, CREDIT_REFRESH, REUNDERWRITE
+- Explanation with guideline reference
+
+**3. `change_events`** - Normalized delta inputs:
+- Snapshot vs current state comparison
+- Metric changes with previous/current values
+- Change type and computed deltas (absolute, percent)
+- Source tracking (PLAID_REFRESH, DOCUMENT_UPLOAD, CREDIT_REFRESH)
+
+**4. `materiality_evaluations`** - Audit-complete decision logs:
+- Every rule evaluated (NO short-circuiting for audit)
+- Rule matched status, materiality, severity, required action
+- Evaluation context with all values compared
+- Aggregated result across all rules
+- Action taken tracking with timestamps
+
+### Example Rules
+
+**Income 10% Decrease (Material):**
+```
+category: INCOME
+metric: income.qualifying
+changeType: PERCENT_DECREASE
+value: 10
+isMaterial: true
+severity: HIGH
+requiredAction: REUNDERWRITE
+guidelineReference: "Fannie Mae B3-3.1-01"
+```
+
+**New Credit Account (Material):**
+```
+category: CREDIT
+metric: credit.newTradeline
+changeType: NEW_ENTRY
+isMaterial: true
+severity: MEDIUM
+requiredAction: CREDIT_REFRESH
+```
+
+**Asset Fluctuation <$2K (Non-Material):**
+```
+category: ASSETS
+metric: assets.total
+changeType: ABSOLUTE_DECREASE
+value: 2000
+isMaterial: false
+severity: LOW
+requiredAction: NONE
+```
+
+### Execution Semantics
+
+1. Compare snapshot metrics vs current metrics
+2. Normalize deltas into ChangeEvents
+3. Evaluate ALL applicable rules (no short-circuiting)
+4. If any rule returns REUNDERWRITE: freeze pre-approval, require new snapshot
+5. Log every decision
+
+### Hard Guardrails (DO NOT BREAK)
+- No silent re-underwriting
+- No borrower-hidden actions
+- No LO overrides of materiality
+- No mutable snapshots
+- No unversioned rules
+- Old snapshots reference old rule versions
+- New rules never retroactively apply
