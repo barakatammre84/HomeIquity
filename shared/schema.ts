@@ -5944,3 +5944,697 @@ export const insertLenderDataPackageSchema = createInsertSchema(lenderDataPackag
 // Type exports for Lender Data Packages
 export type InsertLenderDataPackage = z.infer<typeof insertLenderDataPackageSchema>;
 export type LenderDataPackage = typeof lenderDataPackages.$inferSelect;
+
+// =============================================================================
+// OFFER BRIDGE ARCHITECTURE
+// =============================================================================
+// Marketplace layer between borrower ↔ broker ↔ lender
+// Core Principle: You control eligibility. Lenders control pricing. Clients control selection.
+// System orchestrates — it does not decide credit or pricing.
+
+// WHOLESALE LENDERS - Lender partner registry
+export const wholesaleLenders = pgTable("wholesale_lenders", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Lender identification
+  lenderId: varchar("lender_id", { length: 100 }).notNull().unique(),
+  lenderName: varchar("lender_name", { length: 255 }).notNull(),
+  lenderCode: varchar("lender_code", { length: 20 }).notNull().unique(), // Short code for UI
+  
+  // Contact & Portal
+  primaryContact: varchar("primary_contact", { length: 255 }),
+  contactEmail: varchar("contact_email", { length: 255 }),
+  contactPhone: varchar("contact_phone", { length: 50 }),
+  portalUrl: varchar("portal_url", { length: 500 }),
+  
+  // Integration tier: MANUAL, SEMI_AUTOMATED, API
+  integrationTier: varchar("integration_tier", { length: 20 }).default("MANUAL").notNull(),
+  
+  // API configuration (Tier 3 only)
+  apiConfig: jsonb("api_config").$type<{
+    baseUrl?: string;
+    authType?: "API_KEY" | "OAUTH" | "BASIC";
+    endpoints?: {
+      pricing?: string;
+      lock?: string;
+      productEligibility?: string;
+    };
+  }>(),
+  
+  // Lender capabilities
+  capabilities: jsonb("capabilities").$type<{
+    productTypes: string[]; // CONVENTIONAL, FHA, VA, USDA, JUMBO, HELOC
+    occupancyTypes: string[]; // PRIMARY, SECOND_HOME, INVESTMENT
+    statesLicensed: string[];
+    minLoanAmount?: number;
+    maxLoanAmount?: number;
+    minCreditScore?: number;
+  }>(),
+  
+  // Broker relationship
+  brokerCompensation: jsonb("broker_compensation").$type<{
+    compensationType: "BORROWER_PAID" | "LENDER_PAID" | "EITHER";
+    defaultBps?: number; // Basis points
+    minBps?: number;
+    maxBps?: number;
+  }>(),
+  
+  // Status
+  status: varchar("status", { length: 20 }).default("ACTIVE"), // ACTIVE, INACTIVE, SUSPENDED
+  isPreferred: boolean("is_preferred").default(false),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_wholesale_lenders_code").on(table.lenderCode),
+  index("idx_wholesale_lenders_tier").on(table.integrationTier),
+  index("idx_wholesale_lenders_status").on(table.status),
+]);
+
+export const insertWholesaleLenderSchema = createInsertSchema(wholesaleLenders).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertWholesaleLender = z.infer<typeof insertWholesaleLenderSchema>;
+export type WholesaleLender = typeof wholesaleLenders.$inferSelect;
+
+// RATE SHEETS - Lender-uploaded rate sheets (Tier 1 & 2)
+export const rateSheets = pgTable("rate_sheets", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Sheet identification
+  sheetId: varchar("sheet_id", { length: 100 }).notNull().unique(),
+  lenderId: varchar("lender_id").references(() => wholesaleLenders.id).notNull(),
+  
+  // Version & validity
+  version: varchar("version", { length: 20 }).notNull(),
+  effectiveDate: date("effective_date").notNull(),
+  expirationDate: date("expiration_date").notNull(),
+  
+  // Upload tracking
+  uploadMethod: varchar("upload_method", { length: 20 }).default("MANUAL"), // MANUAL, CSV, EXCEL, API
+  uploadedBy: varchar("uploaded_by"),
+  uploadedAt: timestamp("uploaded_at").defaultNow(),
+  sourceFileName: varchar("source_file_name", { length: 255 }),
+  
+  // Sheet metadata
+  productTypes: text("product_types").array(), // CONV_30, CONV_15, FHA_30, VA_30, etc.
+  lockTerms: integer("lock_terms").array(), // [15, 30, 45, 60] days
+  
+  // Status
+  status: varchar("status", { length: 20 }).default("ACTIVE"), // DRAFT, ACTIVE, EXPIRED, SUPERSEDED
+  
+  // Raw data for reference
+  rawData: jsonb("raw_data"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_rate_sheets_lender").on(table.lenderId),
+  index("idx_rate_sheets_effective").on(table.effectiveDate),
+  index("idx_rate_sheets_status").on(table.status),
+]);
+
+export const rateSheetsRelations = relations(rateSheets, ({ one, many }) => ({
+  lender: one(wholesaleLenders, {
+    fields: [rateSheets.lenderId],
+    references: [wholesaleLenders.id],
+  }),
+  products: many(rateSheetProducts),
+}));
+
+export const insertRateSheetSchema = createInsertSchema(rateSheets).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertRateSheet = z.infer<typeof insertRateSheetSchema>;
+export type RateSheet = typeof rateSheets.$inferSelect;
+
+// RATE SHEET PRODUCTS - Individual products within rate sheets
+export const rateSheetProducts = pgTable("rate_sheet_products", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  rateSheetId: varchar("rate_sheet_id").references(() => rateSheets.id).notNull(),
+  
+  // Product identification
+  productCode: varchar("product_code", { length: 50 }).notNull(),
+  productName: varchar("product_name", { length: 255 }).notNull(),
+  productType: varchar("product_type", { length: 30 }).notNull(), // CONVENTIONAL, FHA, VA, USDA, JUMBO
+  loanTerm: integer("loan_term").notNull(), // 360, 180, 120 months
+  amortizationType: varchar("amortization_type", { length: 20 }).default("FIXED"), // FIXED, ARM_5_1, ARM_7_1
+  
+  // Base rate (par rate at 0 points)
+  baseRate: decimal("base_rate", { precision: 6, scale: 4 }).notNull(),
+  
+  // Lock terms and rate adjustments
+  lockTermAdjustments: jsonb("lock_term_adjustments").$type<{
+    [lockDays: string]: number; // e.g., {"15": -0.125, "30": 0, "45": 0.125, "60": 0.25}
+  }>(),
+  
+  // Points/rebate grid
+  pointsGrid: jsonb("points_grid").$type<{
+    rate: number;
+    points: number;
+    rebate: number;
+  }[]>(),
+  
+  // Eligibility constraints
+  eligibilityConstraints: jsonb("eligibility_constraints").$type<{
+    minLoanAmount?: number;
+    maxLoanAmount?: number;
+    minCreditScore?: number;
+    maxLTV?: number;
+    maxDTI?: number;
+    occupancyTypes?: string[];
+    propertyTypes?: string[];
+  }>(),
+  
+  // Lender fees
+  lenderFees: jsonb("lender_fees").$type<{
+    originationFee?: number;
+    underwritingFee?: number;
+    processingFee?: number;
+    floodCertFee?: number;
+    appraisalFee?: number;
+    other?: { name: string; amount: number }[];
+  }>(),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_rate_sheet_products_sheet").on(table.rateSheetId),
+  index("idx_rate_sheet_products_type").on(table.productType),
+  index("idx_rate_sheet_products_code").on(table.productCode),
+]);
+
+export const rateSheetProductsRelations = relations(rateSheetProducts, ({ one }) => ({
+  rateSheet: one(rateSheets, {
+    fields: [rateSheetProducts.rateSheetId],
+    references: [rateSheets.id],
+  }),
+}));
+
+export const insertRateSheetProductSchema = createInsertSchema(rateSheetProducts).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertRateSheetProduct = z.infer<typeof insertRateSheetProductSchema>;
+export type RateSheetProduct = typeof rateSheetProducts.$inferSelect;
+
+// LENDER PRICING ADJUSTMENTS - LLPAs and credit tier adjustments
+export const lenderPricingAdjustments = pgTable("lender_pricing_adjustments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  lenderId: varchar("lender_id").references(() => wholesaleLenders.id).notNull(),
+  rateSheetId: varchar("rate_sheet_id").references(() => rateSheets.id),
+  
+  // Adjustment category
+  adjustmentType: varchar("adjustment_type", { length: 30 }).notNull(), // LLPA, CREDIT_TIER, LTV, PROPERTY_TYPE, OCCUPANCY, CASH_OUT
+  adjustmentName: varchar("adjustment_name", { length: 255 }).notNull(),
+  
+  // Condition for application
+  condition: jsonb("condition").$type<{
+    creditScoreMin?: number;
+    creditScoreMax?: number;
+    ltvMin?: number;
+    ltvMax?: number;
+    occupancy?: string;
+    propertyType?: string;
+    loanPurpose?: string;
+    productType?: string;
+  }>().notNull(),
+  
+  // Adjustment value (in rate points, e.g., 0.25 = 0.25% rate hit)
+  adjustmentValue: decimal("adjustment_value", { precision: 6, scale: 4 }).notNull(),
+  
+  // Whether this stacks with other adjustments
+  isStackable: boolean("is_stackable").default(true),
+  
+  // Source reference
+  guidelineReference: varchar("guideline_reference", { length: 255 }),
+  
+  effectiveDate: date("effective_date").notNull(),
+  expirationDate: date("expiration_date"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_lender_pricing_adj_lender").on(table.lenderId),
+  index("idx_lender_pricing_adj_type").on(table.adjustmentType),
+  index("idx_lender_pricing_adj_effective").on(table.effectiveDate),
+]);
+
+export const lenderPricingAdjustmentsRelations = relations(lenderPricingAdjustments, ({ one }) => ({
+  lender: one(wholesaleLenders, {
+    fields: [lenderPricingAdjustments.lenderId],
+    references: [wholesaleLenders.id],
+  }),
+  rateSheet: one(rateSheets, {
+    fields: [lenderPricingAdjustments.rateSheetId],
+    references: [rateSheets.id],
+  }),
+}));
+
+export const insertLenderPricingAdjustmentSchema = createInsertSchema(lenderPricingAdjustments).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertLenderPricingAdjustment = z.infer<typeof insertLenderPricingAdjustmentSchema>;
+export type LenderPricingAdjustment = typeof lenderPricingAdjustments.$inferSelect;
+
+// LENDER OFFERS - The core Offer Object tied to eligibility snapshots
+export const lenderOffers = pgTable("lender_offers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Offer identification
+  offerId: varchar("offer_id", { length: 100 }).notNull().unique(),
+  
+  // Linked entities
+  lenderId: varchar("lender_id").references(() => wholesaleLenders.id).notNull(),
+  productId: varchar("product_id").references(() => rateSheetProducts.id).notNull(),
+  applicationId: varchar("application_id").references(() => loanApplications.id).notNull(),
+  snapshotId: varchar("snapshot_id").references(() => underwritingSnapshots.id).notNull(),
+  
+  // Pricing (Lender controls this)
+  rate: decimal("rate", { precision: 6, scale: 4 }).notNull(), // e.g., 6.875%
+  apr: decimal("apr", { precision: 6, scale: 4 }), // Annual Percentage Rate
+  points: decimal("points", { precision: 6, scale: 4 }).default("0"), // Positive = cost, Negative = rebate
+  
+  // Fees breakdown
+  lenderFees: decimal("lender_fees", { precision: 12, scale: 2 }).default("0"),
+  thirdPartyFees: decimal("third_party_fees", { precision: 12, scale: 2 }).default("0"),
+  totalClosingCosts: decimal("total_closing_costs", { precision: 12, scale: 2 }),
+  
+  // Payment calculations
+  monthlyPrincipalInterest: decimal("monthly_pi", { precision: 12, scale: 2 }),
+  monthlyMI: decimal("monthly_mi", { precision: 12, scale: 2 }).default("0"),
+  monthlyTotal: decimal("monthly_total", { precision: 12, scale: 2 }), // P&I + MI + escrow
+  
+  // Lock terms
+  lockTerm: integer("lock_term").notNull(), // Days: 15, 30, 45, 60
+  lockExpiration: timestamp("lock_expiration"),
+  
+  // Offer validity
+  offerExpiration: timestamp("offer_expiration").notNull(),
+  
+  // Conditions (from lender)
+  conditions: jsonb("conditions").$type<{
+    preClosing?: string[];
+    postClosing?: string[];
+    priorToDoc?: string[];
+  }>(),
+  
+  // Broker compensation (hidden until LE disclosure)
+  brokerCompensationBps: integer("broker_compensation_bps"), // Basis points
+  brokerCompensationAmount: decimal("broker_compensation_amount", { precision: 12, scale: 2 }),
+  
+  // Offer status workflow
+  status: varchar("status", { length: 20 }).default("PROPOSED").notNull(), // PROPOSED, SELECTED, LOCKED, EXPIRED, WITHDRAWN, REJECTED
+  
+  // Selection tracking
+  selectedAt: timestamp("selected_at"),
+  selectedBy: varchar("selected_by"), // Borrower user ID
+  
+  // Lock tracking
+  lockedAt: timestamp("locked_at"),
+  lockedBy: varchar("locked_by"),
+  lockConfirmationNumber: varchar("lock_confirmation_number", { length: 100 }),
+  
+  // Pricing breakdown (for transparency)
+  pricingBreakdown: jsonb("pricing_breakdown").$type<{
+    baseRate: number;
+    llpaAdjustments: { name: string; value: number }[];
+    lockAdjustment: number;
+    finalRate: number;
+    totalAdjustments: number;
+  }>(),
+  
+  // Labels for borrower comparison
+  labels: text("labels").array(), // ["LOWEST_PAYMENT", "LOWEST_TOTAL_COST", "FASTEST_CLOSE"]
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_lender_offers_application").on(table.applicationId),
+  index("idx_lender_offers_snapshot").on(table.snapshotId),
+  index("idx_lender_offers_lender").on(table.lenderId),
+  index("idx_lender_offers_status").on(table.status),
+  index("idx_lender_offers_expiration").on(table.offerExpiration),
+]);
+
+export const lenderOffersRelations = relations(lenderOffers, ({ one }) => ({
+  lender: one(wholesaleLenders, {
+    fields: [lenderOffers.lenderId],
+    references: [wholesaleLenders.id],
+  }),
+  product: one(rateSheetProducts, {
+    fields: [lenderOffers.productId],
+    references: [rateSheetProducts.id],
+  }),
+  application: one(loanApplications, {
+    fields: [lenderOffers.applicationId],
+    references: [loanApplications.id],
+  }),
+  snapshot: one(underwritingSnapshots, {
+    fields: [lenderOffers.snapshotId],
+    references: [underwritingSnapshots.id],
+  }),
+}));
+
+export const insertLenderOfferSchema = createInsertSchema(lenderOffers).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertLenderOffer = z.infer<typeof insertLenderOfferSchema>;
+export type LenderOffer = typeof lenderOffers.$inferSelect;
+
+// LOCK REQUESTS - Rate lock request flow with attestation and COC check
+export const lockRequests = pgTable("lock_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Request identification
+  requestId: varchar("request_id", { length: 100 }).notNull().unique(),
+  
+  // Linked entities
+  offerId: varchar("offer_id").references(() => lenderOffers.id).notNull(),
+  snapshotId: varchar("snapshot_id").references(() => underwritingSnapshots.id).notNull(),
+  applicationId: varchar("application_id").references(() => loanApplications.id).notNull(),
+  
+  // Lock details
+  requestedLockTerm: integer("requested_lock_term").notNull(), // Days
+  requestedLockExpiration: date("requested_lock_expiration").notNull(),
+  
+  // Client attestation (REQUIRED before lock)
+  clientAttestation: jsonb("client_attestation").$type<{
+    noMaterialChanges: boolean;
+    informationAccurate: boolean;
+    attestedAt: string;
+    attestedBy: string;
+    ipAddress?: string;
+  }>(),
+  
+  // COC check at lock time
+  cocCheckResult: jsonb("coc_check_result").$type<{
+    checkedAt: string;
+    snapshotCurrent: boolean;
+    materialChangesDetected: boolean;
+    changes?: {
+      dimension: string;
+      severity: string;
+      description: string;
+    }[];
+  }>(),
+  
+  // Request status
+  status: varchar("status", { length: 20 }).default("PENDING").notNull(), // PENDING, SUBMITTED, CONFIRMED, DENIED, EXPIRED
+  
+  // Submission tracking
+  submittedAt: timestamp("submitted_at"),
+  submittedBy: varchar("submitted_by"),
+  submissionMethod: varchar("submission_method", { length: 20 }), // PORTAL, EMAIL, API
+  
+  // Lender response
+  lenderResponse: jsonb("lender_response").$type<{
+    status: "CONFIRMED" | "DENIED" | "PENDING";
+    confirmationNumber?: string;
+    confirmedRate?: number;
+    confirmedLockExpiration?: string;
+    denialReason?: string;
+    conditions?: string[];
+    respondedAt?: string;
+    respondedBy?: string;
+  }>(),
+  
+  // If lock is confirmed
+  confirmedAt: timestamp("confirmed_at"),
+  confirmationNumber: varchar("confirmation_number", { length: 100 }),
+  confirmedRate: decimal("confirmed_rate", { precision: 6, scale: 4 }),
+  confirmedLockExpiration: date("confirmed_lock_expiration"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_lock_requests_offer").on(table.offerId),
+  index("idx_lock_requests_application").on(table.applicationId),
+  index("idx_lock_requests_status").on(table.status),
+]);
+
+export const lockRequestsRelations = relations(lockRequests, ({ one }) => ({
+  offer: one(lenderOffers, {
+    fields: [lockRequests.offerId],
+    references: [lenderOffers.id],
+  }),
+  snapshot: one(underwritingSnapshots, {
+    fields: [lockRequests.snapshotId],
+    references: [underwritingSnapshots.id],
+  }),
+  application: one(loanApplications, {
+    fields: [lockRequests.applicationId],
+    references: [loanApplications.id],
+  }),
+}));
+
+export const insertLockRequestSchema = createInsertSchema(lockRequests).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertLockRequest = z.infer<typeof insertLockRequestSchema>;
+export type LockRequest = typeof lockRequests.$inferSelect;
+
+// BROKER OFFER CONTROLS - Suppression, ranking, overlays, comp settings
+export const brokerOfferControls = pgTable("broker_offer_controls", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  applicationId: varchar("application_id").references(() => loanApplications.id).notNull(),
+  
+  // Lender suppression (broker can hide lenders from borrower view)
+  suppressedLenderIds: text("suppressed_lender_ids").array(),
+  
+  // Offer ranking overrides
+  offerRanking: jsonb("offer_ranking").$type<{
+    offerId: string;
+    rank: number;
+    reason?: string;
+  }[]>(),
+  
+  // House overlays (broker's additional requirements)
+  houseOverlays: jsonb("house_overlays").$type<{
+    minCreditScore?: number;
+    maxDTI?: number;
+    maxLTV?: number;
+    excludePropertyTypes?: string[];
+    excludeOccupancyTypes?: string[];
+    notes?: string;
+  }>(),
+  
+  // Broker compensation setting (set once, applies to all offers)
+  brokerCompensationType: varchar("broker_compensation_type", { length: 20 }), // BORROWER_PAID, LENDER_PAID
+  brokerCompensationBps: integer("broker_compensation_bps"),
+  compensationLockedAt: timestamp("compensation_locked_at"),
+  compensationLockedBy: varchar("compensation_locked_by"),
+  
+  // Display preferences
+  displayPreferences: jsonb("display_preferences").$type<{
+    maxOffersToShow?: number; // Default 5
+    defaultSortBy?: "PAYMENT" | "TOTAL_COST" | "RATE";
+    showPointsToggle?: boolean;
+  }>(),
+  
+  // All actions logged
+  actionLog: jsonb("action_log").$type<{
+    action: string;
+    timestamp: string;
+    performedBy: string;
+    details?: Record<string, unknown>;
+  }[]>(),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_broker_offer_controls_application").on(table.applicationId),
+]);
+
+export const brokerOfferControlsRelations = relations(brokerOfferControls, ({ one }) => ({
+  application: one(loanApplications, {
+    fields: [brokerOfferControls.applicationId],
+    references: [loanApplications.id],
+  }),
+}));
+
+export const insertBrokerOfferControlSchema = createInsertSchema(brokerOfferControls).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertBrokerOfferControl = z.infer<typeof insertBrokerOfferControlSchema>;
+export type BrokerOfferControl = typeof brokerOfferControls.$inferSelect;
+
+// OFFER SELECTION EVENTS - Audit trail for borrower selections
+export const offerSelectionEvents = pgTable("offer_selection_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Event identification
+  eventId: varchar("event_id", { length: 100 }).notNull().unique(),
+  
+  // Linked entities
+  offerId: varchar("offer_id").references(() => lenderOffers.id).notNull(),
+  applicationId: varchar("application_id").references(() => loanApplications.id).notNull(),
+  snapshotId: varchar("snapshot_id").references(() => underwritingSnapshots.id).notNull(),
+  lenderId: varchar("lender_id").references(() => wholesaleLenders.id).notNull(),
+  
+  // Event type
+  eventType: varchar("event_type", { length: 30 }).notNull(), // VIEWED, COMPARED, SELECTED, DESELECTED, LOCK_REQUESTED
+  
+  // Selection details
+  selectionData: jsonb("selection_data").$type<{
+    rate: number;
+    points: number;
+    monthlyPayment: number;
+    totalClosingCosts: number;
+    lockTerm: number;
+    labels?: string[];
+  }>(),
+  
+  // Who and when
+  performedBy: varchar("performed_by").notNull(), // User ID
+  performedAt: timestamp("performed_at").defaultNow().notNull(),
+  
+  // For lender visibility - what lender sees when client selects
+  lenderVisibility: jsonb("lender_visibility").$type<{
+    eligibilitySnapshotId: string;
+    offerAccepted: boolean;
+    acceptedAt?: string;
+    noChangesPending: boolean;
+    cocStatus?: string;
+  }>(),
+  
+  // IP and session tracking for compliance
+  clientMetadata: jsonb("client_metadata").$type<{
+    ipAddress?: string;
+    userAgent?: string;
+    sessionId?: string;
+  }>(),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_offer_selection_events_offer").on(table.offerId),
+  index("idx_offer_selection_events_application").on(table.applicationId),
+  index("idx_offer_selection_events_type").on(table.eventType),
+  index("idx_offer_selection_events_performed_at").on(table.performedAt),
+]);
+
+export const offerSelectionEventsRelations = relations(offerSelectionEvents, ({ one }) => ({
+  offer: one(lenderOffers, {
+    fields: [offerSelectionEvents.offerId],
+    references: [lenderOffers.id],
+  }),
+  application: one(loanApplications, {
+    fields: [offerSelectionEvents.applicationId],
+    references: [loanApplications.id],
+  }),
+  snapshot: one(underwritingSnapshots, {
+    fields: [offerSelectionEvents.snapshotId],
+    references: [underwritingSnapshots.id],
+  }),
+  lender: one(wholesaleLenders, {
+    fields: [offerSelectionEvents.lenderId],
+    references: [wholesaleLenders.id],
+  }),
+}));
+
+export const insertOfferSelectionEventSchema = createInsertSchema(offerSelectionEvents).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertOfferSelectionEvent = z.infer<typeof insertOfferSelectionEventSchema>;
+export type OfferSelectionEvent = typeof offerSelectionEvents.$inferSelect;
+
+// OFFER COMPARISON SESSIONS - Track borrower shopping behavior
+export const offerComparisonSessions = pgTable("offer_comparison_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Session identification
+  sessionId: varchar("session_id", { length: 100 }).notNull().unique(),
+  applicationId: varchar("application_id").references(() => loanApplications.id).notNull(),
+  snapshotId: varchar("snapshot_id").references(() => underwritingSnapshots.id).notNull(),
+  borrowerId: varchar("borrower_id").references(() => users.id).notNull(),
+  
+  // Session timing
+  startedAt: timestamp("started_at").defaultNow().notNull(),
+  endedAt: timestamp("ended_at"),
+  
+  // Offers shown (normalized for comparison)
+  offersShown: jsonb("offers_shown").$type<{
+    offerId: string;
+    lenderId: string;
+    rate: number;
+    points: number;
+    monthlyPayment: number;
+    totalCost: number;
+    labels: string[];
+    viewedAt?: string;
+    viewDurationMs?: number;
+  }[]>(),
+  
+  // Comparison interactions
+  comparisonActions: jsonb("comparison_actions").$type<{
+    action: "TOGGLE_POINTS" | "SORT_BY" | "EXPAND_DETAILS" | "BREAKEVEN_CALC" | "SELECT" | "DESELECT";
+    timestamp: string;
+    data?: Record<string, unknown>;
+  }[]>(),
+  
+  // Final selection (if any)
+  selectedOfferId: varchar("selected_offer_id").references(() => lenderOffers.id),
+  selectionReason: varchar("selection_reason", { length: 255 }), // Optional borrower feedback
+  
+  // Break-even calculator usage
+  breakevenCalculations: jsonb("breakeven_calculations").$type<{
+    offer1Id: string;
+    offer2Id: string;
+    breakevenMonths: number;
+    calculatedAt: string;
+  }[]>(),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_offer_comparison_sessions_application").on(table.applicationId),
+  index("idx_offer_comparison_sessions_borrower").on(table.borrowerId),
+  index("idx_offer_comparison_sessions_started").on(table.startedAt),
+]);
+
+export const offerComparisonSessionsRelations = relations(offerComparisonSessions, ({ one }) => ({
+  application: one(loanApplications, {
+    fields: [offerComparisonSessions.applicationId],
+    references: [loanApplications.id],
+  }),
+  snapshot: one(underwritingSnapshots, {
+    fields: [offerComparisonSessions.snapshotId],
+    references: [underwritingSnapshots.id],
+  }),
+  borrower: one(users, {
+    fields: [offerComparisonSessions.borrowerId],
+    references: [users.id],
+  }),
+  selectedOffer: one(lenderOffers, {
+    fields: [offerComparisonSessions.selectedOfferId],
+    references: [lenderOffers.id],
+  }),
+}));
+
+export const insertOfferComparisonSessionSchema = createInsertSchema(offerComparisonSessions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertOfferComparisonSession = z.infer<typeof insertOfferComparisonSessionSchema>;
+export type OfferComparisonSession = typeof offerComparisonSessions.$inferSelect;

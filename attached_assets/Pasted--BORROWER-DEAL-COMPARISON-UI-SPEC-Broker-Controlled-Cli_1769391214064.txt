@@ -1,0 +1,278 @@
+🧭 BORROWER DEAL COMPARISON UI SPEC
+
+(Broker-Controlled, Client-Friendly, Lender-Safe)
+
+🎯 CORE DESIGN PRINCIPLES
+
+Clarity over volume (3–5 offers max)
+
+Normalize everything (apples-to-apples)
+
+Explain tradeoffs, not “best”
+
+No compensation shown
+
+Client choice is logged & attested
+
+Frozen eligibility inputs
+
+1️⃣ ENTRY CONDITION (GATE)
+
+Borrower only sees this screen if:
+
+Eligibility snapshot = Valid
+
+No active change-of-circumstance
+
+Credit / income / assets frozen
+
+If invalid:
+
+“We need to refresh your info before showing options.”
+
+2️⃣ PAGE LAYOUT (HIGH LEVEL)
+Top Section – Context Bar (Sticky)
+
+Shows:
+
+Loan amount
+
+Loan type
+
+Occupancy
+
+Credit tier (range, not score)
+
+Lock period (e.g. 30 days)
+
+This reassures the borrower:
+
+“These offers are based on your situation.”
+
+3️⃣ OFFER CARDS (MAIN CONTENT)
+
+Display 3–5 cards max.
+
+Each card is an Offer Object rendered visually.
+
+🟦 OFFER CARD – REQUIRED FIELDS
+
+Header
+
+Label badge (one only):
+
+Lowest Monthly Payment
+
+Lowest Total Cost (5 yrs)
+
+Best Short-Term Option
+
+Fastest Closing
+
+Core Numbers (Large Font)
+
+Interest Rate
+
+APR
+
+Monthly Payment
+
+Secondary Numbers
+
+Points (if any)
+
+Estimated Cash to Close
+
+Lock Term
+
+Estimated Close Time
+
+🟦 EXPANDABLE “DETAILS” SECTION
+
+Collapsed by default.
+
+Expands to show:
+
+Breakdown of fees
+
+Points explanation
+
+Lender name (can be shown or masked)
+
+Conditions summary (e.g. “Standard income review”)
+
+4️⃣ POINTS TOGGLE (CRITICAL FEATURE)
+
+At top of offers list:
+
+Toggle:
+
+“Show options with points”
+
+When enabled:
+
+Cards animate to update
+
+New rows appear:
+
+Points cost
+
+Monthly savings
+
+Break-even (months)
+
+⚠️ BUILT-IN WARNING LOGIC
+
+If break-even > 60 months:
+
+“This option may not make sense if you refinance or sell earlier.”
+
+This protects you legally.
+
+5️⃣ COMPARISON MODE (SIDE-BY-SIDE)
+
+Borrower can select up to 2 offers to compare.
+
+Comparison table shows:
+
+Rate
+
+APR
+
+Monthly payment
+
+Total cost @ 3 / 5 years
+
+Points
+
+Cash to close
+
+No lender sales language.
+
+6️⃣ “WHY YOU’RE SEEING THIS” TOOLTIP
+
+Every page has an info icon:
+
+“These options are based on your verified financial information and current market pricing. Your broker’s compensation does not change based on which option you choose.”
+
+This is huge for trust.
+
+7️⃣ SELECT OFFER FLOW (VERY IMPORTANT)
+
+When borrower clicks “Select This Option”:
+
+Step 1 – Confirmation Modal
+
+Shows:
+
+Selected offer summary
+
+1–2 alternatives (collapsed)
+
+Statement:
+
+“I understand I reviewed multiple options and selected this one.”
+
+Borrower must confirm.
+
+Step 2 – Attestation Capture
+
+System logs:
+
+Offer ID
+
+Timestamp
+
+Borrower acknowledgement
+
+IP / device
+
+Snapshot ID
+
+This protects:
+
+You
+
+The lender
+
+The loan
+
+8️⃣ POST-SELECTION STATE
+
+Once selected:
+
+Other offers become read-only
+
+Status shows: “Pending Lock”
+
+Borrower sees next steps:
+
+Lock confirmation
+
+Disclosures coming
+
+9️⃣ WHAT BORROWERS NEVER SEE (ON PURPOSE)
+
+❌ Broker compensation
+❌ Internal confidence score
+❌ Lender overlays
+❌ Risk flags
+
+Those are internal or lender-facing only.
+
+🔐 10️⃣ COMPLIANCE & AUDIT FEATURES (INVISIBLE BUT CRITICAL)
+
+Behind the scenes:
+
+Every render tied to eligibility snapshot
+
+Offers invalidated if COC detected
+
+Audit log of:
+
+Offers shown
+
+Order displayed
+
+Offer selected
+
+This is regulator-proof.
+
+11️⃣ EDGE CASE HANDLING
+If borrower asks:
+
+“Can I see more options?”
+
+System response:
+
+“We’re showing the most competitive options for your situation to keep things clear. If you’d like to explore a different scenario, we can review together.”
+
+This avoids rate shopping chaos.
+
+12️⃣ DEV NOTES (HAND THIS TO ENGINEERING)
+
+UI driven by Offer Object schema
+
+No pricing math in frontend
+
+All calculations server-side
+
+Feature flags for:
+
+Points toggle
+
+Lender name visibility
+
+Comparison mode
+
+🧠 WHY THIS UI WORKS
+
+Borrowers feel empowered, not sold
+
+Lenders see clean intent
+
+You avoid steering claims
+
+Locks happen faster
+
+Fallout drops
