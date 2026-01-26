@@ -658,6 +658,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           description: `${req.file.originalname} has been uploaded.`,
           performedBy: userId,
         });
+        
+        // Emit document uploaded event for Task Engine
+        const { taskEventEmitter } = await import("./services/taskEventEmitter");
+        await taskEventEmitter.emitDocumentEvent("DOCUMENT_UPLOADED", {
+          applicationId,
+          documentId: document.id,
+          documentType: documentType || "other",
+          triggeredBy: userId,
+        });
       }
 
       res.status(201).json(document);
@@ -725,6 +734,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }),
       });
 
+      // Emit task events based on extraction result
+      if (document.applicationId) {
+        const { taskEventEmitter } = await import("./services/taskEventEmitter");
+        
+        if (extractedData.confidence === "low" || (extractedData.warnings && extractedData.warnings.length > 0)) {
+          // OCR quality issue - create review task
+          await taskEventEmitter.emitDocumentEvent("DOCUMENT_OCR_ISSUE", {
+            applicationId: document.applicationId,
+            documentId: id,
+            documentType: document.documentType,
+            errorMessage: extractedData.warnings?.join(", ") || "Low confidence extraction",
+            triggeredBy: req.user!.id,
+          });
+        }
+      }
+
       res.json({
         documentId: id,
         documentType: document.documentType,
@@ -732,6 +757,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("Document extraction error:", error);
+      
+      // Emit extraction failure event if we have application context
+      const document = await storage.getDocument(req.params.id);
+      if (document?.applicationId) {
+        const { taskEventEmitter } = await import("./services/taskEventEmitter");
+        await taskEventEmitter.emitDocumentEvent("DOCUMENT_EXTRACTION_FAILED", {
+          applicationId: document.applicationId,
+          documentId: req.params.id,
+          documentType: document.documentType,
+          errorMessage: error instanceof Error ? error.message : "Unknown extraction error",
+        });
+      }
+      
       res.status(500).json({ error: "Failed to extract document data" });
     }
   });

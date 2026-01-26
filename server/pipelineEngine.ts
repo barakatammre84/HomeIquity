@@ -357,6 +357,10 @@ export async function updatePipelineStage(
 ): Promise<void> {
   const now = new Date();
   
+  // Get current stage before update for event
+  const application = await storage.getLoanApplication(applicationId);
+  const previousStage = application?.status || "unknown";
+  
   const milestoneUpdate: Record<string, any> = {};
   
   switch (newStage) {
@@ -395,6 +399,36 @@ export async function updatePipelineStage(
   }
 
   await storage.updateLoanApplication(applicationId, { status: newStage });
+  
+  // Emit workflow event for Task Engine integration
+  try {
+    const { taskEventEmitter } = await import("./services/taskEventEmitter");
+    
+    // Map stage to event type
+    const stageEventMap: Record<string, string> = {
+      "pre_approved": "APPLICATION_PRE_APPROVED",
+      "doc_collection": "STAGE_DOC_COLLECTION",
+      "processing": "STAGE_PROCESSING",
+      "underwriting": "STAGE_UNDERWRITING",
+      "conditional": "STAGE_CONDITIONAL",
+      "clear_to_close": "STAGE_CLEAR_TO_CLOSE",
+      "closing": "STAGE_CLOSING",
+      "funded": "STAGE_FUNDED",
+      "denied": "APPLICATION_DENIED",
+    };
+    
+    const eventType = stageEventMap[newStage];
+    if (eventType) {
+      await taskEventEmitter.emitWorkflowEvent(eventType as any, {
+        applicationId,
+        previousStage,
+        newStage,
+      });
+    }
+  } catch (error) {
+    console.error("[PipelineEngine] Failed to emit workflow event:", error);
+    // Don't fail the stage update if event emission fails
+  }
 }
 
 export async function checkPipelineProgress(applicationId: string): Promise<{
