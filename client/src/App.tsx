@@ -52,6 +52,7 @@ import EConsent from "@/pages/EConsent";
 import PartnerServices from "@/pages/PartnerServices";
 import ReferralLanding from "@/pages/ReferralLanding";
 import PolicyOps from "@/pages/PolicyOps";
+import BorrowerDealComparison from "@/pages/BorrowerDealComparison";
 
 function PublicPage({ children }: { children: React.ReactNode }) {
   return <PublicLayout>{children}</PublicLayout>;
@@ -159,6 +160,9 @@ function Router() {
       </Route>
       <Route path="/documents">
         <BorrowerPage><Documents /></BorrowerPage>
+      </Route>
+      <Route path="/compare-offers/:id">
+        {(params) => <BorrowerPage><BorrowerDealComparison /></BorrowerPage>}
       </Route>
 
       {/* Private Pages - Staff (brokers, lenders processing mortgage applications) */}
