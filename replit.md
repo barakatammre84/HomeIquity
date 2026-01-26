@@ -3,55 +3,56 @@
 ## Overview
 Baranest is a modern mortgage platform designed to make mortgage decisions clear and trustworthy. Built on MISMO 3.4 standards with graph-based underwriting logic, Baranest automates and streamlines the mortgage process for 3-minute pre-approvals. The platform uses document intelligence for data extraction, with all underwriting decisions based on deterministic rules to ensure regulatory compliance and mitigate Fair Lending risks. Key capabilities include MISMO 3.4 and ULAD compliant underwriting, graph-based data models, advanced income/property eligibility, LLPA pricing, and multi-tenant support.
 
-## Brand Identity — Institutional Calm
+## Brand Identity — Premium & Distinctive
 **Brand Promise:** Clear answers. Confident approvals.
-**Personality:** Institutional, Mature, Trustworthy (never flashy or startup-ish)
+**Personality:** Trustworthy, Confident, Modern (premium feel, not generic)
 **Voice:** Authoritative, direct, professional - plain English, no jargon, no marketing hype.
 **Taglines:** "Mortgage decisions, made clear." / "Built for certainty, not guesswork." / "Pre-approvals you can trust."
 
-### Color Palette (Muted, Mature)
+### Color Palette (Vibrant & Professional)
 **Primary Palette:**
-- **Midnight Slate (Primary):** #162A3A - Deep trust/navy for CTAs and primary actions
-- **Porcelain (Surface):** #FAFBFC - Near-white, removes "app" feel
-- **Fog Line (Border):** #E6EBF0 - Subtle borders, replaces shadows where possible
-- **Ink (Primary Text):** #0F172A - Strong contrast
-- **Ash (Secondary Text):** #475569 - Softer hierarchy
+- **Deep Navy (Primary):** #1e3a5f - hsl(213, 52%, 24%) - Rich, confident navy for CTAs and hero sections
+- **Pure White (Background):** #ffffff - Clean, bright background
+- **Light Border:** hsl(220, 15%, 90%) - Subtle borders
+- **Rich Charcoal (Text):** hsl(220, 25%, 10%) - Strong contrast
+- **Warm Gray (Secondary Text):** hsl(220, 10%, 45%) - Softer hierarchy
 
-**Accent Palette (Used Sparingly):**
-- **Soft Moss:** #6F9E90 - Primary CTAs, progress indicators, confirmation moments
-- **Deep Moss:** #4E7F73 - Hover/focus states
+**Accent Palette (Eye-catching):**
+- **Vibrant Emerald:** #10b981 - hsl(160, 84%, 39%) - Primary CTA buttons, success states, key highlights
+- **Warm Amber:** hsl(38, 92%, 50%) - Warning states, attention
+- **Ocean Blue:** hsl(200, 80%, 50%) - Info states
 
-**Status Colors (De-Saturated = Professional):**
-- **Evergreen (Success):** #3E7C6A
-- **Muted Amber (Warning):** #B08945
-- **Oxide Red (Error):** #9F3A38
-- **Steel Blue (Info):** #3B5C7E
+**Status Colors:**
+- **Success:** Vibrant Emerald #10b981
+- **Warning:** Rich Amber hsl(38, 92%, 50%)
+- **Error:** Refined Red hsl(0, 72%, 51%)
+- **Info:** Ocean Blue hsl(200, 80%, 50%)
 
-**Dark Mode (Professional Dashboard):**
-- Background: #0B1220
-- Surface: #111827
-- Primary Text: #E5E7EB
-- Secondary Text: #9CA3AF
-- Borders: #1F2937
+**Dark Mode (Rich & Premium):**
+- Background: hsl(222, 47%, 8%) - Rich dark blue
+- Surface: hsl(222, 40%, 12%) - Elevated cards
+- Primary: hsl(213, 70%, 50%) - Brighter navy
+- Accent: hsl(160, 84%, 45%) - Vibrant emerald
+- Text: 98% white
+- Borders: hsl(220, 30%, 18%)
 
-### Typography (Quiet Confidence)
-**Primary Font:** Inter (alternative: Source Sans 3)
-- H1: 34px, weight 600
-- H2: 26px, weight 500
-- H3: 20px, weight 500
-- Body: 15-16px, weight 400
-- Meta/Labels: 13px, weight 400
-- Line Height (Headings): 1.25
-- Line Height (Body): 1.55
+### Typography
+**Primary Font:** Inter
+- H1: 36-60px, weight 700 (bold for impact)
+- H2: 28-40px, weight 700
+- H3: 20-24px, weight 600
+- Body: 16-18px, weight 400
+- Line Height (Body): 1.6
 
-### UI Style (Institutional)
-- **Cards:** Border instead of shadow (default), shadow on hover only
-- **Card Padding:** 24-32px, Radius: 12px consistent everywhere
-- **Buttons:** Solid primary (no gradients), outline secondary, text+icon destructive
-- **Button Shape:** Rounded (12px), no pill shapes
-- **Input Height:** 44-48px, labels always visible
-- **Shadows:** Subtle when used: `box-shadow: 0 6px 20px rgba(15, 23, 42, 0.06)`
-- **Motion:** 120-180ms, ease-in-out, directional (no bounce/elastic)
+### UI Style (Premium)
+- **Hero Sections:** Gradient backgrounds (from-primary via-primary to-darker), decorative blur orbs
+- **Cards:** Clean white with subtle shadows, shadow-lg for emphasis
+- **Buttons:** Emerald green CTAs with shadow-lg shadow-emerald-500/25, outline variants for secondary
+- **Button Shape:** Rounded (12px)
+- **Input Height:** 44-48px
+- **Shadows:** Colored shadows for premium feel: `shadow-primary/25` or `shadow-emerald-500/25`
+- **Motion:** 150ms ease-in-out
+- **Footer:** Dark navy background matching primary color
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
