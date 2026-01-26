@@ -1,15 +1,14 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
-import { formatCurrency, getStatusLabel
-
- } from "@/lib/authUtils";
+import { formatCurrency, getStatusLabel } from "@/lib/authUtils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BorrowerRequests } from "@/components/BorrowerRequests";
+import { ApplicationSwitcher } from "@/components/ApplicationSwitcher";
 import type { LoanApplication, DealActivity } from "@shared/schema";
 import {
   CheckCircle2,
@@ -108,9 +107,17 @@ export default function Dashboard() {
   const applications = data?.applications || [];
   const activities = data?.activities || [];
 
-  const activeApplication = applications.find(
+  // Track selected application (default to first non-closed/denied app)
+  const [selectedAppId, setSelectedAppId] = useState<string | null>(null);
+  
+  // Find the active application based on selection or default
+  const defaultApp = applications.find(
     (app) => !["closed", "denied"].includes(app.status)
   );
+  
+  const activeApplication = selectedAppId 
+    ? applications.find(app => app.id === selectedAppId) || defaultApp
+    : defaultApp;
 
   const isPreApproved = activeApplication?.status === "pre_approved";
   const expirationDate = activeApplication ? getExpirationDate(activeApplication) : null;
@@ -124,6 +131,15 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6 space-y-4">
+        
+        {/* APPLICATION SWITCHER */}
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <ApplicationSwitcher
+            applications={applications}
+            activeApplicationId={activeApplication?.id}
+            onSelectApplication={(app) => setSelectedAppId(app.id)}
+          />
+        </div>
         
         {/* 1. YOUR APPROVAL STATUS (PRIMARY CARD) */}
         <Card className="overflow-hidden" data-testid="card-approval-status">
