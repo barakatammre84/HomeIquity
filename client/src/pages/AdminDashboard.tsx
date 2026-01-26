@@ -24,6 +24,8 @@ import {
   Clock,
   AlertCircle,
   BarChart3,
+  Shield,
+  Activity,
 } from "lucide-react";
 import { 
   BarChart, 
@@ -115,80 +117,101 @@ export default function AdminDashboard() {
     <div className="min-h-screen bg-background">
       <Navigation />
 
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold tracking-tight">Admin Dashboard</h1>
-          <p className="mt-1 text-muted-foreground">
+      {/* Premium Admin Header */}
+      <div className="relative overflow-hidden bg-gradient-to-br from-primary via-primary to-primary/90">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.1),transparent_50%)]" />
+        <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-white/5 blur-3xl" />
+        <div className="absolute -bottom-20 -left-20 h-64 w-64 rounded-full bg-primary/30 blur-3xl" />
+        
+        <div className="relative mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+          <div className="flex items-center gap-3 text-primary-foreground/80 mb-3">
+            <Shield className="h-5 w-5" />
+            <span className="text-sm font-medium">Administrator</span>
+          </div>
+          <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
+            Admin Dashboard
+          </h1>
+          <p className="mt-1 text-primary-foreground/80">
             Monitor loan pipeline, user activity, and system performance
           </p>
         </div>
+      </div>
 
-        <div className="mb-8 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-          <Card>
+      {/* Stats Cards */}
+      <div className="mx-auto max-w-7xl px-4 -mt-6 sm:px-6 lg:px-8">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <Card className="shadow-lg border-0">
             <CardContent className="flex items-center gap-4 p-6">
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/30">
-                <Users className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-100 dark:bg-blue-900/30">
+                <Users className="h-7 w-7 text-blue-600 dark:text-blue-400" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Total Users</p>
-                <p className="text-2xl font-bold" data-testid="text-total-users">
+                <p className="text-3xl font-bold" data-testid="text-total-users">
                   {stats?.totalUsers || 0}
                 </p>
               </div>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="shadow-lg border-0">
             <CardContent className="flex items-center gap-4 p-6">
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-purple-100 dark:bg-purple-900/30">
-                <FileText className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-purple-100 dark:bg-purple-900/30">
+                <FileText className="h-7 w-7 text-purple-600 dark:text-purple-400" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Applications</p>
-                <p className="text-2xl font-bold" data-testid="text-total-applications">
+                <p className="text-3xl font-bold" data-testid="text-total-applications">
                   {stats?.totalApplications || 0}
                 </p>
               </div>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="shadow-lg border-0">
             <CardContent className="flex items-center gap-4 p-6">
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-green-100 dark:bg-green-900/30">
-                <DollarSign className="h-6 w-6 text-green-600 dark:text-green-400" />
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-100 dark:bg-emerald-900/30">
+                <DollarSign className="h-7 w-7 text-emerald-600 dark:text-emerald-400" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Loan Volume</p>
-                <p className="text-2xl font-bold text-green-600 dark:text-green-400" data-testid="text-loan-volume">
+                <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400" data-testid="text-loan-volume">
                   {formatCurrency(stats?.totalLoanVolume || "0")}
                 </p>
               </div>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="shadow-lg border-0">
             <CardContent className="flex items-center gap-4 p-6">
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-yellow-100 dark:bg-yellow-900/30">
-                <TrendingUp className="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-100 dark:bg-amber-900/30">
+                <TrendingUp className="h-7 w-7 text-amber-600 dark:text-amber-400" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Approval Rate</p>
-                <p className="text-2xl font-bold" data-testid="text-approval-rate">
+                <p className="text-3xl font-bold" data-testid="text-approval-rate">
                   {stats?.approvalRate || 0}%
                 </p>
               </div>
             </CardContent>
           </Card>
         </div>
+      </div>
 
+      {/* Charts and Tables */}
+      <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
         <div className="mb-8 grid gap-8 lg:grid-cols-2">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <BarChart3 className="h-5 w-5" />
-                Loans by Type
-              </CardTitle>
-              <CardDescription>Volume in millions</CardDescription>
+              <div className="flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+                  <BarChart3 className="h-4 w-4 text-primary" />
+                </div>
+                <div>
+                  <CardTitle>Loans by Type</CardTitle>
+                  <CardDescription>Volume in millions</CardDescription>
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="h-64">
@@ -214,8 +237,15 @@ export default function AdminDashboard() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Applications by Status</CardTitle>
-              <CardDescription>Current pipeline distribution</CardDescription>
+              <div className="flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+                  <Activity className="h-4 w-4 text-primary" />
+                </div>
+                <div>
+                  <CardTitle>Applications by Status</CardTitle>
+                  <CardDescription>Current pipeline distribution</CardDescription>
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="h-64">
@@ -263,8 +293,15 @@ export default function AdminDashboard() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Recent Applications</CardTitle>
-            <CardDescription>Latest loan applications in the pipeline</CardDescription>
+            <div className="flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+                <FileText className="h-4 w-4 text-primary" />
+              </div>
+              <div>
+                <CardTitle>Recent Applications</CardTitle>
+                <CardDescription>Latest loan applications in the pipeline</CardDescription>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             <Table>
@@ -284,7 +321,7 @@ export default function AdminDashboard() {
                       <div className="flex items-center gap-3">
                         <Avatar className="h-8 w-8">
                           <AvatarImage src={app.user?.profileImageUrl || undefined} />
-                          <AvatarFallback>
+                          <AvatarFallback className="bg-primary/10 text-primary">
                             {app.user?.firstName?.[0] || "U"}
                           </AvatarFallback>
                         </Avatar>

@@ -21,6 +21,7 @@ import {
   BarChart3,
   ArrowUpRight,
   Calendar,
+  Briefcase,
 } from "lucide-react";
 import { format } from "date-fns";
 import ReferralLink from "@/components/ReferralLink";
@@ -83,39 +84,49 @@ export default function BrokerDashboard() {
       title: "Total Referrals",
       value: stats?.totalReferrals || 0,
       icon: Users,
-      description: "All-time referrals",
+      color: "blue",
     },
     {
       title: "Active Loans",
       value: stats?.activeReferrals || 0,
       icon: Clock,
-      description: "In progress",
+      color: "amber",
     },
     {
       title: "Closed Loans",
       value: stats?.closedLoans || 0,
       icon: CheckCircle2,
-      description: "Successfully funded",
+      color: "emerald",
     },
     {
       title: "Loan Volume",
       value: formatCurrency(stats?.totalLoanVolume || "0"),
       icon: TrendingUp,
-      description: "Closed volume",
+      color: "purple",
     },
     {
-      title: "Earned Commissions",
+      title: "Earned",
       value: formatCurrency(stats?.totalCommissionsEarned || "0"),
       icon: DollarSign,
-      description: "Paid out",
+      color: "emerald",
     },
     {
-      title: "Pending Commissions",
+      title: "Pending",
       value: formatCurrency(stats?.pendingCommissions || "0"),
       icon: Wallet,
-      description: "Awaiting payment",
+      color: "amber",
     },
   ];
+
+  const getColorClasses = (color: string) => {
+    const colors: Record<string, { bg: string; icon: string }> = {
+      blue: { bg: "bg-blue-100 dark:bg-blue-900/30", icon: "text-blue-600 dark:text-blue-400" },
+      amber: { bg: "bg-amber-100 dark:bg-amber-900/30", icon: "text-amber-600 dark:text-amber-400" },
+      emerald: { bg: "bg-emerald-100 dark:bg-emerald-900/30", icon: "text-emerald-600 dark:text-emerald-400" },
+      purple: { bg: "bg-purple-100 dark:bg-purple-900/30", icon: "text-purple-600 dark:text-purple-400" },
+    };
+    return colors[color] || colors.blue;
+  };
 
   const getCommissionStatusColor = (status: string) => {
     switch (status) {
@@ -133,177 +144,218 @@ export default function BrokerDashboard() {
   };
 
   return (
-    <div className="space-y-8 p-8">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight" data-testid="text-dashboard-title">
+    <div className="min-h-screen">
+      {/* Premium Broker Header */}
+      <div className="relative overflow-hidden bg-gradient-to-br from-primary via-primary to-primary/90">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.1),transparent_50%)]" />
+        <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-white/5 blur-3xl" />
+        <div className="absolute -bottom-20 -left-20 h-64 w-64 rounded-full bg-primary/30 blur-3xl" />
+        
+        <div className="relative mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+          <div className="flex items-center gap-2 text-primary-foreground/80 mb-3">
+            <Briefcase className="h-5 w-5" />
+            <span className="text-sm font-medium">Partner Portal</span>
+          </div>
+          <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl" data-testid="text-dashboard-title">
             Broker Dashboard
           </h1>
-          <p className="text-muted-foreground">
+          <p className="mt-1 text-primary-foreground/80">
             Track your referrals, commissions, and performance
           </p>
         </div>
       </div>
 
-      <ReferralLink />
-
-      <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
-        {statCards.map((stat) => (
-          <Card key={stat.title} className="hover-elevate">
-            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
-              <stat.icon className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold" data-testid={`text-stat-${stat.title.toLowerCase().replace(/\s/g, "-")}`}>
-                {stat.value}
-              </div>
-              <p className="text-xs text-muted-foreground">{stat.description}</p>
-            </CardContent>
-          </Card>
-        ))}
+      {/* Stats Cards */}
+      <div className="mx-auto max-w-7xl px-4 -mt-6 sm:px-6 lg:px-8">
+        <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
+          {statCards.map((stat) => {
+            const colors = getColorClasses(stat.color);
+            return (
+              <Card key={stat.title} className="shadow-lg border-0">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${colors.bg}`}>
+                      <stat.icon className={`h-5 w-5 ${colors.icon}`} />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs text-muted-foreground truncate">{stat.title}</p>
+                      <p className="text-lg font-bold truncate" data-testid={`text-stat-${stat.title.toLowerCase().replace(/\s/g, "-")}`}>
+                        {stat.value}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
       </div>
 
-      <Tabs defaultValue="referrals" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="referrals" data-testid="tab-referrals">
-            <Users className="mr-2 h-4 w-4" />
-            Referrals
-          </TabsTrigger>
-          <TabsTrigger value="commissions" data-testid="tab-commissions">
-            <DollarSign className="mr-2 h-4 w-4" />
-            Commissions
-          </TabsTrigger>
-        </TabsList>
+      {/* Main Content */}
+      <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+        <div className="mb-8">
+          <ReferralLink />
+        </div>
 
-        <TabsContent value="referrals" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Your Referrals</CardTitle>
-              <CardDescription>
-                Track the status of all borrowers you've referred
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {referralsLoading ? (
-                <div className="space-y-2">
-                  {[1, 2, 3].map((i) => (
-                    <Skeleton key={i} className="h-12 w-full" />
-                  ))}
-                </div>
-              ) : referrals && referrals.length > 0 ? (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Borrower</TableHead>
-                      <TableHead>Loan Purpose</TableHead>
-                      <TableHead>Purchase Price</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Created</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {referrals.map((referral) => (
-                      <TableRow key={referral.id} data-testid={`row-referral-${referral.id}`}>
-                        <TableCell className="font-medium">
-                          {referral.borrower?.firstName} {referral.borrower?.lastName}
-                        </TableCell>
-                        <TableCell className="capitalize">
-                          {referral.loanPurpose?.replace("_", " ") || "Purchase"}
-                        </TableCell>
-                        <TableCell>
-                          {formatCurrency(referral.purchasePrice || "0")}
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={getStatusColor(referral.status)}>
-                            {getStatusLabel(referral.status)}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          {referral.createdAt && format(new Date(referral.createdAt), "MMM d, yyyy")}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <Users className="mb-4 h-12 w-12 text-muted-foreground" />
-                  <h3 className="text-lg font-semibold">No referrals yet</h3>
-                  <p className="text-muted-foreground">
-                    Start referring borrowers to build your pipeline
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+        <Tabs defaultValue="referrals" className="space-y-6">
+          <TabsList>
+            <TabsTrigger value="referrals" data-testid="tab-referrals">
+              <Users className="mr-2 h-4 w-4" />
+              Referrals
+            </TabsTrigger>
+            <TabsTrigger value="commissions" data-testid="tab-commissions">
+              <DollarSign className="mr-2 h-4 w-4" />
+              Commissions
+            </TabsTrigger>
+          </TabsList>
 
-        <TabsContent value="commissions" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Commission History</CardTitle>
-              <CardDescription>
-                Track your commission payments and pending earnings
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {commissionsLoading ? (
-                <div className="space-y-2">
-                  {[1, 2, 3].map((i) => (
-                    <Skeleton key={i} className="h-12 w-full" />
-                  ))}
+          <TabsContent value="referrals" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+                    <Users className="h-4 w-4 text-primary" />
+                  </div>
+                  <div>
+                    <CardTitle>Your Referrals</CardTitle>
+                    <CardDescription>
+                      Track the status of all borrowers you've referred
+                    </CardDescription>
+                  </div>
                 </div>
-              ) : commissions && commissions.length > 0 ? (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Loan Amount</TableHead>
-                      <TableHead>Rate</TableHead>
-                      <TableHead>Commission</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Paid At</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {commissions.map((commission) => (
-                      <TableRow key={commission.id} data-testid={`row-commission-${commission.id}`}>
-                        <TableCell className="font-medium">
-                          {formatCurrency(commission.loanAmount)}
-                        </TableCell>
-                        <TableCell>
-                          {(Number(commission.commissionRate) * 100).toFixed(2)}%
-                        </TableCell>
-                        <TableCell className="font-semibold text-green-600 dark:text-green-400">
-                          {formatCurrency(commission.commissionAmount)}
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={getCommissionStatusColor(commission.status)}>
-                            {commission.status.charAt(0).toUpperCase() + commission.status.slice(1)}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          {commission.paidAt
-                            ? format(new Date(commission.paidAt), "MMM d, yyyy")
-                            : "-"}
-                        </TableCell>
-                      </TableRow>
+              </CardHeader>
+              <CardContent>
+                {referralsLoading ? (
+                  <div className="space-y-2">
+                    {[1, 2, 3].map((i) => (
+                      <Skeleton key={i} className="h-12 w-full" />
                     ))}
-                  </TableBody>
-                </Table>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <DollarSign className="mb-4 h-12 w-12 text-muted-foreground" />
-                  <h3 className="text-lg font-semibold">No commissions yet</h3>
-                  <p className="text-muted-foreground">
-                    Commissions will appear here when your referrals close
-                  </p>
+                  </div>
+                ) : referrals && referrals.length > 0 ? (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Borrower</TableHead>
+                        <TableHead>Loan Purpose</TableHead>
+                        <TableHead>Purchase Price</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Created</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {referrals.map((referral) => (
+                        <TableRow key={referral.id} data-testid={`row-referral-${referral.id}`}>
+                          <TableCell className="font-medium">
+                            {referral.borrower?.firstName} {referral.borrower?.lastName}
+                          </TableCell>
+                          <TableCell className="capitalize">
+                            {referral.loanPurpose?.replace("_", " ") || "Purchase"}
+                          </TableCell>
+                          <TableCell>
+                            {formatCurrency(referral.purchasePrice || "0")}
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={getStatusColor(referral.status)}>
+                              {getStatusLabel(referral.status)}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {referral.createdAt && format(new Date(referral.createdAt), "MMM d, yyyy")}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-12 text-center">
+                    <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-muted mb-4">
+                      <Users className="h-8 w-8 text-muted-foreground" />
+                    </div>
+                    <h3 className="text-lg font-semibold">No referrals yet</h3>
+                    <p className="text-muted-foreground">
+                      Start referring borrowers to build your pipeline
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="commissions" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+                    <DollarSign className="h-4 w-4 text-primary" />
+                  </div>
+                  <div>
+                    <CardTitle>Commission History</CardTitle>
+                    <CardDescription>
+                      Track your commission payments and pending earnings
+                    </CardDescription>
+                  </div>
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+              </CardHeader>
+              <CardContent>
+                {commissionsLoading ? (
+                  <div className="space-y-2">
+                    {[1, 2, 3].map((i) => (
+                      <Skeleton key={i} className="h-12 w-full" />
+                    ))}
+                  </div>
+                ) : commissions && commissions.length > 0 ? (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Loan Amount</TableHead>
+                        <TableHead>Rate</TableHead>
+                        <TableHead>Commission</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Paid At</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {commissions.map((commission) => (
+                        <TableRow key={commission.id} data-testid={`row-commission-${commission.id}`}>
+                          <TableCell className="font-medium">
+                            {formatCurrency(commission.loanAmount)}
+                          </TableCell>
+                          <TableCell>
+                            {(Number(commission.commissionRate) * 100).toFixed(2)}%
+                          </TableCell>
+                          <TableCell className="font-semibold text-emerald-600 dark:text-emerald-400">
+                            {formatCurrency(commission.commissionAmount)}
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={getCommissionStatusColor(commission.status)}>
+                              {commission.status.charAt(0).toUpperCase() + commission.status.slice(1)}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {commission.paidAt
+                              ? format(new Date(commission.paidAt), "MMM d, yyyy")
+                              : "-"}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-12 text-center">
+                    <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-muted mb-4">
+                      <DollarSign className="h-8 w-8 text-muted-foreground" />
+                    </div>
+                    <h3 className="text-lg font-semibold">No commissions yet</h3>
+                    <p className="text-muted-foreground">
+                      Commissions will appear here when your referrals close
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </div>
     </div>
   );
 }

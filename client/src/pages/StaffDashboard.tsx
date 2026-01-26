@@ -262,19 +262,28 @@ export default function StaffDashboard() {
 
   return (
     <>
-      <div className="border-b p-4 sm:p-6 lg:p-8">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h1 className="text-2xl font-bold tracking-tight sm:text-3xl" data-testid="text-staff-dashboard-title">
-                  Staff Dashboard
-                </h1>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Manage borrower tasks and document verification
-                </p>
+      {/* Premium Staff Header */}
+      <div className="relative overflow-hidden bg-gradient-to-br from-primary via-primary to-primary/90">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.1),transparent_50%)]" />
+        <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-white/5 blur-3xl" />
+        
+        <div className="relative px-4 py-8 sm:px-6 lg:px-8">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div className="flex items-center gap-2 text-primary-foreground/80 mb-2">
+                <FileText className="h-4 w-4" />
+                <span className="text-sm font-medium">Loan Operations</span>
               </div>
-              <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+              <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl" data-testid="text-staff-dashboard-title">
+                Staff Dashboard
+              </h1>
+              <p className="mt-1 text-sm text-primary-foreground/80">
+                Manage borrower tasks and document verification
+              </p>
+            </div>
+            <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button data-testid="button-create-task">
+                  <Button className="bg-white text-primary shadow-lg" data-testid="button-create-task">
                     <Plus className="mr-2 h-4 w-4" />
                     Create Task
                   </Button>
@@ -444,10 +453,11 @@ export default function StaffDashboard() {
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
-            </div>
           </div>
+        </div>
+      </div>
 
-          <div className="p-4 sm:p-6 lg:p-8">
+      <div className="p-4 sm:p-6 lg:p-8">
             <div className="grid gap-4 md:grid-cols-3 mb-8">
               <Card>
                 <CardContent className="p-6">

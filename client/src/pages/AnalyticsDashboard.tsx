@@ -85,13 +85,29 @@ export default function AnalyticsDashboard() {
     .reduce((sum, s) => sum + s.count, 0) || 0;
 
   return (
-    <div className="p-6 space-y-6 overflow-auto">
-      <div>
-        <h1 className="text-2xl font-bold" data-testid="text-analytics-title">Analytics Dashboard</h1>
-        <p className="text-muted-foreground">Monitor cycle times, bottlenecks, and SLA compliance</p>
+    <div className="min-h-screen overflow-auto">
+      {/* Premium Analytics Header */}
+      <div className="relative overflow-hidden bg-gradient-to-br from-primary via-primary to-primary/90">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.1),transparent_50%)]" />
+        <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-white/5 blur-3xl" />
+        
+        <div className="relative px-6 py-8">
+          <div className="flex items-center gap-2 text-primary-foreground/80 mb-2">
+            <BarChart3 className="h-4 w-4" />
+            <span className="text-sm font-medium">Performance Insights</span>
+          </div>
+          <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl" data-testid="text-analytics-title">
+            Analytics Dashboard
+          </h1>
+          <p className="mt-1 text-primary-foreground/80">
+            Monitor cycle times, bottlenecks, and SLA compliance
+          </p>
+        </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      {/* Stats Cards with overlap effect */}
+      <div className="px-6 -mt-6">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
         <Card data-testid="card-total-applications">
           <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Applications</CardTitle>
@@ -144,8 +160,11 @@ export default function AnalyticsDashboard() {
             </p>
           </CardContent>
         </Card>
+        </div>
       </div>
 
+      {/* Main content */}
+      <div className="px-6 pb-6">
       <Tabs defaultValue="pipeline" className="space-y-4">
         <TabsList>
           <TabsTrigger value="pipeline" data-testid="tab-pipeline">Pipeline Status</TabsTrigger>
@@ -295,6 +314,7 @@ export default function AnalyticsDashboard() {
           </div>
         </TabsContent>
       </Tabs>
+      </div>
     </div>
   );
 }

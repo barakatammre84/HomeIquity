@@ -187,21 +187,33 @@ export default function ComplianceDashboard() {
 
   return (
     <>
-      <header className="sticky top-0 z-10 flex items-center justify-between border-b bg-background px-6 py-3">
-        <div className="flex items-center gap-4">
-          <SidebarTrigger data-testid="button-sidebar-toggle" />
-          <div>
-            <h1 className="text-xl font-semibold">Compliance Dashboard</h1>
-            <p className="text-sm text-muted-foreground">TRID, MISMO & Regulatory Tracking</p>
+      {/* Premium Compliance Header */}
+      <div className="relative overflow-hidden bg-gradient-to-br from-primary via-primary to-primary/90">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.1),transparent_50%)]" />
+        <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-white/5 blur-3xl" />
+        
+        <div className="relative px-6 py-8">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <SidebarTrigger className="text-white hover:bg-white/10" data-testid="button-sidebar-toggle" />
+              <div>
+                <div className="flex items-center gap-2 text-primary-foreground/80 mb-1">
+                  <Shield className="h-4 w-4" />
+                  <span className="text-sm font-medium">Regulatory Compliance</span>
+                </div>
+                <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">Compliance Dashboard</h1>
+                <p className="mt-1 text-primary-foreground/80">TRID, MISMO & Regulatory Tracking</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" className="bg-white/10 border-white/20 text-white" data-testid="button-export-report">
+                <Download className="mr-2 h-4 w-4" />
+                Export Report
+              </Button>
+            </div>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" data-testid="button-export-report">
-            <Download className="mr-2 h-4 w-4" />
-            Export Report
-          </Button>
-        </div>
-      </header>
+      </div>
 
       <div className="p-6">
             <div className="mx-auto max-w-6xl space-y-6">
