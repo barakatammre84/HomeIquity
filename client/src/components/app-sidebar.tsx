@@ -107,6 +107,7 @@ const staffNavigation = [
     section: "Compliance",
     items: [
       { title: "TRID & MISMO", href: "/compliance", icon: Shield, testId: "link-compliance" },
+      { title: "Policy Operations", href: "/policy-ops", icon: Scale, testId: "link-policy-ops" },
     ],
   },
 ];

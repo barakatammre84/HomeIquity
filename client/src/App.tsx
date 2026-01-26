@@ -196,6 +196,9 @@ function Router() {
       <Route path="/partner-services">
         <StaffPage><PartnerServices /></StaffPage>
       </Route>
+      <Route path="/policy-ops">
+        <StaffPage><PolicyOps /></StaffPage>
+      </Route>
       <Route path="/e-consent">
         <BorrowerPage><EConsent /></BorrowerPage>
       </Route>
