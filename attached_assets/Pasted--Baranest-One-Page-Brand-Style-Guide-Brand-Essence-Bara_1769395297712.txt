@@ -1,0 +1,205 @@
+# Baranest – One-Page Brand Style Guide
+
+## Brand Essence
+
+**Baranest** is a modern mortgage platform designed to make homeownership feel clear, calm, and achievable.
+
+**Brand Promise:** A simpler way to get home‑ready.
+
+**Personality:**
+
+* Calm
+* Trustworthy
+* Clear
+* Human
+* Confident (never flashy)
+
+Think: *Better.com clarity × Zillow familiarity × modern banking trust*
+
+---
+
+## Logo Usage
+
+**Primary Logo:** Wordmark only – `baranest`
+
+* Lowercase preferred
+* No icons required at MVP stage
+* Plenty of white space around the logo
+
+**Do not:**
+
+* Add roof/house/key icons
+* Stretch or outline the logo
+* Place on busy backgrounds
+
+---
+
+## Color Palette
+
+### Primary Brand Color – Nest Blue
+
+Used for primary CTAs, links, and key actions
+
+```
+#1F3A5F
+```
+
+### Secondary Brand Color – Warm Sage
+
+Used for progress states, highlights, success moments
+
+```
+#7FA89C
+```
+
+### Background – Soft Canvas
+
+App background, section backgrounds
+
+```
+#F7F9FB
+```
+
+### Text Colors
+
+Primary Text:
+
+```
+#1E293B
+```
+
+Secondary / Helper Text:
+
+```
+#64748B
+```
+
+### Status Colors (Use Sparingly)
+
+Success:
+
+```
+#2F9E44
+```
+
+Warning:
+
+```
+#E9B949
+```
+
+Error:
+
+```
+#D64545
+```
+
+---
+
+## Typography
+
+**Primary Font:** Inter (preferred) or DM Sans
+
+**Headings:**
+
+* H1: 32–40px
+* H2: 24–28px
+* H3: 18–20px
+
+**Body Text:**
+
+* 14–16px
+* Line height: 1.5–1.6
+
+**Tone:** Plain English. No jargon. No hype.
+
+---
+
+## Buttons & CTAs
+
+### Primary CTA
+
+* Background: Nest Blue
+* Text: White
+* Radius: 10–12px
+
+**Examples:**
+
+* Get Pre‑Approved
+* Continue
+* Upload Documents
+
+### Secondary CTA
+
+* Border: Nest Blue
+* Text: Nest Blue
+* Background: Transparent
+
+### Disabled State
+
+```
+Background: #CBD5E1
+Text: #94A3B8
+```
+
+---
+
+## UI Style Guidelines
+
+* Rounded corners everywhere
+* Soft shadows, no harsh borders
+* Clean cards with breathing room
+* Guided, step‑by‑step flows
+
+**Card Style Example:**
+
+```
+border-radius: 12px;
+box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+background: #FFFFFF;
+```
+
+---
+
+## Voice & Microcopy
+
+**Voice:** Reassuring, direct, supportive
+
+**Good Examples:**
+
+* You’re on track
+* Just one more step
+* We’ll let you know if anything changes
+
+**Avoid:**
+
+* Guaranteed
+* Instant approval
+* AI‑powered claims
+* Over‑technical language
+
+---
+
+## Borrower vs Lender UI Emphasis
+
+**Borrower Experience:**
+
+* Warmer (more Sage)
+* Plain language
+* Progress reassurance
+
+**Lender / Ops Experience:**
+
+* More Nest Blue
+* Data‑forward tables
+* Confidence scores visible
+
+Same brand. Different focus.
+
+---
+
+## Final Guiding Principle
+
+> If it feels confusing, crowded, or stressful — it’s not Baranest.
+
+Clarity always wins.
