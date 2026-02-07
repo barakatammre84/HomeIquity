@@ -1,9 +1,11 @@
-import passport from "passport";
-import session from "express-session";
 import type { Express, RequestHandler } from "express";
-import connectPg from "connect-pg-simple";
 import { storage } from "./storage";
-import { pool } from "./db";
+import {
+  setupAuth as setupOIDCAuth,
+  isAuthenticated as oidcIsAuthenticated,
+  registerAuthRoutes,
+} from "./replit_integrations/auth";
+import { authStorage } from "./replit_integrations/auth/storage";
 
 declare global {
   namespace Express {
@@ -14,152 +16,51 @@ declare global {
       lastName?: string;
       profileImageUrl?: string;
       role: string;
+      claims?: {
+        sub: string;
+        email?: string;
+        first_name?: string;
+        last_name?: string;
+        profile_image_url?: string;
+        exp?: number;
+        [key: string]: unknown;
+      };
+      access_token?: string;
+      refresh_token?: string;
+      expires_at?: number;
     }
   }
 }
 
-const PgSession = connectPg(session);
-
-export function getSession() {
-  const sessionStore = new PgSession({
-    pool,
-    tableName: "sessions",
-    createTableIfMissing: true,
-  });
-
-  return session({
-    store: sessionStore,
-    secret: process.env.SESSION_SECRET || "mortgage-ai-secret-key",
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      httpOnly: true,
-      secure: false,
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    },
-  });
-}
-
-async function setupLocalAuth() {
-  passport.serializeUser((user: Express.User, done) => {
-    done(null, user.id);
-  });
-
-  passport.deserializeUser(async (id: string, done) => {
-    try {
-      const user = await storage.getUser(id);
-      if (!user) {
-        return done(null, false);
-      }
-      done(null, {
-        id: user.id,
-        email: user.email || undefined,
-        firstName: user.firstName || undefined,
-        lastName: user.lastName || undefined,
-        profileImageUrl: user.profileImageUrl || undefined,
-        role: user.role,
-      });
-    } catch (error) {
-      done(error);
-    }
-  });
-}
-
-async function upsertUser(userData: {
-  id: string;
-  email?: string;
-  firstName?: string;
-  lastName?: string;
-  profileImageUrl?: string;
-}) {
-  return await storage.upsertUser({
-    id: userData.id,
-    email: userData.email ?? null,
-    firstName: userData.firstName ?? null,
-    lastName: userData.lastName ?? null,
-    profileImageUrl: userData.profileImageUrl ?? null,
-    role: "aspiring_owner", // Default role for new signups
-  });
-}
+const isProduction = !!process.env.REPL_DEPLOYMENT;
 
 export async function setupAuth(app: Express) {
-  await setupLocalAuth();
+  await setupOIDCAuth(app);
 
-  app.use(getSession());
-  app.use(passport.initialize());
-  app.use(passport.session());
+  registerAuthRoutes(app);
 
-  app.get("/api/auth/user", (req, res) => {
-    if (req.isAuthenticated()) {
-      res.json(req.user);
-    } else {
-      res.status(401).json({ error: "Not authenticated" });
-    }
-  });
-
-  app.get("/api/login", async (req, res) => {
-    let demoUser = await upsertUser({
-      id: "demo-user-1",
-      email: "demo@mortgageai.com",
-      firstName: "Demo",
-      lastName: "User",
+  if (isProduction) {
+    app.post("/api/test-login", (_req, res) => {
+      res.status(404).json({ error: "Not found" });
     });
+  } else {
+    setupDevTestLogin(app);
+  }
+}
 
-    // Ensure demo user always has active_buyer role for consistent testing
-    if (demoUser.role !== "active_buyer") {
-      const updatedUser = await storage.updateUserRole(demoUser.id, "active_buyer");
-      if (updatedUser) {
-        demoUser = updatedUser;
-      }
-    }
-
-    req.login(
-      {
-        id: demoUser.id,
-        email: demoUser.email || undefined,
-        firstName: demoUser.firstName || undefined,
-        lastName: demoUser.lastName || undefined,
-        profileImageUrl: demoUser.profileImageUrl || undefined,
-        role: demoUser.role,
-      },
-      (err) => {
-        if (err) {
-          return res.status(500).json({ error: "Login failed" });
-        }
-        res.redirect("/dashboard");
-      }
-    );
-  });
-
-  app.get("/api/logout", (req, res) => {
-    req.logout((err) => {
-      if (err) {
-        return res.status(500).json({ error: "Logout failed" });
-      }
-      res.redirect("/");
-    });
-  });
-
-  // Test login endpoint for admin access (development only)
+function setupDevTestLogin(app: Express) {
   app.post("/api/test-login", async (req, res) => {
     const { email, password } = req.body;
 
-    // Predefined test accounts - Mortgage Industry Roles
     const testAccounts: Record<string, { password: string; role: string; firstName: string; lastName: string }> = {
-      // Staff roles
       "admin@test.com": { password: "admin123", role: "admin", firstName: "Admin", lastName: "User" },
       "lo@test.com": { password: "lo123", role: "lo", firstName: "Loan", lastName: "Officer" },
       "loa@test.com": { password: "loa123", role: "loa", firstName: "Loan Officer", lastName: "Assistant" },
       "processor@test.com": { password: "processor123", role: "processor", firstName: "Loan", lastName: "Processor" },
       "underwriter@test.com": { password: "underwriter123", role: "underwriter", firstName: "Loan", lastName: "Underwriter" },
       "closer@test.com": { password: "closer123", role: "closer", firstName: "Loan", lastName: "Closer" },
-      // Client roles
       "renter@test.com": { password: "renter123", role: "aspiring_owner", firstName: "Aspiring", lastName: "Owner" },
       "buyer@test.com": { password: "buyer123", role: "active_buyer", firstName: "Active", lastName: "Buyer" },
-      // Legacy accounts (for backward compatibility)
-      "broker@test.com": { password: "broker123", role: "lo", firstName: "Broker", lastName: "User" },
-      "lender@test.com": { password: "lender123", role: "processor", firstName: "Lender", lastName: "User" },
-      "borrower@test.com": { password: "borrower123", role: "active_buyer", firstName: "Borrower", lastName: "User" },
     };
 
     const account = testAccounts[email];
@@ -167,7 +68,6 @@ export async function setupAuth(app: Express) {
       return res.status(401).json({ error: "Invalid email or password" });
     }
 
-    // Create or update the test user
     const testUser = await storage.upsertUser({
       id: `test-${email.split("@")[0]}`,
       email,
@@ -177,7 +77,6 @@ export async function setupAuth(app: Express) {
       role: account.role,
     });
 
-    // Ensure role is correct
     if (testUser.role !== account.role) {
       await storage.updateUserRole(testUser.id, account.role);
     }
@@ -195,31 +94,61 @@ export async function setupAuth(app: Express) {
         if (err) {
           return res.status(500).json({ error: "Login failed" });
         }
-        res.json({ 
-          success: true, 
-          user: { 
-            id: testUser.id, 
-            email: testUser.email, 
+        res.json({
+          success: true,
+          user: {
+            id: testUser.id,
+            email: testUser.email,
             role: account.role,
             firstName: account.firstName,
             lastName: account.lastName,
-          } 
+          },
         });
       }
     );
   });
 }
 
-export const isAuthenticated: RequestHandler = (req, res, next) => {
-  if (req.isAuthenticated()) {
+export const isAuthenticated: RequestHandler = async (req, res, next) => {
+  const user = req.user as any;
+
+  if (user?.id && user?.role && !user?.claims) {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
     return next();
   }
-  res.status(401).json({ error: "Unauthorized" });
+
+  const oidcNext = () => {
+    const u = req.user as any;
+    if (!u?.claims?.sub) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    authStorage.getUser(u.claims.sub).then((dbUser) => {
+      if (!dbUser) {
+        return res.status(401).json({ error: "User not found" });
+      }
+      u.id = dbUser.id;
+      u.email = dbUser.email || undefined;
+      u.firstName = dbUser.firstName || undefined;
+      u.lastName = dbUser.lastName || undefined;
+      u.profileImageUrl = dbUser.profileImageUrl || undefined;
+      u.role = dbUser.role;
+      next();
+    }).catch((error) => {
+      console.error("Error fetching user from DB:", error);
+      res.status(500).json({ error: "Internal error" });
+    });
+  };
+
+  (oidcIsAuthenticated as any)(req, res, oidcNext);
 };
 
-export const isAdmin: RequestHandler = (req, res, next) => {
-  if (req.isAuthenticated() && req.user?.role === "admin") {
-    return next();
-  }
-  res.status(403).json({ error: "Forbidden" });
+export const isAdmin: RequestHandler = async (req, res, next) => {
+  await (isAuthenticated as any)(req, res, () => {
+    if (req.user?.role === "admin") {
+      return next();
+    }
+    return res.status(403).json({ error: "Forbidden" });
+  });
 };
