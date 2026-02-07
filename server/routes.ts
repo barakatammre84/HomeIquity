@@ -1282,8 +1282,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/broker/referrals", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      if (!["broker", "lender", "admin"].includes(user.role)) {
-        return res.status(403).json({ error: "Broker access required" });
+      if (!isStaffRole(user.role)) {
+        return res.status(403).json({ error: "Staff access required" });
       }
       
       const referrals = await storage.getBrokerReferrals(user.id);
@@ -1297,8 +1297,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/broker/stats", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      if (!["broker", "lender", "admin"].includes(user.role)) {
-        return res.status(403).json({ error: "Broker access required" });
+      if (!isStaffRole(user.role)) {
+        return res.status(403).json({ error: "Staff access required" });
       }
       
       const stats = await storage.getBrokerReferralStats(user.id);
@@ -1312,8 +1312,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/broker/commissions", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      if (!["broker", "lender", "admin"].includes(user.role)) {
-        return res.status(403).json({ error: "Broker access required" });
+      if (!isStaffRole(user.role)) {
+        return res.status(403).json({ error: "Staff access required" });
       }
       
       const commissions = await storage.getBrokerCommissions(user.id);
@@ -1327,8 +1327,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/broker/commissions", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      if (!["admin", "lender"].includes(user.role)) {
-        return res.status(403).json({ error: "Admin or lender access required" });
+      if (user.role !== "admin") {
+        return res.status(403).json({ error: "Admin access required" });
       }
       
       const { brokerId, applicationId, loanAmount, commissionRate } = req.body;
@@ -1358,8 +1358,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/broker/commissions/:id", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      if (!["admin", "lender"].includes(user.role)) {
-        return res.status(403).json({ error: "Admin or lender access required" });
+      if (user.role !== "admin") {
+        return res.status(403).json({ error: "Admin access required" });
       }
       
       const { id } = req.params;
@@ -1385,8 +1385,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/admin/commissions/pending", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      if (!["admin", "lender"].includes(user.role)) {
-        return res.status(403).json({ error: "Admin or lender access required" });
+      if (user.role !== "admin") {
+        return res.status(403).json({ error: "Admin access required" });
       }
       
       const commissions = await storage.getAllPendingCommissions();
@@ -2127,7 +2127,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/tasks/:id", isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role;
-      if (!["admin", "lender"].includes(userRole || "")) {
+      if (userRole !== "admin") {
         return res.status(403).json({ error: "Only admins can delete tasks" });
       }
 
@@ -3844,7 +3844,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Application not found" });
       }
       
-      if (application.userId !== user.id && !["broker", "lender", "admin"].includes(user.role)) {
+      if (application.userId !== user.id && !isStaffRole(user.role)) {
         return res.status(403).json({ error: "Access denied" });
       }
       
@@ -3983,7 +3983,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const user = req.user as User;
       
-      if (!["broker", "lender", "admin"].includes(user.role)) {
+      if (!isStaffRole(user.role)) {
         return res.status(403).json({ error: "Staff access required" });
       }
       
@@ -4035,7 +4035,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Application not found" });
       }
       
-      if (application.userId !== user.id && !["broker", "lender", "admin"].includes(user.role)) {
+      if (application.userId !== user.id && !isStaffRole(user.role)) {
         return res.status(403).json({ error: "Access denied" });
       }
       
@@ -4057,7 +4057,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Application not found" });
       }
       
-      if (application.userId !== user.id && !["broker", "lender", "admin"].includes(user.role)) {
+      if (application.userId !== user.id && !isStaffRole(user.role)) {
         return res.status(403).json({ error: "Access denied" });
       }
       
@@ -4083,7 +4083,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/credit/adverse-action-reasons/detailed", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      if (!["broker", "lender", "admin"].includes(user.role)) {
+      if (!isStaffRole(user.role)) {
         return res.status(403).json({ error: "Staff access required" });
       }
       res.json({ reasons: creditService.getAdverseActionReasonsDetailed() });
@@ -4097,7 +4097,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/credit/retention-policies", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      if (!["broker", "lender", "admin"].includes(user.role)) {
+      if (!isStaffRole(user.role)) {
         return res.status(403).json({ error: "Staff access required" });
       }
       res.json({ policies: creditService.getRetentionPolicies() });
@@ -4111,7 +4111,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/credit/retention-report", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      if (!["broker", "lender", "admin"].includes(user.role)) {
+      if (!isStaffRole(user.role)) {
         return res.status(403).json({ error: "Staff access required" });
       }
       const report = await creditService.getRetentionComplianceReport();
@@ -4126,7 +4126,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/loan-applications/:id/retention-status", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      if (!["broker", "lender", "admin"].includes(user.role)) {
+      if (!isStaffRole(user.role)) {
         return res.status(403).json({ error: "Staff access required" });
       }
       const application = await storage.getLoanApplication(req.params.id);
@@ -4145,7 +4145,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/credit/pulls/:pullId/archive", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      if (!["broker", "lender", "admin"].includes(user.role)) {
+      if (!isStaffRole(user.role)) {
         return res.status(403).json({ error: "Staff access required" });
       }
       const { reason } = req.body;
@@ -4161,7 +4161,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/credit/archive-eligible", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      if (!["broker", "lender", "admin"].includes(user.role)) {
+      if (!isStaffRole(user.role)) {
         return res.status(403).json({ error: "Staff access required" });
       }
       const eligible = await creditService.getArchiveEligibleRecords();
@@ -4195,7 +4195,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const user = req.user as User;
       
-      if (!["broker", "lender", "admin"].includes(user.role)) {
+      if (!isStaffRole(user.role)) {
         return res.status(403).json({ error: "Staff access required" });
       }
       
@@ -4249,7 +4249,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Application not found" });
       }
       
-      if (application.userId !== user.id && !["broker", "lender", "admin"].includes(user.role)) {
+      if (application.userId !== user.id && !isStaffRole(user.role)) {
         return res.status(403).json({ error: "Access denied" });
       }
       
@@ -4266,7 +4266,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const user = req.user as User;
       
-      if (!["broker", "lender", "admin"].includes(user.role)) {
+      if (!isStaffRole(user.role)) {
         return res.status(403).json({ error: "Staff access required" });
       }
       
@@ -4290,7 +4290,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const user = req.user as User;
       
-      if (!["broker", "lender", "admin"].includes(user.role)) {
+      if (!isStaffRole(user.role)) {
         return res.status(403).json({ error: "Staff access required" });
       }
       
@@ -4312,7 +4312,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const user = req.user as User;
       
-      if (!["broker", "lender", "admin"].includes(user.role)) {
+      if (!isStaffRole(user.role)) {
         return res.status(403).json({ error: "Staff access required" });
       }
       
@@ -4333,7 +4333,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const user = req.user as User;
       
-      if (!["broker", "lender", "admin"].includes(user.role)) {
+      if (!isStaffRole(user.role)) {
         return res.status(403).json({ error: "Staff access required" });
       }
       
@@ -4369,7 +4369,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Application not found" });
       }
       
-      if (application.userId !== user.id && !["broker", "lender", "admin"].includes(user.role)) {
+      if (application.userId !== user.id && !isStaffRole(user.role)) {
         return res.status(403).json({ error: "Access denied" });
       }
       
