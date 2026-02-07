@@ -1,154 +1,25 @@
 import { db } from "./db";
-import { properties, users, contentCategories, articles, faqs, mortgageRatePrograms, mortgageRates, consentTemplates, partnerProviders } from "@shared/schema";
-import { sql } from "drizzle-orm";
-
-const sampleProperties = [
-  {
-    address: "123 Maple Street",
-    city: "San Francisco",
-    state: "California",
-    zipCode: "94102",
-    price: "875000",
-    propertyType: "single_family",
-    bedrooms: 3,
-    bathrooms: "2.5",
-    squareFeet: 1850,
-    yearBuilt: 2018,
-    description: "Beautiful modern home in prime SF location with updated kitchen and hardwood floors throughout.",
-    features: ["Updated Kitchen", "Hardwood Floors", "Smart Home", "Central AC"],
-    images: ["https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=800"],
-    status: "active",
-  },
-  {
-    address: "456 Oak Avenue",
-    city: "Austin",
-    state: "Texas",
-    zipCode: "78701",
-    price: "525000",
-    propertyType: "single_family",
-    bedrooms: 4,
-    bathrooms: "3",
-    squareFeet: 2400,
-    yearBuilt: 2020,
-    description: "Spacious family home with open floor plan, large backyard, and modern finishes.",
-    features: ["Open Floor Plan", "Large Backyard", "2-Car Garage", "Energy Efficient"],
-    images: ["https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800"],
-    status: "active",
-  },
-  {
-    address: "789 Pine Road",
-    city: "Seattle",
-    state: "Washington",
-    zipCode: "98101",
-    price: "699000",
-    propertyType: "condo",
-    bedrooms: 2,
-    bathrooms: "2",
-    squareFeet: 1200,
-    yearBuilt: 2021,
-    description: "Luxury downtown condo with stunning city views, concierge service, and rooftop deck.",
-    features: ["City Views", "Concierge", "Rooftop Deck", "Gym Access"],
-    images: ["https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=800"],
-    status: "active",
-  },
-  {
-    address: "321 Birch Lane",
-    city: "Denver",
-    state: "Colorado",
-    zipCode: "80202",
-    price: "450000",
-    propertyType: "townhouse",
-    bedrooms: 3,
-    bathrooms: "2.5",
-    squareFeet: 1650,
-    yearBuilt: 2019,
-    description: "Modern townhouse near downtown with mountain views and attached garage.",
-    features: ["Mountain Views", "Attached Garage", "Modern Kitchen", "Patio"],
-    images: ["https://images.unsplash.com/photo-1605276374104-dee2a0ed3cd6?w=800"],
-    status: "active",
-  },
-  {
-    address: "654 Cedar Court",
-    city: "Miami",
-    state: "Florida",
-    zipCode: "33101",
-    price: "1250000",
-    propertyType: "single_family",
-    bedrooms: 5,
-    bathrooms: "4",
-    squareFeet: 3200,
-    yearBuilt: 2022,
-    description: "Stunning waterfront property with pool, boat dock, and hurricane-resistant construction.",
-    features: ["Waterfront", "Pool", "Boat Dock", "Hurricane Resistant"],
-    images: ["https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=800"],
-    status: "active",
-  },
-  {
-    address: "987 Elm Street",
-    city: "Portland",
-    state: "Oregon",
-    zipCode: "97201",
-    price: "575000",
-    propertyType: "single_family",
-    bedrooms: 3,
-    bathrooms: "2",
-    squareFeet: 1900,
-    yearBuilt: 2015,
-    description: "Charming craftsman home with original details, updated systems, and lovely garden.",
-    features: ["Craftsman Style", "Updated Systems", "Garden", "Covered Porch"],
-    images: ["https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800"],
-    status: "active",
-  },
-];
+import { contentCategories, articles, faqs, mortgageRatePrograms, consentTemplates, partnerProviders } from "@shared/schema";
 
 export async function seedDatabase() {
   try {
-    const existingProperties = await db.select({ id: properties.id }).from(properties).limit(1);
-    
-    if (existingProperties.length === 0) {
-      console.log("Seeding properties...");
-      for (const property of sampleProperties) {
-        await db.insert(properties).values(property);
-      }
-      console.log(`Seeded ${sampleProperties.length} properties`);
-    }
-
-    const existingAdmin = await db.select({ id: users.id }).from(users).where(sql`id = 'admin-user-1'`).limit(1);
-    
-    if (existingAdmin.length === 0) {
-      console.log("Creating admin user...");
-      await db.insert(users).values({
-        id: "admin-user-1",
-        email: "admin@mortgageai.com",
-        firstName: "Admin",
-        lastName: "User",
-        role: "admin",
-      });
-      console.log("Admin user created");
-    } else {
-      console.log("Admin user already exists, skipping seed");
-    }
-
-    // Seed Learning Center content
     const existingCategories = await db.select({ id: contentCategories.id }).from(contentCategories).limit(1);
-    
+
     if (existingCategories.length === 0) {
       console.log("Seeding Learning Center content...");
-      
-      // Create categories
+
       const categoryData = [
         { id: "cat-getting-started", name: "Getting Started", slug: "getting-started", description: "Essential guides for first-time homebuyers", icon: "home", color: "#22c55e", displayOrder: 1 },
         { id: "cat-mortgage-basics", name: "Mortgage Basics", slug: "mortgage-basics", description: "Understanding different loan types and terms", icon: "book-open", color: "#3b82f6", displayOrder: 2 },
         { id: "cat-credit-finance", name: "Credit & Finance", slug: "credit-finance", description: "Tips for improving your financial profile", icon: "dollar-sign", color: "#f59e0b", displayOrder: 3 },
         { id: "cat-home-buying", name: "Home Buying Process", slug: "home-buying", description: "Step-by-step guide to purchasing your home", icon: "file-text", color: "#8b5cf6", displayOrder: 4 },
       ];
-      
+
       for (const cat of categoryData) {
         await db.insert(contentCategories).values(cat);
       }
       console.log("Seeded content categories");
-      
-      // Create articles
+
       const articleData = [
         {
           title: "First-Time Homebuyer's Complete Guide",
@@ -192,7 +63,6 @@ The closing process typically takes 30-45 days. During this time, you'll complet
           categoryId: "cat-getting-started",
           tags: ["first-time buyer", "guide", "pre-approval"],
           status: "published",
-          authorId: "admin-user-1",
           publishedAt: new Date(),
         },
         {
@@ -237,7 +107,6 @@ Choose a fixed-rate mortgage if you plan to stay in your home long-term and want
           categoryId: "cat-mortgage-basics",
           tags: ["mortgage types", "fixed-rate", "adjustable-rate", "ARM"],
           status: "published",
-          authorId: "admin-user-1",
           publishedAt: new Date(),
         },
         {
@@ -281,17 +150,15 @@ Most improvements take 30-60 days to show on your credit report. Start working o
           categoryId: "cat-credit-finance",
           tags: ["credit score", "credit", "rates", "tips"],
           status: "published",
-          authorId: "admin-user-1",
           publishedAt: new Date(),
         },
       ];
-      
+
       for (const article of articleData) {
         await db.insert(articles).values(article);
       }
       console.log("Seeded articles");
-      
-      // Create FAQs
+
       const faqData = [
         {
           question: "How much house can I afford?",
@@ -301,7 +168,6 @@ Most improvements take 30-60 days to show on your credit report. Start working o
           displayOrder: 1,
           isPopular: true,
           status: "published",
-          authorId: "admin-user-1",
         },
         {
           question: "What credit score do I need to buy a house?",
@@ -311,7 +177,6 @@ Most improvements take 30-60 days to show on your credit report. Start working o
           displayOrder: 2,
           isPopular: true,
           status: "published",
-          authorId: "admin-user-1",
         },
         {
           question: "How much should I save for a down payment?",
@@ -321,7 +186,6 @@ Most improvements take 30-60 days to show on your credit report. Start working o
           displayOrder: 3,
           isPopular: true,
           status: "published",
-          authorId: "admin-user-1",
         },
         {
           question: "What documents do I need to apply for a mortgage?",
@@ -330,7 +194,6 @@ Most improvements take 30-60 days to show on your credit report. Start working o
           searchKeywords: ["documents", "paperwork", "requirements", "apply"],
           displayOrder: 4,
           status: "published",
-          authorId: "admin-user-1",
         },
         {
           question: "How long does the mortgage process take?",
@@ -340,7 +203,6 @@ Most improvements take 30-60 days to show on your credit report. Start working o
           displayOrder: 5,
           isPopular: true,
           status: "published",
-          authorId: "admin-user-1",
         },
         {
           question: "What is PMI and how can I avoid it?",
@@ -349,7 +211,6 @@ Most improvements take 30-60 days to show on your credit report. Start working o
           searchKeywords: ["PMI", "private mortgage insurance", "avoid", "20 percent"],
           displayOrder: 6,
           status: "published",
-          authorId: "admin-user-1",
         },
         {
           question: "Should I get a 15-year or 30-year mortgage?",
@@ -358,7 +219,6 @@ Most improvements take 30-60 days to show on your credit report. Start working o
           searchKeywords: ["15 year", "30 year", "term", "loan length"],
           displayOrder: 7,
           status: "published",
-          authorId: "admin-user-1",
         },
         {
           question: "What is an escrow account?",
@@ -367,21 +227,19 @@ Most improvements take 30-60 days to show on your credit report. Start working o
           searchKeywords: ["escrow", "taxes", "insurance", "payments"],
           displayOrder: 8,
           status: "published",
-          authorId: "admin-user-1",
         },
       ];
-      
+
       for (const faq of faqData) {
         await db.insert(faqs).values(faq);
       }
       console.log("Seeded FAQs");
     }
 
-    // Seed mortgage rate programs and rates
     const existingPrograms = await db.select({ id: mortgageRatePrograms.id }).from(mortgageRatePrograms).limit(1);
     if (existingPrograms.length === 0) {
       console.log("Seeding mortgage rate programs...");
-      
+
       const ratePrograms = [
         {
           id: "prog-30yr-fixed",
@@ -474,45 +332,13 @@ Most improvements take 30-60 days to show on your credit report. Start working o
           isActive: true,
         },
       ];
-      
+
       for (const program of ratePrograms) {
         await db.insert(mortgageRatePrograms).values(program);
       }
       console.log(`Seeded ${ratePrograms.length} mortgage rate programs`);
-      
-      // Now seed rates for these programs
-      console.log("Seeding mortgage rates...");
-      
-      const ratesData = [
-        // 30-year fixed rates
-        { programId: "prog-30yr-fixed", rate: "6.750", apr: "6.957", points: "2.21", pointsCost: "3542", loanAmount: "160000", downPaymentPercent: 20, creditScoreMin: 760 },
-        // 20-year fixed rates
-        { programId: "prog-20yr-fixed", rate: "6.500", apr: "6.745", points: "2.21", pointsCost: "3542", loanAmount: "160000", downPaymentPercent: 20, creditScoreMin: 760 },
-        // 15-year fixed rates
-        { programId: "prog-15yr-fixed", rate: "5.875", apr: "6.250", points: "2.05", pointsCost: "3280", loanAmount: "160000", downPaymentPercent: 20, creditScoreMin: 760 },
-        // 10-year fixed rates
-        { programId: "prog-10yr-fixed", rate: "5.625", apr: "6.125", points: "1.98", pointsCost: "3168", loanAmount: "160000", downPaymentPercent: 20, creditScoreMin: 760 },
-        // 5/6 ARM rates
-        { programId: "prog-5-6-arm", rate: "6.375", apr: "7.247", points: "2.10", pointsCost: "3360", loanAmount: "160000", downPaymentPercent: 20, creditScoreMin: 760 },
-        // 7/6 ARM rates
-        { programId: "prog-7-6-arm", rate: "6.500", apr: "7.128", points: "1.85", pointsCost: "2960", loanAmount: "160000", downPaymentPercent: 20, creditScoreMin: 760 },
-        // FHA rates
-        { programId: "prog-30yr-fha", rate: "6.375", apr: "7.324", points: "2.35", pointsCost: "3760", loanAmount: "160000", downPaymentPercent: 3, creditScoreMin: 620 },
-        // VA rates
-        { programId: "prog-30yr-va", rate: "6.125", apr: "6.465", points: "1.75", pointsCost: "2800", loanAmount: "160000", downPaymentPercent: 0, creditScoreMin: 620 },
-      ];
-      
-      for (const rate of ratesData) {
-        await db.insert(mortgageRates).values({
-          ...rate,
-          isActive: true,
-          createdBy: "admin-user-1",
-        });
-      }
-      console.log(`Seeded ${ratesData.length} mortgage rates`);
     }
 
-    // Seed consent templates
     console.log("Seeding consent templates...");
     const existingConsentTemplates = await db.select().from(consentTemplates).limit(1);
     if (existingConsentTemplates.length === 0) {
@@ -558,12 +384,10 @@ HARDWARE AND SOFTWARE REQUIREMENTS:
 - Ability to download and save PDF documents
 
 You have the right to:
-- Withdraw this consent at any time by contacting us
-- Request paper copies of documents (fees may apply)
-- Update your email address on file
-
-This consent applies to all transactions with our company during your loan application process.`,
-          regulatoryReference: "E-SIGN Act",
+- Withdraw your consent at any time
+- Request paper copies of any document
+- Update your contact information`,
+          regulatoryReference: "E-Sign Act",
           isActive: true,
         },
         {
@@ -574,28 +398,37 @@ This consent applies to all transactions with our company during your loan appli
           effectiveDate: new Date(),
           fullText: `PRIVACY POLICY ACKNOWLEDGMENT
 
-By acknowledging this policy, you confirm that you have reviewed and understand how we collect, use, and protect your personal information.
+We are committed to protecting your personal information. This notice explains how we collect, use, and safeguard your data.
 
-KEY POINTS:
-1. We collect personal and financial information to process your mortgage application
-2. Your information may be shared with third parties necessary to complete your loan (appraisers, title companies, etc.)
-3. We use industry-standard security measures to protect your data
-4. You have rights regarding your personal information under applicable privacy laws
-5. We will not sell your personal information to unaffiliated third parties for marketing purposes
+INFORMATION WE COLLECT:
+- Personal identification information (name, SSN, date of birth)
+- Financial information (income, assets, debts)
+- Employment information
+- Property information
 
-For our complete privacy policy, please visit our website or request a paper copy.`,
-          regulatoryReference: "GLBA Privacy Rule",
+HOW WE USE YOUR INFORMATION:
+- To process your mortgage application
+- To verify your identity and financial information
+- To comply with legal and regulatory requirements
+- To communicate with you about your application
+
+YOUR RIGHTS:
+- Access your personal information
+- Request correction of inaccurate information
+- Opt out of certain data sharing
+- Request deletion of your information (subject to legal requirements)`,
+          regulatoryReference: "GLBA",
           isActive: true,
         },
         {
-          consentType: "fcra_notice",
+          consentType: "fcra_disclosure",
           version: "1.0",
-          title: "FCRA Notice",
-          shortDescription: "Fair Credit Reporting Act rights notification",
+          title: "Fair Credit Reporting Act Disclosure",
+          shortDescription: "FCRA rights and responsibilities disclosure",
           effectiveDate: new Date(),
-          fullText: `FAIR CREDIT REPORTING ACT NOTICE
+          fullText: `FAIR CREDIT REPORTING ACT DISCLOSURE
 
-Under the Fair Credit Reporting Act (FCRA), you have rights regarding your consumer credit information:
+Under the Fair Credit Reporting Act (FCRA), you have specific rights regarding the use of your credit information:
 
 YOUR RIGHTS:
 1. You have the right to know what is in your file
@@ -623,7 +456,6 @@ For more information, visit www.consumerfinance.gov/learnmore`,
       console.log(`Seeded ${templates.length} consent templates`);
     }
 
-    // Seed partner providers
     console.log("Seeding partner providers...");
     const existingProviders = await db.select().from(partnerProviders).limit(1);
     if (existingProviders.length === 0) {
