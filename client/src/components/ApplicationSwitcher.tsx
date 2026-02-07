@@ -187,7 +187,7 @@ export function ApplicationSwitcher({
   
   if (applications.length === 0) {
     return (
-      <Link href="/pre-approval">
+      <Link href="/apply">
         <Button variant="outline" size="sm" className="gap-2" data-testid="button-start-new-app">
           <Plus className="h-4 w-4" />
           Start Application
@@ -287,7 +287,7 @@ export function ApplicationSwitcher({
           <DropdownMenuSeparator />
           <DropdownMenuItem asChild>
             <Link 
-              href="/pre-approval" 
+              href="/apply" 
               className="flex items-center gap-2 flex-wrap"
               data-testid="link-new-application"
             >

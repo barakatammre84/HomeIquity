@@ -65,7 +65,7 @@ export default function ApplyInvite() {
   }, [data]);
 
   const startApplication = () => {
-    setLocation("/pre-approval");
+    setLocation("/apply");
   };
 
   if (isLoading) {

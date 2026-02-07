@@ -55,6 +55,12 @@ import PolicyOps from "@/pages/PolicyOps";
 import BorrowerDealComparison from "@/pages/BorrowerDealComparison";
 import Messages from "@/pages/Messages";
 import TaskOperations from "@/pages/TaskOperations";
+import Properties from "@/pages/Properties";
+import PropertyDetail from "@/pages/PropertyDetail";
+import BuyerProperties from "@/pages/BuyerProperties";
+import AgentDashboard from "@/pages/AgentDashboard";
+import AgentEdit from "@/pages/AgentEdit";
+import PropertyForm from "@/pages/PropertyForm";
 
 function PublicPage({ children }: { children: React.ReactNode }) {
   return <PublicLayout>{children}</PublicLayout>;
@@ -98,6 +104,14 @@ function Router() {
         <PublicPage><FAQ /></PublicPage>
       </Route>
       
+      {/* Property Pages - Public */}
+      <Route path="/properties">
+        <PublicPage><Properties /></PublicPage>
+      </Route>
+      <Route path="/properties/:id">
+        {(params) => <PublicPage><PropertyDetail /></PublicPage>}
+      </Route>
+
       {/* Rate Pages - Public with navigation header */}
       <Route path="/rates">
         <PublicPage><MortgageRates /></PublicPage>
@@ -212,6 +226,23 @@ function Router() {
       </Route>
       <Route path="/e-consent">
         <BorrowerPage><EConsent /></BorrowerPage>
+      </Route>
+      <Route path="/buy">
+        <BorrowerPage><BuyerProperties /></BorrowerPage>
+      </Route>
+
+      {/* Private Pages - Agent (real estate agents managing listings) */}
+      <Route path="/agent/dashboard">
+        <StaffPage><AgentDashboard /></StaffPage>
+      </Route>
+      <Route path="/agent/edit">
+        <StaffPage><AgentEdit /></StaffPage>
+      </Route>
+      <Route path="/property/new">
+        <StaffPage><PropertyForm /></StaffPage>
+      </Route>
+      <Route path="/property/:id/edit">
+        {(params) => <StaffPage><PropertyForm /></StaffPage>}
       </Route>
 
       {/* Private Pages - Admin only (manage content, rates, users) */}
