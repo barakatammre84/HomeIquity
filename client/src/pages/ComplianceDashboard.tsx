@@ -29,6 +29,7 @@ import {
   Bell,
   RefreshCw,
 } from "lucide-react";
+import { isStaffRole } from "@shared/schema";
 import type { LoanApplication } from "@shared/schema";
 
 interface PipelineSummary {
@@ -115,7 +116,7 @@ function formatCurrency(amount: number | string | null | undefined): string {
 
 export default function ComplianceDashboard() {
   const { user, isLoading: authLoading } = useAuth();
-  const isStaff = ["admin", "lender", "broker"].includes(user?.role || "");
+  const isStaff = isStaffRole(user?.role || "");
 
   const { data: queueResponse, isLoading: queueLoading } = useQuery<{ queue: PipelineSummary[] }>({
     queryKey: ["/api/pipeline/queue"],

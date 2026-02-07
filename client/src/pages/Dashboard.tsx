@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BorrowerRequests } from "@/components/BorrowerRequests";
 import { ApplicationSwitcher } from "@/components/ApplicationSwitcher";
+import { isStaffRole } from "@shared/schema";
 import type { LoanApplication, DealActivity } from "@shared/schema";
 import {
   CheckCircle2,
@@ -82,7 +83,7 @@ export default function Dashboard() {
   // ALL HOOKS MUST BE CALLED BEFORE ANY EARLY RETURNS
   const [selectedAppId, setSelectedAppId] = useState<string | null>(null);
 
-  const isStaff = ["admin", "lender", "broker"].includes(user?.role || "");
+  const isStaff = isStaffRole(user?.role || "");
 
   useEffect(() => {
     if (!authLoading && isStaff) {

@@ -518,7 +518,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userRole = req.user?.role;
       
       // Only staff roles can export MISMO XML
-      if (!["admin", "lender", "broker"].includes(userRole || "")) {
+      if (!isStaffRole(userRole || "")) {
         return res.status(403).json({ error: "Only staff can export MISMO data" });
       }
 
@@ -2004,7 +2004,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/tasks", isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role;
-      if (!["admin", "lender", "broker"].includes(userRole || "")) {
+      if (!isStaffRole(userRole || "")) {
         return res.status(403).json({ error: "Only staff can create tasks" });
       }
 
@@ -2036,7 +2036,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user!.id;
 
       let tasks;
-      if (["admin", "lender", "broker"].includes(userRole || "")) {
+      if (isStaffRole(userRole || "")) {
         tasks = await storage.getAllTasks();
       } else {
         tasks = await storage.getTasksByUser(userId);
@@ -2055,7 +2055,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const requestingUserId = req.user!.id;
       const userRole = req.user?.role;
 
-      if (userId !== requestingUserId && !["admin", "lender", "broker"].includes(userRole || "")) {
+      if (userId !== requestingUserId && !isStaffRole(userRole || "")) {
         return res.status(403).json({ error: "Unauthorized" });
       }
 
@@ -2103,7 +2103,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const userRole = req.user?.role;
       const userId = req.user!.id;
-      const isStaff = ["admin", "lender", "broker"].includes(userRole || "");
+      const isStaff = isStaffRole(userRole || "");
       const isAssignedUser = task.assignedToUserId === userId;
 
       if (!isStaff && !isAssignedUser) {
@@ -2149,7 +2149,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const userId = req.user!.id;
-      if (task.assignedToUserId !== userId && !["admin", "lender", "broker"].includes(req.user?.role || "")) {
+      if (task.assignedToUserId !== userId && !isStaffRole(req.user?.role || "")) {
         return res.status(403).json({ error: "Unauthorized" });
       }
 
@@ -2191,7 +2191,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/tasks/:taskId/documents/:docId/verify", isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role;
-      if (!["admin", "lender", "broker"].includes(userRole || "")) {
+      if (!isStaffRole(userRole || "")) {
         return res.status(403).json({ error: "Only staff can verify documents" });
       }
 
@@ -2729,7 +2729,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const userRole = req.user?.role;
-      const isStaff = ["admin", "lender", "broker"].includes(userRole || "");
+      const isStaff = isStaffRole(userRole || "");
       
       if (!isStaff) {
         return res.status(403).json({ error: "Only staff can update conditions" });
@@ -2746,6 +2746,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
           title: "Condition Cleared",
           description: `"${condition.title}" has been cleared.`,
           performedBy: req.user!.id,
+          metadata: { conditionId: id, notes: clearanceNotes },
+        });
+
+        return res.json(updated);
+      }
+
+      if (status === "waived") {
+        const updated = await storage.updateLoanCondition(id, {
+          status: "waived",
+          clearanceNotes,
+          clearedByUserId: req.user!.id,
+          clearedAt: new Date(),
+        });
+
+        await storage.createDealActivity({
+          applicationId: condition.applicationId,
+          activityType: "condition_waived",
+          title: "Condition Waived",
+          description: `"${condition.title}" has been waived.${clearanceNotes ? ` Reason: ${clearanceNotes}` : ""}`,
+          performedBy: req.user!.id,
+          metadata: { conditionId: id, notes: clearanceNotes },
+        });
+
+        return res.json(updated);
+      }
+
+      if (status === "not_applicable") {
+        const updated = await storage.updateLoanCondition(id, {
+          status: "not_applicable",
+          clearanceNotes,
+          clearedByUserId: req.user!.id,
+          clearedAt: new Date(),
+        });
+
+        await storage.createDealActivity({
+          applicationId: condition.applicationId,
+          activityType: "condition_not_applicable",
+          title: "Condition Marked N/A",
+          description: `"${condition.title}" marked as not applicable.${clearanceNotes ? ` Reason: ${clearanceNotes}` : ""}`,
+          performedBy: req.user!.id,
+          metadata: { conditionId: id, notes: clearanceNotes },
         });
 
         return res.json(updated);
@@ -2779,7 +2820,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       const userRole = req.user?.role;
-      const isStaff = ["admin", "lender", "broker"].includes(userRole || "");
+      const isStaff = isStaffRole(userRole || "");
       
       if (!isStaff) {
         return res.status(403).json({ error: "Only staff can advance loan stages" });
@@ -2826,7 +2867,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/pipeline/queue", isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role;
-      const isStaff = ["admin", "lender", "broker"].includes(userRole || "");
+      const isStaff = isStaffRole(userRole || "");
       
       if (!isStaff) {
         return res.status(403).json({ error: "Only staff can view pipeline queue" });
@@ -2931,7 +2972,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/compliance/dashboard", isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role;
-      const isStaff = ["admin", "lender", "broker"].includes(userRole || "");
+      const isStaff = isStaffRole(userRole || "");
       
       if (!isStaff) {
         return res.status(403).json({ error: "Only staff can view compliance dashboard" });
@@ -3117,7 +3158,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { applicationId } = req.params;
       const userId = req.user!.id;
       const userRole = req.user?.role;
-      const isStaff = ["admin", "lender", "broker"].includes(userRole || "");
+      const isStaff = isStaffRole(userRole || "");
 
       // Verify ownership or staff access
       const application = await storage.getLoanApplication(applicationId);
@@ -3146,7 +3187,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const userId = req.user!.id;
       const userRole = req.user?.role;
-      const isStaff = ["admin", "lender", "broker"].includes(userRole || "");
+      const isStaff = isStaffRole(userRole || "");
 
       if (verification.userId !== userId && !isStaff) {
         return res.status(403).json({ error: "Unauthorized" });
@@ -3165,7 +3206,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/verifications/:id", isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role;
-      const isStaff = ["admin", "lender", "broker"].includes(userRole || "");
+      const isStaff = isStaffRole(userRole || "");
 
       if (!isStaff) {
         return res.status(403).json({ error: "Only staff can update verifications" });

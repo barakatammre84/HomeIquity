@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation, useRoute } from "wouter";
+import { isStaffRole } from "@shared/schema";
 import type { Task, Document, TaskDocument } from "@shared/schema";
 import {
   ArrowLeft,
@@ -170,7 +171,7 @@ export default function TaskDetail() {
     );
   }
 
-  const isStaff = ["admin", "lender", "broker"].includes(user?.role || "");
+  const isStaff = isStaffRole(user?.role || "");
   const isAssignedUser = task.assignedToUserId === user?.id;
   const canUpload = isAssignedUser && ["pending", "in_progress", "rejected"].includes(task.status);
   const canVerify = isStaff && task.status === "submitted";

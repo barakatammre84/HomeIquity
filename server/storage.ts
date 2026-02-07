@@ -49,6 +49,7 @@ import {
   documentPackages,
   documentPackageItems,
   teamMessages,
+  isStaffRole,
   type User,
   type UpsertUser,
   type LoanApplication,
@@ -493,7 +494,7 @@ export class DatabaseStorage implements IStorage {
 
   async getLoanApplicationWithAccess(id: string, userId: string, userRole: string): Promise<LoanApplication | undefined> {
     // Staff roles get unrestricted access
-    const isStaff = ["admin", "lender", "broker"].includes(userRole);
+    const isStaff = isStaffRole(userRole);
     
     if (isStaff) {
       // Staff can access any application

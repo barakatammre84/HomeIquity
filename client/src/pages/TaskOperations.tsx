@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -109,6 +110,15 @@ const ROLE_LABELS: Record<string, string> = {
   ADMIN: "Admin",
   BORROWER: "Borrower",
   SYSTEM: "System",
+};
+
+const USER_ROLE_TO_TASK_ROLE: Record<string, string> = {
+  lo: "LO",
+  loa: "LOA",
+  processor: "PROCESSOR",
+  underwriter: "UW",
+  closer: "CLOSER",
+  admin: "ADMIN",
 };
 
 function formatTimeRemaining(minutes: number | null): string {
@@ -323,7 +333,10 @@ function TaskTable({
 }
 
 export default function TaskOperations() {
-  const [selectedRole, setSelectedRole] = useState<string>("all");
+  const { user } = useAuth();
+  const userRole = user?.role || "";
+  const taskRole = USER_ROLE_TO_TASK_ROLE[userRole] || "all";
+  const [selectedRole, setSelectedRole] = useState<string>(taskRole);
   const [escalateDialogOpen, setEscalateDialogOpen] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [escalationReason, setEscalationReason] = useState("");
@@ -518,7 +531,7 @@ export default function TaskOperations() {
           </Card>
         </div>
 
-        <Tabs defaultValue="all" className="space-y-4">
+        <Tabs defaultValue="my" className="space-y-4">
           <div className="flex items-center justify-between">
             <TabsList>
               <TabsTrigger value="all" data-testid="tab-all-tasks">All Tasks</TabsTrigger>
@@ -534,10 +547,12 @@ export default function TaskOperations() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Roles</SelectItem>
-                  <SelectItem value="lo">Loan Officer</SelectItem>
-                  <SelectItem value="processor">Processor</SelectItem>
-                  <SelectItem value="uw">Underwriter</SelectItem>
-                  <SelectItem value="borrower">Borrower</SelectItem>
+                  <SelectItem value="LO">Loan Officer</SelectItem>
+                  <SelectItem value="LOA">LO Assistant</SelectItem>
+                  <SelectItem value="PROCESSOR">Processor</SelectItem>
+                  <SelectItem value="UW">Underwriter</SelectItem>
+                  <SelectItem value="CLOSER">Closer</SelectItem>
+                  <SelectItem value="BORROWER">Borrower</SelectItem>
                 </SelectContent>
               </Select>
             </div>

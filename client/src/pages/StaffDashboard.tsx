@@ -14,7 +14,57 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
+import { isStaffRole, ROLE_DISPLAY_NAMES } from "@shared/schema";
 import type { Task, LoanApplication, User } from "@shared/schema";
+
+type SlaStatus = "green" | "amber" | "red";
+
+interface QueueTask {
+  id: string;
+  applicationId: string;
+  title: string;
+  description?: string;
+  taskType: string;
+  taskTypeCode?: string;
+  triggerSource?: string;
+  ownerRole?: string;
+  slaClass?: string;
+  slaDueAt?: string;
+  escalationLevel?: number;
+  status: string;
+  priority?: string;
+  createdAt?: string;
+  assignedToUserId?: string;
+  slaStatus: SlaStatus;
+  timeRemaining: number | null;
+  percentageElapsed: number | null;
+}
+
+const SLA_STATUS_COLORS: Record<SlaStatus, string> = {
+  green: "text-emerald-600 dark:text-emerald-400",
+  amber: "text-amber-600 dark:text-amber-400",
+  red: "text-red-600 dark:text-red-400",
+};
+
+const SLA_DOT_COLORS: Record<SlaStatus, string> = {
+  green: "bg-emerald-500",
+  amber: "bg-amber-500",
+  red: "bg-red-500",
+};
+
+const SLA_STATUS_LABELS: Record<SlaStatus, string> = {
+  green: "On Track",
+  amber: "At Risk",
+  red: "Breached",
+};
+
+function formatTimeRemaining(minutes: number | null): string {
+  if (minutes === null) return "No SLA";
+  if (minutes <= 0) return "Overdue";
+  if (minutes < 60) return `${Math.round(minutes)}m`;
+  if (minutes < 1440) return `${Math.round(minutes / 60)}h`;
+  return `${Math.round(minutes / 1440)}d`;
+}
 import {
   Plus,
   CheckCircle2,
@@ -28,6 +78,8 @@ import {
   Upload,
   Eye,
   X,
+  ArrowUp,
+  Inbox,
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -85,9 +137,11 @@ export default function StaffDashboard() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [selectedApplication, setSelectedApplication] = useState<string>("");
   const [searchTerm, setSearchTerm] = useState("");
-  const [activeTab, setActiveTab] = useState("tasks");
+  const [activeTab, setActiveTab] = useState("my-queue");
 
-  const isStaff = ["admin", "lender", "broker"].includes(user?.role || "");
+  const isStaff = isStaffRole(user?.role || "");
+  const userRole = user?.role || "";
+  const ownerRole = userRole.toUpperCase();
 
   useEffect(() => {
     if (!authLoading && !isStaff) {
@@ -113,12 +167,17 @@ export default function StaffDashboard() {
 
   const { data: applicationsData, isLoading: applicationsLoading } = useQuery<LoanApplication[]>({
     queryKey: ["/api/admin/applications"],
-    enabled: !authLoading && !!user && ["admin", "lender", "broker"].includes(user.role || ""),
+    enabled: !authLoading && !!user && isStaff,
   });
 
   const { data: usersData } = useQuery<User[]>({
     queryKey: ["/api/admin/users"],
-    enabled: !authLoading && !!user && ["admin", "lender", "broker"].includes(user.role || ""),
+    enabled: !authLoading && !!user && isStaff,
+  });
+
+  const { data: queueTasks, isLoading: queueLoading } = useQuery<QueueTask[]>({
+    queryKey: ["/api/task-engine/tasks/by-role", ownerRole],
+    enabled: !authLoading && !!user && isStaff && !!ownerRole,
   });
 
   const createTaskMutation = useMutation({
@@ -223,7 +282,7 @@ export default function StaffDashboard() {
     );
   }
 
-  if (!user || !["admin", "lender", "broker"].includes(user.role || "")) {
+  if (!user || !isStaff) {
     return (
       <div className="flex-1 flex items-center justify-center">
         <Card className="max-w-md">
@@ -255,6 +314,22 @@ export default function StaffDashboard() {
   const submittedTasks = tasks.filter(t => t.status === "submitted");
   const verifiedTasks = tasks.filter(t => t.status === "verified");
 
+  const sortedQueueTasks = (queueTasks || [])
+    .filter(t => t.status !== "COMPLETED" && t.status !== "EXPIRED")
+    .sort((a, b) => {
+      const slaOrder: Record<SlaStatus, number> = { red: 0, amber: 1, green: 2 };
+      const aOrder = slaOrder[a.slaStatus] ?? 2;
+      const bOrder = slaOrder[b.slaStatus] ?? 2;
+      if (aOrder !== bOrder) return aOrder - bOrder;
+      const aTime = a.timeRemaining ?? Infinity;
+      const bTime = b.timeRemaining ?? Infinity;
+      return aTime - bTime;
+    });
+
+  const queueBreached = sortedQueueTasks.filter(t => t.slaStatus === "red").length;
+  const queueAtRisk = sortedQueueTasks.filter(t => t.slaStatus === "amber").length;
+  const queueOnTrack = sortedQueueTasks.filter(t => t.slaStatus === "green").length;
+
   const getUserName = (userId: string) => {
     const u = users.find(u => u.id === userId);
     return u ? `${u.firstName || ""} ${u.lastName || ""}`.trim() || u.email : "Unknown";
@@ -275,10 +350,12 @@ export default function StaffDashboard() {
                 <span className="text-sm font-medium">Loan Operations</span>
               </div>
               <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl" data-testid="text-staff-dashboard-title">
-                Staff Dashboard
+                {ROLE_DISPLAY_NAMES[userRole as keyof typeof ROLE_DISPLAY_NAMES] || "Staff"} Dashboard
               </h1>
               <p className="mt-1 text-sm text-primary-foreground/80">
-                Manage borrower tasks and document verification
+                {sortedQueueTasks.length > 0
+                  ? `${sortedQueueTasks.length} open task${sortedQueueTasks.length !== 1 ? "s" : ""} in your queue`
+                  : "Manage borrower tasks and document verification"}
               </p>
             </div>
             <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
@@ -458,16 +535,42 @@ export default function StaffDashboard() {
       </div>
 
       <div className="p-4 sm:p-6 lg:p-8">
-            <div className="grid gap-4 md:grid-cols-3 mb-8">
+            <div className="grid gap-4 md:grid-cols-4 mb-8">
               <Card>
                 <CardContent className="p-6">
                   <div className="flex items-center gap-4">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-yellow-100 dark:bg-yellow-900/30">
-                      <Clock className="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
+                    <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
+                      <Inbox className="h-6 w-6 text-primary" />
                     </div>
                     <div>
-                      <p className="text-2xl font-bold" data-testid="text-pending-count">{pendingTasks.length}</p>
-                      <p className="text-sm text-muted-foreground">Pending Tasks</p>
+                      <p className="text-2xl font-bold" data-testid="text-queue-count">{sortedQueueTasks.length}</p>
+                      <p className="text-sm text-muted-foreground">My Queue</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-4">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-red-100 dark:bg-red-900/30">
+                      <AlertCircle className="h-6 w-6 text-red-600 dark:text-red-400" />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold" data-testid="text-breached-count">{queueBreached}</p>
+                      <p className="text-sm text-muted-foreground">SLA Breached</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-4">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/30">
+                      <Clock className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold" data-testid="text-atrisk-count">{queueAtRisk}</p>
+                      <p className="text-sm text-muted-foreground">At Risk</p>
                     </div>
                   </div>
                 </CardContent>
@@ -485,27 +588,109 @@ export default function StaffDashboard() {
                   </div>
                 </CardContent>
               </Card>
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center gap-4">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-green-100 dark:bg-green-900/30">
-                      <CheckCircle2 className="h-6 w-6 text-green-600 dark:text-green-400" />
-                    </div>
-                    <div>
-                      <p className="text-2xl font-bold" data-testid="text-verified-count">{verifiedTasks.length}</p>
-                      <p className="text-sm text-muted-foreground">Verified</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
             </div>
 
             <Tabs value={activeTab} onValueChange={setActiveTab}>
               <TabsList className="mb-6">
+                <TabsTrigger value="my-queue" data-testid="tab-my-queue">My Queue ({sortedQueueTasks.length})</TabsTrigger>
                 <TabsTrigger value="tasks" data-testid="tab-tasks">All Tasks</TabsTrigger>
                 <TabsTrigger value="review" data-testid="tab-review">Needs Review ({submittedTasks.length})</TabsTrigger>
                 <TabsTrigger value="applications" data-testid="tab-applications">Applications</TabsTrigger>
               </TabsList>
+
+              <TabsContent value="my-queue">
+                <Card>
+                  <CardHeader>
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <CardTitle data-testid="text-my-queue-title">My Queue</CardTitle>
+                        <CardDescription>
+                          Tasks assigned to your role, sorted by SLA urgency
+                        </CardDescription>
+                      </div>
+                      {queueBreached > 0 && (
+                        <Badge variant="destructive" data-testid="badge-breached-alert">
+                          <AlertCircle className="h-3 w-3 mr-1" />
+                          {queueBreached} SLA breached
+                        </Badge>
+                      )}
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {queueLoading ? (
+                      <div className="space-y-3">
+                        {[1, 2, 3].map(i => (
+                          <Skeleton key={i} className="h-20" />
+                        ))}
+                      </div>
+                    ) : sortedQueueTasks.length === 0 ? (
+                      <div className="text-center py-12 text-muted-foreground">
+                        <CheckCircle2 className="mx-auto h-12 w-12 mb-4" />
+                        <p className="font-medium">Queue is clear</p>
+                        <p className="text-sm mt-1">No open tasks assigned to your role</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {sortedQueueTasks.map(task => (
+                          <div
+                            key={task.id}
+                            className="flex items-center justify-between gap-4 rounded-lg border p-4 hover-elevate cursor-pointer"
+                            onClick={() => navigate(`/task/${task.id}`)}
+                            data-testid={`queue-task-${task.id}`}
+                          >
+                            <div className="flex items-center gap-4 min-w-0 flex-1">
+                              <div className={`flex h-3 w-3 rounded-full shrink-0 ${SLA_DOT_COLORS[task.slaStatus]}`} />
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <p className="font-medium truncate">{task.title}</p>
+                                  {task.slaClass && (
+                                    <Badge variant="outline" className="text-xs shrink-0">{task.slaClass}</Badge>
+                                  )}
+                                </div>
+                                <p className="text-sm text-muted-foreground truncate">
+                                  {task.taskType === "document_request" ? "Document Request" : task.taskType}
+                                  {task.triggerSource && task.triggerSource !== "MANUAL" && ` · ${task.triggerSource}`}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3 shrink-0 flex-wrap">
+                              <span className={`text-sm font-medium ${SLA_STATUS_COLORS[task.slaStatus]}`} data-testid={`text-sla-status-${task.id}`}>
+                                {task.slaStatus === "red" ? (
+                                  <span className="flex items-center gap-1">
+                                    <ArrowUp className="h-3 w-3" />
+                                    {formatTimeRemaining(task.timeRemaining)}
+                                  </span>
+                                ) : (
+                                  formatTimeRemaining(task.timeRemaining)
+                                )}
+                              </span>
+                              {(task.escalationLevel ?? 0) > 0 && (
+                                <Badge variant="destructive" className="text-xs" data-testid={`badge-escalation-${task.id}`}>
+                                  L{task.escalationLevel}
+                                </Badge>
+                              )}
+                              <Badge variant={task.status === "OPEN" ? "outline" : "secondary"}>
+                                {task.status === "OPEN" ? "Open" : task.status === "IN_PROGRESS" ? "In Progress" : task.status}
+                              </Badge>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(`/borrower-file/${task.applicationId}`);
+                                }}
+                                data-testid={`button-view-file-${task.id}`}
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
 
               <TabsContent value="tasks">
                 <Card>
