@@ -6367,6 +6367,365 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return 'TM';
   }
 
+  // ================================
+  // Digital Onboarding API Routes
+  // ================================
+
+  function detectBorrowerType(app: any): string {
+    if (!app) return "standard";
+    if (app.employmentType === "self_employed") return "self_employed";
+    if (app.isFirstTimeBuyer) return "first_time_buyer";
+    const nonQmIndicators = [
+      app.loanType && !["conventional", "fha", "va", "usda"].includes(app.loanType),
+      app.creditScore && app.creditScore < 620,
+      app.incomeDocType === "bank_statement" || app.incomeDocType === "asset_based",
+    ];
+    if (nonQmIndicators.some(Boolean)) return "non_qm";
+    return "standard";
+  }
+
+  // Get onboarding status - aggregates identity, KYC, profile data
+  app.get("/api/onboarding/status", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+
+      const [profile, kbaSessions, kycScreenings, verificationRecords, applications] = await Promise.all([
+        storage.getOnboardingProfileByUser(userId),
+        storage.getKbaSessionsByUser(userId),
+        storage.getKycScreeningsByUser(userId),
+        storage.getVerificationsByUser(userId),
+        storage.getLoanApplicationsByUser(userId),
+      ]);
+
+      const latestKba = kbaSessions[0];
+      const latestKyc = kycScreenings[0];
+      const latestApp = applications[0];
+
+      const borrowerType = detectBorrowerType(latestApp);
+
+      res.json({
+        profile: profile || null,
+        kba: latestKba ? { id: latestKba.id, status: latestKba.status, score: latestKba.score, attemptNumber: latestKba.attemptNumber, maxAttempts: latestKba.maxAttempts } : null,
+        kyc: latestKyc || null,
+        verifications: verificationRecords,
+        borrowerType,
+        applicationId: latestApp?.id || null,
+        applicationStatus: latestApp?.status || null,
+      });
+    } catch (error) {
+      console.error("Get onboarding status error:", error);
+      res.status(500).json({ error: "Failed to get onboarding status" });
+    }
+  });
+
+  // Create or get onboarding profile
+  app.post("/api/onboarding/profile", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      let profile = await storage.getOnboardingProfileByUser(userId);
+
+      if (!profile) {
+        const applications = await storage.getLoanApplicationsByUser(userId);
+        const latestApp = applications[0];
+
+        const borrowerType = detectBorrowerType(latestApp);
+
+        profile = await storage.createOnboardingProfile({
+          userId,
+          applicationId: latestApp?.id || null,
+          borrowerType,
+          journeyStatus: "not_started",
+          currentStep: "identity_verification",
+        });
+      }
+
+      res.json(profile);
+    } catch (error) {
+      console.error("Create onboarding profile error:", error);
+      res.status(500).json({ error: "Failed to create onboarding profile" });
+    }
+  });
+
+  // Update onboarding profile
+  app.patch("/api/onboarding/profile/:id", isAuthenticated, async (req, res) => {
+    try {
+      const profile = await storage.getOnboardingProfile(req.params.id);
+      if (!profile || profile.userId !== req.user!.id) {
+        return res.status(404).json({ error: "Profile not found" });
+      }
+
+      const allowedFields = [
+        "journeyStatus", "currentStep", "completedSteps", "progressPercent",
+        "identityVerified", "kycCleared", "documentsUploaded",
+        "personalizedTips", "educationCompleted",
+      ];
+      const safeUpdate: Record<string, any> = {};
+      for (const key of allowedFields) {
+        if (req.body[key] !== undefined) {
+          safeUpdate[key] = req.body[key];
+        }
+      }
+
+      const updated = await storage.updateOnboardingProfile(req.params.id, safeUpdate);
+      res.json(updated);
+    } catch (error) {
+      console.error("Update onboarding profile error:", error);
+      res.status(500).json({ error: "Failed to update profile" });
+    }
+  });
+
+  // KBA - Start a new session
+  app.post("/api/onboarding/kba/start", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const { applicationId } = req.body;
+
+      const existingSessions = await storage.getKbaSessionsByUser(userId);
+      const passedSession = existingSessions.find(s => s.status === "passed");
+      if (passedSession) {
+        return res.json({ session: passedSession, alreadyPassed: true });
+      }
+
+      const failedCount = existingSessions.filter(s => s.status === "failed").length;
+      if (failedCount >= 3) {
+        return res.status(403).json({ error: "Maximum KBA attempts exceeded. Please contact support." });
+      }
+
+      const questions = generateKBAQuestions();
+
+      const session = await storage.createKbaSession({
+        userId,
+        applicationId: applicationId || null,
+        status: "in_progress",
+        questionsData: questions.map(q => ({ id: q.id, question: q.question, choices: q.choices, correctIndex: q.correctIndex })),
+        totalQuestions: questions.length,
+        passingScore: 4,
+        attemptNumber: failedCount + 1,
+        maxAttempts: 3,
+        startedAt: new Date(),
+        expiresAt: new Date(Date.now() + 15 * 60 * 1000),
+      });
+
+      res.json({
+        session: {
+          id: session.id,
+          status: session.status,
+          attemptNumber: session.attemptNumber,
+          maxAttempts: session.maxAttempts,
+          questions: questions.map(q => ({ id: q.id, question: q.question, choices: q.choices })),
+        },
+      });
+    } catch (error) {
+      console.error("Start KBA session error:", error);
+      res.status(500).json({ error: "Failed to start KBA session" });
+    }
+  });
+
+  // KBA - Submit answers
+  app.post("/api/onboarding/kba/:id/submit", isAuthenticated, async (req, res) => {
+    try {
+      const session = await storage.getKbaSession(req.params.id);
+      if (!session || session.userId !== req.user!.id) {
+        return res.status(404).json({ error: "Session not found" });
+      }
+
+      if (session.status !== "in_progress") {
+        return res.status(400).json({ error: "Session is no longer active" });
+      }
+
+      if (session.expiresAt && new Date() > session.expiresAt) {
+        await storage.updateKbaSession(session.id, { status: "expired" });
+        return res.status(400).json({ error: "Session has expired" });
+      }
+
+      const { answers } = req.body;
+      if (!answers || !Array.isArray(answers)) {
+        return res.status(400).json({ error: "Answers array is required" });
+      }
+
+      const questionsData = session.questionsData as any[];
+
+      let correctCount = 0;
+      const gradedAnswers = answers.map((answer: { questionId: string; selectedIndex: number }) => {
+        const storedQuestion = questionsData.find((q: any) => q.id === answer.questionId);
+        const correct = storedQuestion ? answer.selectedIndex === storedQuestion.correctIndex : false;
+        if (correct) correctCount++;
+        return { questionId: answer.questionId, selectedIndex: answer.selectedIndex, correct };
+      });
+
+      const passed = correctCount >= (session.passingScore || 4);
+      const status = passed ? "passed" : "failed";
+
+      await storage.updateKbaSession(session.id, {
+        status,
+        answersData: gradedAnswers,
+        score: correctCount,
+        completedAt: new Date(),
+      });
+
+      if (passed) {
+        const profile = await storage.getOnboardingProfileByUser(req.user!.id);
+        if (profile) {
+          const completedSteps = [...(profile.completedSteps || [])];
+          if (!completedSteps.includes("kba_verification")) {
+            completedSteps.push("kba_verification");
+          }
+          await storage.updateOnboardingProfile(profile.id, {
+            identityVerified: true,
+            completedSteps,
+            progressPercent: Math.min(100, (profile.progressPercent || 0) + 20),
+          });
+        }
+      }
+
+      res.json({
+        status,
+        score: correctCount,
+        totalQuestions: questionsData.length,
+        passed,
+        remainingAttempts: passed ? 0 : Math.max(0, (session.maxAttempts || 3) - (session.attemptNumber || 1)),
+      });
+    } catch (error) {
+      console.error("Submit KBA answers error:", error);
+      res.status(500).json({ error: "Failed to submit answers" });
+    }
+  });
+
+  // KYC/AML - Trigger screening
+  app.post("/api/onboarding/kyc/screen", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const { applicationId } = req.body;
+
+      const existing = await storage.getKycScreeningsByUser(userId);
+      const recentCleared = existing.find(s => s.overallStatus === "cleared" && s.expiresAt && new Date(s.expiresAt) > new Date());
+      if (recentCleared) {
+        return res.json({ screening: recentCleared, alreadyCleared: true });
+      }
+
+      const screening = await storage.createKycScreening({
+        userId,
+        applicationId: applicationId || null,
+        overallStatus: "in_progress",
+      });
+
+      simulateKycScreening(screening.id);
+
+      res.json({ screening, message: "KYC/AML screening initiated" });
+    } catch (error) {
+      console.error("KYC screening error:", error);
+      res.status(500).json({ error: "Failed to initiate screening" });
+    }
+  });
+
+  // KYC/AML - Get screening status
+  app.get("/api/onboarding/kyc/status", isAuthenticated, async (req, res) => {
+    try {
+      const screenings = await storage.getKycScreeningsByUser(req.user!.id);
+      res.json({ screening: screenings[0] || null });
+    } catch (error) {
+      console.error("Get KYC status error:", error);
+      res.status(500).json({ error: "Failed to get screening status" });
+    }
+  });
+
+  // Onboarding Feedback
+  app.post("/api/onboarding/feedback", isAuthenticated, async (req, res) => {
+    try {
+      const feedbackSchema = z.object({
+        step: z.string().optional(),
+        rating: z.number().min(1).max(5),
+        comment: z.string().optional(),
+        feedbackType: z.enum(["general", "difficulty", "suggestion", "praise"]).optional(),
+      });
+
+      const validated = feedbackSchema.parse(req.body);
+      const feedback = await storage.createOnboardingFeedback({
+        userId: req.user!.id,
+        ...validated,
+      });
+
+      res.json(feedback);
+    } catch (error) {
+      console.error("Submit feedback error:", error);
+      res.status(500).json({ error: "Failed to submit feedback" });
+    }
+  });
+
+  // Helper: Generate KBA questions (simulated - in production, these come from credit bureaus)
+  function generateKBAQuestions() {
+    return [
+      {
+        id: "q1",
+        question: "Which of the following addresses have you been associated with?",
+        choices: ["123 Oak Street, Springfield", "456 Maple Avenue, Portland", "789 Pine Road, Denver", "None of the above"],
+        correctIndex: 0,
+      },
+      {
+        id: "q2",
+        question: "In which of the following counties have you lived?",
+        choices: ["Cook County", "King County", "Maricopa County", "None of the above"],
+        correctIndex: 1,
+      },
+      {
+        id: "q3",
+        question: "Which of the following phone numbers is associated with you?",
+        choices: ["(555) 123-4567", "(555) 234-5678", "(555) 345-6789", "None of the above"],
+        correctIndex: 0,
+      },
+      {
+        id: "q4",
+        question: "Which financial institution have you had an account with?",
+        choices: ["First National Bank", "Pacific Credit Union", "Metro Savings", "None of the above"],
+        correctIndex: 2,
+      },
+      {
+        id: "q5",
+        question: "What type of vehicle have you previously registered?",
+        choices: ["Sedan", "SUV", "Truck", "None of the above"],
+        correctIndex: 1,
+      },
+    ];
+  }
+
+  // Helper: Simulate KYC/AML screening (progressive status updates)
+  async function simulateKycScreening(screeningId: string) {
+    try {
+      await new Promise(r => setTimeout(r, 2000));
+      await storage.updateKycScreening(screeningId, {
+        ofacStatus: "cleared",
+        ofacCheckedAt: new Date(),
+      });
+
+      await new Promise(r => setTimeout(r, 2000));
+      await storage.updateKycScreening(screeningId, {
+        sanctionsStatus: "cleared",
+        sanctionsCheckedAt: new Date(),
+      });
+
+      await new Promise(r => setTimeout(r, 2000));
+      await storage.updateKycScreening(screeningId, {
+        pepStatus: "cleared",
+        pepCheckedAt: new Date(),
+      });
+
+      await new Promise(r => setTimeout(r, 2000));
+      await storage.updateKycScreening(screeningId, {
+        adverseMediaStatus: "cleared",
+        adverseMediaCheckedAt: new Date(),
+        overallStatus: "cleared",
+        riskLevel: "low",
+        riskScore: 12,
+        expiresAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
+      });
+    } catch (error) {
+      console.error("KYC simulation error:", error);
+      try {
+        await storage.updateKycScreening(screeningId, { overallStatus: "failed" });
+      } catch {}
+    }
+  }
+
   const httpServer = createServer(app);
 
   return httpServer;

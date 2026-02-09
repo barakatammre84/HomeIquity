@@ -51,6 +51,8 @@ import {
   HelpCircle,
   GraduationCap,
   AlertCircle,
+  Rocket,
+  Fingerprint,
 } from "lucide-react";
 
 // Team member interface
@@ -92,6 +94,7 @@ const aspiringOwnerNavigation = [
     section: "Explore Homeownership",
     items: [
       { title: "Overview", href: "/dashboard", icon: LayoutDashboard, testId: "link-borrower-dashboard" },
+      { title: "My Journey", href: "/onboarding", icon: Rocket, testId: "link-onboarding" },
       { title: "Gap to Homeownership", href: "/gap-calculator", icon: Calculator, testId: "link-gap-calculator" },
       { title: "Browse Properties", href: "/properties", icon: Home, testId: "link-properties" },
     ],
@@ -100,6 +103,7 @@ const aspiringOwnerNavigation = [
     section: "Get Ready",
     items: [
       { title: "Pre-Approval", href: "/apply", icon: Star, testId: "link-pre-approval" },
+      { title: "Identity Verification", href: "/identity-verification", icon: Fingerprint, testId: "link-identity-verification" },
     ],
   },
 ];
@@ -109,7 +113,9 @@ const activeBuyerNavigation = [
     section: "My Mortgage",
     items: [
       { title: "Overview", href: "/dashboard", icon: LayoutDashboard, testId: "link-borrower-dashboard" },
+      { title: "My Journey", href: "/onboarding", icon: Rocket, testId: "link-onboarding" },
       { title: "Tasks", href: "/tasks", icon: CheckSquare, testId: "link-tasks", showBadge: true },
+      { title: "Identity Verification", href: "/identity-verification", icon: Fingerprint, testId: "link-identity-verification" },
       { title: "Verification", href: "/verification", icon: Shield, testId: "link-verification" },
     ],
   },

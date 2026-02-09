@@ -7008,3 +7008,150 @@ export const insertTeamMessageSchema = createInsertSchema(teamMessages).omit({
 
 export type InsertTeamMessage = z.infer<typeof insertTeamMessageSchema>;
 export type TeamMessage = typeof teamMessages.$inferSelect;
+
+// ================================
+// Digital Onboarding - KBA, KYC/AML, Personalized Journeys
+// ================================
+
+// KBA (Knowledge-Based Authentication) Sessions
+export const kbaSessions = pgTable("kba_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  applicationId: varchar("application_id").references(() => loanApplications.id),
+  status: varchar("status", { length: 50 }).default("pending").notNull(), // pending, in_progress, passed, failed, expired
+  questionsData: jsonb("questions_data"), // Array of {id, question, choices, correctIndex}
+  answersData: jsonb("answers_data"), // Array of {questionId, selectedIndex, correct}
+  score: integer("score"), // Number of correct answers
+  totalQuestions: integer("total_questions").default(5),
+  passingScore: integer("passing_score").default(4),
+  attemptNumber: integer("attempt_number").default(1),
+  maxAttempts: integer("max_attempts").default(3),
+  startedAt: timestamp("started_at"),
+  completedAt: timestamp("completed_at"),
+  expiresAt: timestamp("expires_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const kbaSessionsRelations = relations(kbaSessions, ({ one }) => ({
+  user: one(users, {
+    fields: [kbaSessions.userId],
+    references: [users.id],
+  }),
+  application: one(loanApplications, {
+    fields: [kbaSessions.applicationId],
+    references: [loanApplications.id],
+  }),
+}));
+
+export const insertKbaSessionSchema = createInsertSchema(kbaSessions).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertKbaSession = z.infer<typeof insertKbaSessionSchema>;
+export type KbaSession = typeof kbaSessions.$inferSelect;
+
+// KYC/AML Screening Records
+export const kycScreenings = pgTable("kyc_screenings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  applicationId: varchar("application_id").references(() => loanApplications.id),
+  overallStatus: varchar("overall_status", { length: 50 }).default("pending").notNull(), // pending, in_progress, cleared, flagged, failed
+  ofacStatus: varchar("ofac_status", { length: 50 }).default("pending"), // pending, cleared, flagged
+  ofacCheckedAt: timestamp("ofac_checked_at"),
+  sanctionsStatus: varchar("sanctions_status", { length: 50 }).default("pending"),
+  sanctionsCheckedAt: timestamp("sanctions_checked_at"),
+  pepStatus: varchar("pep_status", { length: 50 }).default("pending"), // Politically Exposed Person
+  pepCheckedAt: timestamp("pep_checked_at"),
+  adverseMediaStatus: varchar("adverse_media_status", { length: 50 }).default("pending"),
+  adverseMediaCheckedAt: timestamp("adverse_media_checked_at"),
+  riskLevel: varchar("risk_level", { length: 20 }), // low, medium, high
+  riskScore: integer("risk_score"), // 0-100
+  screeningNotes: text("screening_notes"),
+  reviewedByUserId: varchar("reviewed_by_user_id").references(() => users.id),
+  reviewedAt: timestamp("reviewed_at"),
+  expiresAt: timestamp("expires_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const kycScreeningsRelations = relations(kycScreenings, ({ one }) => ({
+  user: one(users, {
+    fields: [kycScreenings.userId],
+    references: [users.id],
+  }),
+  application: one(loanApplications, {
+    fields: [kycScreenings.applicationId],
+    references: [loanApplications.id],
+  }),
+}));
+
+export const insertKycScreeningSchema = createInsertSchema(kycScreenings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertKycScreening = z.infer<typeof insertKycScreeningSchema>;
+export type KycScreening = typeof kycScreenings.$inferSelect;
+
+// Onboarding Profiles - tracks personalized journey state
+export const onboardingProfiles = pgTable("onboarding_profiles", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  applicationId: varchar("application_id").references(() => loanApplications.id),
+  borrowerType: varchar("borrower_type", { length: 50 }).default("first_time_buyer"), // first_time_buyer, self_employed, non_qm, standard
+  journeyStatus: varchar("journey_status", { length: 50 }).default("not_started"), // not_started, identity_verification, kyc_screening, document_collection, review, complete
+  completedSteps: jsonb("completed_steps").$type<string[]>().default([]),
+  currentStep: varchar("current_step", { length: 100 }),
+  identityVerified: boolean("identity_verified").default(false),
+  kycCleared: boolean("kyc_cleared").default(false),
+  documentsComplete: boolean("documents_complete").default(false),
+  personalInfoComplete: boolean("personal_info_complete").default(false),
+  progressPercent: integer("progress_percent").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const onboardingProfilesRelations = relations(onboardingProfiles, ({ one }) => ({
+  user: one(users, {
+    fields: [onboardingProfiles.userId],
+    references: [users.id],
+  }),
+  application: one(loanApplications, {
+    fields: [onboardingProfiles.applicationId],
+    references: [loanApplications.id],
+  }),
+}));
+
+export const insertOnboardingProfileSchema = createInsertSchema(onboardingProfiles).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertOnboardingProfile = z.infer<typeof insertOnboardingProfileSchema>;
+export type OnboardingProfile = typeof onboardingProfiles.$inferSelect;
+
+// Onboarding Feedback
+export const onboardingFeedback = pgTable("onboarding_feedback", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  applicationId: varchar("application_id").references(() => loanApplications.id),
+  step: varchar("step", { length: 100 }),
+  rating: integer("rating"), // 1-5
+  comment: text("comment"),
+  feedbackType: varchar("feedback_type", { length: 50 }).default("general"), // general, difficulty, suggestion, praise
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const onboardingFeedbackRelations = relations(onboardingFeedback, ({ one }) => ({
+  user: one(users, {
+    fields: [onboardingFeedback.userId],
+    references: [users.id],
+  }),
+}));
+
+export const insertOnboardingFeedbackSchema = createInsertSchema(onboardingFeedback).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertOnboardingFeedback = z.infer<typeof insertOnboardingFeedbackSchema>;
+export type OnboardingFeedback = typeof onboardingFeedback.$inferSelect;

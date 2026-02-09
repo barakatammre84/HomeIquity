@@ -62,6 +62,8 @@ import AgentDashboard from "@/pages/AgentDashboard";
 import AgentEdit from "@/pages/AgentEdit";
 import PropertyForm from "@/pages/PropertyForm";
 import Privacy from "@/pages/Privacy";
+import IdentityVerification from "@/pages/IdentityVerification";
+import OnboardingJourney from "@/pages/OnboardingJourney";
 
 function PublicPage({ children }: { children: React.ReactNode }) {
   return <PublicLayout>{children}</PublicLayout>;
@@ -171,6 +173,12 @@ function Router() {
       </Route>
       <Route path="/verification">
         <BorrowerPage><Verification /></BorrowerPage>
+      </Route>
+      <Route path="/identity-verification">
+        <BorrowerPage><IdentityVerification /></BorrowerPage>
+      </Route>
+      <Route path="/onboarding">
+        <BorrowerPage><OnboardingJourney /></BorrowerPage>
       </Route>
       <Route path="/credit-consent/:id">
         {(params) => <BorrowerPage><CreditConsent /></BorrowerPage>}

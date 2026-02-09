@@ -144,6 +144,18 @@ import {
   type InsertDocumentPackageItem,
   type TeamMessage,
   type InsertTeamMessage,
+  kbaSessions,
+  kycScreenings,
+  onboardingProfiles,
+  onboardingFeedback,
+  type KbaSession,
+  type InsertKbaSession,
+  type KycScreening,
+  type InsertKycScreening,
+  type OnboardingProfile,
+  type InsertOnboardingProfile,
+  type OnboardingFeedback,
+  type InsertOnboardingFeedback,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -432,6 +444,29 @@ export interface IStorage {
   getApplicationInviteByToken(token: string): Promise<ApplicationInvite | undefined>;
   getApplicationInvitesByReferrer(referrerId: string): Promise<ApplicationInvite[]>;
   updateApplicationInvite(id: string, data: Partial<ApplicationInvite>): Promise<ApplicationInvite | undefined>;
+
+  // KBA Sessions
+  createKbaSession(data: InsertKbaSession): Promise<KbaSession>;
+  getKbaSession(id: string): Promise<KbaSession | undefined>;
+  getKbaSessionsByUser(userId: string): Promise<KbaSession[]>;
+  updateKbaSession(id: string, data: Partial<KbaSession>): Promise<KbaSession | undefined>;
+
+  // KYC/AML Screenings
+  createKycScreening(data: InsertKycScreening): Promise<KycScreening>;
+  getKycScreening(id: string): Promise<KycScreening | undefined>;
+  getKycScreeningByApplication(applicationId: string): Promise<KycScreening | undefined>;
+  getKycScreeningsByUser(userId: string): Promise<KycScreening[]>;
+  updateKycScreening(id: string, data: Partial<KycScreening>): Promise<KycScreening | undefined>;
+
+  // Onboarding Profiles
+  createOnboardingProfile(data: InsertOnboardingProfile): Promise<OnboardingProfile>;
+  getOnboardingProfile(id: string): Promise<OnboardingProfile | undefined>;
+  getOnboardingProfileByUser(userId: string): Promise<OnboardingProfile | undefined>;
+  updateOnboardingProfile(id: string, data: Partial<OnboardingProfile>): Promise<OnboardingProfile | undefined>;
+
+  // Onboarding Feedback
+  createOnboardingFeedback(data: InsertOnboardingFeedback): Promise<OnboardingFeedback>;
+  getOnboardingFeedbackByUser(userId: string): Promise<OnboardingFeedback[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -3082,6 +3117,91 @@ export class DatabaseStorage implements IStorage {
       const data = msg.documentRequestData as any;
       return data?.status === 'pending';
     });
+  }
+
+  // KBA Sessions
+  async createKbaSession(data: InsertKbaSession): Promise<KbaSession> {
+    const [session] = await db.insert(kbaSessions).values(data).returning();
+    return session;
+  }
+
+  async getKbaSession(id: string): Promise<KbaSession | undefined> {
+    const [session] = await db.select().from(kbaSessions).where(eq(kbaSessions.id, id));
+    return session;
+  }
+
+  async getKbaSessionsByUser(userId: string): Promise<KbaSession[]> {
+    return db.select().from(kbaSessions).where(eq(kbaSessions.userId, userId)).orderBy(desc(kbaSessions.createdAt));
+  }
+
+  async updateKbaSession(id: string, data: Partial<KbaSession>): Promise<KbaSession | undefined> {
+    const [updated] = await db.update(kbaSessions).set(data).where(eq(kbaSessions.id, id)).returning();
+    return updated;
+  }
+
+  // KYC/AML Screenings
+  async createKycScreening(data: InsertKycScreening): Promise<KycScreening> {
+    const [screening] = await db.insert(kycScreenings).values(data).returning();
+    return screening;
+  }
+
+  async getKycScreening(id: string): Promise<KycScreening | undefined> {
+    const [screening] = await db.select().from(kycScreenings).where(eq(kycScreenings.id, id));
+    return screening;
+  }
+
+  async getKycScreeningByApplication(applicationId: string): Promise<KycScreening | undefined> {
+    const [screening] = await db.select().from(kycScreenings)
+      .where(eq(kycScreenings.applicationId, applicationId))
+      .orderBy(desc(kycScreenings.createdAt))
+      .limit(1);
+    return screening;
+  }
+
+  async getKycScreeningsByUser(userId: string): Promise<KycScreening[]> {
+    return db.select().from(kycScreenings).where(eq(kycScreenings.userId, userId)).orderBy(desc(kycScreenings.createdAt));
+  }
+
+  async updateKycScreening(id: string, data: Partial<KycScreening>): Promise<KycScreening | undefined> {
+    const [updated] = await db.update(kycScreenings).set({ ...data, updatedAt: new Date() }).where(eq(kycScreenings.id, id)).returning();
+    return updated;
+  }
+
+  // Onboarding Profiles
+  async createOnboardingProfile(data: InsertOnboardingProfile): Promise<OnboardingProfile> {
+    const [profile] = await db.insert(onboardingProfiles).values({
+      ...data,
+      completedSteps: data.completedSteps || [],
+    } as any).returning();
+    return profile;
+  }
+
+  async getOnboardingProfile(id: string): Promise<OnboardingProfile | undefined> {
+    const [profile] = await db.select().from(onboardingProfiles).where(eq(onboardingProfiles.id, id));
+    return profile;
+  }
+
+  async getOnboardingProfileByUser(userId: string): Promise<OnboardingProfile | undefined> {
+    const [profile] = await db.select().from(onboardingProfiles)
+      .where(eq(onboardingProfiles.userId, userId))
+      .orderBy(desc(onboardingProfiles.createdAt))
+      .limit(1);
+    return profile;
+  }
+
+  async updateOnboardingProfile(id: string, data: Partial<OnboardingProfile>): Promise<OnboardingProfile | undefined> {
+    const [updated] = await db.update(onboardingProfiles).set({ ...data, updatedAt: new Date() }).where(eq(onboardingProfiles.id, id)).returning();
+    return updated;
+  }
+
+  // Onboarding Feedback
+  async createOnboardingFeedback(data: InsertOnboardingFeedback): Promise<OnboardingFeedback> {
+    const [feedback] = await db.insert(onboardingFeedback).values(data).returning();
+    return feedback;
+  }
+
+  async getOnboardingFeedbackByUser(userId: string): Promise<OnboardingFeedback[]> {
+    return db.select().from(onboardingFeedback).where(eq(onboardingFeedback.userId, userId)).orderBy(desc(onboardingFeedback.createdAt));
   }
 }
 
