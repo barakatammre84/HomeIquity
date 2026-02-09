@@ -61,6 +61,7 @@ import BuyerProperties from "@/pages/BuyerProperties";
 import AgentDashboard from "@/pages/AgentDashboard";
 import AgentEdit from "@/pages/AgentEdit";
 import PropertyForm from "@/pages/PropertyForm";
+import Privacy from "@/pages/Privacy";
 
 function PublicPage({ children }: { children: React.ReactNode }) {
   return <PublicLayout>{children}</PublicLayout>;
@@ -102,6 +103,9 @@ function Router() {
       </Route>
       <Route path="/faq">
         <PublicPage><FAQ /></PublicPage>
+      </Route>
+      <Route path="/privacy">
+        <Privacy />
       </Route>
       
       {/* Property Pages - Public */}

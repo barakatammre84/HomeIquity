@@ -39,7 +39,7 @@ export function Footer() {
             <h3 className="text-sm font-semibold text-white">Legal</h3>
             <ul className="mt-4 space-y-1 text-sm text-white/70">
               <li><span className="block rounded-md px-2 py-2 -mx-2 hover:text-white transition-colors cursor-pointer">NMLS Consumer Access</span></li>
-              <li><span className="block rounded-md px-2 py-2 -mx-2 hover:text-white transition-colors cursor-pointer">Privacy Policy</span></li>
+              <li><Link href="/privacy" className="block rounded-md px-2 py-2 -mx-2 hover:text-white transition-colors" data-testid="link-footer-privacy">Privacy Policy</Link></li>
               <li><span className="block rounded-md px-2 py-2 -mx-2 hover:text-white transition-colors cursor-pointer">Terms of Use</span></li>
               <li><span className="block rounded-md px-2 py-2 -mx-2 hover:text-white transition-colors cursor-pointer">Disclosures & Licensing</span></li>
               <li><span className="block rounded-md px-2 py-2 -mx-2 hover:text-white transition-colors cursor-pointer">Affiliated Business</span></li>

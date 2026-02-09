@@ -1,11 +1,14 @@
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
 import { useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { MobileBottomNav } from "@/components/MobileBottomNav";
+import { NotificationsBell } from "@/components/NotificationsPanel";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import type { DealActivity } from "@shared/schema";
 
 interface PrivateLayoutProps {
   children: React.ReactNode;
@@ -15,6 +18,16 @@ interface PrivateLayoutProps {
 export function PrivateLayout({ children, requiredRoles }: PrivateLayoutProps) {
   const { user, isAuthenticated, isLoading } = useAuth();
   const [, navigate] = useLocation();
+
+  const { data: dashboardData } = useQuery<{
+    activities: DealActivity[];
+    unreadMessages: number;
+    pendingTaskCount: number;
+  }>({
+    queryKey: ["/api/dashboard"],
+    enabled: isAuthenticated && !isLoading,
+    refetchInterval: 30000,
+  });
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -63,6 +76,9 @@ export function PrivateLayout({ children, requiredRoles }: PrivateLayoutProps) {
     }
   }
 
+  const totalUnread = (dashboardData?.unreadMessages || 0) + (dashboardData?.pendingTaskCount || 0);
+  const activities = dashboardData?.activities || [];
+
   const sidebarStyle = {
     "--sidebar-width": "16rem",
     "--sidebar-width-icon": "3rem",
@@ -79,6 +95,7 @@ export function PrivateLayout({ children, requiredRoles }: PrivateLayoutProps) {
               <span className="text-sm font-semibold tracking-tight text-primary md:hidden" data-testid="text-mobile-brand">baranest</span>
             </div>
             <div className="flex items-center gap-2">
+              <NotificationsBell unreadCount={totalUnread} activities={activities} />
               {user && (
                 <Avatar className="h-8 w-8 md:hidden">
                   <AvatarFallback className="bg-primary/10 text-xs font-medium text-primary">

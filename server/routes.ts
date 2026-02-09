@@ -90,9 +90,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/dashboard", isAuthenticated, async (req, res) => {
     try {
       const userId = req.user!.id;
-      const applications = await storage.getLoanApplicationsByUser(userId);
-      const documents = await storage.getDocumentsByUser(userId);
-      const stats = await storage.getDashboardStats(userId);
+      const [applications, documents, stats, unreadMessages] = await Promise.all([
+        storage.getLoanApplicationsByUser(userId),
+        storage.getDocumentsByUser(userId),
+        storage.getDashboardStats(userId),
+        storage.getUnreadMessageCount(userId),
+      ]);
 
       const recentOptions = [];
       for (const app of applications.slice(0, 3)) {
@@ -100,11 +103,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         recentOptions.push(...options);
       }
 
+      let pendingTaskCount = 0;
+      for (const app of applications) {
+        const tasks = await storage.getTasksByApplication(app.id);
+        pendingTaskCount += tasks.filter(t => ["pending", "in_progress", "rejected"].includes(t.status)).length;
+      }
+
       res.json({
         applications,
         documents,
         recentOptions: recentOptions.slice(0, 5),
         stats,
+        unreadMessages,
+        pendingTaskCount,
       });
     } catch (error) {
       console.error("Dashboard error:", error);

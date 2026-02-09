@@ -9,6 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BorrowerRequests } from "@/components/BorrowerRequests";
 import { ApplicationSwitcher } from "@/components/ApplicationSwitcher";
+import { JourneyTracker } from "@/components/JourneyTracker";
+import { WhatsNext } from "@/components/WhatsNext";
 import { isStaffRole } from "@shared/schema";
 import type { LoanApplication, DealActivity } from "@shared/schema";
 import {
@@ -35,9 +37,10 @@ interface DashboardData {
     pendingDocuments: number;
   };
   activities: DealActivity[];
+  unreadMessages: number;
+  pendingTaskCount: number;
 }
 
-// Map status to confidence labels (no scores, no underwriting language)
 function getConfidenceLabel(status: string): { label: string; color: string } {
   switch (status) {
     case "pre_approved":
@@ -51,7 +54,6 @@ function getConfidenceLabel(status: string): { label: string; color: string } {
   }
 }
 
-// Calculate expiration date (30 days from approval or creation)
 function getExpirationDate(application: LoanApplication): string | null {
   if (application.status !== "pre_approved") return null;
   const createdDate = new Date(application.createdAt!);
@@ -60,7 +62,6 @@ function getExpirationDate(application: LoanApplication): string | null {
   return expirationDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
-// Format activity timestamp
 function formatActivityTime(timestamp: string | Date): string {
   const date = new Date(timestamp);
   const now = new Date();
@@ -79,8 +80,6 @@ function formatActivityTime(timestamp: string | Date): string {
 export default function Dashboard() {
   const { user, isLoading: authLoading } = useAuth();
   const [, navigate] = useLocation();
-  
-  // ALL HOOKS MUST BE CALLED BEFORE ANY EARLY RETURNS
   const [selectedAppId, setSelectedAppId] = useState<string | null>(null);
 
   const isStaff = isStaffRole(user?.role || "");
@@ -96,10 +95,10 @@ export default function Dashboard() {
     enabled: !authLoading && !isStaff,
   });
 
-  // Early return AFTER all hooks
   if (authLoading || isLoading || isStaff) {
     return (
       <div className="p-8 max-w-2xl mx-auto space-y-4">
+        <Skeleton className="h-12 w-full" />
         <Skeleton className="h-32 w-full" />
         <Skeleton className="h-24 w-full" />
         <Skeleton className="h-40 w-full" />
@@ -109,8 +108,9 @@ export default function Dashboard() {
 
   const applications = data?.applications || [];
   const activities = data?.activities || [];
+  const unreadMessages = data?.unreadMessages || 0;
+  const pendingTaskCount = data?.pendingTaskCount || 0;
 
-  // Find the active application based on selection or default
   const defaultApp = applications.find(
     (app) => !["closed", "denied"].includes(app.status)
   );
@@ -123,7 +123,6 @@ export default function Dashboard() {
   const expirationDate = activeApplication ? getExpirationDate(activeApplication) : null;
   const confidence = activeApplication ? getConfidenceLabel(activeApplication.status) : null;
 
-  // Simulated offers (would come from API in production)
   const hasOffers = isPreApproved;
   const offerCount = hasOffers ? 3 : 0;
   const rateRange = hasOffers ? "6.25% - 6.75%" : null;
@@ -132,17 +131,32 @@ export default function Dashboard() {
     <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-2xl px-4 py-6 sm:px-6 sm:py-8 space-y-4">
         
-        {/* DASHBOARD HEADER - Application switcher on the right */}
         <div className="flex items-center justify-between gap-4 flex-wrap border-b pb-4">
-          <h1 className="text-xl font-semibold">Overview</h1>
+          <div>
+            <h1 className="text-xl font-semibold" data-testid="text-dashboard-title">
+              {user?.firstName ? `Hi, ${user.firstName}` : "Overview"}
+            </h1>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              {activeApplication
+                ? "Here's where things stand with your mortgage."
+                : "Let's get you on the path to homeownership."}
+            </p>
+          </div>
           <ApplicationSwitcher
             applications={applications}
             activeApplicationId={activeApplication?.id}
             onSelectApplication={(app) => setSelectedAppId(app.id)}
           />
         </div>
+
+        {activeApplication && activeApplication.status !== "draft" && (
+          <Card data-testid="card-journey-tracker">
+            <CardContent className="p-4 sm:p-6">
+              <JourneyTracker status={activeApplication.status} />
+            </CardContent>
+          </Card>
+        )}
         
-        {/* 1. YOUR APPROVAL STATUS (PRIMARY CARD) - Clean design with border accent */}
         <Card 
           className="shadow-lg" 
           data-testid="card-approval-status"
@@ -189,7 +203,6 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* 2. WHAT WE NEED FROM YOU (ACTION CARD) - Auto-hides when empty */}
         {activeApplication && (
           <BorrowerRequests 
             applicationId={activeApplication.id} 
@@ -197,7 +210,13 @@ export default function Dashboard() {
           />
         )}
 
-        {/* 3. YOUR LOAN SNAPSHOT - Clean grid with dividers */}
+        <WhatsNext
+          application={activeApplication || null}
+          pendingTasks={pendingTaskCount}
+          pendingDocuments={data?.stats?.pendingDocuments || 0}
+          unreadMessages={unreadMessages}
+        />
+
         {activeApplication && (
           <Card className="shadow-md" data-testid="card-loan-snapshot">
             <CardHeader className="pb-2 border-b">
@@ -261,9 +280,8 @@ export default function Dashboard() {
           </Card>
         )}
 
-        {/* 4. OFFERS AVAILABLE - Clean card with emerald accent */}
         {hasOffers && activeApplication && (
-          <Card className="shadow-md border-l-4 border-l-emerald-500" data-testid="card-offers">
+          <Card className="shadow-md" data-testid="card-offers">
             <CardContent className="p-4">
               <div className="flex items-center justify-between gap-4 flex-wrap">
                 <div className="flex items-center gap-3 flex-wrap">
@@ -290,7 +308,6 @@ export default function Dashboard() {
           </Card>
         )}
 
-        {/* 5. RECENT ACTIVITY - Clean with dividers */}
         {activities.length > 0 && (
           <Card className="shadow-md" data-testid="card-recent-activity">
             <CardHeader className="pb-2 border-b">
@@ -301,7 +318,7 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent className="pt-4">
               <div className="divide-y">
-                {activities.slice(0, 3).map((activity, index) => (
+                {activities.slice(0, 5).map((activity, index) => (
                   <div key={activity.id} className="flex items-start gap-3 py-3 first:pt-0 last:pb-0 flex-wrap" data-testid={`row-activity-${index}`}>
                     <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border">
                       {!activity.performedBy ? (
@@ -331,7 +348,6 @@ export default function Dashboard() {
           </Card>
         )}
 
-        {/* Empty state for no application */}
         {!activeApplication && (
           <Card className="shadow-lg" data-testid="card-empty-state">
             <CardContent className="py-12 text-center">
