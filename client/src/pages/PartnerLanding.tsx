@@ -52,7 +52,7 @@ export default function PartnerLanding() {
   const profileId = params?.profileId;
 
   const { data: profile, isLoading, error } = useQuery<PublicProfile>({
-    queryKey: [`/api/co-brand/public/${profileId}`],
+    queryKey: ['/api/co-brand/public', profileId],
     enabled: !!profileId,
   });
 
