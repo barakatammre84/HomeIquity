@@ -53,6 +53,8 @@ import {
   AlertCircle,
   Rocket,
   Fingerprint,
+  PiggyBank,
+  Palette,
 } from "lucide-react";
 
 // Team member interface
@@ -104,6 +106,8 @@ const aspiringOwnerNavigation = [
     items: [
       { title: "Pre-Approval", href: "/apply", icon: Star, testId: "link-pre-approval" },
       { title: "Identity Verification", href: "/identity-verification", icon: Fingerprint, testId: "link-identity-verification" },
+      { title: "First-Time Buyer Hub", href: "/first-time-buyer", icon: GraduationCap, testId: "link-first-time-buyer" },
+      { title: "Down Payment Help", href: "/down-payment-wizard", icon: PiggyBank, testId: "link-dpa-wizard" },
     ],
   },
 ];
@@ -145,6 +149,7 @@ const staffNavigation = [
     section: "Partner Services",
     items: [
       { title: "Order Services", href: "/partner-services", icon: Handshake, testId: "link-partner-services" },
+      { title: "Co-Branding Portal", href: "/co-branding", icon: Palette, testId: "link-co-branding" },
     ],
   },
   {

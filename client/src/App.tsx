@@ -64,6 +64,10 @@ import PropertyForm from "@/pages/PropertyForm";
 import Privacy from "@/pages/Privacy";
 import IdentityVerification from "@/pages/IdentityVerification";
 import OnboardingJourney from "@/pages/OnboardingJourney";
+import AgentCoBranding from "@/pages/AgentCoBranding";
+import FirstTimeBuyerHub from "@/pages/FirstTimeBuyerHub";
+import DownPaymentWizard from "@/pages/DownPaymentWizard";
+import PartnerLanding from "@/pages/PartnerLanding";
 
 function PublicPage({ children }: { children: React.ReactNode }) {
   return <PublicLayout>{children}</PublicLayout>;
@@ -94,6 +98,9 @@ function Router() {
       <Route path="/ref/:code">
         {(params) => <ReferralLanding />}
       </Route>
+      <Route path="/partner/:profileId">
+        {(params) => <PartnerLanding />}
+      </Route>
       <Route path="/resources">
         <PublicPage><Resources /></PublicPage>
       </Route>
@@ -111,6 +118,12 @@ function Router() {
       </Route>
       
       {/* Property Pages - Public */}
+      <Route path="/first-time-buyer">
+        <PublicPage><FirstTimeBuyerHub /></PublicPage>
+      </Route>
+      <Route path="/down-payment-wizard">
+        <PublicPage><DownPaymentWizard /></PublicPage>
+      </Route>
       <Route path="/properties">
         <PublicPage><Properties /></PublicPage>
       </Route>
@@ -229,6 +242,9 @@ function Router() {
       </Route>
       <Route path="/partner-services">
         <StaffPage><PartnerServices /></StaffPage>
+      </Route>
+      <Route path="/co-branding">
+        <StaffPage><AgentCoBranding /></StaffPage>
       </Route>
       <Route path="/policy-ops">
         <StaffPage><PolicyOps /></StaffPage>

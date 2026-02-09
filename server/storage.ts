@@ -156,6 +156,18 @@ import {
   type InsertOnboardingProfile,
   type OnboardingFeedback,
   type InsertOnboardingFeedback,
+  coBrandProfiles,
+  type CoBrandProfile,
+  type InsertCoBrandProfile,
+  dealDeskThreads,
+  dealDeskMessages,
+  type DealDeskThread,
+  type InsertDealDeskThread,
+  type DealDeskMessage,
+  type InsertDealDeskMessage,
+  dpaPrograms,
+  type DpaProgram,
+  type InsertDpaProgram,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -467,6 +479,24 @@ export interface IStorage {
   // Onboarding Feedback
   createOnboardingFeedback(data: InsertOnboardingFeedback): Promise<OnboardingFeedback>;
   getOnboardingFeedbackByUser(userId: string): Promise<OnboardingFeedback[]>;
+
+  // Co-Brand Profiles
+  createCoBrandProfile(data: InsertCoBrandProfile): Promise<CoBrandProfile>;
+  getCoBrandProfile(id: string): Promise<CoBrandProfile | undefined>;
+  getCoBrandProfileByUser(userId: string): Promise<CoBrandProfile | undefined>;
+  updateCoBrandProfile(id: string, data: Partial<CoBrandProfile>): Promise<CoBrandProfile | undefined>;
+
+  // Deal Desk
+  createDealDeskThread(data: InsertDealDeskThread): Promise<DealDeskThread>;
+  getDealDeskThread(id: string): Promise<DealDeskThread | undefined>;
+  getDealDeskThreadsByUser(userId: string): Promise<DealDeskThread[]>;
+  updateDealDeskThread(id: string, data: Partial<DealDeskThread>): Promise<DealDeskThread | undefined>;
+  createDealDeskMessage(data: InsertDealDeskMessage): Promise<DealDeskMessage>;
+  getDealDeskMessagesByThread(threadId: string): Promise<DealDeskMessage[]>;
+
+  // DPA Programs
+  getDpaPrograms(filters?: { state?: string; firstTimeBuyer?: boolean; minCreditScore?: number; maxIncome?: number }): Promise<DpaProgram[]>;
+  getDpaProgram(id: string): Promise<DpaProgram | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -3202,6 +3232,76 @@ export class DatabaseStorage implements IStorage {
 
   async getOnboardingFeedbackByUser(userId: string): Promise<OnboardingFeedback[]> {
     return db.select().from(onboardingFeedback).where(eq(onboardingFeedback.userId, userId)).orderBy(desc(onboardingFeedback.createdAt));
+  }
+
+  // Co-Brand Profiles
+  async createCoBrandProfile(data: InsertCoBrandProfile): Promise<CoBrandProfile> {
+    const [profile] = await db.insert(coBrandProfiles).values(data).returning();
+    return profile;
+  }
+
+  async getCoBrandProfile(id: string): Promise<CoBrandProfile | undefined> {
+    const [profile] = await db.select().from(coBrandProfiles).where(eq(coBrandProfiles.id, id));
+    return profile;
+  }
+
+  async getCoBrandProfileByUser(userId: string): Promise<CoBrandProfile | undefined> {
+    const [profile] = await db.select().from(coBrandProfiles).where(eq(coBrandProfiles.userId, userId)).limit(1);
+    return profile;
+  }
+
+  async updateCoBrandProfile(id: string, data: Partial<CoBrandProfile>): Promise<CoBrandProfile | undefined> {
+    const [updated] = await db.update(coBrandProfiles).set({ ...data, updatedAt: new Date() }).where(eq(coBrandProfiles.id, id)).returning();
+    return updated;
+  }
+
+  // Deal Desk
+  async createDealDeskThread(data: InsertDealDeskThread): Promise<DealDeskThread> {
+    const [thread] = await db.insert(dealDeskThreads).values(data).returning();
+    return thread;
+  }
+
+  async getDealDeskThread(id: string): Promise<DealDeskThread | undefined> {
+    const [thread] = await db.select().from(dealDeskThreads).where(eq(dealDeskThreads.id, id));
+    return thread;
+  }
+
+  async getDealDeskThreadsByUser(userId: string): Promise<DealDeskThread[]> {
+    return db.select().from(dealDeskThreads)
+      .where(or(eq(dealDeskThreads.agentUserId, userId), eq(dealDeskThreads.loUserId, userId)))
+      .orderBy(desc(dealDeskThreads.createdAt));
+  }
+
+  async updateDealDeskThread(id: string, data: Partial<DealDeskThread>): Promise<DealDeskThread | undefined> {
+    const [updated] = await db.update(dealDeskThreads).set({ ...data, updatedAt: new Date() }).where(eq(dealDeskThreads.id, id)).returning();
+    return updated;
+  }
+
+  async createDealDeskMessage(data: InsertDealDeskMessage): Promise<DealDeskMessage> {
+    const [message] = await db.insert(dealDeskMessages).values(data).returning();
+    return message;
+  }
+
+  async getDealDeskMessagesByThread(threadId: string): Promise<DealDeskMessage[]> {
+    return db.select().from(dealDeskMessages)
+      .where(eq(dealDeskMessages.threadId, threadId))
+      .orderBy(dealDeskMessages.createdAt);
+  }
+
+  // DPA Programs
+  async getDpaPrograms(filters?: { state?: string; firstTimeBuyer?: boolean; minCreditScore?: number; maxIncome?: number }): Promise<DpaProgram[]> {
+    let query = db.select().from(dpaPrograms).where(eq(dpaPrograms.isActive, true));
+    if (filters?.state) {
+      query = db.select().from(dpaPrograms).where(
+        and(eq(dpaPrograms.isActive, true), or(eq(dpaPrograms.state, filters.state), sql`${dpaPrograms.state} IS NULL`))
+      );
+    }
+    return query.orderBy(dpaPrograms.name);
+  }
+
+  async getDpaProgram(id: string): Promise<DpaProgram | undefined> {
+    const [program] = await db.select().from(dpaPrograms).where(eq(dpaPrograms.id, id));
+    return program;
   }
 }
 

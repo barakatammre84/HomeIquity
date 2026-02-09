@@ -7155,3 +7155,132 @@ export const insertOnboardingFeedbackSchema = createInsertSchema(onboardingFeedb
 });
 export type InsertOnboardingFeedback = z.infer<typeof insertOnboardingFeedbackSchema>;
 export type OnboardingFeedback = typeof onboardingFeedback.$inferSelect;
+
+// ===== AGENT CO-BRANDING PORTAL =====
+
+export const coBrandProfiles = pgTable("co_brand_profiles", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  brandName: varchar("brand_name", { length: 255 }).notNull(),
+  tagline: varchar("tagline", { length: 500 }),
+  logoUrl: text("logo_url"),
+  heroImageUrl: text("hero_image_url"),
+  primaryColor: varchar("primary_color", { length: 20 }).default("#1e3a5f"),
+  accentColor: varchar("accent_color", { length: 20 }).default("#10b981"),
+  contactEmail: varchar("contact_email", { length: 255 }),
+  contactPhone: varchar("contact_phone", { length: 20 }),
+  websiteUrl: text("website_url"),
+  nmlsId: varchar("nmls_id", { length: 50 }),
+  licenseNumber: varchar("license_number", { length: 100 }),
+  disclaimerText: text("disclaimer_text"),
+  bio: text("bio"),
+  specialties: text("specialties").array(),
+  serviceAreas: text("service_areas").array(),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const coBrandProfilesRelations = relations(coBrandProfiles, ({ one }) => ({
+  user: one(users, {
+    fields: [coBrandProfiles.userId],
+    references: [users.id],
+  }),
+}));
+
+export const insertCoBrandProfileSchema = createInsertSchema(coBrandProfiles).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertCoBrandProfile = z.infer<typeof insertCoBrandProfileSchema>;
+export type CoBrandProfile = typeof coBrandProfiles.$inferSelect;
+
+// Deal Desk Threads
+export const dealDeskThreads = pgTable("deal_desk_threads", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  agentUserId: varchar("agent_user_id").references(() => users.id).notNull(),
+  loUserId: varchar("lo_user_id").references(() => users.id),
+  subject: varchar("subject", { length: 500 }).notNull(),
+  scenarioType: varchar("scenario_type", { length: 50 }),
+  status: varchar("status", { length: 20 }).default("open").notNull(),
+  loanAmount: decimal("loan_amount"),
+  propertyType: varchar("property_type", { length: 50 }),
+  creditScore: integer("credit_score"),
+  borrowerType: varchar("borrower_type", { length: 50 }),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  closedAt: timestamp("closed_at"),
+});
+
+export const dealDeskThreadsRelations = relations(dealDeskThreads, ({ one }) => ({
+  agent: one(users, {
+    fields: [dealDeskThreads.agentUserId],
+    references: [users.id],
+  }),
+}));
+
+export const insertDealDeskThreadSchema = createInsertSchema(dealDeskThreads).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  closedAt: true,
+});
+export type InsertDealDeskThread = z.infer<typeof insertDealDeskThreadSchema>;
+export type DealDeskThread = typeof dealDeskThreads.$inferSelect;
+
+// Deal Desk Messages
+export const dealDeskMessages = pgTable("deal_desk_messages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  threadId: varchar("thread_id").references(() => dealDeskThreads.id).notNull(),
+  senderUserId: varchar("sender_user_id").references(() => users.id).notNull(),
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const dealDeskMessagesRelations = relations(dealDeskMessages, ({ one }) => ({
+  thread: one(dealDeskThreads, {
+    fields: [dealDeskMessages.threadId],
+    references: [dealDeskThreads.id],
+  }),
+  sender: one(users, {
+    fields: [dealDeskMessages.senderUserId],
+    references: [users.id],
+  }),
+}));
+
+export const insertDealDeskMessageSchema = createInsertSchema(dealDeskMessages).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertDealDeskMessage = z.infer<typeof insertDealDeskMessageSchema>;
+export type DealDeskMessage = typeof dealDeskMessages.$inferSelect;
+
+// ===== DOWN PAYMENT ASSISTANCE PROGRAMS =====
+
+export const dpaPrograms = pgTable("dpa_programs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name", { length: 255 }).notNull(),
+  programType: varchar("program_type", { length: 50 }).notNull(),
+  state: varchar("state", { length: 2 }),
+  description: text("description").notNull(),
+  assistanceType: varchar("assistance_type", { length: 50 }).notNull(),
+  maxAssistanceAmount: decimal("max_assistance_amount"),
+  maxAssistancePercent: decimal("max_assistance_percent"),
+  minCreditScore: integer("min_credit_score"),
+  maxIncome: decimal("max_income"),
+  maxHomePrice: decimal("max_home_price"),
+  firstTimeBuyerOnly: boolean("first_time_buyer_only").default(false),
+  eligibilityNotes: text("eligibility_notes"),
+  applicationUrl: text("application_url"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertDpaProgramSchema = createInsertSchema(dpaPrograms).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertDpaProgram = z.infer<typeof insertDpaProgramSchema>;
+export type DpaProgram = typeof dpaPrograms.$inferSelect;

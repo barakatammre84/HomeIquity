@@ -6368,6 +6368,322 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }
 
   // ================================
+  // Agent Co-Branding Portal API Routes
+  // ================================
+
+  // Get or create co-brand profile for current user
+  app.get("/api/co-brand/profile", isAuthenticated, async (req, res) => {
+    try {
+      const profile = await storage.getCoBrandProfileByUser(req.user!.id);
+      res.json(profile || null);
+    } catch (error) {
+      console.error("Get co-brand profile error:", error);
+      res.status(500).json({ error: "Failed to get co-brand profile" });
+    }
+  });
+
+  // Create co-brand profile
+  app.post("/api/co-brand/profile", isAuthenticated, async (req, res) => {
+    try {
+      const existing = await storage.getCoBrandProfileByUser(req.user!.id);
+      if (existing) {
+        return res.status(409).json({ error: "Co-brand profile already exists", profile: existing });
+      }
+
+      const { brandName, tagline, contactEmail, contactPhone, websiteUrl, nmlsId, licenseNumber, disclaimerText, bio, specialties, serviceAreas, primaryColor, accentColor } = req.body;
+      if (!brandName) {
+        return res.status(400).json({ error: "Brand name is required" });
+      }
+
+      const profile = await storage.createCoBrandProfile({
+        userId: req.user!.id,
+        brandName,
+        tagline: tagline || null,
+        contactEmail: contactEmail || req.user!.email || null,
+        contactPhone: contactPhone || null,
+        websiteUrl: websiteUrl || null,
+        nmlsId: nmlsId || null,
+        licenseNumber: licenseNumber || null,
+        disclaimerText: disclaimerText || null,
+        bio: bio || null,
+        specialties: specialties || null,
+        serviceAreas: serviceAreas || null,
+        primaryColor: primaryColor || "#1e3a5f",
+        accentColor: accentColor || "#10b981",
+      });
+      res.json(profile);
+    } catch (error) {
+      console.error("Create co-brand profile error:", error);
+      res.status(500).json({ error: "Failed to create co-brand profile" });
+    }
+  });
+
+  // Update co-brand profile
+  app.patch("/api/co-brand/profile/:id", isAuthenticated, async (req, res) => {
+    try {
+      const profile = await storage.getCoBrandProfile(req.params.id);
+      if (!profile || profile.userId !== req.user!.id) {
+        return res.status(404).json({ error: "Profile not found" });
+      }
+
+      const allowedFields = [
+        "brandName", "tagline", "logoUrl", "heroImageUrl", "primaryColor", "accentColor",
+        "contactEmail", "contactPhone", "websiteUrl", "nmlsId", "licenseNumber",
+        "disclaimerText", "bio", "specialties", "serviceAreas", "isActive",
+      ];
+      const safeUpdate: Record<string, any> = {};
+      for (const key of allowedFields) {
+        if (req.body[key] !== undefined) safeUpdate[key] = req.body[key];
+      }
+
+      const updated = await storage.updateCoBrandProfile(req.params.id, safeUpdate);
+      res.json(updated);
+    } catch (error) {
+      console.error("Update co-brand profile error:", error);
+      res.status(500).json({ error: "Failed to update co-brand profile" });
+    }
+  });
+
+  // Public endpoint - Get co-brand profile by user ID (for public landing pages)
+  app.get("/api/co-brand/public/:id", async (req, res) => {
+    try {
+      let profile = await storage.getCoBrandProfile(req.params.id);
+      if (!profile) {
+        profile = await storage.getCoBrandProfileByUser(req.params.id);
+      }
+      if (!profile || !profile.isActive) {
+        return res.status(404).json({ error: "Profile not found" });
+      }
+
+      const user = await storage.getUser(profile.userId);
+      res.json({
+        brandName: profile.brandName,
+        tagline: profile.tagline,
+        logoUrl: profile.logoUrl,
+        heroImageUrl: profile.heroImageUrl,
+        primaryColor: profile.primaryColor,
+        accentColor: profile.accentColor,
+        contactEmail: profile.contactEmail,
+        contactPhone: profile.contactPhone,
+        websiteUrl: profile.websiteUrl,
+        nmlsId: profile.nmlsId,
+        licenseNumber: profile.licenseNumber,
+        disclaimerText: profile.disclaimerText,
+        bio: profile.bio,
+        specialties: profile.specialties,
+        serviceAreas: profile.serviceAreas,
+        loName: user ? `${user.firstName || ""} ${user.lastName || ""}`.trim() : "Loan Officer",
+        loProfileImage: user?.profileImageUrl || null,
+      });
+    } catch (error) {
+      console.error("Get public co-brand error:", error);
+      res.status(500).json({ error: "Failed to get co-brand profile" });
+    }
+  });
+
+  // Get referred client statuses for current user
+  app.get("/api/co-brand/referrals", isAuthenticated, async (req, res) => {
+    try {
+      const invites = await storage.getApplicationInvitesByReferrer(req.user!.id);
+      const enriched = await Promise.all(invites.map(async (inv: any) => {
+        let appStatus = null;
+        let appStage = null;
+        if (inv.loanApplicationId) {
+          const app = await storage.getLoanApplication(inv.loanApplicationId);
+          appStatus = app?.status || null;
+          appStage = app?.currentStage || null;
+        }
+        return {
+          id: inv.id,
+          clientName: inv.clientName,
+          clientEmail: inv.clientEmail,
+          status: inv.status,
+          createdAt: inv.createdAt,
+          clickedAt: inv.clickedAt,
+          appliedAt: inv.appliedAt,
+          applicationStatus: appStatus,
+          applicationStage: appStage,
+        };
+      }));
+      res.json(enriched);
+    } catch (error) {
+      console.error("Get referral statuses error:", error);
+      res.status(500).json({ error: "Failed to get referral statuses" });
+    }
+  });
+
+  // ================================
+  // Deal Desk API Routes
+  // ================================
+
+  // Create a deal desk thread
+  app.post("/api/deal-desk/threads", isAuthenticated, async (req, res) => {
+    try {
+      const { subject, scenarioType, loanAmount, propertyType, creditScore, borrowerType, notes } = req.body;
+      if (!subject) {
+        return res.status(400).json({ error: "Subject is required" });
+      }
+
+      const thread = await storage.createDealDeskThread({
+        agentUserId: req.user!.id,
+        subject,
+        scenarioType: scenarioType || null,
+        loanAmount: loanAmount || null,
+        propertyType: propertyType || null,
+        creditScore: creditScore || null,
+        borrowerType: borrowerType || null,
+        notes: notes || null,
+        status: "open",
+      });
+
+      if (notes) {
+        await storage.createDealDeskMessage({
+          threadId: thread.id,
+          senderUserId: req.user!.id,
+          content: notes,
+        });
+      }
+
+      res.json(thread);
+    } catch (error) {
+      console.error("Create deal desk thread error:", error);
+      res.status(500).json({ error: "Failed to create thread" });
+    }
+  });
+
+  // Get deal desk threads for current user
+  app.get("/api/deal-desk/threads", isAuthenticated, async (req, res) => {
+    try {
+      const threads = await storage.getDealDeskThreadsByUser(req.user!.id);
+      res.json(threads);
+    } catch (error) {
+      console.error("Get deal desk threads error:", error);
+      res.status(500).json({ error: "Failed to get threads" });
+    }
+  });
+
+  // Get a specific thread with messages
+  app.get("/api/deal-desk/threads/:id", isAuthenticated, async (req, res) => {
+    try {
+      const thread = await storage.getDealDeskThread(req.params.id);
+      if (!thread) {
+        return res.status(404).json({ error: "Thread not found" });
+      }
+      if (thread.agentUserId !== req.user!.id && thread.loUserId !== req.user!.id) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      const messages = await storage.getDealDeskMessagesByThread(thread.id);
+      const enrichedMessages = await Promise.all(messages.map(async (msg: any) => {
+        const sender = await storage.getUser(msg.senderUserId);
+        return {
+          ...msg,
+          senderName: sender ? `${sender.firstName || ""} ${sender.lastName || ""}`.trim() : "Unknown",
+        };
+      }));
+
+      res.json({ thread, messages: enrichedMessages });
+    } catch (error) {
+      console.error("Get deal desk thread error:", error);
+      res.status(500).json({ error: "Failed to get thread" });
+    }
+  });
+
+  // Add message to a deal desk thread
+  app.post("/api/deal-desk/threads/:id/messages", isAuthenticated, async (req, res) => {
+    try {
+      const thread = await storage.getDealDeskThread(req.params.id);
+      if (!thread) {
+        return res.status(404).json({ error: "Thread not found" });
+      }
+      if (thread.agentUserId !== req.user!.id && thread.loUserId !== req.user!.id) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      const { content } = req.body;
+      if (!content) {
+        return res.status(400).json({ error: "Content is required" });
+      }
+
+      const message = await storage.createDealDeskMessage({
+        threadId: thread.id,
+        senderUserId: req.user!.id,
+        content,
+      });
+
+      res.json(message);
+    } catch (error) {
+      console.error("Create deal desk message error:", error);
+      res.status(500).json({ error: "Failed to send message" });
+    }
+  });
+
+  // Close a deal desk thread
+  app.patch("/api/deal-desk/threads/:id/close", isAuthenticated, async (req, res) => {
+    try {
+      const thread = await storage.getDealDeskThread(req.params.id);
+      if (!thread || thread.agentUserId !== req.user!.id) {
+        return res.status(404).json({ error: "Thread not found" });
+      }
+      const updated = await storage.updateDealDeskThread(thread.id, { status: "closed", closedAt: new Date() });
+      res.json(updated);
+    } catch (error) {
+      console.error("Close deal desk thread error:", error);
+      res.status(500).json({ error: "Failed to close thread" });
+    }
+  });
+
+  // ================================
+  // DPA Programs API Routes
+  // ================================
+
+  // Get DPA programs with optional filters
+  app.get("/api/dpa-programs", async (req, res) => {
+    try {
+      const { state, firstTimeBuyer, minCreditScore, maxIncome } = req.query;
+      const filters: any = {};
+      if (state) filters.state = state as string;
+      if (firstTimeBuyer === "true") filters.firstTimeBuyer = true;
+      if (minCreditScore) filters.minCreditScore = parseInt(minCreditScore as string);
+      if (maxIncome) filters.maxIncome = parseFloat(maxIncome as string);
+
+      const programs = await storage.getDpaPrograms(Object.keys(filters).length > 0 ? filters : undefined);
+
+      let filtered = programs;
+      if (filters.firstTimeBuyer === true) {
+        // Show all programs (both first-time-only and general) since first-time buyers qualify for both
+      } else if (filters.firstTimeBuyer === false) {
+        filtered = programs.filter(p => !p.firstTimeBuyerOnly);
+      }
+      if (filters.minCreditScore) {
+        filtered = filtered.filter(p => !p.minCreditScore || p.minCreditScore <= filters.minCreditScore);
+      }
+      if (filters.maxIncome) {
+        filtered = filtered.filter(p => !p.maxIncome || parseFloat(p.maxIncome) >= filters.maxIncome);
+      }
+
+      res.json(filtered);
+    } catch (error) {
+      console.error("Get DPA programs error:", error);
+      res.status(500).json({ error: "Failed to get DPA programs" });
+    }
+  });
+
+  // Get specific DPA program
+  app.get("/api/dpa-programs/:id", async (req, res) => {
+    try {
+      const program = await storage.getDpaProgram(req.params.id);
+      if (!program) {
+        return res.status(404).json({ error: "Program not found" });
+      }
+      res.json(program);
+    } catch (error) {
+      console.error("Get DPA program error:", error);
+      res.status(500).json({ error: "Failed to get program" });
+    }
+  });
+
+  // ================================
   // Digital Onboarding API Routes
   // ================================
 
