@@ -200,7 +200,7 @@ export function DocumentChecklist({ applicationId, compact = false }: DocumentCh
               <div className="flex items-center gap-2">
                 {getStatusBadge(doc.status)}
                 {(doc.status === "needed" || doc.status === "rejected") && (
-                  <Button size="sm" variant="ghost" className="h-8 px-2" data-testid={`button-upload-${doc.documentType}`}>
+                  <Button size="icon" variant="ghost" data-testid={`button-upload-${doc.documentType}`}>
                     <Upload className="h-4 w-4" />
                   </Button>
                 )}

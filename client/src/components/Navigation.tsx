@@ -256,7 +256,7 @@ export function Navigation() {
                 <Link href="/apply">
                   <Button
                     size="sm"
-                    className="bg-emerald-500 font-semibold text-white shadow-md shadow-emerald-500/20 hover:bg-emerald-600"
+                    className="bg-emerald-500 font-semibold text-white shadow-md shadow-emerald-500/20"
                     data-testid="button-get-started"
                   >
                     Get Pre-Approved
@@ -303,14 +303,14 @@ export function Navigation() {
               </Link>
               
               {!isAuthenticated && (
-                <div className="mt-4 flex flex-col gap-2">
+                <div className="mt-4 flex flex-col gap-3">
                   <a href="/api/login">
-                    <Button variant="outline" className="w-full" onClick={() => setMobileMenuOpen(false)}>
+                    <Button variant="outline" size="lg" className="w-full" onClick={() => setMobileMenuOpen(false)} data-testid="mobile-button-login">
                       Sign in
                     </Button>
                   </a>
                   <Link href="/apply">
-                    <Button className="w-full bg-emerald-500 font-semibold hover:bg-emerald-600" onClick={() => setMobileMenuOpen(false)}>
+                    <Button size="lg" className="w-full bg-emerald-500 font-semibold" onClick={() => setMobileMenuOpen(false)} data-testid="mobile-button-apply">
                       Get Pre-Approved
                     </Button>
                   </Link>

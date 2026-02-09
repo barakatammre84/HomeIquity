@@ -4,6 +4,8 @@ import { useEffect } from "react";
 import { Loader2 } from "lucide-react";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
+import { MobileBottomNav } from "@/components/MobileBottomNav";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 interface PrivateLayoutProps {
   children: React.ReactNode;
@@ -71,12 +73,25 @@ export function PrivateLayout({ children, requiredRoles }: PrivateLayoutProps) {
       <div className="flex h-screen w-full">
         <AppSidebar />
         <div className="flex flex-col flex-1 overflow-hidden">
-          <header className="flex items-center px-4 py-2 border-b bg-background shrink-0">
-            <SidebarTrigger data-testid="button-sidebar-toggle" />
+          <header className="flex items-center justify-between gap-2 px-3 py-2 border-b bg-background shrink-0 md:px-4">
+            <div className="flex items-center gap-2">
+              <SidebarTrigger data-testid="button-sidebar-toggle" className="hidden md:flex" />
+              <span className="text-sm font-semibold tracking-tight text-primary md:hidden" data-testid="text-mobile-brand">baranest</span>
+            </div>
+            <div className="flex items-center gap-2">
+              {user && (
+                <Avatar className="h-8 w-8 md:hidden">
+                  <AvatarFallback className="bg-primary/10 text-xs font-medium text-primary">
+                    {user.firstName?.[0] || user.email?.[0]?.toUpperCase() || "U"}
+                  </AvatarFallback>
+                </Avatar>
+              )}
+            </div>
           </header>
-          <main className="flex-1 overflow-y-auto bg-background">
+          <main className="flex-1 overflow-y-auto bg-background pb-16 md:pb-0">
             {children}
           </main>
+          <MobileBottomNav />
         </div>
       </div>
     </SidebarProvider>

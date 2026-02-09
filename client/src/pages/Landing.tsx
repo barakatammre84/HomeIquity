@@ -49,22 +49,22 @@ export default function Landing() {
               No guesswork. No surprises.
             </p>
 
-            <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:gap-4">
-              <Link href="/apply">
+            <div className="mt-10 flex w-full max-w-md flex-col items-center gap-3 sm:w-auto sm:max-w-none sm:flex-row sm:gap-4">
+              <Link href="/apply" className="w-full sm:w-auto">
                 <Button
                   size="lg"
-                  className="gap-2 bg-emerald-500 px-8 py-6 text-base font-semibold text-white shadow-lg shadow-emerald-500/25"
+                  className="w-full gap-2 bg-emerald-500 font-semibold text-white shadow-lg shadow-emerald-500/25 sm:w-auto"
                   data-testid="button-hero-preapprove"
                 >
                   Get Pre-Approved
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               </Link>
-              <Link href="/properties">
+              <Link href="/properties" className="w-full sm:w-auto">
                 <Button
                   variant="outline"
                   size="lg"
-                  className="gap-2 border-white/30 bg-white/10 px-8 py-6 text-base text-white backdrop-blur-sm"
+                  className="w-full gap-2 border-white/30 bg-white/10 text-white backdrop-blur-sm sm:w-auto"
                   data-testid="button-hero-browse"
                 >
                   Browse Properties
@@ -209,22 +209,22 @@ export default function Landing() {
             Join over 50,000 homebuyers who trust Baranest for clear, confident mortgage decisions.
           </p>
           
-          <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
-            <Link href="/apply">
+          <div className="mt-10 flex w-full max-w-md mx-auto flex-col items-center gap-3 sm:w-auto sm:max-w-none sm:flex-row sm:justify-center sm:gap-4">
+            <Link href="/apply" className="w-full sm:w-auto">
               <Button
                 size="lg"
-                className="gap-2 bg-emerald-500 px-10 py-6 text-base font-semibold shadow-lg shadow-emerald-500/25"
+                className="w-full gap-2 bg-emerald-500 px-10 py-6 text-base font-semibold shadow-lg shadow-emerald-500/25 sm:w-auto"
                 data-testid="button-cta-preapprove"
               >
                 Get Pre-Approved Now
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>
-            <Link href="/properties">
+            <Link href="/properties" className="w-full sm:w-auto">
               <Button
                 variant="outline"
                 size="lg"
-                className="gap-2 px-10 py-6 text-base"
+                className="w-full gap-2 px-10 py-6 text-base sm:w-auto"
                 data-testid="button-cta-browse"
               >
                 Browse Properties

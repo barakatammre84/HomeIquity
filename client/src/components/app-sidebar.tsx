@@ -99,7 +99,7 @@ const aspiringOwnerNavigation = [
   {
     section: "Get Ready",
     items: [
-      { title: "Pre-Approval", href: "/pre-approval", icon: Star, testId: "link-pre-approval" },
+      { title: "Pre-Approval", href: "/apply", icon: Star, testId: "link-pre-approval" },
     ],
   },
 ];

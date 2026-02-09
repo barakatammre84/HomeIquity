@@ -130,7 +130,7 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6 space-y-4">
+      <div className="mx-auto max-w-2xl px-4 py-6 sm:px-6 sm:py-8 space-y-4">
         
         {/* DASHBOARD HEADER - Application switcher on the right */}
         <div className="flex items-center justify-between gap-4 flex-wrap border-b pb-4">
@@ -144,7 +144,7 @@ export default function Dashboard() {
         
         {/* 1. YOUR APPROVAL STATUS (PRIMARY CARD) - Clean design with border accent */}
         <Card 
-          className={`shadow-lg ${isPreApproved ? 'border-l-4 border-l-emerald-500' : 'border-l-4 border-l-primary'}`} 
+          className="shadow-lg" 
           data-testid="card-approval-status"
         >
           <CardContent className="p-6">

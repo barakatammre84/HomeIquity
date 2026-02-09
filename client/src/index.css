@@ -330,3 +330,16 @@
     inset: -1px;
   }
 }
+
+/* Mobile-first: safe area for bottom navigation (iOS notch/home indicator) */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Mobile touch target minimums - 44px per Apple HIG */
+@media (max-width: 767px) {
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
