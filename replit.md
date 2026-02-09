@@ -88,6 +88,13 @@ The backend is built with Node.js, Express.js, and TypeScript, utilizing Postgre
 - **Auto-Expiration + Credit Re-Pull Workflows:** Manages expiration policies for pre-approvals, credit, and documents. It orchestrates soft vs. hard credit pulls based on consent and liability changes, ensuring every refresh generates a new underwriting snapshot.
 - **Lender-Specific Pre-Approval Formats:** Allows for different presentation formats of the same underwriting decision per lender, including field visibility, required fields validation, disclaimer overrides, branding rules, and field ordering, without altering the underlying underwriting snapshot.
 
+**Digital Onboarding Experience:** Fully digital onboarding with instant identity verification and automated compliance checks. Features include:
+- **Identity Verification Center** (/identity-verification): KBA quiz flow (5 questions, 4/5 passing, 3 max attempts), real-time KYC/AML compliance dashboard (OFAC, sanctions, PEP, adverse media screenings), and document verification integration
+- **Personalized Onboarding Journey** (/onboarding): Borrower-type detection (first-time buyer, self-employed, non-QM, standard) with adaptive step lists, progress tracking, contextual tips/checklists per borrower type, and feedback collection
+- **Database Tables:** kba_sessions, kyc_screenings, onboarding_profiles, onboarding_feedback
+- **Borrower Type Detection:** Based on employment type, first-time buyer flag, credit score, loan type, and income doc type indicators
+- All KYC/AML checks are simulated (no external API integrations) with deterministic 8-second progressive screening
+
 **Staff & Partner Tools:** Includes a Staff Pipeline Queue, a Unified Borrower File Workspace, a Broker Referral Dashboard, and Admin Content/User Management systems.
 
 **Mortgage Industry Role System:** Implements comprehensive role-based access control for 6 staff roles (Admin, LO, LOA, Processor, Underwriter, Closer) and 2 client roles (Aspiring Owner, Active Buyer).
