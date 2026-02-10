@@ -46,10 +46,14 @@ interface AutoCompleteSuggestion {
   slug: string | null;
 }
 
+type SearchMode = "buy" | "sold";
+
 interface LiveProperty {
   property_id: string;
   status: string;
   price: number;
+  soldPrice?: number | null;
+  soldDate?: string | null;
   address: string;
   city: string;
   state: string;
@@ -91,6 +95,7 @@ export default function Properties() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
   const [selectedLocationLabel, setSelectedLocationLabel] = useState("");
+  const [searchMode, setSearchMode] = useState<SearchMode>("buy");
   const [propertyType, setPropertyType] = useState("all");
   const [priceRange, setPriceRange] = useState([0, 2000000]);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
@@ -115,7 +120,8 @@ export default function Properties() {
     if (propertyType && propertyType !== "all") params.set("type", propertyType);
     if (priceRange[0] > 0) params.set("minPrice", priceRange[0].toString());
     if (priceRange[1] < 2000000) params.set("maxPrice", priceRange[1].toString());
-    return `/api/properties/search-live?${params.toString()}`;
+    const endpoint = searchMode === "sold" ? "/api/properties/search-sold" : "/api/properties/search-live";
+    return `${endpoint}?${params.toString()}`;
   };
 
   const liveSearchUrl = buildLiveSearchUrl();
@@ -294,6 +300,30 @@ export default function Properties() {
                 )}
               </div>
 
+              <div className="w-full lg:w-auto">
+                <label className="mb-2 block text-sm font-medium">Search Mode</label>
+                <div className="flex gap-1 rounded-md border p-1">
+                  <Button
+                    variant={searchMode === "buy" ? "default" : "ghost"}
+                    size="sm"
+                    onClick={() => setSearchMode("buy")}
+                    className="toggle-elevate"
+                    data-testid="button-mode-buy"
+                  >
+                    For Sale
+                  </Button>
+                  <Button
+                    variant={searchMode === "sold" ? "default" : "ghost"}
+                    size="sm"
+                    onClick={() => setSearchMode("sold")}
+                    className="toggle-elevate"
+                    data-testid="button-mode-sold"
+                  >
+                    Recently Sold
+                  </Button>
+                </div>
+              </div>
+
               <div className="w-full lg:w-48">
                 <label className="mb-2 block text-sm font-medium">Property Type</label>
                 <Select value={propertyType} onValueChange={setPropertyType}>
@@ -354,7 +384,7 @@ export default function Properties() {
             </p>
             {isLiveMode && (
               <Badge variant="secondary" data-testid="badge-live-results">
-                Live MLS Data
+                {searchMode === "sold" ? "Recently Sold" : "Live MLS Data"}
               </Badge>
             )}
           </div>
@@ -550,7 +580,10 @@ function PropertyCard({ property, viewMode }: { property: Property; viewMode: "g
 
 function LivePropertyCard({ property, viewMode }: { property: LiveProperty; viewMode: "grid" | "list" }) {
   const mainImage = property.photo || "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=800";
-  const statusLabel = property.isPending ? "Pending" : property.isNewConstruction ? "New Build" : property.isForeclosure ? "Foreclosure" : "For Sale";
+  const isSold = !!property.soldDate || property.status === "sold" || property.status === "recently_sold";
+  const statusLabel = isSold ? "Sold" : property.isPending ? "Pending" : property.isNewConstruction ? "New Build" : property.isForeclosure ? "Foreclosure" : "For Sale";
+  const displayPrice = isSold && property.soldPrice ? property.soldPrice : property.price;
+  const formattedSoldDate = property.soldDate ? new Date(property.soldDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : null;
 
   if (viewMode === "list") {
     return (
@@ -571,8 +604,11 @@ function LivePropertyCard({ property, viewMode }: { property: LiveProperty; view
               <div className="flex items-start justify-between gap-2">
                 <div>
                   <p className="text-2xl font-bold text-primary">
-                    {formatCurrency(property.price)}
+                    {formatCurrency(displayPrice)}
                   </p>
+                  {isSold && formattedSoldDate && (
+                    <p className="text-xs text-muted-foreground">Sold {formattedSoldDate}</p>
+                  )}
                   <div className="mt-1 flex items-center gap-1 text-muted-foreground">
                     <MapPin className="h-4 w-4" />
                     <span className="text-sm">{property.address}, {property.city}, {property.stateCode} {property.zipcode}</span>
@@ -645,8 +681,11 @@ function LivePropertyCard({ property, viewMode }: { property: LiveProperty; view
       </div>
       <CardContent className="p-4">
         <p className="text-2xl font-bold text-primary">
-          {formatCurrency(property.price)}
+          {formatCurrency(displayPrice)}
         </p>
+        {isSold && formattedSoldDate && (
+          <p className="text-xs text-muted-foreground">Sold {formattedSoldDate}</p>
+        )}
         <div className="mt-1 flex items-center gap-1 text-muted-foreground">
           <MapPin className="h-4 w-4" />
           <span className="text-sm truncate">
@@ -684,10 +723,10 @@ function LivePropertyCard({ property, viewMode }: { property: LiveProperty; view
               </Button>
             </a>
           )}
-          <Link href={`/pre-approval?price=${property.price}&address=${encodeURIComponent(property.address + ', ' + property.city + ', ' + property.stateCode)}`} className="flex-1">
+          <Link href={`/pre-approval?price=${displayPrice}&address=${encodeURIComponent(property.address + ', ' + property.city + ', ' + property.stateCode)}`} className="flex-1">
             <Button className="w-full gap-2">
               <DollarSign className="h-4 w-4" />
-              Pre-Approve
+              {isSold ? "Get Estimate" : "Pre-Approve"}
             </Button>
           </Link>
         </div>

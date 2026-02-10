@@ -138,6 +138,91 @@ export function registerPropertyRoutes(
     }
   });
 
+  app.get("/api/properties/search-sold", async (req, res) => {
+    try {
+      const { location, sortBy, minPrice, maxPrice, type, page } = req.query;
+      if (!location || typeof location !== "string") {
+        return res.json({ properties: [], total: 0, source: "empty" });
+      }
+
+      const apiKey = process.env.RAPIDAPI_KEY;
+      if (!apiKey) {
+        return res.json({ properties: [], total: 0, source: "no_key" });
+      }
+
+      const params = new URLSearchParams();
+      params.set("location", location);
+      params.set("sortBy", (sortBy as string) || "sold_date");
+      if (minPrice) params.set("priceMin", minPrice as string);
+      if (maxPrice) params.set("priceMax", maxPrice as string);
+      if (type && type !== "all") {
+        const typeMap: Record<string, string> = {
+          single_family: "single_family",
+          condo: "condo",
+          townhouse: "townhomes",
+          multi_family: "multi_family",
+        };
+        if (typeMap[type as string]) params.set("home_type", typeMap[type as string]);
+      }
+      if (page) params.set("offset", String((parseInt(page as string) - 1) * 20));
+
+      const response = await fetch(
+        `https://realty-us.p.rapidapi.com/properties/search-sold?${params.toString()}`,
+        {
+          headers: {
+            "x-rapidapi-host": "realty-us.p.rapidapi.com",
+            "x-rapidapi-key": apiKey,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        console.error("Search-sold API error:", response.status);
+        return res.json({ properties: [], total: 0, source: "api_error" });
+      }
+
+      const data = await response.json();
+      const results = data?.data?.results || [];
+      const total = data?.data?.total || results.length;
+
+      const properties = results.map((item: any) => {
+        const addr = item.location?.address || {};
+        const desc = item.description || {};
+        const baths = desc.baths ?? desc.baths_full_calc ?? null;
+        return {
+          property_id: item.property_id,
+          status: item.status || "sold",
+          price: item.list_price || item.last_sold_price || 0,
+          soldPrice: item.last_sold_price || null,
+          soldDate: item.last_sold_date || null,
+          address: addr.line || "",
+          city: addr.city || "",
+          state: addr.state || "",
+          stateCode: addr.state_code || "",
+          zipcode: addr.postal_code || "",
+          beds: desc.beds ?? desc.beds_min ?? null,
+          baths: baths,
+          sqft: desc.sqft ?? desc.sqft_min ?? null,
+          lotSqft: desc.lot_sqft || null,
+          propertyType: desc.type || "single_family",
+          photo: item.primary_photo?.href || null,
+          photos: (item.photos || []).slice(0, 6).map((p: any) => p.href),
+          listDate: item.list_date || null,
+          priceReduced: item.price_reduced_amount || null,
+          isNewConstruction: item.flags?.is_new_construction || false,
+          isForeclosure: item.flags?.is_foreclosure || false,
+          isPending: item.flags?.is_pending || false,
+          href: item.href || null,
+        };
+      });
+
+      res.json({ properties, total, source: "live" });
+    } catch (error) {
+      console.error("Search-sold error:", error);
+      res.json({ properties: [], total: 0, source: "error" });
+    }
+  });
+
   app.get("/api/properties", async (req, res) => {
     try {
       const { search, type, minPrice, maxPrice } = req.query;
