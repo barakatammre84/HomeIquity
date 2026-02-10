@@ -291,6 +291,69 @@ export function registerPropertyRoutes(
     }
   });
 
+  app.get("/api/properties/similar-homes", async (req, res) => {
+    try {
+      const { propertyId } = req.query;
+      if (!propertyId || typeof propertyId !== "string") {
+        return res.status(400).json({ error: "propertyId is required" });
+      }
+
+      const apiKey = process.env.RAPIDAPI_KEY;
+      if (!apiKey) {
+        return res.json([]);
+      }
+
+      const response = await fetch(
+        `https://realty-us.p.rapidapi.com/properties/similar-homes?propertyId=${encodeURIComponent(propertyId)}`,
+        {
+          headers: {
+            "x-rapidapi-host": "realty-us.p.rapidapi.com",
+            "x-rapidapi-key": apiKey,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        console.error("Similar homes API error:", response.status);
+        return res.json([]);
+      }
+
+      const data = await response.json();
+      const results = data?.data || [];
+
+      const homes = results.slice(0, 8).map((p: any) => {
+        const loc = p.location?.address || {};
+        const desc = p.description || {};
+        const photo = p.primary_photo?.href || p.photos?.[0]?.href || null;
+
+        return {
+          property_id: p.property_id,
+          listing_id: p.listing_id || null,
+          price: p.list_price || 0,
+          address: loc.line || "",
+          city: loc.city || "",
+          stateCode: loc.state_code || "",
+          zipcode: loc.postal_code || "",
+          beds: desc.beds || null,
+          baths: desc.baths || null,
+          sqft: desc.sqft || null,
+          lotSqft: desc.lot_sqft || null,
+          yearBuilt: desc.year_built || null,
+          propertyType: desc.type || "unknown",
+          photo,
+          status: p.status || "for_sale",
+          pricePerSqft: p.price_per_sqft || null,
+          href: p.href || null,
+        };
+      });
+
+      res.json(homes);
+    } catch (error) {
+      console.error("Similar homes error:", error);
+      res.json([]);
+    }
+  });
+
   app.get("/api/properties/search-sold", async (req, res) => {
     try {
       const { location, sortBy, minPrice, maxPrice, type, page } = req.query;
