@@ -39,6 +39,37 @@ The backend is developed with Node.js, Express.js, and TypeScript, using Postgre
 - **Policy Profile Service:** Provides policy-driven underwriting where guidelines are editable data, ensuring no future guideline changes require code modifications.
 - **Task Engine:** An event-driven task management system with auto-creation, SLA classes, an escalation engine, auto-resolution, prioritization, and a comprehensive audit trail.
 
+## Project Structure (Domain-Based Modules)
+
+### Server Routes (server/routes/)
+Routes are organized into domain-based modules for team ownership:
+- `server/routes.ts` - Central registration file (imports and registers all domain modules)
+- `server/routes/lending.ts` - Loan applications, pre-approval, pricing, MISMO export
+- `server/routes/borrower.ts` - Borrower portal, rate locks, consents, messaging, partner services
+- `server/routes/documents.ts` - Document upload, intelligence, package builder
+- `server/routes/property.ts` - Property CRUD, marketplace, affordability
+- `server/routes/agent-broker.ts` - Agent co-branding, referral tracking, deal desk
+- `server/routes/admin.ts` - Admin content, rates, users, policy operations
+- `server/routes/task-engine.ts` - Task management, SLA, escalation
+- `server/routes/underwriting.ts` - Underwriting engine, rules DSL, what-if scenarios
+- `server/routes/compliance.ts` - MISMO validation, TRID, broker compliance
+- `server/routes/utils.ts` - Shared utilities (multer config)
+
+### Client Pages (client/src/pages/)
+Pages organized into 12 domain folders with barrel exports (index.ts):
+- `lending/` - PreApproval, LoanOptions, LoanPipeline, LoanEstimate, ApplicationSummary, BorrowerDealComparison
+- `borrower/` - Dashboard, Documents, Tasks, TaskDetail, Messages, URLAForm, CreditConsent, Verification, IdentityVerification, OnboardingJourney, EConsent, GapCalculator, BuyerProperties
+- `staff/` - StaffDashboard, PipelineQueue, BorrowerFile, ComplianceDashboard, PolicyOps, TaskOperations, Staff
+- `agent-broker/` - AgentCoBranding, AgentDashboard, AgentEdit, AgentPipeline, BrokerDashboard, InviteGenerator, AnalyticsDashboard, PartnerServices, ReferralLanding, PartnerLanding, ApplyInvite
+- `realtor-engine/` - ScenarioDesk, DealRescue, StrategySessions, ClosingGuarantee
+- `property/` - Properties, PropertyDetail, PropertyForm
+- `education/` - FirstTimeBuyerHub, DownPaymentWizard, LearningCenter, ArticleDetail, FAQ, Resources, AcceleratorProgram
+- `homeowner/` - HomeownerDashboard
+- `rates/` - MortgageRates, PurchaseRates, RefinanceRates, CashOutRates, HelocRates, VaRates
+- `calculators/` - RentVsBuyCalculator, AffordabilityCalculator, MortgageCalculator
+- `admin/` - AdminDashboard, AdminRates, AdminContent, AdminUsers
+- `public/` - Landing, Privacy, TestLogin
+
 ## External Dependencies
 
 ### Third-Party Services
