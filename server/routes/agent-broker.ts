@@ -956,7 +956,7 @@ export function registerAgentBrokerRoutes(
         return res.status(400).json({ error: "agentProfileId query parameter is required" });
       }
 
-      const { db: database } = await import("./db");
+      const { db: database } = await import("../db");
       const { preApprovalLetters, coBrandProfiles } = await import("@shared/schema");
       const { eq } = await import("drizzle-orm");
 
@@ -1001,7 +1001,7 @@ export function registerAgentBrokerRoutes(
 
       const validated = coBrandSchema.parse(req.body);
 
-      const { db: database } = await import("./db");
+      const { db: database } = await import("../db");
       const { preApprovalLetters } = await import("@shared/schema");
       const { eq } = await import("drizzle-orm");
 

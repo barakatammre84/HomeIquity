@@ -730,7 +730,7 @@ export default function StaffDashboard() {
                               <div>
                                 <p className="font-medium">{task.title}</p>
                                 <p className="text-sm text-muted-foreground">
-                                  Assigned to: {getUserName(task.assignedToUserId)}
+                                  Assigned to: {getUserName(task.assignedToUserId ?? "")}
                                 </p>
                               </div>
                             </div>
@@ -789,7 +789,7 @@ export default function StaffDashboard() {
                               <div>
                                 <p className="font-medium">{task.title}</p>
                                 <p className="text-sm text-muted-foreground">
-                                  Submitted by: {getUserName(task.assignedToUserId)}
+                                  Submitted by: {getUserName(task.assignedToUserId ?? "")}
                                 </p>
                               </div>
                             </div>

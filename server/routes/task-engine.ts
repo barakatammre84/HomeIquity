@@ -11,7 +11,7 @@ export async function registerTaskEngineRoutes(
   // Task Routes - Admin/Staff can create and manage tasks
   app.post("/api/tasks", isAuthenticated, async (req, res) => {
     try {
-      const userRole = req.user?.role;
+      const userRole = req.user?.role || "";
       if (!isStaffRole(userRole || "")) {
         return res.status(403).json({ error: "Only staff can create tasks" });
       }
@@ -40,7 +40,7 @@ export async function registerTaskEngineRoutes(
 
   app.get("/api/tasks", isAuthenticated, async (req, res) => {
     try {
-      const userRole = req.user?.role;
+      const userRole = req.user?.role || "";
       const userId = req.user!.id;
 
       let tasks;
@@ -61,7 +61,7 @@ export async function registerTaskEngineRoutes(
     try {
       const { userId } = req.params;
       const requestingUserId = req.user!.id;
-      const userRole = req.user?.role;
+      const userRole = req.user?.role || "";
 
       if (userId !== requestingUserId && !isStaffRole(userRole || "")) {
         return res.status(403).json({ error: "Unauthorized" });
@@ -109,7 +109,7 @@ export async function registerTaskEngineRoutes(
         return res.status(404).json({ error: "Task not found" });
       }
 
-      const userRole = req.user?.role;
+      const userRole = req.user?.role || "";
       const userId = req.user!.id;
       const isStaff = isStaffRole(userRole || "");
       const isAssignedUser = task.assignedToUserId === userId;
@@ -134,7 +134,7 @@ export async function registerTaskEngineRoutes(
 
   app.delete("/api/tasks/:id", isAuthenticated, async (req, res) => {
     try {
-      const userRole = req.user?.role;
+      const userRole = req.user?.role || "";
       if (userRole !== "admin") {
         return res.status(403).json({ error: "Only admins can delete tasks" });
       }
@@ -198,7 +198,7 @@ export async function registerTaskEngineRoutes(
 
   app.patch("/api/tasks/:taskId/documents/:docId/verify", isAuthenticated, async (req, res) => {
     try {
-      const userRole = req.user?.role;
+      const userRole = req.user?.role || "";
       if (!isStaffRole(userRole || "")) {
         return res.status(403).json({ error: "Only staff can verify documents" });
       }
@@ -263,7 +263,7 @@ export async function registerTaskEngineRoutes(
   // Get task dashboard metrics (staff only)
   app.get("/api/task-engine/metrics", isAuthenticated, async (req, res) => {
     try {
-      const userRole = req.user?.role;
+      const userRole = req.user?.role || "";
       if (!isStaffRole(userRole)) {
         return res.status(403).json({ error: "Staff access required" });
       }
@@ -278,7 +278,7 @@ export async function registerTaskEngineRoutes(
   // Get tasks with SLA status for an application (staff only)
   app.get("/api/task-engine/applications/:applicationId/tasks", isAuthenticated, async (req, res) => {
     try {
-      const userRole = req.user?.role;
+      const userRole = req.user?.role || "";
       if (!isStaffRole(userRole)) {
         return res.status(403).json({ error: "Staff access required for full task list" });
       }
@@ -296,7 +296,7 @@ export async function registerTaskEngineRoutes(
     try {
       const { applicationId } = req.params;
       const userId = req.user!.id;
-      const userRole = req.user?.role;
+      const userRole = req.user?.role || "";
       
       // Staff can access any application's borrower tasks
       if (!isStaffRole(userRole)) {
@@ -318,7 +318,7 @@ export async function registerTaskEngineRoutes(
   // Get tasks by owner role (staff only)
   app.get("/api/task-engine/tasks/by-role/:role", isAuthenticated, async (req, res) => {
     try {
-      const userRole = req.user?.role;
+      const userRole = req.user?.role || "";
       if (!isStaffRole(userRole)) {
         return res.status(403).json({ error: "Staff access required" });
       }
@@ -361,7 +361,7 @@ export async function registerTaskEngineRoutes(
   // Create task with SLA (staff only)
   app.post("/api/task-engine/tasks", isAuthenticated, async (req, res) => {
     try {
-      const userRole = req.user?.role;
+      const userRole = req.user?.role || "";
       if (!isStaffRole(userRole)) {
         return res.status(403).json({ error: "Staff access required" });
       }
@@ -399,7 +399,7 @@ export async function registerTaskEngineRoutes(
       const { taskId } = req.params;
       const { status, notes } = req.body;
       const userId = req.user!.id;
-      const userRole = req.user?.role;
+      const userRole = req.user?.role || "";
       
       if (!status) {
         return res.status(400).json({ error: "Status is required" });
@@ -433,7 +433,7 @@ export async function registerTaskEngineRoutes(
   // Escalate a task (staff only)
   app.post("/api/task-engine/tasks/:taskId/escalate", isAuthenticated, async (req, res) => {
     try {
-      const userRole = req.user?.role;
+      const userRole = req.user?.role || "";
       if (!isStaffRole(userRole)) {
         return res.status(403).json({ error: "Staff access required" });
       }
@@ -455,7 +455,7 @@ export async function registerTaskEngineRoutes(
   // Get task audit trail
   app.get("/api/task-engine/tasks/:taskId/audit", isAuthenticated, async (req, res) => {
     try {
-      const userRole = req.user?.role;
+      const userRole = req.user?.role || "";
       if (!isStaffRole(userRole)) {
         return res.status(403).json({ error: "Staff access required" });
       }
@@ -472,7 +472,7 @@ export async function registerTaskEngineRoutes(
   // Run escalation check (admin only - for manual trigger)
   app.post("/api/task-engine/run-escalation", isAuthenticated, async (req, res) => {
     try {
-      const userRole = req.user?.role;
+      const userRole = req.user?.role || "";
       if (userRole !== "admin") {
         return res.status(403).json({ error: "Admin access required" });
       }

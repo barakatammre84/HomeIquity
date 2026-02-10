@@ -576,6 +576,132 @@ export interface IStorage {
   // Equity Snapshots
   getEquitySnapshots(homeownerProfileId: string): Promise<EquitySnapshot[]>;
   createEquitySnapshot(data: InsertEquitySnapshot): Promise<EquitySnapshot>;
+
+  // Rate Locks
+  createRateLock(data: InsertRateLock): Promise<RateLock>;
+  getRateLock(id: string): Promise<RateLock | undefined>;
+  getRateLocksByApplication(applicationId: string): Promise<RateLock[]>;
+  getActiveRateLock(applicationId: string): Promise<RateLock | undefined>;
+  updateRateLock(id: string, data: Partial<RateLock>): Promise<RateLock | undefined>;
+  getExpiringRateLocks(withinDays: number): Promise<RateLock[]>;
+
+  // Consent Templates & Borrower Consents
+  createConsentTemplate(data: InsertConsentTemplate): Promise<ConsentTemplate>;
+  getConsentTemplate(id: string): Promise<ConsentTemplate | undefined>;
+  getActiveConsentTemplates(consentType?: string, state?: string): Promise<ConsentTemplate[]>;
+  updateConsentTemplate(id: string, data: Partial<ConsentTemplate>): Promise<ConsentTemplate | undefined>;
+  createBorrowerConsent(data: InsertBorrowerConsent): Promise<BorrowerConsent>;
+  getBorrowerConsent(id: string): Promise<BorrowerConsent | undefined>;
+  getBorrowerConsentsByUser(userId: string): Promise<BorrowerConsent[]>;
+  getBorrowerConsentsByApplication(applicationId: string): Promise<BorrowerConsent[]>;
+  getConsentByTypeAndApplication(consentType: string, applicationId: string): Promise<BorrowerConsent | undefined>;
+
+  // Partner Providers & Orders
+  createPartnerProvider(data: InsertPartnerProvider): Promise<PartnerProvider>;
+  getPartnerProvider(id: string): Promise<PartnerProvider | undefined>;
+  getPartnerProviderByCode(code: string): Promise<PartnerProvider | undefined>;
+  getPartnerProvidersByServiceType(serviceType: string): Promise<PartnerProvider[]>;
+  getAllPartnerProviders(): Promise<PartnerProvider[]>;
+  updatePartnerProvider(id: string, data: Partial<PartnerProvider>): Promise<PartnerProvider | undefined>;
+  createPartnerOrder(data: InsertPartnerOrder): Promise<PartnerOrder>;
+  getPartnerOrder(id: string): Promise<PartnerOrder | undefined>;
+  getPartnerOrdersByApplication(applicationId: string): Promise<PartnerOrder[]>;
+  getPartnerOrdersByStatus(status: string): Promise<PartnerOrder[]>;
+  updatePartnerOrder(id: string, data: Partial<PartnerOrder>): Promise<PartnerOrder | undefined>;
+
+  // Messaging & Presence
+  sendMessage(data: InsertTeamMessage): Promise<TeamMessage>;
+  getMessages(userId: string, otherUserId: string): Promise<TeamMessage[]>;
+  getConversations(userId: string): Promise<{
+    partnerId: string;
+    lastMessage: TeamMessage;
+    unreadCount: number;
+  }[]>;
+  markMessagesAsRead(userId: string, senderId: string): Promise<void>;
+  getUnreadMessageCount(userId: string): Promise<number>;
+  getStaffUsersForTeamDisplay(): Promise<User[]>;
+  updateUserPresence(userId: string): Promise<void>;
+  getUserPresenceStatus(userId: string): Promise<'online' | 'away' | 'offline'>;
+  getTeamMembersWithPresence(): Promise<(User & { presenceStatus: 'online' | 'away' | 'offline' })[]>;
+  updateDocumentRequestStatus(
+    messageId: string,
+    status: 'pending' | 'submitted' | 'approved' | 'rejected',
+    documentId?: string
+  ): Promise<TeamMessage | null>;
+  getPendingDocumentRequests(userId: string): Promise<TeamMessage[]>;
+
+  // Loan Milestones & Conditions
+  createLoanMilestone(data: InsertLoanMilestone): Promise<LoanMilestone>;
+  getLoanMilestones(applicationId: string): Promise<LoanMilestone | undefined>;
+  updateLoanMilestones(applicationId: string, data: Partial<LoanMilestone>): Promise<LoanMilestone | undefined>;
+  createLoanCondition(data: InsertLoanCondition): Promise<LoanCondition>;
+  getLoanCondition(id: string): Promise<LoanCondition | undefined>;
+  getLoanConditionsByApplication(applicationId: string): Promise<LoanCondition[]>;
+  updateLoanCondition(id: string, data: Partial<LoanCondition>): Promise<LoanCondition | undefined>;
+  deleteLoanCondition(id: string): Promise<void>;
+  clearLoanCondition(id: string, userId: string, notes?: string): Promise<LoanCondition | undefined>;
+
+  // Document Requirements
+  createDocumentRequirementRule(data: InsertDocumentRequirementRule): Promise<DocumentRequirementRule>;
+  getDocumentRequirementRule(id: string): Promise<DocumentRequirementRule | undefined>;
+  getAllDocumentRequirementRules(): Promise<DocumentRequirementRule[]>;
+  updateDocumentRequirementRule(id: string, data: Partial<DocumentRequirementRule>): Promise<DocumentRequirementRule | undefined>;
+  getDocument(id: string): Promise<Document | undefined>;
+
+  // Underwriting Snapshots
+  createUnderwritingSnapshot(data: InsertUnderwritingSnapshot): Promise<UnderwritingSnapshot>;
+  getUnderwritingSnapshotsByApplication(applicationId: string): Promise<UnderwritingSnapshot[]>;
+  getLatestUnderwritingSnapshot(applicationId: string): Promise<UnderwritingSnapshot | undefined>;
+
+  // SLA Configurations
+  createSlaConfiguration(data: InsertSlaConfiguration): Promise<SlaConfiguration>;
+  getActiveSlaConfiguration(loanType?: string): Promise<SlaConfiguration | undefined>;
+  getAllSlaConfigurations(): Promise<SlaConfiguration[]>;
+  updateSlaConfiguration(id: string, data: Partial<SlaConfiguration>): Promise<SlaConfiguration | undefined>;
+
+  // Analytics
+  createAnalyticsSnapshot(data: InsertAnalyticsSnapshot): Promise<AnalyticsSnapshot>;
+  getLatestAnalyticsSnapshot(): Promise<AnalyticsSnapshot | undefined>;
+  getAnalyticsSnapshots(days: number): Promise<AnalyticsSnapshot[]>;
+
+  // Application Milestones
+  createApplicationMilestone(data: InsertApplicationMilestone): Promise<ApplicationMilestone>;
+  getApplicationMilestone(applicationId: string): Promise<ApplicationMilestone | undefined>;
+  updateApplicationMilestone(applicationId: string, data: Partial<ApplicationMilestone>): Promise<ApplicationMilestone | undefined>;
+  getOrCreateApplicationMilestone(applicationId: string): Promise<ApplicationMilestone>;
+
+  // Referrals
+  generateReferralCode(userId: string): Promise<string>;
+  getUserByReferralCode(referralCode: string): Promise<User | undefined>;
+  setUserReferredBy(userId: string, referringUserId: string): Promise<void>;
+  getReferralsByUser(userId: string): Promise<User[]>;
+  getReferralStats(userId: string): Promise<{
+    totalReferrals: number;
+    referralsThisMonth: number;
+    activeApplications: number;
+    closedLoans: number;
+  }>;
+
+  // Pipeline Metrics
+  computePipelineMetrics(): Promise<{
+    totalApplications: number;
+    byStatus: { status: string; count: number }[];
+    avgCycleTimeHours: number | null;
+    slaComplianceRate: number | null;
+    closedVolume: string;
+    fundedVolume: string;
+  }>;
+  getStaffWorkloadMetrics(): Promise<{
+    loansPerLO: { userId: string; count: number }[];
+    loansPerProcessor: { userId: string; count: number }[];
+    loansPerUnderwriter: { userId: string; count: number }[];
+  }>;
+  getBottleneckAnalysis(): Promise<{
+    stage: string;
+    avgTimeHours: number;
+    count: number;
+    atRisk: number;
+  }[]>;
 }
 
 export class DatabaseStorage implements IStorage {
