@@ -150,7 +150,7 @@ function calculateQualification(
 
 export default function PropertyDetail() {
   const params = useParams();
-  const propertyId = params?.propertyId as string;
+  const propertyId = params?.id as string;
 
   const { data: property, isLoading: propertyLoading } = useQuery<Property>({
     queryKey: [`/api/properties/${propertyId}`],

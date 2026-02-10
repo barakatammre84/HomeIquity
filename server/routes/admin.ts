@@ -8,6 +8,7 @@ import {
   type User,
 } from "@shared/schema";
 import { z } from "zod";
+import { refreshRates } from "../services/rateService";
 
 export function registerAdminRoutes(
   app: Express,
@@ -626,6 +627,21 @@ export function registerAdminRoutes(
     } catch (error) {
       console.error("Delete mortgage rate error:", error);
       res.status(500).json({ error: "Failed to delete mortgage rate" });
+    }
+  });
+
+  app.post("/api/admin/mortgage-rates/refresh", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      if (user.role !== "admin") {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+
+      const result = await refreshRates();
+      res.json({ success: true, source: result.source, count: result.count });
+    } catch (error) {
+      console.error("Refresh mortgage rates error:", error);
+      res.status(500).json({ error: "Failed to refresh mortgage rates" });
     }
   });
 }

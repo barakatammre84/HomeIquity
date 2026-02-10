@@ -1,5 +1,6 @@
 import { db } from "./db";
-import { contentCategories, articles, faqs, mortgageRatePrograms, consentTemplates, partnerProviders } from "@shared/schema";
+import { contentCategories, articles, faqs, mortgageRatePrograms, mortgageRates, consentTemplates, partnerProviders, properties } from "@shared/schema";
+import { refreshRates } from "./services/rateService";
 
 export async function seedDatabase() {
   try {
@@ -536,6 +537,234 @@ For more information, visit www.consumerfinance.gov/learnmore`,
         await db.insert(partnerProviders).values(provider);
       }
       console.log(`Seeded ${providers.length} partner providers`);
+    }
+
+    const existingRates = await db.select({ id: mortgageRates.id }).from(mortgageRates).limit(1);
+    if (existingRates.length === 0) {
+      console.log("Seeding mortgage rates...");
+      try {
+        const result = await refreshRates();
+        console.log(`Seeded ${result.count} mortgage rates (source: ${result.source})`);
+      } catch (err) {
+        console.error("Rate seeding error:", err);
+      }
+    }
+
+    const existingProperties = await db.select({ id: properties.id }).from(properties).limit(1);
+    if (existingProperties.length === 0) {
+      console.log("Seeding sample properties...");
+
+      const sampleProperties = [
+        {
+          address: "142 Maple Lane",
+          city: "Austin",
+          state: "TX",
+          zipCode: "78701",
+          price: "485000.00",
+          propertyType: "single_family",
+          bedrooms: 3,
+          bathrooms: "2.0",
+          squareFeet: 1850,
+          lotSize: "6500.00",
+          yearBuilt: 2018,
+          description: "Modern single-family home in a desirable Austin neighborhood. Features an open floor plan, quartz countertops, stainless steel appliances, and a spacious backyard with mature trees. Walking distance to parks and local shops.",
+          features: ["Open Floor Plan", "Quartz Countertops", "Stainless Appliances", "Hardwood Floors", "Smart Thermostat", "Two-Car Garage"],
+          status: "active",
+          listedAt: new Date("2025-12-15"),
+        },
+        {
+          address: "2801 Ocean Drive, Unit 14B",
+          city: "Miami",
+          state: "FL",
+          zipCode: "33139",
+          price: "729000.00",
+          propertyType: "condo",
+          bedrooms: 2,
+          bathrooms: "2.5",
+          squareFeet: 1420,
+          lotSize: "0.00",
+          yearBuilt: 2021,
+          description: "Luxury waterfront condo with panoramic ocean views from a private balcony. Building amenities include rooftop pool, fitness center, concierge, and secured parking. Hurricane-impact windows throughout.",
+          features: ["Ocean View", "Balcony", "Rooftop Pool", "Fitness Center", "Concierge", "Impact Windows", "Secured Parking"],
+          status: "active",
+          listedAt: new Date("2026-01-05"),
+        },
+        {
+          address: "567 Birchwood Circle",
+          city: "Raleigh",
+          state: "NC",
+          zipCode: "27607",
+          price: "375000.00",
+          propertyType: "single_family",
+          bedrooms: 4,
+          bathrooms: "2.5",
+          squareFeet: 2200,
+          lotSize: "8200.00",
+          yearBuilt: 2015,
+          description: "Spacious 4-bedroom family home in a top-rated school district. Features a chef's kitchen with island, primary suite with walk-in closet, and a finished bonus room. Fenced backyard with patio.",
+          features: ["Chef's Kitchen", "Kitchen Island", "Primary Suite", "Walk-In Closet", "Bonus Room", "Fenced Yard", "Patio"],
+          status: "active",
+          listedAt: new Date("2026-01-10"),
+        },
+        {
+          address: "89 Summit Ridge Way",
+          city: "Denver",
+          state: "CO",
+          zipCode: "80202",
+          price: "620000.00",
+          propertyType: "townhouse",
+          bedrooms: 3,
+          bathrooms: "3.0",
+          squareFeet: 2050,
+          lotSize: "2400.00",
+          yearBuilt: 2022,
+          description: "Contemporary townhome with mountain views and rooftop terrace. Three levels of living space with high ceilings, energy-efficient design, and an attached two-car garage. Minutes from downtown dining and trails.",
+          features: ["Mountain Views", "Rooftop Terrace", "High Ceilings", "Energy Efficient", "Two-Car Garage", "Modern Finishes"],
+          status: "active",
+          listedAt: new Date("2026-01-20"),
+        },
+        {
+          address: "1204 Willow Creek Drive",
+          city: "Charlotte",
+          state: "NC",
+          zipCode: "28277",
+          price: "445000.00",
+          propertyType: "single_family",
+          bedrooms: 4,
+          bathrooms: "3.0",
+          squareFeet: 2650,
+          lotSize: "10500.00",
+          yearBuilt: 2019,
+          description: "Beautiful two-story home in a master-planned community with pool and clubhouse. Open-concept living with a gourmet kitchen, home office, and large owner's suite. Three-car garage and irrigation system.",
+          features: ["Community Pool", "Clubhouse", "Gourmet Kitchen", "Home Office", "Owner's Suite", "Three-Car Garage", "Irrigation"],
+          status: "active",
+          listedAt: new Date("2025-11-28"),
+        },
+        {
+          address: "3150 Lake Shore Blvd, Unit 8C",
+          city: "Chicago",
+          state: "IL",
+          zipCode: "60657",
+          price: "550000.00",
+          propertyType: "condo",
+          bedrooms: 2,
+          bathrooms: "2.0",
+          squareFeet: 1280,
+          lotSize: "0.00",
+          yearBuilt: 2017,
+          description: "Stunning lakefront condo with floor-to-ceiling windows and skyline views. In-unit laundry, custom built-ins, and a chef's kitchen with waterfall island. Full-amenity building with doorman.",
+          features: ["Lake Views", "Floor-to-Ceiling Windows", "In-Unit Laundry", "Custom Built-Ins", "Waterfall Island", "Doorman"],
+          status: "active",
+          listedAt: new Date("2026-01-15"),
+        },
+        {
+          address: "782 Sagebrush Trail",
+          city: "Phoenix",
+          state: "AZ",
+          zipCode: "85016",
+          price: "399000.00",
+          propertyType: "single_family",
+          bedrooms: 3,
+          bathrooms: "2.0",
+          squareFeet: 1780,
+          lotSize: "7800.00",
+          yearBuilt: 2020,
+          description: "Desert modern home with a resort-style backyard featuring a heated pool and built-in grill. Split floor plan with tile throughout, plantation shutters, and a three-car garage with epoxy floors.",
+          features: ["Heated Pool", "Built-In Grill", "Split Floor Plan", "Plantation Shutters", "Three-Car Garage", "Desert Landscaping"],
+          status: "active",
+          listedAt: new Date("2026-02-01"),
+        },
+        {
+          address: "45 Cobblestone Court",
+          city: "Nashville",
+          state: "TN",
+          zipCode: "37215",
+          price: "525000.00",
+          propertyType: "townhouse",
+          bedrooms: 3,
+          bathrooms: "2.5",
+          squareFeet: 1920,
+          lotSize: "1800.00",
+          yearBuilt: 2023,
+          description: "Brand-new luxury townhome in the heart of Nashville. Premium finishes including marble counters, custom cabinetry, and wide-plank hardwood floors. Private courtyard and rooftop deck with city views.",
+          features: ["Marble Counters", "Custom Cabinetry", "Wide-Plank Hardwood", "Private Courtyard", "Rooftop Deck", "City Views"],
+          status: "active",
+          listedAt: new Date("2026-01-25"),
+        },
+        {
+          address: "1600 Peachtree Street NE, Unit 32A",
+          city: "Atlanta",
+          state: "GA",
+          zipCode: "30309",
+          price: "475000.00",
+          propertyType: "condo",
+          bedrooms: 2,
+          bathrooms: "2.0",
+          squareFeet: 1350,
+          lotSize: "0.00",
+          yearBuilt: 2020,
+          description: "High-rise luxury condo in Midtown Atlanta with a wrap-around balcony. Resort-style amenities include an infinity pool, sky lounge, and co-working space. Steps from Piedmont Park and MARTA.",
+          features: ["Wrap-Around Balcony", "Infinity Pool", "Sky Lounge", "Co-Working Space", "Near MARTA", "Pet-Friendly"],
+          status: "active",
+          listedAt: new Date("2026-02-05"),
+        },
+        {
+          address: "210 Heritage Oak Lane",
+          city: "San Antonio",
+          state: "TX",
+          zipCode: "78258",
+          price: "340000.00",
+          propertyType: "single_family",
+          bedrooms: 4,
+          bathrooms: "2.5",
+          squareFeet: 2400,
+          lotSize: "9000.00",
+          yearBuilt: 2016,
+          description: "Family-friendly home in a sought-after subdivision with community parks and trails. Features a media room, covered patio, and upgraded kitchen with granite counters. Excellent schools nearby.",
+          features: ["Media Room", "Covered Patio", "Granite Counters", "Community Parks", "Walking Trails", "Top Schools"],
+          status: "active",
+          listedAt: new Date("2025-12-20"),
+        },
+        {
+          address: "9025 Coastal Highway",
+          city: "Virginia Beach",
+          state: "VA",
+          zipCode: "23451",
+          price: "695000.00",
+          propertyType: "single_family",
+          bedrooms: 5,
+          bathrooms: "3.5",
+          squareFeet: 3200,
+          lotSize: "12000.00",
+          yearBuilt: 2014,
+          description: "Stunning coastal home two blocks from the beach. Large open-concept living with cathedral ceilings, a screened porch, and outdoor shower. Separate guest suite and ample storage. No flood zone.",
+          features: ["Near Beach", "Cathedral Ceilings", "Screened Porch", "Outdoor Shower", "Guest Suite", "No Flood Zone"],
+          status: "active",
+          listedAt: new Date("2026-01-08"),
+        },
+        {
+          address: "4412 Elm Park Drive",
+          city: "Minneapolis",
+          state: "MN",
+          zipCode: "55410",
+          price: "425000.00",
+          propertyType: "single_family",
+          bedrooms: 3,
+          bathrooms: "2.0",
+          squareFeet: 1950,
+          lotSize: "7200.00",
+          yearBuilt: 2011,
+          description: "Charming renovated craftsman near the Chain of Lakes. Original hardwood floors with modern updates including a gourmet kitchen, spa-like primary bath, and finished basement. Detached two-car garage.",
+          features: ["Renovated Craftsman", "Original Hardwood", "Gourmet Kitchen", "Spa Primary Bath", "Finished Basement", "Detached Garage"],
+          status: "active",
+          listedAt: new Date("2026-01-18"),
+        },
+      ];
+
+      for (const prop of sampleProperties) {
+        await db.insert(properties).values(prop);
+      }
+      console.log(`Seeded ${sampleProperties.length} sample properties`);
     }
 
     console.log("Database seeded successfully");

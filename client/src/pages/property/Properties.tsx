@@ -240,6 +240,12 @@ function PropertyCard({ property, viewMode }: { property: Property; viewMode: "g
             </div>
 
             <div className="mt-4 flex gap-2">
+              <Link href={`/properties/${property.id}`} className="flex-1" data-testid={`link-detail-${property.id}`}>
+                <Button variant="outline" className="w-full gap-2">
+                  <Home className="h-4 w-4" />
+                  View Details
+                </Button>
+              </Link>
               <Link href={`/apply?propertyId=${property.id}`} className="flex-1">
                 <Button className="w-full gap-2">
                   <DollarSign className="h-4 w-4" />
@@ -298,12 +304,20 @@ function PropertyCard({ property, viewMode }: { property: Property; viewMode: "g
           </div>
         </div>
 
-        <Link href={`/apply?propertyId=${property.id}`}>
-          <Button className="mt-4 w-full gap-2">
-            <DollarSign className="h-4 w-4" />
-            See Loan Options
-          </Button>
-        </Link>
+        <div className="mt-4 flex gap-2">
+          <Link href={`/properties/${property.id}`} className="flex-1" data-testid={`link-detail-grid-${property.id}`}>
+            <Button variant="outline" className="w-full gap-2">
+              <Home className="h-4 w-4" />
+              Details
+            </Button>
+          </Link>
+          <Link href={`/apply?propertyId=${property.id}`} className="flex-1">
+            <Button className="w-full gap-2">
+              <DollarSign className="h-4 w-4" />
+              Loan Options
+            </Button>
+          </Link>
+        </div>
       </CardContent>
     </Card>
   );
