@@ -558,6 +558,7 @@ export interface IStorage {
   updateCoachingSession(id: string, data: Partial<CoachingSession>): Promise<CoachingSession | undefined>;
 
   // Closing Guarantees
+  getAllClosingGuarantees(): Promise<ClosingGuarantee[]>;
   getClosingGuarantees(applicationId: string): Promise<ClosingGuarantee[]>;
   createClosingGuarantee(data: InsertClosingGuarantee): Promise<ClosingGuarantee>;
   updateClosingGuarantee(id: string, data: Partial<ClosingGuarantee>): Promise<ClosingGuarantee | undefined>;
@@ -570,6 +571,7 @@ export interface IStorage {
   // Refi Alerts
   getRefiAlerts(homeownerProfileId: string): Promise<RefiAlert[]>;
   createRefiAlert(data: InsertRefiAlert): Promise<RefiAlert>;
+  updateRefiAlert(id: string, data: Partial<RefiAlert>): Promise<RefiAlert | undefined>;
 
   // Equity Snapshots
   getEquitySnapshots(homeownerProfileId: string): Promise<EquitySnapshot[]>;
@@ -3522,6 +3524,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Closing Guarantees
+  async getAllClosingGuarantees(): Promise<ClosingGuarantee[]> {
+    return db.select().from(closingGuarantees)
+      .orderBy(desc(closingGuarantees.createdAt));
+  }
+
   async getClosingGuarantees(applicationId: string): Promise<ClosingGuarantee[]> {
     return db.select().from(closingGuarantees)
       .where(eq(closingGuarantees.applicationId, applicationId))
@@ -3572,6 +3579,14 @@ export class DatabaseStorage implements IStorage {
   async createRefiAlert(data: InsertRefiAlert): Promise<RefiAlert> {
     const [alert] = await db.insert(refiAlerts).values(data).returning();
     return alert;
+  }
+
+  async updateRefiAlert(id: string, data: Partial<RefiAlert>): Promise<RefiAlert | undefined> {
+    const [updated] = await db.update(refiAlerts)
+      .set(data)
+      .where(eq(refiAlerts.id, id))
+      .returning();
+    return updated;
   }
 
   // Equity Snapshots

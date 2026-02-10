@@ -240,7 +240,7 @@ function EmptyState() {
           Share your co-branded referral link with clients to start tracking their loan progress here.
         </p>
         <Button variant="outline" size="sm" className="mt-4" asChild data-testid="button-go-cobranding">
-          <Link href="/agent/co-branding">
+          <Link href="/co-branding">
             <FileText className="h-4 w-4 mr-1" />
             Set Up Co-Branding
           </Link>

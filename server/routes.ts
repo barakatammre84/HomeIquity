@@ -7317,6 +7317,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // =============================================
   // Closing Guarantee Routes
   // =============================================
+  app.get("/api/closing-guarantees", isAuthenticated, async (req, res) => {
+    try {
+      if (!isStaffRole(req.user!.role)) {
+        return res.status(403).json({ error: "Staff access required" });
+      }
+      const guarantees = await storage.getAllClosingGuarantees();
+      res.json(guarantees);
+    } catch (error) {
+      console.error("Get all closing guarantees error:", error);
+      res.status(500).json({ error: "Failed to get closing guarantees" });
+    }
+  });
+
   app.get("/api/closing-guarantees/:applicationId", isAuthenticated, async (req, res) => {
     try {
       if (!isStaffRole(req.user!.role)) {
@@ -7419,6 +7432,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Create refi alert error:", error);
       res.status(500).json({ error: "Failed to create refi alert" });
+    }
+  });
+
+  app.put("/api/homeowner/refi-alerts/:id", isAuthenticated, async (req, res) => {
+    try {
+      const profile = await storage.getHomeownerProfile(req.user!.id);
+      if (!profile) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      const updated = await storage.updateRefiAlert(req.params.id, req.body);
+      if (!updated || updated.homeownerProfileId !== profile.id) {
+        return res.status(404).json({ error: "Refi alert not found" });
+      }
+      res.json(updated);
+    } catch (error) {
+      console.error("Update refi alert error:", error);
+      res.status(500).json({ error: "Failed to update refi alert" });
     }
   });
 
