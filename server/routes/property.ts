@@ -1,0 +1,212 @@
+import type { Express } from "express";
+import type { IStorage } from "../storage";
+import { checkPropertyEligibility } from "../underwriting";
+
+export function registerPropertyRoutes(
+  app: Express,
+  storage: IStorage,
+  isAuthenticated: any,
+  isAdmin: any,
+) {
+  app.get("/api/properties", async (req, res) => {
+    try {
+      const { search, type, minPrice, maxPrice } = req.query;
+      
+      const properties = await storage.getAllProperties({
+        search: search as string,
+        type: type as string,
+        minPrice: minPrice ? parseFloat(minPrice as string) : undefined,
+        maxPrice: maxPrice ? parseFloat(maxPrice as string) : undefined,
+      });
+      
+      res.json(properties);
+    } catch (error) {
+      console.error("Get properties error:", error);
+      res.status(500).json({ error: "Failed to get properties" });
+    }
+  });
+
+  app.get("/api/properties/:id", async (req, res) => {
+    try {
+      const property = await storage.getProperty(req.params.id);
+      if (!property) {
+        return res.status(404).json({ error: "Property not found" });
+      }
+      res.json(property);
+    } catch (error) {
+      console.error("Get property error:", error);
+      res.status(500).json({ error: "Failed to get property" });
+    }
+  });
+
+  // Affordability check API - Uses underwriting engine to determine if buyer qualifies
+  app.post("/api/properties/:id/affordability", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const property = await storage.getProperty(req.params.id);
+      
+      if (!property) {
+        return res.status(404).json({ error: "Property not found" });
+      }
+
+      // Get user's latest pre-approved loan application
+      const applications = await storage.getLoanApplicationsByUser(userId);
+      const preApproval = applications.find(
+        app => app.status === "pre_approved" || app.status === "approved"
+      ) || applications[0];
+
+      if (!preApproval) {
+        return res.status(400).json({ 
+          error: "No loan application found",
+          message: "Please complete a pre-approval application first"
+        });
+      }
+
+      // Validate required financial data exists
+      const annualIncome = preApproval.annualIncome ? parseFloat(String(preApproval.annualIncome)) : 0;
+      if (annualIncome <= 0) {
+        return res.status(400).json({ 
+          error: "Incomplete application",
+          message: "Your loan application is missing income information"
+        });
+      }
+
+      const preApprovalAmount = preApproval.preApprovalAmount 
+        ? parseFloat(String(preApproval.preApprovalAmount))
+        : 0;
+      const monthlyIncome = annualIncome / 12;
+      const monthlyDebts = preApproval.monthlyDebts 
+        ? parseFloat(String(preApproval.monthlyDebts))
+        : 0;
+      const creditScore = preApproval.creditScore || 720;
+
+      const price = parseFloat(property.price);
+      const downPaymentPercent = req.body.downPaymentPercent || 5;
+      
+      // Use underwriting engine to check property eligibility
+      const eligibility = checkPropertyEligibility(
+        preApprovalAmount * 0.2, // Estimate assets as 20% of pre-approval for down payment capacity
+        monthlyIncome,
+        monthlyDebts,
+        price,
+        property.propertyType || "single_family",
+        undefined, // property tax - will use default estimate
+        undefined, // HOA
+        Math.max(100, price * 0.003 / 12), // insurance estimate based on property value
+        100 - downPaymentPercent // max LTV
+      );
+
+      // Determine status using GSE-aligned thresholds
+      let status: "qualified" | "stretch" | "not_qualified" = "qualified";
+      
+      // Check price vs pre-approval
+      if (price > preApprovalAmount) {
+        status = "not_qualified";
+      }
+      
+      // Check DTI
+      if (!eligibility.canBuyProperty || eligibility.finalDTI > 50) {
+        status = "not_qualified";
+      } else if (eligibility.finalDTI > 43) {
+        if (status !== "not_qualified") status = "stretch";
+      }
+
+      res.json({
+        canAfford: status !== "not_qualified",
+        status,
+        estimatedPayment: eligibility.estimatedPITI,
+        dtiWithProperty: eligibility.finalDTI,
+        requiredDownPayment: eligibility.requiredDownPayment,
+        loanAmount: eligibility.maxLoanAmount,
+        ltvRatio: eligibility.ltvRatio,
+        reasons: eligibility.reasons,
+        preApprovalAmount,
+        monthlyIncome,
+        creditScore,
+      });
+    } catch (error) {
+      console.error("Affordability check error:", error);
+      res.status(500).json({ error: "Failed to check affordability" });
+    }
+  });
+
+  // Property CRUD for agents
+  app.post("/api/properties", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const agentProfile = await storage.getAgentProfileByUserId(userId);
+      
+      if (!agentProfile) {
+        return res.status(403).json({ error: "Agent profile required to create listings" });
+      }
+
+      const propertyData = {
+        ...req.body,
+        agentId: agentProfile.id,
+        listedAt: new Date(),
+      };
+
+      const property = await storage.createProperty(propertyData);
+      
+      await storage.updateAgentProfile(agentProfile.id, {
+        activeListings: (agentProfile.activeListings || 0) + 1,
+      });
+
+      res.status(201).json(property);
+    } catch (error) {
+      console.error("Create property error:", error);
+      res.status(500).json({ error: "Failed to create property" });
+    }
+  });
+
+  app.patch("/api/properties/:id", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const property = await storage.getProperty(req.params.id);
+      
+      if (!property) {
+        return res.status(404).json({ error: "Property not found" });
+      }
+
+      const agentProfile = await storage.getAgentProfileByUserId(userId);
+      if (!agentProfile || property.agentId !== agentProfile.id) {
+        return res.status(403).json({ error: "Not authorized to update this property" });
+      }
+
+      const updated = await storage.updateProperty(req.params.id, req.body);
+      res.json(updated);
+    } catch (error) {
+      console.error("Update property error:", error);
+      res.status(500).json({ error: "Failed to update property" });
+    }
+  });
+
+  app.delete("/api/properties/:id", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const property = await storage.getProperty(req.params.id);
+      
+      if (!property) {
+        return res.status(404).json({ error: "Property not found" });
+      }
+
+      const agentProfile = await storage.getAgentProfileByUserId(userId);
+      if (!agentProfile || property.agentId !== agentProfile.id) {
+        return res.status(403).json({ error: "Not authorized to delete this property" });
+      }
+
+      await storage.deleteProperty(req.params.id);
+      
+      if (property.status === "active") {
+        await storage.updateAgentProfile(agentProfile.id, {
+          activeListings: Math.max((agentProfile.activeListings || 1) - 1, 0),
+        });
+      }
+
+      res.status(204).send();
+    } catch (error) {
+      console.error("Delete property error:", error);
+      res.status(500).json({ error: "Failed to delete property" });
+    }
+  });
+}
