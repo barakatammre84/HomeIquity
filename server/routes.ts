@@ -20,6 +20,7 @@ import {
   insertDocumentPackageSchema,
   insertDocumentPackageItemSchema,
   ALL_ROLES,
+  STAFF_ROLES,
   isStaffRole,
   type User,
 } from "@shared/schema";
@@ -6491,7 +6492,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (inv.loanApplicationId) {
           const app = await storage.getLoanApplication(inv.loanApplicationId);
           appStatus = app?.status || null;
-          appStage = app?.currentStage || null;
+          appStage = (app as any)?.currentStage || app?.status || null;
         }
         return {
           id: inv.id,
@@ -7041,6 +7042,570 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } catch {}
     }
   }
+
+  // =============================================
+  // Agent Pipeline Routes
+  // =============================================
+  app.get("/api/agent-pipeline", isAuthenticated, async (req, res) => {
+    try {
+      if (!isStaffRole(req.user!.role)) {
+        return res.status(403).json({ error: "Staff access required" });
+      }
+      const pipeline = await storage.getAgentPipeline(req.user!.id);
+      res.json(pipeline);
+    } catch (error) {
+      console.error("Get agent pipeline error:", error);
+      res.status(500).json({ error: "Failed to get agent pipeline" });
+    }
+  });
+
+  // =============================================
+  // Deal Rescue Escalation Routes
+  // =============================================
+  app.get("/api/deal-rescue", isAuthenticated, async (req, res) => {
+    try {
+      if (!isStaffRole(req.user!.role)) {
+        return res.status(403).json({ error: "Staff access required" });
+      }
+      const status = req.query.status as string | undefined;
+      const escalations = await storage.getDealRescueEscalations({
+        status,
+        reportedByUserId: req.user!.id,
+      });
+      res.json(escalations);
+    } catch (error) {
+      console.error("Get deal rescue escalations error:", error);
+      res.status(500).json({ error: "Failed to get escalations" });
+    }
+  });
+
+  app.post("/api/deal-rescue", isAuthenticated, async (req, res) => {
+    try {
+      if (!isStaffRole(req.user!.role)) {
+        return res.status(403).json({ error: "Staff access required" });
+      }
+      const urgency = req.body.urgency || "medium";
+      const slaHours: Record<string, number> = {
+        critical: 2,
+        high: 4,
+        medium: 8,
+        low: 24,
+      };
+      const hours = slaHours[urgency] || 8;
+      const slaDeadline = new Date(Date.now() + hours * 60 * 60 * 1000);
+
+      const escalation = await storage.createDealRescueEscalation({
+        ...req.body,
+        reportedByUserId: req.user!.id,
+        slaDeadline,
+      });
+      res.status(201).json(escalation);
+    } catch (error) {
+      console.error("Create deal rescue escalation error:", error);
+      res.status(500).json({ error: "Failed to create escalation" });
+    }
+  });
+
+  app.put("/api/deal-rescue/:id", isAuthenticated, async (req, res) => {
+    try {
+      if (!isStaffRole(req.user!.role)) {
+        return res.status(403).json({ error: "Staff access required" });
+      }
+      const escalation = await storage.updateDealRescueEscalation(req.params.id, req.body);
+      if (!escalation) {
+        return res.status(404).json({ error: "Escalation not found" });
+      }
+      res.json(escalation);
+    } catch (error) {
+      console.error("Update deal rescue escalation error:", error);
+      res.status(500).json({ error: "Failed to update escalation" });
+    }
+  });
+
+  // =============================================
+  // Strategy Sessions Routes
+  // =============================================
+  app.get("/api/strategy-sessions", isAuthenticated, async (req, res) => {
+    try {
+      if (!isStaffRole(req.user!.role)) {
+        return res.status(403).json({ error: "Staff access required" });
+      }
+      const sessions = await storage.getStrategySessions(req.user!.id);
+      res.json(sessions);
+    } catch (error) {
+      console.error("Get strategy sessions error:", error);
+      res.status(500).json({ error: "Failed to get strategy sessions" });
+    }
+  });
+
+  app.post("/api/strategy-sessions", isAuthenticated, async (req, res) => {
+    try {
+      if (!isStaffRole(req.user!.role)) {
+        return res.status(403).json({ error: "Staff access required" });
+      }
+      const session = await storage.createStrategySession({
+        ...req.body,
+        agentUserId: req.user!.id,
+      });
+      res.status(201).json(session);
+    } catch (error) {
+      console.error("Create strategy session error:", error);
+      res.status(500).json({ error: "Failed to create strategy session" });
+    }
+  });
+
+  app.put("/api/strategy-sessions/:id", isAuthenticated, async (req, res) => {
+    try {
+      if (!isStaffRole(req.user!.role)) {
+        return res.status(403).json({ error: "Staff access required" });
+      }
+      const session = await storage.updateStrategySession(req.params.id, req.body);
+      if (!session) {
+        return res.status(404).json({ error: "Strategy session not found" });
+      }
+      res.json(session);
+    } catch (error) {
+      console.error("Update strategy session error:", error);
+      res.status(500).json({ error: "Failed to update strategy session" });
+    }
+  });
+
+  // =============================================
+  // Accelerator Routes
+  // =============================================
+  app.get("/api/accelerator/enrollment", isAuthenticated, async (req, res) => {
+    try {
+      const enrollment = await storage.getAcceleratorEnrollment(req.user!.id);
+      res.json(enrollment || null);
+    } catch (error) {
+      console.error("Get accelerator enrollment error:", error);
+      res.status(500).json({ error: "Failed to get enrollment" });
+    }
+  });
+
+  app.post("/api/accelerator/enrollment", isAuthenticated, async (req, res) => {
+    try {
+      const enrollment = await storage.createAcceleratorEnrollment({
+        ...req.body,
+        userId: req.user!.id,
+      });
+
+      const defaultPhases = [
+        {
+          phase: 1,
+          phaseName: "Financial Assessment",
+          milestones: ["Review credit report", "Calculate current DTI", "Set budget"],
+        },
+        {
+          phase: 2,
+          phaseName: "Credit Optimization",
+          milestones: ["Dispute errors on credit report", "Pay down high-utilization cards", "Avoid new credit inquiries"],
+        },
+        {
+          phase: 3,
+          phaseName: "Savings Plan",
+          milestones: ["Open dedicated savings account", "Set up automatic transfers", "Reach 25% of down payment goal"],
+        },
+        {
+          phase: 4,
+          phaseName: "Debt Reduction",
+          milestones: ["Create debt payoff plan", "Reduce DTI below 43%", "Close unnecessary accounts"],
+        },
+        {
+          phase: 5,
+          phaseName: "Pre-Approval Ready",
+          milestones: ["Gather income documents", "Complete pre-approval application", "Get pre-approved"],
+        },
+        {
+          phase: 6,
+          phaseName: "Home Shopping",
+          milestones: ["Connect with real estate agent", "Attend open houses", "Make an offer"],
+        },
+      ];
+
+      for (const phaseData of defaultPhases) {
+        for (const title of phaseData.milestones) {
+          await storage.createAcceleratorMilestone({
+            enrollmentId: enrollment.id,
+            phase: phaseData.phase,
+            title,
+            category: phaseData.phaseName,
+          });
+        }
+      }
+
+      res.status(201).json(enrollment);
+    } catch (error) {
+      console.error("Create accelerator enrollment error:", error);
+      res.status(500).json({ error: "Failed to create enrollment" });
+    }
+  });
+
+  app.put("/api/accelerator/enrollment/:id", isAuthenticated, async (req, res) => {
+    try {
+      const enrollment = await storage.getAcceleratorEnrollment(req.user!.id);
+      if (!enrollment || enrollment.id !== req.params.id) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      const updated = await storage.updateAcceleratorEnrollment(req.params.id, req.body);
+      if (!updated) {
+        return res.status(404).json({ error: "Enrollment not found" });
+      }
+      res.json(updated);
+    } catch (error) {
+      console.error("Update accelerator enrollment error:", error);
+      res.status(500).json({ error: "Failed to update enrollment" });
+    }
+  });
+
+  app.get("/api/accelerator/milestones/:enrollmentId", isAuthenticated, async (req, res) => {
+    try {
+      const milestones = await storage.getAcceleratorMilestones(req.params.enrollmentId);
+      res.json(milestones);
+    } catch (error) {
+      console.error("Get accelerator milestones error:", error);
+      res.status(500).json({ error: "Failed to get milestones" });
+    }
+  });
+
+  app.put("/api/accelerator/milestones/:id", isAuthenticated, async (req, res) => {
+    try {
+      const milestone = await storage.updateAcceleratorMilestone(req.params.id, req.body);
+      if (!milestone) {
+        return res.status(404).json({ error: "Milestone not found" });
+      }
+      res.json(milestone);
+    } catch (error) {
+      console.error("Update accelerator milestone error:", error);
+      res.status(500).json({ error: "Failed to update milestone" });
+    }
+  });
+
+  app.get("/api/accelerator/coaching/:enrollmentId", isAuthenticated, async (req, res) => {
+    try {
+      const sessions = await storage.getCoachingSessions(req.params.enrollmentId);
+      res.json(sessions);
+    } catch (error) {
+      console.error("Get coaching sessions error:", error);
+      res.status(500).json({ error: "Failed to get coaching sessions" });
+    }
+  });
+
+  app.post("/api/accelerator/coaching", isAuthenticated, async (req, res) => {
+    try {
+      const session = await storage.createCoachingSession(req.body);
+      res.status(201).json(session);
+    } catch (error) {
+      console.error("Create coaching session error:", error);
+      res.status(500).json({ error: "Failed to create coaching session" });
+    }
+  });
+
+  app.put("/api/accelerator/coaching/:id", isAuthenticated, async (req, res) => {
+    try {
+      const session = await storage.updateCoachingSession(req.params.id, req.body);
+      if (!session) {
+        return res.status(404).json({ error: "Coaching session not found" });
+      }
+      res.json(session);
+    } catch (error) {
+      console.error("Update coaching session error:", error);
+      res.status(500).json({ error: "Failed to update coaching session" });
+    }
+  });
+
+  // =============================================
+  // Closing Guarantee Routes
+  // =============================================
+  app.get("/api/closing-guarantees/:applicationId", isAuthenticated, async (req, res) => {
+    try {
+      if (!isStaffRole(req.user!.role)) {
+        return res.status(403).json({ error: "Staff access required" });
+      }
+      const guarantees = await storage.getClosingGuarantees(req.params.applicationId);
+      res.json(guarantees);
+    } catch (error) {
+      console.error("Get closing guarantees error:", error);
+      res.status(500).json({ error: "Failed to get closing guarantees" });
+    }
+  });
+
+  app.post("/api/closing-guarantees", isAuthenticated, async (req, res) => {
+    try {
+      if (!isStaffRole(req.user!.role)) {
+        return res.status(403).json({ error: "Staff access required" });
+      }
+      const guarantee = await storage.createClosingGuarantee(req.body);
+      res.status(201).json(guarantee);
+    } catch (error) {
+      console.error("Create closing guarantee error:", error);
+      res.status(500).json({ error: "Failed to create closing guarantee" });
+    }
+  });
+
+  app.put("/api/closing-guarantees/:id", isAuthenticated, async (req, res) => {
+    try {
+      if (!isStaffRole(req.user!.role)) {
+        return res.status(403).json({ error: "Staff access required" });
+      }
+      const guarantee = await storage.updateClosingGuarantee(req.params.id, req.body);
+      if (!guarantee) {
+        return res.status(404).json({ error: "Closing guarantee not found" });
+      }
+      res.json(guarantee);
+    } catch (error) {
+      console.error("Update closing guarantee error:", error);
+      res.status(500).json({ error: "Failed to update closing guarantee" });
+    }
+  });
+
+  // =============================================
+  // Homeowner Value Routes
+  // =============================================
+  app.get("/api/homeowner/profile", isAuthenticated, async (req, res) => {
+    try {
+      const profile = await storage.getHomeownerProfile(req.user!.id);
+      res.json(profile || null);
+    } catch (error) {
+      console.error("Get homeowner profile error:", error);
+      res.status(500).json({ error: "Failed to get homeowner profile" });
+    }
+  });
+
+  app.post("/api/homeowner/profile", isAuthenticated, async (req, res) => {
+    try {
+      const profile = await storage.createHomeownerProfile({
+        ...req.body,
+        userId: req.user!.id,
+      });
+      res.status(201).json(profile);
+    } catch (error) {
+      console.error("Create homeowner profile error:", error);
+      res.status(500).json({ error: "Failed to create homeowner profile" });
+    }
+  });
+
+  app.put("/api/homeowner/profile/:id", isAuthenticated, async (req, res) => {
+    try {
+      const profile = await storage.getHomeownerProfile(req.user!.id);
+      if (!profile || profile.id !== req.params.id) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      const updated = await storage.updateHomeownerProfile(req.params.id, req.body);
+      if (!updated) {
+        return res.status(404).json({ error: "Homeowner profile not found" });
+      }
+      res.json(updated);
+    } catch (error) {
+      console.error("Update homeowner profile error:", error);
+      res.status(500).json({ error: "Failed to update homeowner profile" });
+    }
+  });
+
+  app.get("/api/homeowner/refi-alerts/:profileId", isAuthenticated, async (req, res) => {
+    try {
+      const alerts = await storage.getRefiAlerts(req.params.profileId);
+      res.json(alerts);
+    } catch (error) {
+      console.error("Get refi alerts error:", error);
+      res.status(500).json({ error: "Failed to get refi alerts" });
+    }
+  });
+
+  app.post("/api/homeowner/refi-alerts", isAuthenticated, async (req, res) => {
+    try {
+      const alert = await storage.createRefiAlert(req.body);
+      res.status(201).json(alert);
+    } catch (error) {
+      console.error("Create refi alert error:", error);
+      res.status(500).json({ error: "Failed to create refi alert" });
+    }
+  });
+
+  app.get("/api/homeowner/equity/:profileId", isAuthenticated, async (req, res) => {
+    try {
+      const snapshots = await storage.getEquitySnapshots(req.params.profileId);
+      res.json(snapshots);
+    } catch (error) {
+      console.error("Get equity snapshots error:", error);
+      res.status(500).json({ error: "Failed to get equity snapshots" });
+    }
+  });
+
+  app.post("/api/homeowner/equity", isAuthenticated, async (req, res) => {
+    try {
+      const snapshot = await storage.createEquitySnapshot(req.body);
+      res.status(201).json(snapshot);
+    } catch (error) {
+      console.error("Create equity snapshot error:", error);
+      res.status(500).json({ error: "Failed to create equity snapshot" });
+    }
+  });
+
+  // =============================================
+  // Scenario Calculator Route
+  // =============================================
+  app.post("/api/scenario-calculator", isAuthenticated, async (req, res) => {
+    try {
+      const schema = z.object({
+        purchasePrice: z.number().positive(),
+        downPaymentPercent: z.number().min(0).max(100),
+        creditScore: z.number().min(300).max(850),
+        loanProgram: z.enum(["conventional", "fha", "va", "usda"]),
+        interestRate: z.number().optional(),
+        propertyTax: z.number().optional(),
+        insurance: z.number().optional(),
+        annualIncome: z.number().optional(),
+      });
+
+      const validated = schema.parse(req.body);
+
+      const defaultRates: Record<string, number> = {
+        conventional: 6.875,
+        fha: 6.5,
+        va: 6.25,
+        usda: 6.375,
+      };
+
+      const purchasePrice = validated.purchasePrice;
+      const downPayment = purchasePrice * (validated.downPaymentPercent / 100);
+      let loanAmount = purchasePrice - downPayment;
+      const ltv = (loanAmount / purchasePrice) * 100;
+      const rate = validated.interestRate ?? defaultRates[validated.loanProgram];
+
+      if (validated.loanProgram === "fha") {
+        loanAmount = loanAmount * 1.0175;
+      }
+
+      const monthlyRate = rate / 12 / 100;
+      const numPayments = 360;
+      const factor = Math.pow(1 + monthlyRate, numPayments);
+      const monthlyPrincipalInterest = loanAmount * (monthlyRate * factor) / (factor - 1);
+
+      let monthlyPmi = 0;
+      if (validated.loanProgram === "conventional" && ltv > 80) {
+        monthlyPmi = (loanAmount * 0.005) / 12;
+      } else if (validated.loanProgram === "fha") {
+        monthlyPmi = (loanAmount * 0.0085) / 12;
+      }
+
+      const monthlyPropertyTax = validated.propertyTax ?? (purchasePrice * 0.011) / 12;
+      const monthlyInsurance = validated.insurance ?? (purchasePrice * 0.0035) / 12;
+      const totalMonthlyPayment = monthlyPrincipalInterest + monthlyPmi + monthlyPropertyTax + monthlyInsurance;
+
+      let dti: number | null = null;
+      if (validated.annualIncome) {
+        const monthlyIncome = validated.annualIncome / 12;
+        dti = (totalMonthlyPayment / monthlyIncome) * 100;
+      }
+
+      res.json({
+        purchasePrice,
+        downPayment,
+        downPaymentPercent: validated.downPaymentPercent,
+        loanAmount: Math.round(loanAmount * 100) / 100,
+        interestRate: rate,
+        loanProgram: validated.loanProgram,
+        ltv: Math.round(ltv * 100) / 100,
+        monthlyPrincipalInterest: Math.round(monthlyPrincipalInterest * 100) / 100,
+        monthlyPmi: Math.round(monthlyPmi * 100) / 100,
+        monthlyPropertyTax: Math.round(monthlyPropertyTax * 100) / 100,
+        monthlyInsurance: Math.round(monthlyInsurance * 100) / 100,
+        totalMonthlyPayment: Math.round(totalMonthlyPayment * 100) / 100,
+        dti: dti !== null ? Math.round(dti * 100) / 100 : null,
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid input", details: error.errors });
+      }
+      console.error("Scenario calculator error:", error);
+      res.status(500).json({ error: "Failed to calculate scenario" });
+    }
+  });
+
+  // =============================================
+  // Co-Branded Letter Enhancement Routes
+  // =============================================
+  app.get("/api/pre-approval-letters/:id/co-brand-preview", isAuthenticated, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const agentProfileId = req.query.agentProfileId as string;
+
+      if (!agentProfileId) {
+        return res.status(400).json({ error: "agentProfileId query parameter is required" });
+      }
+
+      const { db: database } = await import("./db");
+      const { preApprovalLetters, coBrandProfiles } = await import("@shared/schema");
+      const { eq } = await import("drizzle-orm");
+
+      const [letter] = await database
+        .select()
+        .from(preApprovalLetters)
+        .where(eq(preApprovalLetters.id, id))
+        .limit(1);
+
+      if (!letter) {
+        return res.status(404).json({ error: "Pre-approval letter not found" });
+      }
+
+      const coBrandProfile = await storage.getCoBrandProfile(agentProfileId);
+
+      res.json({
+        letter,
+        coBrand: coBrandProfile || null,
+      });
+    } catch (error) {
+      console.error("Co-brand preview error:", error);
+      res.status(500).json({ error: "Failed to get co-brand preview" });
+    }
+  });
+
+  app.put("/api/pre-approval-letters/:id/co-brand", isAuthenticated, async (req, res) => {
+    try {
+      const userRole = (req.user as User).role;
+      if (!STAFF_ROLES.includes(userRole as typeof STAFF_ROLES[number])) {
+        return res.status(403).json({ error: "Only staff can add co-branding" });
+      }
+
+      const { id } = req.params;
+      const coBrandSchema = z.object({
+        agentName: z.string(),
+        agentNmlsId: z.string().optional(),
+        agentContactEmail: z.string().email().optional(),
+        agentContactPhone: z.string().optional(),
+        agentBrandName: z.string().optional(),
+        agentLogoUrl: z.string().optional(),
+      });
+
+      const validated = coBrandSchema.parse(req.body);
+
+      const { db: database } = await import("./db");
+      const { preApprovalLetters } = await import("@shared/schema");
+      const { eq } = await import("drizzle-orm");
+
+      const [letter] = await database
+        .select()
+        .from(preApprovalLetters)
+        .where(eq(preApprovalLetters.id, id))
+        .limit(1);
+
+      if (!letter) {
+        return res.status(404).json({ error: "Pre-approval letter not found" });
+      }
+
+      res.json({
+        letter,
+        coBrand: validated,
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid input", details: error.errors });
+      }
+      console.error("Co-brand update error:", error);
+      res.status(500).json({ error: "Failed to update co-branding" });
+    }
+  });
 
   const httpServer = createServer(app);
 

@@ -68,6 +68,13 @@ import AgentCoBranding from "@/pages/AgentCoBranding";
 import FirstTimeBuyerHub from "@/pages/FirstTimeBuyerHub";
 import DownPaymentWizard from "@/pages/DownPaymentWizard";
 import PartnerLanding from "@/pages/PartnerLanding";
+import AgentPipeline from "@/pages/AgentPipeline";
+import ScenarioDesk from "@/pages/ScenarioDesk";
+import DealRescue from "@/pages/DealRescue";
+import StrategySessions from "@/pages/StrategySessions";
+import AcceleratorProgram from "@/pages/AcceleratorProgram";
+import ClosingGuarantee from "@/pages/ClosingGuarantee";
+import HomeownerDashboard from "@/pages/HomeownerDashboard";
 
 function PublicPage({ children }: { children: React.ReactNode }) {
   return <PublicLayout>{children}</PublicLayout>;
@@ -246,11 +253,32 @@ function Router() {
       <Route path="/co-branding">
         <StaffPage><AgentCoBranding /></StaffPage>
       </Route>
+      <Route path="/agent-pipeline">
+        <StaffPage><AgentPipeline /></StaffPage>
+      </Route>
+      <Route path="/scenario-desk">
+        <StaffPage><ScenarioDesk /></StaffPage>
+      </Route>
+      <Route path="/deal-rescue">
+        <StaffPage><DealRescue /></StaffPage>
+      </Route>
+      <Route path="/strategy-sessions">
+        <StaffPage><StrategySessions /></StaffPage>
+      </Route>
+      <Route path="/closing-guarantee">
+        <StaffPage><ClosingGuarantee /></StaffPage>
+      </Route>
       <Route path="/policy-ops">
         <StaffPage><PolicyOps /></StaffPage>
       </Route>
       <Route path="/task-operations">
         <StaffPage><TaskOperations /></StaffPage>
+      </Route>
+      <Route path="/accelerator">
+        <BorrowerPage><AcceleratorProgram /></BorrowerPage>
+      </Route>
+      <Route path="/homeowner-dashboard">
+        <BorrowerPage><HomeownerDashboard /></BorrowerPage>
       </Route>
       <Route path="/e-consent">
         <BorrowerPage><EConsent /></BorrowerPage>

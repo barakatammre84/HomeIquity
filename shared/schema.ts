@@ -7284,3 +7284,275 @@ export const insertDpaProgramSchema = createInsertSchema(dpaPrograms).omit({
 });
 export type InsertDpaProgram = z.infer<typeof insertDpaProgramSchema>;
 export type DpaProgram = typeof dpaPrograms.$inferSelect;
+
+// ===== AGENT PIPELINE VIEW =====
+export const agentPipelineAccess = pgTable("agent_pipeline_access", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  agentUserId: varchar("agent_user_id").references(() => users.id).notNull(),
+  applicationId: varchar("application_id").references(() => loanApplications.id).notNull(),
+  borrowerName: varchar("borrower_name", { length: 255 }),
+  currentStage: varchar("current_stage", { length: 50 }),
+  lastMilestone: varchar("last_milestone", { length: 255 }),
+  nextStep: varchar("next_step", { length: 255 }),
+  estimatedCloseDate: timestamp("estimated_close_date"),
+  loanAmount: decimal("loan_amount"),
+  propertyAddress: varchar("property_address", { length: 500 }),
+  lastUpdatedAt: timestamp("last_updated_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_agent_pipeline_agent").on(table.agentUserId),
+  index("idx_agent_pipeline_app").on(table.applicationId),
+]);
+
+export const insertAgentPipelineAccessSchema = createInsertSchema(agentPipelineAccess).omit({
+  id: true,
+  createdAt: true,
+  lastUpdatedAt: true,
+});
+export type InsertAgentPipelineAccess = z.infer<typeof insertAgentPipelineAccessSchema>;
+export type AgentPipelineAccess = typeof agentPipelineAccess.$inferSelect;
+
+// ===== DEAL RESCUE ESCALATIONS =====
+export const dealRescueEscalations = pgTable("deal_rescue_escalations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  applicationId: varchar("application_id").references(() => loanApplications.id),
+  reportedByUserId: varchar("reported_by_user_id").references(() => users.id).notNull(),
+  assignedToUserId: varchar("assigned_to_user_id").references(() => users.id),
+  urgency: varchar("urgency", { length: 20 }).default("high").notNull(),
+  issueType: varchar("issue_type", { length: 50 }).notNull(),
+  subject: varchar("subject", { length: 500 }).notNull(),
+  description: text("description").notNull(),
+  borrowerName: varchar("borrower_name", { length: 255 }),
+  propertyAddress: varchar("property_address", { length: 500 }),
+  closingDate: timestamp("closing_date"),
+  status: varchar("status", { length: 20 }).default("open").notNull(),
+  resolution: text("resolution"),
+  resolvedAt: timestamp("resolved_at"),
+  resolvedByUserId: varchar("resolved_by_user_id").references(() => users.id),
+  slaDeadline: timestamp("sla_deadline"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_deal_rescue_status").on(table.status),
+  index("idx_deal_rescue_reporter").on(table.reportedByUserId),
+  index("idx_deal_rescue_urgency").on(table.urgency),
+]);
+
+export const insertDealRescueEscalationSchema = createInsertSchema(dealRescueEscalations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  resolvedAt: true,
+  resolvedByUserId: true,
+});
+export type InsertDealRescueEscalation = z.infer<typeof insertDealRescueEscalationSchema>;
+export type DealRescueEscalation = typeof dealRescueEscalations.$inferSelect;
+
+// ===== AGENT STRATEGY SESSIONS =====
+export const strategySessions = pgTable("strategy_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  agentUserId: varchar("agent_user_id").references(() => users.id).notNull(),
+  loUserId: varchar("lo_user_id").references(() => users.id),
+  scheduledAt: timestamp("scheduled_at").notNull(),
+  durationMinutes: integer("duration_minutes").default(30),
+  sessionType: varchar("session_type", { length: 50 }).default("weekly_review"),
+  topic: varchar("topic", { length: 500 }),
+  notes: text("notes"),
+  actionItems: jsonb("action_items"),
+  status: varchar("status", { length: 20 }).default("scheduled").notNull(),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_strategy_sessions_agent").on(table.agentUserId),
+  index("idx_strategy_sessions_scheduled").on(table.scheduledAt),
+]);
+
+export const insertStrategySessionSchema = createInsertSchema(strategySessions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  completedAt: true,
+});
+export type InsertStrategySession = z.infer<typeof insertStrategySessionSchema>;
+export type StrategySession = typeof strategySessions.$inferSelect;
+
+// ===== HOMEBUYER ACCELERATOR PROGRAM =====
+export const acceleratorEnrollments = pgTable("accelerator_enrollments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  programType: varchar("program_type", { length: 50 }).notNull(),
+  currentPhase: integer("current_phase").default(1),
+  totalPhases: integer("total_phases").default(6),
+  targetDate: timestamp("target_date"),
+  currentCreditScore: integer("current_credit_score"),
+  targetCreditScore: integer("target_credit_score"),
+  currentSavings: decimal("current_savings"),
+  targetDownPayment: decimal("target_down_payment"),
+  currentDti: decimal("current_dti"),
+  targetDti: decimal("target_dti"),
+  monthlyBudget: decimal("monthly_budget"),
+  status: varchar("status", { length: 20 }).default("active").notNull(),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_accelerator_user").on(table.userId),
+  index("idx_accelerator_status").on(table.status),
+]);
+
+export const insertAcceleratorEnrollmentSchema = createInsertSchema(acceleratorEnrollments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  completedAt: true,
+});
+export type InsertAcceleratorEnrollment = z.infer<typeof insertAcceleratorEnrollmentSchema>;
+export type AcceleratorEnrollment = typeof acceleratorEnrollments.$inferSelect;
+
+export const acceleratorMilestones = pgTable("accelerator_milestones", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  enrollmentId: varchar("enrollment_id").references(() => acceleratorEnrollments.id).notNull(),
+  phase: integer("phase").notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  category: varchar("category", { length: 50 }).notNull(),
+  targetValue: varchar("target_value", { length: 100 }),
+  currentValue: varchar("current_value", { length: 100 }),
+  isCompleted: boolean("is_completed").default(false),
+  completedAt: timestamp("completed_at"),
+  dueDate: timestamp("due_date"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_accelerator_milestones_enrollment").on(table.enrollmentId),
+]);
+
+export const insertAcceleratorMilestoneSchema = createInsertSchema(acceleratorMilestones).omit({
+  id: true,
+  createdAt: true,
+  completedAt: true,
+});
+export type InsertAcceleratorMilestone = z.infer<typeof insertAcceleratorMilestoneSchema>;
+export type AcceleratorMilestone = typeof acceleratorMilestones.$inferSelect;
+
+export const coachingSessions = pgTable("coaching_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  enrollmentId: varchar("enrollment_id").references(() => acceleratorEnrollments.id).notNull(),
+  scheduledAt: timestamp("scheduled_at").notNull(),
+  durationMinutes: integer("duration_minutes").default(30),
+  topic: varchar("topic", { length: 500 }),
+  notes: text("notes"),
+  actionItems: jsonb("action_items"),
+  status: varchar("status", { length: 20 }).default("scheduled").notNull(),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_coaching_sessions_enrollment").on(table.enrollmentId),
+  index("idx_coaching_sessions_scheduled").on(table.scheduledAt),
+]);
+
+export const insertCoachingSessionSchema = createInsertSchema(coachingSessions).omit({
+  id: true,
+  createdAt: true,
+  completedAt: true,
+});
+export type InsertCoachingSession = z.infer<typeof insertCoachingSessionSchema>;
+export type CoachingSession = typeof coachingSessions.$inferSelect;
+
+// ===== CLOSING SLA GUARANTEES =====
+export const closingGuarantees = pgTable("closing_guarantees", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  applicationId: varchar("application_id").references(() => loanApplications.id).notNull(),
+  guaranteeType: varchar("guarantee_type", { length: 50 }).notNull(),
+  targetDate: timestamp("target_date").notNull(),
+  targetHours: integer("target_hours"),
+  actualDate: timestamp("actual_date"),
+  status: varchar("status", { length: 20 }).default("active").notNull(),
+  isAtRisk: boolean("is_at_risk").default(false),
+  riskReason: text("risk_reason"),
+  isMet: boolean("is_met"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_closing_guarantees_app").on(table.applicationId),
+  index("idx_closing_guarantees_status").on(table.status),
+]);
+
+export const insertClosingGuaranteeSchema = createInsertSchema(closingGuarantees).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertClosingGuarantee = z.infer<typeof insertClosingGuaranteeSchema>;
+export type ClosingGuarantee = typeof closingGuarantees.$inferSelect;
+
+// ===== LIFETIME HOMEOWNER VALUE =====
+export const homeownerProfiles = pgTable("homeowner_profiles", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  originalLoanAmount: decimal("original_loan_amount"),
+  currentLoanBalance: decimal("current_loan_balance"),
+  interestRate: decimal("interest_rate", { precision: 5, scale: 3 }),
+  monthlyPayment: decimal("monthly_payment"),
+  propertyValue: decimal("property_value"),
+  purchasePrice: decimal("purchase_price"),
+  purchaseDate: timestamp("purchase_date"),
+  loanCloseDate: timestamp("loan_close_date"),
+  propertyAddress: varchar("property_address", { length: 500 }),
+  nextReviewDate: timestamp("next_review_date"),
+  lastReviewDate: timestamp("last_review_date"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_homeowner_profiles_user").on(table.userId),
+]);
+
+export const insertHomeownerProfileSchema = createInsertSchema(homeownerProfiles).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertHomeownerProfile = z.infer<typeof insertHomeownerProfileSchema>;
+export type HomeownerProfile = typeof homeownerProfiles.$inferSelect;
+
+export const refiAlerts = pgTable("refi_alerts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  homeownerProfileId: varchar("homeowner_profile_id").references(() => homeownerProfiles.id).notNull(),
+  currentRate: decimal("current_rate", { precision: 5, scale: 3 }).notNull(),
+  marketRate: decimal("market_rate", { precision: 5, scale: 3 }).notNull(),
+  potentialSavingsMonthly: decimal("potential_savings_monthly"),
+  potentialSavingsLifetime: decimal("potential_savings_lifetime"),
+  isActionable: boolean("is_actionable").default(false),
+  isDismissed: boolean("is_dismissed").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_refi_alerts_profile").on(table.homeownerProfileId),
+]);
+
+export const insertRefiAlertSchema = createInsertSchema(refiAlerts).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertRefiAlert = z.infer<typeof insertRefiAlertSchema>;
+export type RefiAlert = typeof refiAlerts.$inferSelect;
+
+export const equitySnapshots = pgTable("equity_snapshots", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  homeownerProfileId: varchar("homeowner_profile_id").references(() => homeownerProfiles.id).notNull(),
+  snapshotDate: timestamp("snapshot_date").notNull(),
+  estimatedValue: decimal("estimated_value"),
+  loanBalance: decimal("loan_balance"),
+  equityAmount: decimal("equity_amount"),
+  equityPercent: decimal("equity_percent", { precision: 5, scale: 2 }),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_equity_snapshots_profile").on(table.homeownerProfileId),
+  index("idx_equity_snapshots_date").on(table.snapshotDate),
+]);
+
+export const insertEquitySnapshotSchema = createInsertSchema(equitySnapshots).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertEquitySnapshot = z.infer<typeof insertEquitySnapshotSchema>;
+export type EquitySnapshot = typeof equitySnapshots.$inferSelect;

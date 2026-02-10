@@ -168,6 +168,36 @@ import {
   dpaPrograms,
   type DpaProgram,
   type InsertDpaProgram,
+  agentPipelineAccess,
+  dealRescueEscalations,
+  strategySessions,
+  acceleratorEnrollments,
+  acceleratorMilestones,
+  coachingSessions,
+  closingGuarantees,
+  homeownerProfiles,
+  refiAlerts,
+  equitySnapshots,
+  type AgentPipelineAccess,
+  type InsertAgentPipelineAccess,
+  type DealRescueEscalation,
+  type InsertDealRescueEscalation,
+  type StrategySession,
+  type InsertStrategySession,
+  type AcceleratorEnrollment,
+  type InsertAcceleratorEnrollment,
+  type AcceleratorMilestone,
+  type InsertAcceleratorMilestone,
+  type CoachingSession,
+  type InsertCoachingSession,
+  type ClosingGuarantee,
+  type InsertClosingGuarantee,
+  type HomeownerProfile,
+  type InsertHomeownerProfile,
+  type RefiAlert,
+  type InsertRefiAlert,
+  type EquitySnapshot,
+  type InsertEquitySnapshot,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -497,6 +527,53 @@ export interface IStorage {
   // DPA Programs
   getDpaPrograms(filters?: { state?: string; firstTimeBuyer?: boolean; minCreditScore?: number; maxIncome?: number }): Promise<DpaProgram[]>;
   getDpaProgram(id: string): Promise<DpaProgram | undefined>;
+
+  // Agent Pipeline Access
+  getAgentPipeline(agentUserId: string): Promise<AgentPipelineAccess[]>;
+  upsertAgentPipelineAccess(data: InsertAgentPipelineAccess): Promise<AgentPipelineAccess>;
+
+  // Deal Rescue Escalations
+  getDealRescueEscalations(filters?: { status?: string; reportedByUserId?: string }): Promise<DealRescueEscalation[]>;
+  createDealRescueEscalation(data: InsertDealRescueEscalation): Promise<DealRescueEscalation>;
+  updateDealRescueEscalation(id: string, data: Partial<DealRescueEscalation>): Promise<DealRescueEscalation | undefined>;
+
+  // Strategy Sessions
+  getStrategySessions(agentUserId: string): Promise<StrategySession[]>;
+  createStrategySession(data: InsertStrategySession): Promise<StrategySession>;
+  updateStrategySession(id: string, data: Partial<StrategySession>): Promise<StrategySession | undefined>;
+
+  // Accelerator Enrollments
+  getAcceleratorEnrollment(userId: string): Promise<AcceleratorEnrollment | undefined>;
+  createAcceleratorEnrollment(data: InsertAcceleratorEnrollment): Promise<AcceleratorEnrollment>;
+  updateAcceleratorEnrollment(id: string, data: Partial<AcceleratorEnrollment>): Promise<AcceleratorEnrollment | undefined>;
+
+  // Accelerator Milestones
+  getAcceleratorMilestones(enrollmentId: string): Promise<AcceleratorMilestone[]>;
+  createAcceleratorMilestone(data: InsertAcceleratorMilestone): Promise<AcceleratorMilestone>;
+  updateAcceleratorMilestone(id: string, data: Partial<AcceleratorMilestone>): Promise<AcceleratorMilestone | undefined>;
+
+  // Coaching Sessions
+  getCoachingSessions(enrollmentId: string): Promise<CoachingSession[]>;
+  createCoachingSession(data: InsertCoachingSession): Promise<CoachingSession>;
+  updateCoachingSession(id: string, data: Partial<CoachingSession>): Promise<CoachingSession | undefined>;
+
+  // Closing Guarantees
+  getClosingGuarantees(applicationId: string): Promise<ClosingGuarantee[]>;
+  createClosingGuarantee(data: InsertClosingGuarantee): Promise<ClosingGuarantee>;
+  updateClosingGuarantee(id: string, data: Partial<ClosingGuarantee>): Promise<ClosingGuarantee | undefined>;
+
+  // Homeowner Profiles
+  getHomeownerProfile(userId: string): Promise<HomeownerProfile | undefined>;
+  createHomeownerProfile(data: InsertHomeownerProfile): Promise<HomeownerProfile>;
+  updateHomeownerProfile(id: string, data: Partial<HomeownerProfile>): Promise<HomeownerProfile | undefined>;
+
+  // Refi Alerts
+  getRefiAlerts(homeownerProfileId: string): Promise<RefiAlert[]>;
+  createRefiAlert(data: InsertRefiAlert): Promise<RefiAlert>;
+
+  // Equity Snapshots
+  getEquitySnapshots(homeownerProfileId: string): Promise<EquitySnapshot[]>;
+  createEquitySnapshot(data: InsertEquitySnapshot): Promise<EquitySnapshot>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -3302,6 +3379,211 @@ export class DatabaseStorage implements IStorage {
   async getDpaProgram(id: string): Promise<DpaProgram | undefined> {
     const [program] = await db.select().from(dpaPrograms).where(eq(dpaPrograms.id, id));
     return program;
+  }
+
+  // Agent Pipeline Access
+  async getAgentPipeline(agentUserId: string): Promise<AgentPipelineAccess[]> {
+    return db.select().from(agentPipelineAccess)
+      .where(eq(agentPipelineAccess.agentUserId, agentUserId))
+      .orderBy(desc(agentPipelineAccess.createdAt));
+  }
+
+  async upsertAgentPipelineAccess(data: InsertAgentPipelineAccess): Promise<AgentPipelineAccess> {
+    const [result] = await db
+      .insert(agentPipelineAccess)
+      .values(data)
+      .onConflictDoUpdate({
+        target: [agentPipelineAccess.agentUserId, agentPipelineAccess.applicationId],
+        set: {
+          borrowerName: data.borrowerName,
+          currentStage: data.currentStage,
+          lastMilestone: data.lastMilestone,
+          nextStep: data.nextStep,
+          estimatedCloseDate: data.estimatedCloseDate,
+          loanAmount: data.loanAmount,
+          propertyAddress: data.propertyAddress,
+          lastUpdatedAt: new Date(),
+        },
+      })
+      .returning();
+    return result;
+  }
+
+  // Deal Rescue Escalations
+  async getDealRescueEscalations(filters?: { status?: string; reportedByUserId?: string }): Promise<DealRescueEscalation[]> {
+    const conditions = [];
+    if (filters?.status) {
+      conditions.push(eq(dealRescueEscalations.status, filters.status));
+    }
+    if (filters?.reportedByUserId) {
+      conditions.push(eq(dealRescueEscalations.reportedByUserId, filters.reportedByUserId));
+    }
+    if (conditions.length > 0) {
+      return db.select().from(dealRescueEscalations)
+        .where(and(...conditions))
+        .orderBy(desc(dealRescueEscalations.createdAt));
+    }
+    return db.select().from(dealRescueEscalations)
+      .orderBy(desc(dealRescueEscalations.createdAt));
+  }
+
+  async createDealRescueEscalation(data: InsertDealRescueEscalation): Promise<DealRescueEscalation> {
+    const [escalation] = await db.insert(dealRescueEscalations).values(data).returning();
+    return escalation;
+  }
+
+  async updateDealRescueEscalation(id: string, data: Partial<DealRescueEscalation>): Promise<DealRescueEscalation | undefined> {
+    const [updated] = await db.update(dealRescueEscalations)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(dealRescueEscalations.id, id))
+      .returning();
+    return updated;
+  }
+
+  // Strategy Sessions
+  async getStrategySessions(agentUserId: string): Promise<StrategySession[]> {
+    return db.select().from(strategySessions)
+      .where(eq(strategySessions.agentUserId, agentUserId))
+      .orderBy(desc(strategySessions.createdAt));
+  }
+
+  async createStrategySession(data: InsertStrategySession): Promise<StrategySession> {
+    const [session] = await db.insert(strategySessions).values(data).returning();
+    return session;
+  }
+
+  async updateStrategySession(id: string, data: Partial<StrategySession>): Promise<StrategySession | undefined> {
+    const [updated] = await db.update(strategySessions)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(strategySessions.id, id))
+      .returning();
+    return updated;
+  }
+
+  // Accelerator Enrollments
+  async getAcceleratorEnrollment(userId: string): Promise<AcceleratorEnrollment | undefined> {
+    const [enrollment] = await db.select().from(acceleratorEnrollments)
+      .where(eq(acceleratorEnrollments.userId, userId))
+      .limit(1);
+    return enrollment;
+  }
+
+  async createAcceleratorEnrollment(data: InsertAcceleratorEnrollment): Promise<AcceleratorEnrollment> {
+    const [enrollment] = await db.insert(acceleratorEnrollments).values(data).returning();
+    return enrollment;
+  }
+
+  async updateAcceleratorEnrollment(id: string, data: Partial<AcceleratorEnrollment>): Promise<AcceleratorEnrollment | undefined> {
+    const [updated] = await db.update(acceleratorEnrollments)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(acceleratorEnrollments.id, id))
+      .returning();
+    return updated;
+  }
+
+  // Accelerator Milestones
+  async getAcceleratorMilestones(enrollmentId: string): Promise<AcceleratorMilestone[]> {
+    return db.select().from(acceleratorMilestones)
+      .where(eq(acceleratorMilestones.enrollmentId, enrollmentId))
+      .orderBy(desc(acceleratorMilestones.createdAt));
+  }
+
+  async createAcceleratorMilestone(data: InsertAcceleratorMilestone): Promise<AcceleratorMilestone> {
+    const [milestone] = await db.insert(acceleratorMilestones).values(data).returning();
+    return milestone;
+  }
+
+  async updateAcceleratorMilestone(id: string, data: Partial<AcceleratorMilestone>): Promise<AcceleratorMilestone | undefined> {
+    const [updated] = await db.update(acceleratorMilestones)
+      .set(data)
+      .where(eq(acceleratorMilestones.id, id))
+      .returning();
+    return updated;
+  }
+
+  // Coaching Sessions
+  async getCoachingSessions(enrollmentId: string): Promise<CoachingSession[]> {
+    return db.select().from(coachingSessions)
+      .where(eq(coachingSessions.enrollmentId, enrollmentId))
+      .orderBy(desc(coachingSessions.createdAt));
+  }
+
+  async createCoachingSession(data: InsertCoachingSession): Promise<CoachingSession> {
+    const [session] = await db.insert(coachingSessions).values(data).returning();
+    return session;
+  }
+
+  async updateCoachingSession(id: string, data: Partial<CoachingSession>): Promise<CoachingSession | undefined> {
+    const [updated] = await db.update(coachingSessions)
+      .set(data)
+      .where(eq(coachingSessions.id, id))
+      .returning();
+    return updated;
+  }
+
+  // Closing Guarantees
+  async getClosingGuarantees(applicationId: string): Promise<ClosingGuarantee[]> {
+    return db.select().from(closingGuarantees)
+      .where(eq(closingGuarantees.applicationId, applicationId))
+      .orderBy(desc(closingGuarantees.createdAt));
+  }
+
+  async createClosingGuarantee(data: InsertClosingGuarantee): Promise<ClosingGuarantee> {
+    const [guarantee] = await db.insert(closingGuarantees).values(data).returning();
+    return guarantee;
+  }
+
+  async updateClosingGuarantee(id: string, data: Partial<ClosingGuarantee>): Promise<ClosingGuarantee | undefined> {
+    const [updated] = await db.update(closingGuarantees)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(closingGuarantees.id, id))
+      .returning();
+    return updated;
+  }
+
+  // Homeowner Profiles
+  async getHomeownerProfile(userId: string): Promise<HomeownerProfile | undefined> {
+    const [profile] = await db.select().from(homeownerProfiles)
+      .where(eq(homeownerProfiles.userId, userId))
+      .limit(1);
+    return profile;
+  }
+
+  async createHomeownerProfile(data: InsertHomeownerProfile): Promise<HomeownerProfile> {
+    const [profile] = await db.insert(homeownerProfiles).values(data).returning();
+    return profile;
+  }
+
+  async updateHomeownerProfile(id: string, data: Partial<HomeownerProfile>): Promise<HomeownerProfile | undefined> {
+    const [updated] = await db.update(homeownerProfiles)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(homeownerProfiles.id, id))
+      .returning();
+    return updated;
+  }
+
+  // Refi Alerts
+  async getRefiAlerts(homeownerProfileId: string): Promise<RefiAlert[]> {
+    return db.select().from(refiAlerts)
+      .where(eq(refiAlerts.homeownerProfileId, homeownerProfileId))
+      .orderBy(desc(refiAlerts.createdAt));
+  }
+
+  async createRefiAlert(data: InsertRefiAlert): Promise<RefiAlert> {
+    const [alert] = await db.insert(refiAlerts).values(data).returning();
+    return alert;
+  }
+
+  // Equity Snapshots
+  async getEquitySnapshots(homeownerProfileId: string): Promise<EquitySnapshot[]> {
+    return db.select().from(equitySnapshots)
+      .where(eq(equitySnapshots.homeownerProfileId, homeownerProfileId))
+      .orderBy(desc(equitySnapshots.createdAt));
+  }
+
+  async createEquitySnapshot(data: InsertEquitySnapshot): Promise<EquitySnapshot> {
+    const [snapshot] = await db.insert(equitySnapshots).values(data).returning();
+    return snapshot;
   }
 }
 

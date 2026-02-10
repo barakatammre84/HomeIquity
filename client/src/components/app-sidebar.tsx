@@ -55,6 +55,13 @@ import {
   Fingerprint,
   PiggyBank,
   Palette,
+  ClipboardList,
+  AlertTriangle,
+  Calendar,
+  Target,
+  Clock,
+  HomeIcon,
+  TrendingUp,
 } from "lucide-react";
 
 // Team member interface
@@ -106,6 +113,7 @@ const aspiringOwnerNavigation = [
     items: [
       { title: "Pre-Approval", href: "/apply", icon: Star, testId: "link-pre-approval" },
       { title: "Identity Verification", href: "/identity-verification", icon: Fingerprint, testId: "link-identity-verification" },
+      { title: "Accelerator Program", href: "/accelerator", icon: Target, testId: "link-accelerator" },
       { title: "First-Time Buyer Hub", href: "/first-time-buyer", icon: GraduationCap, testId: "link-first-time-buyer" },
       { title: "Down Payment Help", href: "/down-payment-wizard", icon: PiggyBank, testId: "link-dpa-wizard" },
     ],
@@ -131,6 +139,13 @@ const activeBuyerNavigation = [
       { title: "URLA Form", href: "/urla-form", icon: Clipboard, testId: "link-urla-form" },
     ],
   },
+  {
+    section: "Homeowner Tools",
+    items: [
+      { title: "Homeowner Dashboard", href: "/homeowner-dashboard", icon: HomeIcon, testId: "link-homeowner-dashboard" },
+      { title: "Accelerator Program", href: "/accelerator", icon: Target, testId: "link-accelerator-buyer" },
+    ],
+  },
 ];
 
 const staffNavigation = [
@@ -143,6 +158,16 @@ const staffNavigation = [
       { title: "Analytics", href: "/analytics", icon: BarChart3, testId: "link-analytics" },
       { title: "Broker Dashboard", href: "/broker-dashboard", icon: DollarSign, testId: "link-broker-dashboard" },
       { title: "Invite Clients", href: "/invite-clients", icon: Link2, testId: "link-invite-clients" },
+    ],
+  },
+  {
+    section: "Realtor Revenue Engine",
+    items: [
+      { title: "Client Pipeline", href: "/agent-pipeline", icon: ClipboardList, testId: "link-agent-pipeline" },
+      { title: "Scenario Calculator", href: "/scenario-desk", icon: Calculator, testId: "link-scenario-desk" },
+      { title: "Deal Rescue", href: "/deal-rescue", icon: AlertTriangle, testId: "link-deal-rescue" },
+      { title: "Strategy Sessions", href: "/strategy-sessions", icon: Calendar, testId: "link-strategy-sessions" },
+      { title: "Closing Guarantee", href: "/closing-guarantee", icon: Clock, testId: "link-closing-guarantee" },
     ],
   },
   {
