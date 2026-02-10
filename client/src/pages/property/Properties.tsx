@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { Navigation } from "@/components/Navigation";
@@ -35,11 +35,87 @@ const PROPERTY_TYPES = [
   { value: "multi_family", label: "Multi-Family" },
 ];
 
+interface AutoCompleteSuggestion {
+  id: string;
+  type: string;
+  label: string;
+  city: string | null;
+  stateCode: string | null;
+  slug: string | null;
+}
+
+function useDebounce(value: string, delay: number) {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(timer);
+  }, [value, delay]);
+  return debounced;
+}
+
 export default function Properties() {
   const [searchQuery, setSearchQuery] = useState("");
+  const [inputValue, setInputValue] = useState("");
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const [propertyType, setPropertyType] = useState("all");
   const [priceRange, setPriceRange] = useState([0, 2000000]);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const suggestionsRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const debouncedInput = useDebounce(inputValue, 300);
+
+  const autoCompleteUrl = debouncedInput.length >= 2
+    ? `/api/properties/auto-complete?input=${encodeURIComponent(debouncedInput)}`
+    : null;
+
+  const { data: suggestions, isLoading: suggestionsLoading } = useQuery<AutoCompleteSuggestion[]>({
+    queryKey: [autoCompleteUrl],
+    enabled: !!autoCompleteUrl,
+  });
+
+  useEffect(() => {
+    if (suggestions && suggestions.length > 0 && debouncedInput.length >= 2) {
+      setShowSuggestions(true);
+    }
+  }, [suggestions, debouncedInput]);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (
+        suggestionsRef.current && !suggestionsRef.current.contains(e.target as Node) &&
+        inputRef.current && !inputRef.current.contains(e.target as Node)
+      ) {
+        setShowSuggestions(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleSelectSuggestion = useCallback((suggestion: AutoCompleteSuggestion) => {
+    setInputValue(suggestion.label);
+    setSearchQuery(suggestion.label);
+    setShowSuggestions(false);
+  }, []);
+
+  const handleInputChange = useCallback((value: string) => {
+    setInputValue(value);
+    if (!value) {
+      setSearchQuery("");
+      setShowSuggestions(false);
+    }
+  }, []);
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      setSearchQuery(inputValue);
+      setShowSuggestions(false);
+    }
+    if (e.key === "Escape") {
+      setShowSuggestions(false);
+    }
+  }, [inputValue]);
 
   const buildQueryString = () => {
     const params = new URLSearchParams();
@@ -63,7 +139,8 @@ export default function Properties() {
     const matchesSearch = 
       !searchQuery || 
       property.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      property.city.toLowerCase().includes(searchQuery.toLowerCase());
+      property.city.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      property.state?.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesType && matchesPrice && matchesSearch;
   }) || [];
 
@@ -91,18 +168,62 @@ export default function Properties() {
         <Card className="mb-8">
           <CardContent className="p-6">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end">
-              <div className="flex-1">
+              <div className="relative flex-1">
                 <label className="mb-2 block text-sm font-medium">Search Location</label>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
+                    ref={inputRef}
                     placeholder="City, address, or ZIP code"
                     className="pl-10"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
+                    value={inputValue}
+                    onChange={(e) => handleInputChange(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    onFocus={() => {
+                      if (suggestions && suggestions.length > 0 && inputValue.length >= 2) {
+                        setShowSuggestions(true);
+                      }
+                    }}
                     data-testid="input-property-search"
                   />
                 </div>
+                {showSuggestions && inputValue.length >= 2 && (
+                  <div
+                    ref={suggestionsRef}
+                    className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-md border bg-popover shadow-md"
+                    data-testid="autocomplete-dropdown"
+                  >
+                    {suggestionsLoading ? (
+                      <div className="flex items-center gap-3 px-4 py-3 text-sm text-muted-foreground">
+                        <Search className="h-4 w-4 animate-pulse" />
+                        <span>Searching locations...</span>
+                      </div>
+                    ) : suggestions && suggestions.length > 0 ? (
+                      suggestions.map((suggestion) => (
+                        <button
+                          key={suggestion.id}
+                          type="button"
+                          className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm hover-elevate"
+                          onClick={() => handleSelectSuggestion(suggestion)}
+                          data-testid={`autocomplete-item-${suggestion.id}`}
+                        >
+                          <MapPin className="h-4 w-4 shrink-0 text-muted-foreground" />
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate font-medium">{suggestion.label}</p>
+                            <p className="text-xs capitalize text-muted-foreground">{suggestion.type.replace("_", " ")}</p>
+                          </div>
+                          {suggestion.stateCode && (
+                            <Badge variant="secondary" className="shrink-0">{suggestion.stateCode}</Badge>
+                          )}
+                        </button>
+                      ))
+                    ) : (
+                      <div className="px-4 py-3 text-sm text-muted-foreground">
+                        No locations found
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="w-full lg:w-48">
@@ -273,7 +394,7 @@ function PropertyCard({ property, viewMode }: { property: Property; viewMode: "g
         <Button
           variant="ghost"
           size="icon"
-          className="absolute right-3 top-3 bg-white/80 hover:bg-white"
+          className="absolute right-3 top-3 bg-white/80"
         >
           <Heart className="h-5 w-5" />
         </Button>

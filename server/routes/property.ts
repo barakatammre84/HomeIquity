@@ -8,6 +8,53 @@ export function registerPropertyRoutes(
   isAuthenticated: any,
   isAdmin: any,
 ) {
+  app.get("/api/properties/auto-complete", async (req, res) => {
+    try {
+      const { input } = req.query;
+      if (!input || typeof input !== "string" || input.trim().length < 2) {
+        return res.json([]);
+      }
+
+      const apiKey = process.env.RAPIDAPI_KEY;
+      if (!apiKey) {
+        return res.json([]);
+      }
+
+      const response = await fetch(
+        `https://realty-us.p.rapidapi.com/properties/auto-complete?input=${encodeURIComponent(input.trim())}`,
+        {
+          headers: {
+            "x-rapidapi-host": "realty-us.p.rapidapi.com",
+            "x-rapidapi-key": apiKey,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        console.error("Auto-complete API error:", response.status);
+        return res.json([]);
+      }
+
+      const data = await response.json();
+      const suggestions = (data?.data?.autocomplete || [])
+        .filter((item: any) => item.area_type === "city" || item.area_type === "state" || item.area_type === "address" || item.area_type === "postal_code" || item.area_type === "neighborhood")
+        .slice(0, 8)
+        .map((item: any) => ({
+          id: item._id,
+          type: item.area_type,
+          label: item.full_address || item.city || item.state || "",
+          city: item.city || null,
+          stateCode: item.state_code || null,
+          slug: item.slug_id || null,
+        }));
+
+      res.json(suggestions);
+    } catch (error) {
+      console.error("Auto-complete error:", error);
+      res.json([]);
+    }
+  });
+
   app.get("/api/properties", async (req, res) => {
     try {
       const { search, type, minPrice, maxPrice } = req.query;
