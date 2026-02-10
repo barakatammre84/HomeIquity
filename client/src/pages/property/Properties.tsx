@@ -24,6 +24,8 @@ import {
   Grid,
   List,
   Home,
+  ExternalLink,
+  Sparkles,
 } from "lucide-react";
 import familyImage from "@assets/stock_images/happy_family_new_hom_d488bf67.jpg";
 
@@ -44,6 +46,36 @@ interface AutoCompleteSuggestion {
   slug: string | null;
 }
 
+interface LiveProperty {
+  property_id: string;
+  status: string;
+  price: number;
+  address: string;
+  city: string;
+  state: string;
+  stateCode: string;
+  zipcode: string;
+  beds: number | null;
+  baths: number | null;
+  sqft: number | null;
+  lotSqft: number | null;
+  propertyType: string;
+  photo: string | null;
+  photos: string[];
+  listDate: string | null;
+  priceReduced: number | null;
+  isNewConstruction: boolean;
+  isForeclosure: boolean;
+  isPending: boolean;
+  href: string | null;
+}
+
+interface LiveSearchResponse {
+  properties: LiveProperty[];
+  total: number;
+  source: string;
+}
+
 function useDebounce(value: string, delay: number) {
   const [debounced, setDebounced] = useState(value);
   useEffect(() => {
@@ -57,6 +89,8 @@ export default function Properties() {
   const [searchQuery, setSearchQuery] = useState("");
   const [inputValue, setInputValue] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
+  const [selectedLocationLabel, setSelectedLocationLabel] = useState("");
   const [propertyType, setPropertyType] = useState("all");
   const [priceRange, setPriceRange] = useState([0, 2000000]);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
@@ -72,6 +106,23 @@ export default function Properties() {
   const { data: suggestions, isLoading: suggestionsLoading } = useQuery<AutoCompleteSuggestion[]>({
     queryKey: [autoCompleteUrl],
     enabled: !!autoCompleteUrl,
+  });
+
+  const buildLiveSearchUrl = () => {
+    if (!selectedLocation) return null;
+    const params = new URLSearchParams();
+    params.set("location", selectedLocation);
+    if (propertyType && propertyType !== "all") params.set("type", propertyType);
+    if (priceRange[0] > 0) params.set("minPrice", priceRange[0].toString());
+    if (priceRange[1] < 2000000) params.set("maxPrice", priceRange[1].toString());
+    return `/api/properties/search-live?${params.toString()}`;
+  };
+
+  const liveSearchUrl = buildLiveSearchUrl();
+
+  const { data: liveResults, isLoading: liveLoading } = useQuery<LiveSearchResponse>({
+    queryKey: [liveSearchUrl],
+    enabled: !!liveSearchUrl,
   });
 
   useEffect(() => {
@@ -96,6 +147,8 @@ export default function Properties() {
   const handleSelectSuggestion = useCallback((suggestion: AutoCompleteSuggestion) => {
     setInputValue(suggestion.label);
     setSearchQuery(suggestion.label);
+    setSelectedLocation(suggestion.id);
+    setSelectedLocationLabel(suggestion.label);
     setShowSuggestions(false);
   }, []);
 
@@ -103,6 +156,8 @@ export default function Properties() {
     setInputValue(value);
     if (!value) {
       setSearchQuery("");
+      setSelectedLocation(null);
+      setSelectedLocationLabel("");
       setShowSuggestions(false);
     }
   }, []);
@@ -117,6 +172,13 @@ export default function Properties() {
     }
   }, [inputValue]);
 
+  const handleClearSearch = useCallback(() => {
+    setInputValue("");
+    setSearchQuery("");
+    setSelectedLocation(null);
+    setSelectedLocationLabel("");
+  }, []);
+
   const buildQueryString = () => {
     const params = new URLSearchParams();
     if (searchQuery) params.set("search", searchQuery);
@@ -129,6 +191,7 @@ export default function Properties() {
 
   const { data: properties, isLoading } = useQuery<Property[]>({
     queryKey: [buildQueryString()],
+    enabled: !selectedLocation,
   });
 
   const filteredProperties = properties?.filter((property) => {
@@ -143,6 +206,11 @@ export default function Properties() {
       property.state?.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesType && matchesPrice && matchesSearch;
   }) || [];
+
+  const isLiveMode = !!selectedLocation;
+  const liveProperties = liveResults?.properties || [];
+  const liveTotal = liveResults?.total || 0;
+  const currentLoading = isLiveMode ? liveLoading : isLoading;
 
   return (
     <div className="min-h-screen bg-background">
@@ -276,18 +344,54 @@ export default function Properties() {
           </CardContent>
         </Card>
 
-        <div className="mb-6 flex items-center justify-between">
-          <p className="text-muted-foreground">
-            {filteredProperties.length} properties found
-          </p>
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-muted-foreground" data-testid="text-results-count">
+              {isLiveMode
+                ? `${liveProperties.length} of ${liveTotal.toLocaleString()} listings`
+                : `${filteredProperties.length} properties found`
+              }
+            </p>
+            {isLiveMode && (
+              <Badge variant="secondary" data-testid="badge-live-results">
+                Live MLS Data
+              </Badge>
+            )}
+          </div>
+          {isLiveMode && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleClearSearch}
+              data-testid="button-clear-search"
+            >
+              Clear Search
+            </Button>
+          )}
         </div>
 
-        {isLoading ? (
+        {currentLoading ? (
           <div className={`grid gap-6 ${viewMode === "grid" ? "md:grid-cols-2 lg:grid-cols-3" : ""}`}>
             {[1, 2, 3, 4, 5, 6].map((i) => (
               <Skeleton key={i} className="h-80" />
             ))}
           </div>
+        ) : isLiveMode ? (
+          liveProperties.length === 0 ? (
+            <div className="py-16 text-center">
+              <Home className="mx-auto h-12 w-12 text-muted-foreground" />
+              <h3 className="mt-4 text-lg font-semibold">No listings found in {selectedLocationLabel}</h3>
+              <p className="mt-2 text-muted-foreground">
+                Try adjusting your filters or searching a different location
+              </p>
+            </div>
+          ) : (
+            <div className={`grid gap-6 ${viewMode === "grid" ? "md:grid-cols-2 lg:grid-cols-3" : ""}`}>
+              {liveProperties.map((property) => (
+                <LivePropertyCard key={property.property_id} property={property} viewMode={viewMode} />
+              ))}
+            </div>
+          )
         ) : filteredProperties.length === 0 ? (
           <div className="py-16 text-center">
             <Home className="mx-auto h-12 w-12 text-muted-foreground" />
@@ -436,6 +540,154 @@ function PropertyCard({ property, viewMode }: { property: Property; viewMode: "g
             <Button className="w-full gap-2">
               <DollarSign className="h-4 w-4" />
               Loan Options
+            </Button>
+          </Link>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function LivePropertyCard({ property, viewMode }: { property: LiveProperty; viewMode: "grid" | "list" }) {
+  const mainImage = property.photo || "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=800";
+  const statusLabel = property.isPending ? "Pending" : property.isNewConstruction ? "New Build" : property.isForeclosure ? "Foreclosure" : "For Sale";
+
+  if (viewMode === "list") {
+    return (
+      <Card className="overflow-hidden hover-elevate" data-testid={`card-live-property-${property.property_id}`}>
+        <div className="flex flex-col sm:flex-row">
+          <div className="relative h-48 w-full sm:h-auto sm:w-64">
+            <img
+              src={mainImage}
+              alt={property.address}
+              className="h-full w-full object-cover"
+            />
+            <Badge className="absolute left-3 top-3">
+              {statusLabel}
+            </Badge>
+          </div>
+          <CardContent className="flex flex-1 flex-col justify-between p-6">
+            <div>
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <p className="text-2xl font-bold text-primary">
+                    {formatCurrency(property.price)}
+                  </p>
+                  <div className="mt-1 flex items-center gap-1 text-muted-foreground">
+                    <MapPin className="h-4 w-4" />
+                    <span className="text-sm">{property.address}, {property.city}, {property.stateCode} {property.zipcode}</span>
+                  </div>
+                </div>
+                <Badge variant="secondary" className="shrink-0 capitalize">{property.propertyType.replace("_", " ")}</Badge>
+              </div>
+
+              <div className="mt-4 flex items-center gap-6 text-sm text-muted-foreground">
+                {property.beds !== null && (
+                  <div className="flex items-center gap-1">
+                    <Bed className="h-4 w-4" />
+                    <span>{property.beds} beds</span>
+                  </div>
+                )}
+                {property.baths !== null && (
+                  <div className="flex items-center gap-1">
+                    <Bath className="h-4 w-4" />
+                    <span>{property.baths} baths</span>
+                  </div>
+                )}
+                {property.sqft !== null && (
+                  <div className="flex items-center gap-1">
+                    <Square className="h-4 w-4" />
+                    <span>{property.sqft.toLocaleString()} sqft</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="mt-4 flex gap-2">
+              {property.href && (
+                <a href={property.href} target="_blank" rel="noopener noreferrer" className="flex-1">
+                  <Button variant="outline" className="w-full gap-2">
+                    <ExternalLink className="h-4 w-4" />
+                    View Listing
+                  </Button>
+                </a>
+              )}
+              <Link href={`/pre-approval?price=${property.price}&address=${encodeURIComponent(property.address + ', ' + property.city + ', ' + property.stateCode)}`} className="flex-1">
+                <Button className="w-full gap-2">
+                  <DollarSign className="h-4 w-4" />
+                  Get Pre-Approved
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </div>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="overflow-hidden hover-elevate" data-testid={`card-live-property-${property.property_id}`}>
+      <div className="relative aspect-[16/10]">
+        <img
+          src={mainImage}
+          alt={property.address}
+          className="h-full w-full object-cover"
+        />
+        <Badge className="absolute left-3 top-3">
+          {statusLabel}
+        </Badge>
+        {property.isNewConstruction && (
+          <Badge variant="secondary" className="absolute right-3 top-3">
+            <Sparkles className="mr-1 h-3 w-3" />
+            New
+          </Badge>
+        )}
+      </div>
+      <CardContent className="p-4">
+        <p className="text-2xl font-bold text-primary">
+          {formatCurrency(property.price)}
+        </p>
+        <div className="mt-1 flex items-center gap-1 text-muted-foreground">
+          <MapPin className="h-4 w-4" />
+          <span className="text-sm truncate">
+            {property.address}, {property.city}
+          </span>
+        </div>
+
+        <div className="mt-4 flex items-center gap-4 text-sm text-muted-foreground">
+          {property.beds !== null && (
+            <div className="flex items-center gap-1">
+              <Bed className="h-4 w-4" />
+              <span>{property.beds}</span>
+            </div>
+          )}
+          {property.baths !== null && (
+            <div className="flex items-center gap-1">
+              <Bath className="h-4 w-4" />
+              <span>{property.baths}</span>
+            </div>
+          )}
+          {property.sqft !== null && (
+            <div className="flex items-center gap-1">
+              <Square className="h-4 w-4" />
+              <span>{property.sqft.toLocaleString()}</span>
+            </div>
+          )}
+        </div>
+
+        <div className="mt-4 flex gap-2">
+          {property.href && (
+            <a href={property.href} target="_blank" rel="noopener noreferrer" className="flex-1">
+              <Button variant="outline" className="w-full gap-2">
+                <ExternalLink className="h-4 w-4" />
+                Listing
+              </Button>
+            </a>
+          )}
+          <Link href={`/pre-approval?price=${property.price}&address=${encodeURIComponent(property.address + ', ' + property.city + ', ' + property.stateCode)}`} className="flex-1">
+            <Button className="w-full gap-2">
+              <DollarSign className="h-4 w-4" />
+              Pre-Approve
             </Button>
           </Link>
         </div>
