@@ -12,7 +12,7 @@ import { Dashboard, Documents, Tasks, TaskDetail, Messages, URLAForm, CreditCons
 import { StaffDashboard, PipelineQueue, BorrowerFile, ComplianceDashboard, PolicyOps, TaskOperations, Staff } from "@/pages/staff";
 import { AgentCoBranding, AgentDashboard, AgentEdit, AgentPipeline, BrokerDashboard, InviteGenerator, AnalyticsDashboard, PartnerServices, ReferralLanding, PartnerLanding, ApplyInvite } from "@/pages/agent-broker";
 import { ScenarioDesk, DealRescue, StrategySessions, ClosingGuarantee } from "@/pages/realtor-engine";
-import { Properties, PropertyDetail, PropertyForm } from "@/pages/property";
+import { Properties, PropertyDetail, LivePropertyDetail, PropertyForm } from "@/pages/property";
 import { FirstTimeBuyerHub, DownPaymentWizard, LearningCenter, ArticleDetail, FAQ, Resources, AcceleratorProgram } from "@/pages/education";
 import { HomeownerDashboard } from "@/pages/homeowner";
 import { PurchaseRates, RefinanceRates, CashOutRates, HelocRates, VaRates, MortgageRates } from "@/pages/rates";
@@ -77,6 +77,9 @@ function Router() {
       </Route>
       <Route path="/properties">
         <PublicPage><Properties /></PublicPage>
+      </Route>
+      <Route path="/properties/live">
+        <PublicPage><LivePropertyDetail /></PublicPage>
       </Route>
       <Route path="/properties/:id">
         {(params) => <PublicPage><PropertyDetail /></PublicPage>}

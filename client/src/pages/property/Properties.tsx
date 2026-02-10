@@ -24,7 +24,6 @@ import {
   Grid,
   List,
   Home,
-  ExternalLink,
   Sparkles,
 } from "lucide-react";
 import familyImage from "@assets/stock_images/happy_family_new_hom_d488bf67.jpg";
@@ -640,18 +639,16 @@ function LivePropertyCard({ property, viewMode }: { property: LiveProperty; view
             </div>
 
             <div className="mt-4 flex gap-2">
-              {property.href && (
-                <a href={property.href} target="_blank" rel="noopener noreferrer" className="flex-1">
-                  <Button variant="outline" className="w-full gap-2">
-                    <ExternalLink className="h-4 w-4" />
-                    View Listing
-                  </Button>
-                </a>
-              )}
-              <Link href={`/pre-approval?price=${property.price}&address=${encodeURIComponent(property.address + ', ' + property.city + ', ' + property.stateCode)}`} className="flex-1">
+              <Link href={`/properties/live?propertyId=${property.property_id}`} className="flex-1">
+                <Button variant="outline" className="w-full gap-2">
+                  <Home className="h-4 w-4" />
+                  Details
+                </Button>
+              </Link>
+              <Link href={`/pre-approval?price=${displayPrice}&address=${encodeURIComponent(property.address + ', ' + property.city + ', ' + property.stateCode)}`} className="flex-1">
                 <Button className="w-full gap-2">
                   <DollarSign className="h-4 w-4" />
-                  Get Pre-Approved
+                  {isSold ? "Get Estimate" : "Pre-Approve"}
                 </Button>
               </Link>
             </div>
@@ -715,14 +712,12 @@ function LivePropertyCard({ property, viewMode }: { property: LiveProperty; view
         </div>
 
         <div className="mt-4 flex gap-2">
-          {property.href && (
-            <a href={property.href} target="_blank" rel="noopener noreferrer" className="flex-1">
-              <Button variant="outline" className="w-full gap-2">
-                <ExternalLink className="h-4 w-4" />
-                Listing
-              </Button>
-            </a>
-          )}
+          <Link href={`/properties/live?propertyId=${property.property_id}`} className="flex-1">
+            <Button variant="outline" className="w-full gap-2">
+              <Home className="h-4 w-4" />
+              Details
+            </Button>
+          </Link>
           <Link href={`/pre-approval?price=${displayPrice}&address=${encodeURIComponent(property.address + ', ' + property.city + ', ' + property.stateCode)}`} className="flex-1">
             <Button className="w-full gap-2">
               <DollarSign className="h-4 w-4" />

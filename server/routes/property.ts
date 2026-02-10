@@ -138,6 +138,159 @@ export function registerPropertyRoutes(
     }
   });
 
+  app.get("/api/properties/detail-live", async (req, res) => {
+    try {
+      const { propertyId, listingId } = req.query;
+      if (!propertyId || typeof propertyId !== "string") {
+        return res.status(400).json({ error: "propertyId is required" });
+      }
+
+      const apiKey = process.env.RAPIDAPI_KEY;
+      if (!apiKey) {
+        return res.status(503).json({ error: "Property detail service unavailable" });
+      }
+
+      const params = new URLSearchParams();
+      params.set("propertyId", propertyId);
+      if (listingId && typeof listingId === "string") {
+        params.set("listingId", listingId);
+      }
+
+      const response = await fetch(
+        `https://realty-us.p.rapidapi.com/properties/detail?${params.toString()}`,
+        {
+          headers: {
+            "x-rapidapi-host": "realty-us.p.rapidapi.com",
+            "x-rapidapi-key": apiKey,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        console.error("Property detail API error:", response.status);
+        return res.status(502).json({ error: "Failed to fetch property details" });
+      }
+
+      const raw = await response.json();
+      const p = raw?.data;
+      if (!p) {
+        return res.status(404).json({ error: "Property not found" });
+      }
+
+      const addr = p.location?.address || {};
+      const desc = p.description || {};
+      const mortgage = p.mortgage?.estimate || null;
+
+      const detail = {
+        property_id: p.property_id,
+        listing_id: p.listing_id || null,
+        status: p.status || "for_sale",
+        href: p.href || null,
+        listDate: p.list_date || null,
+        lastSoldPrice: p.last_sold_price || null,
+        lastSoldDate: p.last_sold_date || null,
+        price: p.list_price || p.list_price_min || 0,
+        pricePerSqft: p.price_per_sqft || null,
+
+        address: addr.line || "",
+        city: addr.city || "",
+        state: addr.state || "",
+        stateCode: addr.state_code || "",
+        zipcode: addr.postal_code || "",
+        coordinate: addr.coordinate || null,
+        streetViewUrl: p.location?.street_view_url || null,
+        neighborhoods: (p.location?.neighborhoods || []).map((n: any) => ({
+          name: n.name,
+          medianPrice: n.geo_statistics?.housing_market?.median_sold_price || null,
+          medianPricePerSqft: n.geo_statistics?.housing_market?.median_price_per_sqft || null,
+          medianListingPrice: n.geo_statistics?.housing_market?.median_listing_price || null,
+          medianDaysOnMarket: n.geo_statistics?.housing_market?.median_days_on_market || null,
+        })),
+
+        beds: desc.beds ?? null,
+        baths: desc.baths ?? null,
+        sqft: desc.sqft ?? null,
+        lotSqft: desc.lot_sqft || null,
+        stories: desc.stories || null,
+        garage: desc.garage || null,
+        yearBuilt: desc.year_built || null,
+        propertyType: desc.type || "single_family",
+        description: desc.text || null,
+        styles: desc.styles || null,
+        pool: desc.pool || null,
+
+        photos: (p.photos || []).map((photo: any) => photo.href),
+
+        flags: {
+          isNewConstruction: p.flags?.is_new_construction || false,
+          isForeclosure: p.flags?.is_foreclosure || false,
+          isPending: p.flags?.is_pending || false,
+          isContingent: p.flags?.is_contingent || false,
+          isPriceReduced: p.flags?.is_price_reduced || false,
+          isNewListing: p.flags?.is_new_listing || false,
+          isComingSoon: p.flags?.is_coming_soon || false,
+        },
+
+        mortgage: mortgage ? {
+          loanAmount: mortgage.loan_amount,
+          monthlyPayment: mortgage.monthly_payment,
+          downPayment: mortgage.down_payment,
+          rate: mortgage.average_rate?.rate || null,
+          term: mortgage.average_rate?.loan_type?.term || 30,
+          breakdown: (mortgage.monthly_payment_details || []).map((d: any) => ({
+            type: d.type,
+            amount: d.amount,
+            label: d.display_name,
+          })),
+        } : null,
+
+        hoa: p.hoa ? { fee: p.hoa.fee, frequency: p.hoa.frequency } : null,
+
+        details: (p.details || []).map((d: any) => ({
+          category: d.category,
+          items: d.text || [],
+        })),
+
+        taxHistory: (p.tax_history || []).slice(0, 5).map((t: any) => ({
+          year: t.year,
+          tax: t.tax,
+          assessmentTotal: t.assessment?.total || null,
+          assessmentLand: t.assessment?.land || null,
+          assessmentBuilding: t.assessment?.building || null,
+        })),
+
+        propertyHistory: (p.property_history || []).slice(0, 10).map((h: any) => ({
+          date: h.date,
+          event: h.event_name,
+          price: h.price || null,
+          source: h.source_name || null,
+        })),
+
+        schools: (p.schools?.schools || []).slice(0, 6).map((s: any) => ({
+          name: s.name,
+          rating: s.rating || null,
+          distance: s.distance_in_miles || null,
+          levels: s.education_levels || [],
+          grades: s.grades || [],
+          fundingType: s.funding_type || null,
+          studentCount: s.student_count || null,
+        })),
+
+        estimates: p.estimates || null,
+        branding: (p.branding || []).map((b: any) => ({
+          type: b.type,
+          name: b.name,
+          phone: b.phone,
+        })),
+      };
+
+      res.json(detail);
+    } catch (error) {
+      console.error("Property detail error:", error);
+      res.status(500).json({ error: "Failed to fetch property details" });
+    }
+  });
+
   app.get("/api/properties/search-sold", async (req, res) => {
     try {
       const { location, sortBy, minPrice, maxPrice, type, page } = req.query;
