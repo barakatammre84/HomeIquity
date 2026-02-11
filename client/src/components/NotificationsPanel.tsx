@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -17,8 +18,10 @@ import {
   Upload,
   AlertCircle,
   ArrowRight,
+  CheckCheck,
 } from "lucide-react";
 import type { DealActivity } from "@shared/schema";
+import { queryClient } from "@/lib/queryClient";
 
 interface NotificationItem {
   id: string;
@@ -29,6 +32,8 @@ interface NotificationItem {
   time: string;
   href: string;
   isUnread: boolean;
+  isReal?: boolean;
+  realId?: number;
 }
 
 function formatTimeAgo(timestamp: string | Date): string {
@@ -86,20 +91,114 @@ function activityToNotification(activity: DealActivity, index: number): Notifica
   };
 }
 
+interface RealNotification {
+  id: number;
+  type: string;
+  title: string;
+  body: string;
+  status: string;
+  entityType: string | null;
+  entityId: string | null;
+  createdAt: string;
+  readAt: string | null;
+}
+
+function realNotificationToItem(n: RealNotification): NotificationItem {
+  let icon = Bell;
+  let iconColor = "text-muted-foreground";
+  let href = "/dashboard";
+
+  const type = n.type || "";
+  if (type.includes("document")) {
+    icon = FileText;
+    iconColor = "text-blue-500";
+    href = "/documents";
+  } else if (type.includes("message")) {
+    icon = MessageCircle;
+    iconColor = "text-primary";
+    href = "/messages";
+  } else if (type.includes("approved") || type.includes("verified")) {
+    icon = CheckCircle2;
+    iconColor = "text-emerald-500";
+  } else if (type.includes("task")) {
+    icon = Upload;
+    iconColor = "text-amber-500";
+    href = "/tasks";
+  } else if (type.includes("denied") || type.includes("rejected") || type.includes("alert")) {
+    icon = AlertCircle;
+    iconColor = "text-destructive";
+  }
+
+  if (n.entityType && n.entityId) {
+    if (n.entityType === "deal") href = `/deals/${n.entityId}`;
+    else if (n.entityType === "document") href = "/documents";
+    else if (n.entityType === "task") href = "/tasks";
+  }
+
+  return {
+    id: `real-${n.id}`,
+    icon,
+    iconColor,
+    title: n.title,
+    description: n.body || "",
+    time: formatTimeAgo(n.createdAt),
+    href,
+    isUnread: !n.readAt,
+    isReal: true,
+    realId: n.id,
+  };
+}
+
 interface NotificationsBellProps {
   unreadCount: number;
   activities: DealActivity[];
 }
 
 export function NotificationsBell({ unreadCount, activities }: NotificationsBellProps) {
-  const notifications = activities
+  const [open, setOpen] = useState(false);
+
+  const { data: unreadData } = useQuery<{ count: number }>({
+    queryKey: ["/api/notifications/unread-count"],
+    refetchInterval: 15000,
+  });
+
+  const { data: notifData } = useQuery<{ notifications: RealNotification[] }>({
+    queryKey: ["/api/notifications"],
+    enabled: open,
+  });
+
+  const realNotifications = (notifData?.notifications || []).map(realNotificationToItem);
+  const activityNotifications = activities
     .slice(0, 10)
     .map((a, i) => activityToNotification(a, i));
 
-  const totalUnread = Math.max(unreadCount, 0);
+  const realUnread = unreadData?.count ?? 0;
+  const totalUnread = Math.max(realUnread + unreadCount, 0);
+
+  const allNotifications = [...realNotifications, ...activityNotifications];
+
+  async function handleMarkAllRead() {
+    await fetch("/api/notifications/read-all", {
+      method: "PATCH",
+      credentials: "include",
+    });
+    queryClient.invalidateQueries({ queryKey: ["/api/notifications/unread-count"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+  }
+
+  async function handleNotificationClick(notif: NotificationItem) {
+    if (notif.isReal && notif.realId) {
+      await fetch(`/api/notifications/${notif.realId}/read`, {
+        method: "PATCH",
+        credentials: "include",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications/unread-count"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+    }
+  }
 
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button variant="ghost" size="icon" className="relative" data-testid="button-notifications">
           <Bell className="h-5 w-5" />
@@ -116,24 +215,38 @@ export function NotificationsBell({ unreadCount, activities }: NotificationsBell
       <PopoverContent className="w-80 p-0" align="end">
         <div className="flex items-center justify-between gap-4 border-b p-3">
           <h3 className="font-semibold text-sm">Notifications</h3>
-          {totalUnread > 0 && (
-            <Badge variant="secondary" className="text-xs">
-              {totalUnread} new
-            </Badge>
-          )}
+          <div className="flex items-center gap-2 flex-wrap">
+            {totalUnread > 0 && (
+              <Badge variant="secondary" className="text-xs">
+                {totalUnread} new
+              </Badge>
+            )}
+            {realUnread > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs h-auto py-1 px-2"
+                onClick={handleMarkAllRead}
+                data-testid="button-mark-all-read"
+              >
+                <CheckCheck className="h-3 w-3 mr-1" />
+                Mark all read
+              </Button>
+            )}
+          </div>
         </div>
         <ScrollArea className="max-h-80">
-          {notifications.length === 0 ? (
+          {allNotifications.length === 0 ? (
             <div className="p-6 text-center text-sm text-muted-foreground" data-testid="text-no-notifications">
               <Bell className="h-8 w-8 mx-auto mb-2 opacity-40" />
               No notifications yet
             </div>
           ) : (
             <div className="divide-y">
-              {notifications.map((notif) => {
+              {allNotifications.map((notif) => {
                 const Icon = notif.icon;
                 return (
-                  <Link key={notif.id} href={notif.href}>
+                  <Link key={notif.id} href={notif.href} onClick={() => handleNotificationClick(notif)}>
                     <div
                       className={`flex items-start gap-3 p-3 hover-elevate cursor-pointer ${
                         notif.isUnread ? "bg-primary/5" : ""

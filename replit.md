@@ -53,6 +53,8 @@ Routes are organized into domain-based modules for team ownership:
 - `server/routes/task-engine.ts` - Task management, SLA, escalation
 - `server/routes/underwriting.ts` - Underwriting engine, rules DSL, what-if scenarios
 - `server/routes/compliance.ts` - MISMO validation, TRID, broker compliance
+- `server/routes/notifications.ts` - In-app notification CRUD (list, unread count, mark read)
+- `server/routes/staff-invites.ts` - Staff invite code generation, validation, redemption
 - `server/routes/utils.ts` - Shared utilities (multer config)
 
 ### Client Pages (client/src/pages/)
@@ -68,7 +70,7 @@ Pages organized into 12 domain folders with barrel exports (index.ts):
 - `rates/` - MortgageRates, PurchaseRates, RefinanceRates, CashOutRates, HelocRates, VaRates
 - `calculators/` - RentVsBuyCalculator, AffordabilityCalculator, MortgageCalculator
 - `admin/` - AdminDashboard, AdminRates, AdminContent, AdminUsers
-- `public/` - Landing, Privacy, TestLogin
+- `public/` - Landing, Privacy, TestLogin, RedeemInvite
 
 ## External Dependencies
 

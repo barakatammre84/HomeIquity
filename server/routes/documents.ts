@@ -6,6 +6,10 @@ import {
   extractBankStatementData,
 } from "../extractionService";
 import { upload } from "./utils";
+import { ObjectStorageService, ObjectNotFoundError } from "../replit_integrations/object_storage";
+import { isStaffRole, type User } from "@shared/schema";
+
+const objectStorageService = new ObjectStorageService();
 
 export function registerDocumentRoutes(
   app: Express,
@@ -13,9 +17,138 @@ export function registerDocumentRoutes(
   isAuthenticated: any,
   isAdmin: any,
 ) {
-  // ============================================================================
-  // AI DOCUMENT EXTRACTION ENDPOINTS
-  // ============================================================================
+  app.post("/api/uploads/request-url", isAuthenticated, async (req, res) => {
+    try {
+      const { name, size, contentType } = req.body;
+
+      if (!name) {
+        return res.status(400).json({ error: "Missing required field: name" });
+      }
+
+      const allowedTypes = [
+        "application/pdf",
+        "image/jpeg",
+        "image/png",
+        "image/jpg",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      ];
+      if (contentType && !allowedTypes.includes(contentType)) {
+        return res.status(400).json({ error: "Invalid file type" });
+      }
+
+      if (size && size > 10 * 1024 * 1024) {
+        return res.status(400).json({ error: "File too large (max 10MB)" });
+      }
+
+      const uploadURL = await objectStorageService.getObjectEntityUploadURL();
+      const objectPath = objectStorageService.normalizeObjectEntityPath(uploadURL);
+
+      res.json({
+        uploadURL,
+        objectPath,
+        metadata: { name, size, contentType },
+      });
+    } catch (error) {
+      console.error("Error generating upload URL:", error);
+      res.status(500).json({ error: "Failed to generate upload URL" });
+    }
+  });
+
+  app.get("/objects/:objectPath(*)", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const documents = await storage.getDocumentsByUser(user.id);
+      const hasAccess = isStaffRole(user.role) || documents.some(d => d.storagePath === req.path);
+      if (!hasAccess) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+      const objectFile = await objectStorageService.getObjectEntityFile(req.path);
+      await objectStorageService.downloadObject(objectFile, res);
+    } catch (error) {
+      if (error instanceof ObjectNotFoundError) {
+        return res.status(404).json({ error: "Object not found" });
+      }
+      console.error("Error serving object:", error);
+      return res.status(500).json({ error: "Failed to serve object" });
+    }
+  });
+
+  app.post("/api/documents/upload", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const { objectPath, fileName, fileSize, mimeType, documentType, applicationId } = req.body;
+
+      if (!objectPath || !fileName || !documentType) {
+        return res.status(400).json({ error: "Missing required fields: objectPath, fileName, documentType" });
+      }
+
+      const document = await storage.createDocument({
+        userId: user.id,
+        applicationId: applicationId || null,
+        documentType,
+        fileName,
+        fileSize: fileSize || 0,
+        mimeType: mimeType || "application/octet-stream",
+        storagePath: objectPath,
+        status: "uploaded",
+      });
+
+      if (applicationId) {
+        await storage.createDealActivity({
+          applicationId,
+          activityType: "document_uploaded",
+          title: "Document Uploaded",
+          description: `${documentType.replace(/_/g, " ")} uploaded: ${fileName}`,
+          performedBy: user.id,
+          metadata: { documentId: document.id },
+        });
+      }
+
+      res.status(201).json({ document });
+    } catch (error) {
+      console.error("Document upload record error:", error);
+      res.status(500).json({ error: "Failed to save document record" });
+    }
+  });
+
+  app.get("/api/documents/:id/download", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const document = await storage.getDocument(req.params.id);
+
+      if (!document) {
+        return res.status(404).json({ error: "Document not found" });
+      }
+
+      if (document.userId !== user.id && !isStaffRole(user.role)) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+
+      if (document.storagePath?.startsWith("/objects/")) {
+        const objectFile = await objectStorageService.getObjectEntityFile(document.storagePath);
+        res.set("Content-Disposition", `inline; filename="${document.fileName}"`);
+        await objectStorageService.downloadObject(objectFile, res);
+      } else if (document.storagePath) {
+        const fs = await import("fs");
+        if (fs.existsSync(document.storagePath)) {
+          res.set("Content-Disposition", `inline; filename="${document.fileName}"`);
+          res.set("Content-Type", document.mimeType || "application/octet-stream");
+          fs.createReadStream(document.storagePath).pipe(res);
+        } else {
+          return res.status(404).json({ error: "File not found on disk" });
+        }
+      } else {
+        return res.status(404).json({ error: "No storage path for document" });
+      }
+    } catch (error) {
+      console.error("Document download error:", error);
+      if (error instanceof ObjectNotFoundError) {
+        return res.status(404).json({ error: "File not found in storage" });
+      }
+      res.status(500).json({ error: "Failed to download document" });
+    }
+  });
 
   app.post("/api/documents/:id/extract", isAuthenticated, async (req, res) => {
     try {
@@ -60,12 +193,10 @@ export function registerDocumentRoutes(
         }),
       });
 
-      // Emit task events based on extraction result
       if (document.applicationId) {
         const { taskEventEmitter } = await import("../services/taskEventEmitter");
         
         if (extractedData.confidence === "low" || (extractedData.warnings && extractedData.warnings.length > 0)) {
-          // OCR quality issue - create review task
           await taskEventEmitter.emitDocumentEvent("DOCUMENT_OCR_ISSUE", {
             applicationId: document.applicationId,
             documentId: id,
@@ -84,7 +215,6 @@ export function registerDocumentRoutes(
     } catch (error) {
       console.error("Document extraction error:", error);
       
-      // Emit extraction failure event if we have application context
       const document = await storage.getDocument(req.params.id);
       if (document?.applicationId) {
         const { taskEventEmitter } = await import("../services/taskEventEmitter");

@@ -7562,3 +7562,49 @@ export const insertEquitySnapshotSchema = createInsertSchema(equitySnapshots).om
 });
 export type InsertEquitySnapshot = z.infer<typeof insertEquitySnapshotSchema>;
 export type EquitySnapshot = typeof equitySnapshots.$inferSelect;
+
+export const notifications = pgTable("notifications", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  type: varchar("type", { length: 50 }).notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  body: text("body"),
+  status: varchar("status", { length: 20 }).default("unread").notNull(),
+  entityType: varchar("entity_type", { length: 50 }),
+  entityId: varchar("entity_id"),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_notifications_user").on(table.userId),
+  index("idx_notifications_user_status").on(table.userId, table.status),
+]);
+
+export const insertNotificationSchema = createInsertSchema(notifications).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertNotification = z.infer<typeof insertNotificationSchema>;
+export type Notification = typeof notifications.$inferSelect;
+
+export const staffInvites = pgTable("staff_invites", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  code: varchar("code", { length: 64 }).notNull().unique(),
+  role: varchar("role", { length: 50 }).notNull(),
+  email: varchar("email", { length: 255 }),
+  createdBy: varchar("created_by").notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  usedAt: timestamp("used_at"),
+  usedBy: varchar("used_by"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_staff_invites_code").on(table.code),
+]);
+
+export const insertStaffInviteSchema = createInsertSchema(staffInvites).omit({
+  id: true,
+  usedAt: true,
+  usedBy: true,
+  createdAt: true,
+});
+export type InsertStaffInvite = z.infer<typeof insertStaffInviteSchema>;
+export type StaffInvite = typeof staffInvites.$inferSelect;

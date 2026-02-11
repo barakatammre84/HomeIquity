@@ -198,6 +198,12 @@ import {
   type InsertRefiAlert,
   type EquitySnapshot,
   type InsertEquitySnapshot,
+  notifications,
+  staffInvites,
+  type Notification,
+  type InsertNotification,
+  type StaffInvite,
+  type InsertStaffInvite,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -702,6 +708,19 @@ export interface IStorage {
     count: number;
     atRisk: number;
   }[]>;
+
+  // Notifications
+  createNotification(data: InsertNotification): Promise<Notification>;
+  getNotificationsByUser(userId: string, limit?: number): Promise<Notification[]>;
+  getUnreadNotificationCount(userId: string): Promise<number>;
+  markNotificationRead(id: string): Promise<Notification | undefined>;
+  markAllNotificationsRead(userId: string): Promise<void>;
+
+  // Staff Invites
+  createStaffInvite(data: InsertStaffInvite): Promise<StaffInvite>;
+  getStaffInviteByCode(code: string): Promise<StaffInvite | undefined>;
+  getStaffInvites(): Promise<StaffInvite[]>;
+  redeemStaffInvite(code: string, userId: string): Promise<StaffInvite | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -3725,6 +3744,65 @@ export class DatabaseStorage implements IStorage {
   async createEquitySnapshot(data: InsertEquitySnapshot): Promise<EquitySnapshot> {
     const [snapshot] = await db.insert(equitySnapshots).values(data).returning();
     return snapshot;
+  }
+
+  // Notifications
+  async createNotification(data: InsertNotification): Promise<Notification> {
+    const [notification] = await db.insert(notifications).values(data).returning();
+    return notification;
+  }
+
+  async getNotificationsByUser(userId: string, limit: number = 50): Promise<Notification[]> {
+    return db.select().from(notifications)
+      .where(eq(notifications.userId, userId))
+      .orderBy(desc(notifications.createdAt))
+      .limit(limit);
+  }
+
+  async getUnreadNotificationCount(userId: string): Promise<number> {
+    const result = await db.select({ count: sql<number>`count(*)` })
+      .from(notifications)
+      .where(and(eq(notifications.userId, userId), eq(notifications.status, "unread")));
+    return Number(result[0]?.count || 0);
+  }
+
+  async markNotificationRead(id: string): Promise<Notification | undefined> {
+    const [updated] = await db.update(notifications)
+      .set({ status: "read" })
+      .where(eq(notifications.id, id))
+      .returning();
+    return updated;
+  }
+
+  async markAllNotificationsRead(userId: string): Promise<void> {
+    await db.update(notifications)
+      .set({ status: "read" })
+      .where(and(eq(notifications.userId, userId), eq(notifications.status, "unread")));
+  }
+
+  // Staff Invites
+  async createStaffInvite(data: InsertStaffInvite): Promise<StaffInvite> {
+    const [invite] = await db.insert(staffInvites).values(data).returning();
+    return invite;
+  }
+
+  async getStaffInviteByCode(code: string): Promise<StaffInvite | undefined> {
+    const [invite] = await db.select().from(staffInvites)
+      .where(eq(staffInvites.code, code));
+    return invite;
+  }
+
+  async getStaffInvites(): Promise<StaffInvite[]> {
+    return db.select().from(staffInvites)
+      .orderBy(desc(staffInvites.createdAt));
+  }
+
+  async redeemStaffInvite(code: string, userId: string): Promise<StaffInvite | undefined> {
+    const [updated] = await db.update(staffInvites)
+      .set({ usedAt: new Date(), usedBy: userId })
+      .where(and(eq(staffInvites.code, code), sql`${staffInvites.usedAt} IS NULL`))
+      .returning();
+    return updated;
   }
 }
 

@@ -18,7 +18,7 @@ import { HomeownerDashboard } from "@/pages/homeowner";
 import { PurchaseRates, RefinanceRates, CashOutRates, HelocRates, VaRates, MortgageRates } from "@/pages/rates";
 import { RentVsBuyCalculator, AffordabilityCalculator, MortgageCalculator } from "@/pages/calculators";
 import { AdminDashboard, AdminRates, AdminContent, AdminUsers } from "@/pages/admin";
-import { Landing, Privacy, Terms, Disclosures, TestLogin } from "@/pages/public";
+import { Landing, Privacy, Terms, Disclosures, TestLogin, RedeemInvite } from "@/pages/public";
 
 function PublicPage({ children }: { children: React.ReactNode }) {
   return <PublicLayout>{children}</PublicLayout>;
@@ -46,6 +46,8 @@ function Router() {
       {/* Public Pages - Anyone can access */}
       <Route path="/" component={Landing} />
       <Route path="/test-login" component={TestLogin} />
+      <Route path="/redeem-invite" component={RedeemInvite} />
+      <Route path="/redeem-invite/:code" component={RedeemInvite} />
       <Route path="/apply" component={PreApproval} />
       <Route path="/apply/:token">
         {(params) => <ApplyInvite />}

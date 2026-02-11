@@ -57,6 +57,10 @@ import {
   Banknote,
   Wrench,
   Star,
+  Plus,
+  Copy,
+  Check,
+  Ticket,
 } from "lucide-react";
 import { format } from "date-fns";
 import { 
@@ -90,6 +94,8 @@ const ROLE_CONFIG: Record<string, { label: string; icon: typeof Shield; color: s
   processor: { label: "Processor", icon: FileCheck, color: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200" },
   underwriter: { label: "Underwriter", icon: ClipboardCheck, color: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200" },
   closer: { label: "Closer/Funder", icon: Banknote, color: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200" },
+  broker: { label: "Broker", icon: Briefcase, color: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200" },
+  lender: { label: "Lender", icon: Building2, color: "bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200" },
   // Client roles
   aspiring_owner: { label: "Aspiring Owner", icon: Star, color: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200" },
   active_buyer: { label: "Active Buyer", icon: Home, color: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" },
@@ -105,9 +111,18 @@ export default function AdminUsers() {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [newRole, setNewRole] = useState<string>("");
+  const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
+  const [inviteRole, setInviteRole] = useState("");
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [copiedCode, setCopiedCode] = useState("");
 
   const { data: users, isLoading: usersLoading } = useQuery<User[]>({
     queryKey: ["/api/admin/users"],
+    enabled: !!currentUser && currentUser.role === "admin",
+  });
+
+  const { data: invitesData, isLoading: invitesLoading } = useQuery<{ invites: any[] }>({
+    queryKey: ["/api/staff-invites"],
     enabled: !!currentUser && currentUser.role === "admin",
   });
 
@@ -125,6 +140,33 @@ export default function AdminUsers() {
       toast({ title: "Failed to update user role", variant: "destructive" });
     },
   });
+
+  const createInviteMutation = useMutation({
+    mutationFn: async (data: { role: string; email?: string }) => {
+      return apiRequest("POST", "/api/staff-invites", data);
+    },
+    onSuccess: async (response) => {
+      const result = await response.json();
+      queryClient.invalidateQueries({ queryKey: ["/api/staff-invites"] });
+      setCopiedCode(result.invite.code);
+      toast({ title: "Invite created successfully" });
+    },
+    onError: () => {
+      toast({ title: "Failed to create invite", variant: "destructive" });
+    },
+  });
+
+  const handleCreateInvite = () => {
+    if (inviteRole) {
+      createInviteMutation.mutate({ role: inviteRole, email: inviteEmail || undefined });
+    }
+  };
+
+  const copyToClipboard = (code: string) => {
+    navigator.clipboard.writeText(code);
+    setCopiedCode(code);
+    toast({ title: "Invite code copied to clipboard" });
+  };
 
   const openEditDialog = (user: User) => {
     setSelectedUser(user);
@@ -463,6 +505,171 @@ export default function AdminUsers() {
           )}
         </CardContent>
       </Card>
+
+      <Card data-testid="card-staff-invites">
+        <CardHeader>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Ticket className="h-5 w-5" />
+                Staff Invites
+              </CardTitle>
+              <CardDescription>Generate invite codes for new staff members</CardDescription>
+            </div>
+            <Button onClick={() => { setInviteDialogOpen(true); setInviteRole(""); setInviteEmail(""); setCopiedCode(""); }} data-testid="button-create-invite">
+              <Plus className="h-4 w-4 mr-2" />
+              Create Invite
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {invitesLoading ? (
+            <div className="space-y-2">
+              {[1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-12 w-full" />
+              ))}
+            </div>
+          ) : invitesData?.invites && invitesData.invites.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Code</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Expires</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {invitesData.invites.map((invite: any) => {
+                  const isUsed = !!invite.usedAt;
+                  const isExpired = invite.expiresAt && new Date(invite.expiresAt) < new Date();
+                  return (
+                    <TableRow key={invite.id} data-testid={`row-invite-${invite.id}`}>
+                      <TableCell>
+                        <code className="px-2 py-1 rounded bg-muted text-sm font-mono" data-testid={`text-invite-code-${invite.id}`}>
+                          {invite.code}
+                        </code>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="secondary">
+                          {(ROLE_CONFIG[invite.role]?.label) || invite.role}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {invite.email || "Any"}
+                      </TableCell>
+                      <TableCell>
+                        {isUsed ? (
+                          <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200">Used</Badge>
+                        ) : isExpired ? (
+                          <Badge variant="destructive">Expired</Badge>
+                        ) : (
+                          <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">Active</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-sm">
+                        {invite.expiresAt ? format(new Date(invite.expiresAt), "MMM d, yyyy") : "Never"}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {!isUsed && !isExpired && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => copyToClipboard(invite.code)}
+                            data-testid={`button-copy-invite-${invite.id}`}
+                          >
+                            {copiedCode === invite.code ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
+                          </Button>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          ) : (
+            <div className="text-center py-8">
+              <Ticket className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+              <p className="text-muted-foreground">No invites created yet</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create Staff Invite</DialogTitle>
+            <DialogDescription>
+              Generate an invite code that a user can redeem to get a staff role
+            </DialogDescription>
+          </DialogHeader>
+          {copiedCode ? (
+            <div className="py-4 text-center">
+              <p className="text-sm text-muted-foreground mb-3">Share this invite code:</p>
+              <div className="flex items-center justify-center gap-2">
+                <code className="px-4 py-2 rounded-lg bg-muted text-lg font-mono font-bold tracking-widest" data-testid="text-new-invite-code">
+                  {copiedCode}
+                </code>
+                <Button variant="ghost" size="icon" onClick={() => copyToClipboard(copiedCode)} data-testid="button-copy-new-code">
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground mt-3">
+                The recipient can enter this code in their account settings to activate their staff role.
+              </p>
+            </div>
+          ) : (
+            <div className="py-4 space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Staff Role</label>
+                <Select value={inviteRole} onValueChange={setInviteRole}>
+                  <SelectTrigger data-testid="select-invite-role">
+                    <SelectValue placeholder="Select role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {STAFF_ROLES.filter(r => r !== "admin").map((role) => {
+                      const config = ROLE_CONFIG[role];
+                      if (!config) return null;
+                      const Icon = config.icon;
+                      return (
+                        <SelectItem key={role} value={role}>
+                          <div className="flex items-center gap-2">
+                            <Icon className="h-4 w-4" />
+                            {config.label}
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Email (optional)</label>
+                <Input
+                  placeholder="Restrict to specific email"
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                  data-testid="input-invite-email"
+                />
+                <p className="text-xs text-muted-foreground">Leave blank to allow anyone with the code to redeem it</p>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setInviteDialogOpen(false)} data-testid="button-cancel-invite">
+              {copiedCode ? "Done" : "Cancel"}
+            </Button>
+            {!copiedCode && (
+              <Button onClick={handleCreateInvite} disabled={!inviteRole || createInviteMutation.isPending} data-testid="button-generate-invite">
+                {createInviteMutation.isPending ? "Creating..." : "Generate Code"}
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
         <DialogContent>

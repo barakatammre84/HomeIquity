@@ -11,6 +11,8 @@ import { registerTaskEngineRoutes } from "./routes/task-engine";
 import { registerUnderwritingRoutes } from "./routes/underwriting";
 import { registerComplianceRoutes } from "./routes/compliance";
 import { registerBorrowerRoutes } from "./routes/borrower";
+import { registerNotificationRoutes } from "./routes/notifications";
+import { registerStaffInviteRoutes } from "./routes/staff-invites";
 import { seedDatabase } from "./seed";
 
 
@@ -27,6 +29,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerUnderwritingRoutes(app, storage, isAuthenticated, isAdmin);
   registerComplianceRoutes(app, storage, isAuthenticated, isAdmin);
   registerBorrowerRoutes(app, storage, isAuthenticated, isAdmin);
+  registerNotificationRoutes(app, storage, isAuthenticated);
+  registerStaffInviteRoutes(app, storage, isAuthenticated, isAdmin);
 
   const httpServer = createServer(app);
 

@@ -1,10 +1,13 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/useAuth";
+import { useUpload } from "@/hooks/use-upload";
+import { useToast } from "@/hooks/use-toast";
+import { queryClient } from "@/lib/queryClient";
 import type { Document } from "@shared/schema";
 import {
   FileText,
@@ -136,11 +139,47 @@ function formatDate(date: string | Date | null | undefined): string {
 export default function Documents() {
   const { isLoading: authLoading } = useAuth();
   const [expandedCategories, setExpandedCategories] = useState<string[]>(["income", "assets"]);
+  const [activeDocType, setActiveDocType] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
+  const { uploadFile, isUploading } = useUpload();
 
   const { data, isLoading } = useQuery<DashboardData>({
     queryKey: ["/api/dashboard"],
     enabled: !authLoading,
   });
+
+  const handleUploadClick = (docType: string) => {
+    setActiveDocType(docType);
+    fileInputRef.current?.click();
+  };
+
+  const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !activeDocType) return;
+
+    const response = await uploadFile(file);
+    if (response) {
+      await fetch("/api/documents/upload", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          objectPath: response.objectPath,
+          fileName: file.name,
+          fileSize: file.size,
+          mimeType: file.type,
+          documentType: activeDocType,
+        }),
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
+      toast({ title: "Document uploaded successfully" });
+    }
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+    setActiveDocType(null);
+  };
 
   const toggleCategory = (categoryId: string) => {
     setExpandedCategories(prev =>
@@ -227,6 +266,13 @@ export default function Documents() {
 
   return (
     <>
+      <input
+        type="file"
+        ref={fileInputRef}
+        className="hidden"
+        onChange={handleFileSelected}
+        data-testid="input-file-upload"
+      />
       {/* Premium Header */}
       <div className="relative overflow-hidden bg-gradient-to-br from-primary via-primary to-primary/90">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.1),transparent_50%)]" />
@@ -400,12 +446,13 @@ export default function Documents() {
                               </div>
                             </div>
                             <div className="flex items-center gap-2 ml-4">
-                              {hasUpload && (
+                              {hasUpload && latestDoc && (
                                 <Button
                                   size="sm"
                                   variant="ghost"
                                   className="gap-1.5"
                                   data-testid={`button-download-${docType.type}`}
+                                  onClick={() => window.open(`/api/documents/${latestDoc.id}/download`, "_blank")}
                                 >
                                   <Download className="h-4 w-4" />
                                   <span className="hidden sm:inline">View</span>
@@ -416,10 +463,12 @@ export default function Documents() {
                                 variant={hasUpload ? "outline" : "default"}
                                 className="gap-1.5"
                                 data-testid={`button-upload-${docType.type}`}
+                                disabled={isUploading}
+                                onClick={() => handleUploadClick(docType.type)}
                               >
                                 <Upload className="h-4 w-4" />
                                 <span className="hidden sm:inline">
-                                  {hasUpload ? "Replace" : "Upload"}
+                                  {isUploading && activeDocType === docType.type ? "Uploading..." : hasUpload ? "Replace" : "Upload"}
                                 </span>
                               </Button>
                             </div>
@@ -500,6 +549,7 @@ export default function Documents() {
                             variant="ghost"
                             className="gap-2"
                             data-testid={`button-download-doc-${doc.id}`}
+                            onClick={() => window.open(`/api/documents/${doc.id}/download`, "_blank")}
                           >
                             <Download className="h-4 w-4" />
                             <span className="hidden sm:inline">Download</span>

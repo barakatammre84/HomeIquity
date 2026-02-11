@@ -11,9 +11,11 @@
 import { GoogleGenAI } from "@google/genai";
 import * as fs from "fs";
 import * as path from "path";
+import { ObjectStorageService, ObjectNotFoundError } from "./replit_integrations/object_storage";
 
 const apiKey = process.env.AI_INTEGRATIONS_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
 const genAI = apiKey ? new GoogleGenAI({ apiKey }) : null;
+const objectStorageService = new ObjectStorageService();
 
 export interface ExtractedTaxReturnData {
   documentYear: string;
@@ -80,18 +82,23 @@ export type ExtractedDocumentData =
   | ExtractedPayStubData 
   | ExtractedBankStatementData;
 
-/**
- * Convert image/PDF file to base64 for Gemini API
- */
-function fileToBase64(filePath: string): string {
+async function fileToBase64(filePath: string): Promise<string> {
+  if (filePath.startsWith("/objects/")) {
+    const objectFile = await objectStorageService.getObjectEntityFile(filePath);
+    const chunks: Buffer[] = [];
+    const stream = objectFile.createReadStream();
+    return new Promise((resolve, reject) => {
+      stream.on("data", (chunk: Buffer) => chunks.push(chunk));
+      stream.on("end", () => resolve(Buffer.concat(chunks).toString("base64")));
+      stream.on("error", reject);
+    });
+  }
   const fileBuffer = fs.readFileSync(filePath);
   return fileBuffer.toString("base64");
 }
 
-/**
- * Detect MIME type from file extension
- */
-function getMimeType(filePath: string): string {
+function getMimeType(filePath: string, storedMimeType?: string): string {
+  if (storedMimeType) return storedMimeType;
   const ext = path.extname(filePath).toLowerCase();
   const mimeTypes: Record<string, string> = {
     ".pdf": "application/pdf",
@@ -119,7 +126,7 @@ export async function extractTaxReturnData(
   }
 
   try {
-    const base64 = fileToBase64(filePath);
+    const base64 = await fileToBase64(filePath);
     const mimeType = getMimeType(filePath);
 
     const prompt = `You are a tax document analysis specialist. Extract financial data from this tax return image.
@@ -201,7 +208,7 @@ export async function extractPayStubData(filePath: string): Promise<ExtractedPay
   }
 
   try {
-    const base64 = fileToBase64(filePath);
+    const base64 = await fileToBase64(filePath);
     const mimeType = getMimeType(filePath);
 
     const prompt = `You are a payroll document analysis specialist. Extract financial data from this pay stub.
@@ -279,7 +286,7 @@ export async function extractBankStatementData(filePath: string): Promise<Extrac
   }
 
   try {
-    const base64 = fileToBase64(filePath);
+    const base64 = await fileToBase64(filePath);
     const mimeType = getMimeType(filePath);
 
     const prompt = `You are a banking document analysis specialist. Extract financial data from this bank statement.
