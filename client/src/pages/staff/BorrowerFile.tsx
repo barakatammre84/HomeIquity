@@ -189,6 +189,22 @@ export default function BorrowerFile() {
     notes: string;
   }>({ condition: null, action: null, notes: "" });
 
+  const [statusUpdate, setStatusUpdate] = useState({ open: false, status: "", notes: "" });
+  const statusUpdateMutation = useMutation({
+    mutationFn: async ({ status, notes }: { status: string; notes?: string }) => {
+      return apiRequest("PATCH", `/api/loan-applications/${applicationId}/status`, { status, notes });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/loan-applications/${applicationId}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/loan-applications/${applicationId}/pipeline`] });
+      toast({ title: "Status Updated", description: `Application status has been changed.` });
+      setStatusUpdate({ open: false, status: "", notes: "" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Update Failed", description: error.message, variant: "destructive" });
+    },
+  });
+
   const updateConditionMutation = useMutation({
     mutationFn: async ({ id, status, clearanceNotes }: { id: string; status: string; clearanceNotes?: string }) => {
       return apiRequest("PATCH", `/api/conditions/${id}`, { status, clearanceNotes });
@@ -336,6 +352,63 @@ export default function BorrowerFile() {
                   <Badge variant="outline">
                     {application.preferredLoanType?.toUpperCase() || "CONVENTIONAL"}
                   </Badge>
+                  <Dialog open={statusUpdate.open} onOpenChange={(o) => setStatusUpdate(prev => ({ ...prev, open: o }))}>
+                    <DialogTrigger asChild>
+                      <Button size="sm" variant="outline" data-testid="button-update-status">
+                        <RefreshCw className="mr-1 h-3 w-3" /> Update Status
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Update Application Status</DialogTitle>
+                        <DialogDescription>
+                          Change the application status. The borrower will be notified.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                          <Label>New Status</Label>
+                          <Select value={statusUpdate.status} onValueChange={(v) => setStatusUpdate(prev => ({ ...prev, status: v }))}>
+                            <SelectTrigger data-testid="select-new-status">
+                              <SelectValue placeholder="Select status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="submitted">Submitted</SelectItem>
+                              <SelectItem value="in_review">In Review</SelectItem>
+                              <SelectItem value="underwriting">Underwriting</SelectItem>
+                              <SelectItem value="conditional_approval">Conditional Approval</SelectItem>
+                              <SelectItem value="pre_approved">Pre-Approved</SelectItem>
+                              <SelectItem value="approved">Approved</SelectItem>
+                              <SelectItem value="denied">Denied</SelectItem>
+                              <SelectItem value="suspended">Suspended</SelectItem>
+                              <SelectItem value="withdrawn">Withdrawn</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Notes (optional)</Label>
+                          <Textarea
+                            value={statusUpdate.notes}
+                            onChange={(e) => setStatusUpdate(prev => ({ ...prev, notes: e.target.value }))}
+                            placeholder="Reason for status change..."
+                            data-testid="input-status-notes"
+                          />
+                        </div>
+                      </div>
+                      <DialogFooter>
+                        <Button variant="outline" onClick={() => setStatusUpdate({ open: false, status: "", notes: "" })}>
+                          Cancel
+                        </Button>
+                        <Button
+                          disabled={!statusUpdate.status || statusUpdateMutation.isPending}
+                          onClick={() => statusUpdateMutation.mutate({ status: statusUpdate.status, notes: statusUpdate.notes || undefined })}
+                          data-testid="button-confirm-status-update"
+                        >
+                          {statusUpdateMutation.isPending ? "Updating..." : "Update Status"}
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
                 </div>
               </div>
 

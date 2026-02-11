@@ -274,10 +274,10 @@ export function registerAgentBrokerRoutes(
         expiresAt,
       });
 
-      // Generate the full URL
-      const baseUrl = process.env.REPL_SLUG 
-        ? `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`
-        : "http://localhost:5000";
+      const baseUrl = process.env.PUBLIC_BASE_URL
+        || (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : null)
+        || (process.env.REPL_SLUG ? `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co` : null)
+        || `https://${req.get("host")}`;
       const inviteUrl = `${baseUrl}/apply/${token}`;
 
       res.status(201).json({ 

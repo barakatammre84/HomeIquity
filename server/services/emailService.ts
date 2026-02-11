@@ -327,6 +327,35 @@ export const emailTemplates = {
       `, `Your pre-approval letter #${letterNumber} is ready to download`),
     };
   },
+  statusUpdate(borrowerName: string, statusLabel: string, applicationId: string): EmailOptions {
+    return {
+      to: "",
+      subject: `Application Update: ${statusLabel}`,
+      html: baseTemplate(`
+        <h2 style="margin:0 0 16px;color:#0f1729;font-size:20px">Application Status Update</h2>
+        <p style="color:#475569;line-height:1.6;margin:0 0 16px">
+          Hi ${borrowerName},
+        </p>
+        <p style="color:#475569;line-height:1.6;margin:0 0 16px">
+          Your mortgage application status has been updated.
+        </p>
+        <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border-radius:6px;margin:16px 0">
+          <tr>
+            <td style="padding:8px 16px">
+              <p style="margin:0;color:#94a3b8;font-size:12px">APPLICATION</p>
+              <p style="margin:4px 0 0;color:#0f1729;font-size:14px;font-weight:600">${applicationId.substring(0, 8).toUpperCase()}</p>
+            </td>
+            <td style="padding:8px 16px" align="right">
+              ${statusBadge(statusLabel, "#3b82f6")}
+            </td>
+          </tr>
+        </table>
+        <p style="color:#475569;line-height:1.6;margin:16px 0 0;font-size:14px">
+          Log into your Baranest dashboard for full details and next steps.
+        </p>
+      `, `Your application status is now: ${statusLabel}`),
+    };
+  },
 };
 
 export type NotificationType =
@@ -337,6 +366,7 @@ export type NotificationType =
   | "document_uploaded"
   | "invite_sent"
   | "pre_approval_letter_ready"
+  | "status_update"
   | "general";
 
 interface NotificationEmailMapping {
@@ -372,6 +402,9 @@ export function sendNotificationEmail(mapping: NotificationEmailMapping): void {
       break;
     case "pre_approval_letter_ready":
       email = emailTemplates.preApprovalLetterReady(data.borrowerName, data.amount, data.letterNumber);
+      break;
+    case "status_update":
+      email = emailTemplates.statusUpdate(data.borrowerName, data.statusLabel, data.applicationId);
       break;
     default:
       return;

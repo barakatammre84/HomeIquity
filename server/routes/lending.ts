@@ -758,6 +758,96 @@ export function registerLendingRoutes(
     }
   });
 
+  const staffStatusSchema = z.object({
+    status: z.enum(["submitted", "in_review", "underwriting", "conditional_approval", "pre_approved", "approved", "denied", "suspended", "withdrawn"]),
+    notes: z.string().max(2000).optional(),
+  });
+
+  app.patch("/api/loan-applications/:id/status", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      if (!isStaffRole(user.role)) {
+        return res.status(403).json({ error: "Staff access required" });
+      }
+
+      const { id } = req.params;
+      const parsed = staffStatusSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid status", details: parsed.error.errors });
+      }
+
+      const application = await storage.getLoanApplication(id);
+      if (!application) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+
+      const previousStatus = application.status;
+      const { status, notes } = parsed.data;
+
+      const updated = await storage.updateLoanApplication(id, { status });
+
+      await storage.createDealActivity({
+        applicationId: id,
+        activityType: "status_change",
+        title: `Status Updated to ${status.replace(/_/g, " ").toUpperCase()}`,
+        description: notes || `Application status changed from ${previousStatus} to ${status}`,
+        performedBy: user.id,
+      });
+
+      const borrower = await storage.getUser(application.userId);
+      if (borrower) {
+        const statusLabel = status.replace(/_/g, " ");
+        await storage.createNotification({
+          userId: borrower.id,
+          type: "status_update",
+          title: "Application Status Updated",
+          body: `Your application status has been updated to: ${statusLabel}`,
+          entityType: "loan_application",
+          entityId: id,
+          status: "unread",
+        });
+
+        if (borrower.email) {
+          const borrowerName = borrower.firstName || "Borrower";
+          if (status === "pre_approved" || status === "approved") {
+            sendNotificationEmail({
+              type: "application_pre_approved",
+              recipientEmail: borrower.email,
+              data: {
+                borrowerName,
+                amount: parseFloat(application.preApprovalAmount || "0").toLocaleString(),
+                applicationId: id,
+              },
+            });
+          } else if (status === "denied") {
+            sendNotificationEmail({
+              type: "application_denied",
+              recipientEmail: borrower.email,
+              data: { borrowerName },
+            });
+          } else {
+            sendNotificationEmail({
+              type: "status_update",
+              recipientEmail: borrower.email,
+              data: { borrowerName, statusLabel, applicationId: id },
+            });
+          }
+        }
+      }
+
+      logAudit(req, "loan_application.status_changed", "loan_application", id, {
+        previousStatus,
+        newStatus: status,
+        changedBy: user.id,
+      });
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Staff status update error:", error);
+      res.status(500).json({ error: "Failed to update application status" });
+    }
+  });
+
   app.get("/api/loan-applications/draft/latest", isAuthenticated, async (req, res) => {
     try {
       const userId = req.user!.id;

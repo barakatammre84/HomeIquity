@@ -9,6 +9,7 @@ import { upload } from "./utils";
 import { ObjectStorageService, ObjectNotFoundError } from "../replit_integrations/object_storage";
 import { isStaffRole, type User } from "@shared/schema";
 import { logAudit } from "../auditLog";
+import { sendNotificationEmail } from "../services/emailService";
 
 const objectStorageService = new ObjectStorageService();
 
@@ -105,8 +106,40 @@ export function registerDocumentRoutes(
           performedBy: user.id,
           metadata: { documentId: document.id },
         });
+
+        const application = await storage.getLoanApplication(applicationId);
+        if (application) {
+          const staffUsers = await storage.getStaffUsersForTeamDisplay();
+          const borrowerName = user.firstName
+            ? `${user.firstName} ${user.lastName || ""}`.trim()
+            : user.email || "Borrower";
+          for (const staff of staffUsers) {
+            await storage.createNotification({
+              userId: staff.id,
+              type: "document_uploaded",
+              title: "New Document Uploaded",
+              body: `${borrowerName} uploaded ${documentType.replace(/_/g, " ")}: ${fileName}`,
+              entityType: "document",
+              entityId: document.id,
+              status: "unread",
+            });
+            if (staff.email) {
+              sendNotificationEmail({
+                type: "document_uploaded",
+                recipientEmail: staff.email,
+                data: {
+                  staffName: staff.firstName || "Team Member",
+                  borrowerName,
+                  documentName: documentType.replace(/_/g, " "),
+                  applicationId,
+                },
+              });
+            }
+          }
+        }
       }
 
+      logAudit(req, "document.uploaded", "document", document.id, { documentType, fileName });
       res.status(201).json({ document });
     } catch (error) {
       console.error("Document upload record error:", error);
