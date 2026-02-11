@@ -26,6 +26,7 @@ import {
   Home,
   Sparkles,
 } from "lucide-react";
+import { SEOHead } from "@/components/SEOHead";
 import familyImage from "@assets/stock_images/happy_family_new_hom_d488bf67.jpg";
 
 const PROPERTY_TYPES = [
@@ -219,6 +220,7 @@ export default function Properties() {
 
   return (
     <div className="min-h-screen bg-background">
+      <SEOHead title="Browse Properties - Find Your Dream Home" description="Search homes for sale with live MLS listings. Get instant mortgage estimates and pre-approval for properties across the US." />
       <Navigation />
 
       <div className="relative h-64 bg-gradient-to-r from-primary/90 to-primary">

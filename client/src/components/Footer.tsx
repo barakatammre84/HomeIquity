@@ -38,11 +38,10 @@ export function Footer() {
           <div>
             <h3 className="text-sm font-semibold text-white">Legal</h3>
             <ul className="mt-4 space-y-1 text-sm text-white/70">
-              <li><span className="block rounded-md px-2 py-2 -mx-2 hover:text-white transition-colors cursor-pointer">NMLS Consumer Access</span></li>
+              <li><a href="https://www.nmlsconsumeraccess.org" target="_blank" rel="noopener noreferrer" className="block rounded-md px-2 py-2 -mx-2 hover:text-white transition-colors" data-testid="link-footer-nmls">NMLS Consumer Access</a></li>
               <li><Link href="/privacy" className="block rounded-md px-2 py-2 -mx-2 hover:text-white transition-colors" data-testid="link-footer-privacy">Privacy Policy</Link></li>
-              <li><span className="block rounded-md px-2 py-2 -mx-2 hover:text-white transition-colors cursor-pointer">Terms of Use</span></li>
-              <li><span className="block rounded-md px-2 py-2 -mx-2 hover:text-white transition-colors cursor-pointer">Disclosures & Licensing</span></li>
-              <li><span className="block rounded-md px-2 py-2 -mx-2 hover:text-white transition-colors cursor-pointer">Affiliated Business</span></li>
+              <li><Link href="/terms" className="block rounded-md px-2 py-2 -mx-2 hover:text-white transition-colors" data-testid="link-footer-terms">Terms of Use</Link></li>
+              <li><Link href="/disclosures" className="block rounded-md px-2 py-2 -mx-2 hover:text-white transition-colors" data-testid="link-footer-disclosures">Disclosures & Licensing</Link></li>
             </ul>
           </div>
 

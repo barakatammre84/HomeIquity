@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useForm, UseFormReturn } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocation } from "wouter";
+import { SEOHead } from "@/components/SEOHead";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { preApprovalFormSchema, type PreApprovalFormData } from "@shared/schema";
@@ -773,6 +774,7 @@ export default function PreApproval() {
   // The Conversational Form Steps
   return (
     <div className="min-h-screen flex flex-col bg-background overflow-hidden">
+      <SEOHead title="Get Pre-Approved in 3 Minutes" description="Start your mortgage pre-approval application. Answer a few questions about your income and finances to get a clear, confident approval decision." />
       
       {/* Progress Bar */}
       <div className="fixed top-0 left-0 w-full h-1 bg-muted z-50">

@@ -1,4 +1,5 @@
 import { Link } from "wouter";
+import { SEOHead } from "@/components/SEOHead";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -149,6 +150,7 @@ const COMMON_MISTAKES = [
 export default function FirstTimeBuyerHub() {
   return (
     <div className="p-4 md:p-6 max-w-4xl mx-auto" data-testid="first-time-buyer-hub">
+      <SEOHead title="First-Time Homebuyer Guide" description="Everything you need to know about buying your first home. Learn about down payments, credit scores, mortgage types, and the home buying process." />
       <div className="mb-6">
         <div className="flex items-center gap-3 mb-2">
           <div className="p-2 bg-primary/10 rounded-lg">

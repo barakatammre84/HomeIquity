@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useSearch } from "wouter";
+import { SEOHead } from "@/components/SEOHead";
 import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -194,6 +195,7 @@ export default function LivePropertyDetailPage() {
 
   return (
     <div className="min-h-screen bg-background">
+      <SEOHead title="Property Details" description="View detailed property information including photos, price history, mortgage estimates, schools, and neighborhood data." />
       <Navigation />
 
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">

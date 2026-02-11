@@ -9,7 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LayoutDashboard, Users, Menu, X, Phone, ChevronDown, Home, Calculator, FileText, HelpCircle, TrendingDown, DollarSign, Percent } from "lucide-react";
+import { LayoutDashboard, Users, Menu, X, Phone, ChevronDown, Home, Calculator, FileText, HelpCircle, DollarSign, Percent } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 
@@ -30,13 +30,13 @@ const buyMenuItems: NavItem[] = [
 const refinanceMenuItems: NavItem[] = [
   { href: "/apply?type=refinance", label: "Apply to Refinance", description: "Lower your monthly payment", icon: FileText },
   { href: "/rates/refinance", label: "Refinance Rates", description: "Compare today's rates", icon: Percent },
-  { href: "/calculators/cashout", label: "Cash-out Calculator", description: "Access your home equity", icon: DollarSign },
+  { href: "/rates/cash-out", label: "Cash-Out Refinance", description: "Access your home equity", icon: DollarSign },
 ];
 
 const helocMenuItems: NavItem[] = [
   { href: "/apply?type=heloc", label: "Apply for HELOC", description: "Flexible home equity line", icon: FileText },
   { href: "/rates/heloc", label: "HELOC Rates", description: "Current HELOC rates", icon: Percent },
-  { href: "/heloc-vs-cashout", label: "HELOC vs Cash-out", description: "Compare your options", icon: TrendingDown },
+  { href: "/calculators/mortgage", label: "Mortgage Calculator", description: "Estimate your payments", icon: Calculator },
 ];
 
 interface NavDropdownProps {

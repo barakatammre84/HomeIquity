@@ -18,7 +18,7 @@ import { HomeownerDashboard } from "@/pages/homeowner";
 import { PurchaseRates, RefinanceRates, CashOutRates, HelocRates, VaRates, MortgageRates } from "@/pages/rates";
 import { RentVsBuyCalculator, AffordabilityCalculator, MortgageCalculator } from "@/pages/calculators";
 import { AdminDashboard, AdminRates, AdminContent, AdminUsers } from "@/pages/admin";
-import { Landing, Privacy, TestLogin } from "@/pages/public";
+import { Landing, Privacy, Terms, Disclosures, TestLogin } from "@/pages/public";
 
 function PublicPage({ children }: { children: React.ReactNode }) {
   return <PublicLayout>{children}</PublicLayout>;
@@ -66,6 +66,12 @@ function Router() {
       </Route>
       <Route path="/privacy">
         <Privacy />
+      </Route>
+      <Route path="/terms">
+        <Terms />
+      </Route>
+      <Route path="/disclosures">
+        <Disclosures />
       </Route>
       
       {/* Property Pages - Public */}

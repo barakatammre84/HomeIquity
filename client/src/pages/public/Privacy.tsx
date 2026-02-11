@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { SEOHead } from "@/components/SEOHead";
 import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
 import {
@@ -79,6 +80,7 @@ const COMPLIANCE_ITEMS = [
 export default function Privacy() {
   return (
     <div className="min-h-screen bg-background">
+      <SEOHead title="Security & Privacy" description="Learn how Baranest protects your personal and financial data with enterprise-grade encryption and strict regulatory compliance." />
       <Navigation />
 
       <section className="relative overflow-hidden bg-gradient-to-br from-primary via-primary to-[hsl(213,52%,18%)] px-4 py-16 sm:px-6 lg:px-8 lg:py-24">

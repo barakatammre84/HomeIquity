@@ -3,23 +3,32 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
+import { SEOHead } from "@/components/SEOHead";
+import { useQuery } from "@tanstack/react-query";
 import { 
   CheckCircle2,
   Sparkles,
   Clock,
   Star,
-  ArrowRight
+  ArrowRight,
+  Shield,
+  Home,
+  FileText,
+  TrendingUp,
+  Calculator,
+  Search,
+  Percent,
+  Scale,
 } from "lucide-react";
-
-const testimonials = [
-  { name: "Paul", active: true },
-  { name: "Amanda", active: false },
-  { name: "Tiara", active: false },
-];
 
 export default function Landing() {
   return (
     <div className="min-h-screen bg-background">
+      <SEOHead
+        title="Baranest - Clear Answers. Confident Approvals."
+        description="Get pre-approved for a mortgage in 3 minutes. Baranest delivers clear mortgage decisions and trustworthy pre-approvals with no guesswork and no surprises."
+        ogType="website"
+      />
       <Navigation />
 
       {/* Hero Section - Premium Gradient */}
@@ -148,6 +157,97 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* Product Features Section */}
+      <section className="border-y bg-muted/30 px-4 py-20 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-6xl">
+          <div className="text-center">
+            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
+              Everything you need, in one place
+            </h2>
+            <p className="mt-4 text-lg text-muted-foreground">
+              From pre-approval to closing, Baranest has you covered
+            </p>
+          </div>
+
+          <div className="mt-16 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            <Card className="border-0 bg-white shadow-lg dark:bg-card" data-testid="card-feature-preapproval">
+              <CardContent className="p-6">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                  <FileText className="h-6 w-6" />
+                </div>
+                <h3 className="mt-4 text-lg font-semibold">Instant Pre-Approval</h3>
+                <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
+                  Get a real pre-approval letter in minutes. No credit score impact, no hidden fees, no games.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-0 bg-white shadow-lg dark:bg-card" data-testid="card-feature-properties">
+              <CardContent className="p-6">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <Search className="h-6 w-6" />
+                </div>
+                <h3 className="mt-4 text-lg font-semibold">Live Property Search</h3>
+                <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
+                  Browse homes across the US with live MLS data and see instant mortgage estimates for every listing.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-0 bg-white shadow-lg dark:bg-card" data-testid="card-feature-rates">
+              <CardContent className="p-6">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                  <Percent className="h-6 w-6" />
+                </div>
+                <h3 className="mt-4 text-lg font-semibold">Competitive Rates</h3>
+                <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
+                  Compare mortgage rates from top lenders updated daily. Conventional, FHA, VA, and more.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-0 bg-white shadow-lg dark:bg-card" data-testid="card-feature-calculators">
+              <CardContent className="p-6">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                  <Calculator className="h-6 w-6" />
+                </div>
+                <h3 className="mt-4 text-lg font-semibold">Smart Calculators</h3>
+                <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
+                  Affordability, rent vs buy, and mortgage calculators to help you make informed decisions.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-0 bg-white shadow-lg dark:bg-card" data-testid="card-feature-dashboard">
+              <CardContent className="p-6">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400">
+                  <TrendingUp className="h-6 w-6" />
+                </div>
+                <h3 className="mt-4 text-lg font-semibold">Track Your Progress</h3>
+                <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
+                  A personal dashboard to monitor your application, upload documents, and track milestones.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-0 bg-white shadow-lg dark:bg-card" data-testid="card-feature-education">
+              <CardContent className="p-6">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400">
+                  <Home className="h-6 w-6" />
+                </div>
+                <h3 className="mt-4 text-lg font-semibold">Buyer Education</h3>
+                <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
+                  First-time buyer guides, down payment assistance tools, and educational resources.
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </section>
+
+      {/* Live Rates Teaser */}
+      <RatesTeaser />
+
       {/* Social Proof Section */}
       <section className="border-y bg-muted/30 px-4 py-16 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-6xl">
@@ -199,6 +299,44 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* Trust & Compliance Section */}
+      <section className="px-4 py-16 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-6xl">
+          <div className="rounded-2xl border bg-card p-8 sm:p-12">
+            <div className="flex flex-col items-center gap-8 text-center lg:flex-row lg:text-left">
+              <div className="flex-1">
+                <div className="flex items-center justify-center gap-2 lg:justify-start">
+                  <Shield className="h-5 w-5 text-emerald-500" />
+                  <h3 className="text-xl font-semibold">Your trust is our foundation</h3>
+                </div>
+                <p className="mt-3 text-muted-foreground leading-relaxed">
+                  Baranest is a licensed mortgage lender (NMLS #123456) committed to fair lending practices, 
+                  regulatory compliance, and the highest standards of data security.
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:gap-6">
+                <div className="flex flex-col items-center gap-1.5 rounded-xl border bg-background p-4" data-testid="badge-trust-ehl">
+                  <Scale className="h-5 w-5 text-primary" />
+                  <span className="text-xs font-medium text-center">Equal Housing Lender</span>
+                </div>
+                <div className="flex flex-col items-center gap-1.5 rounded-xl border bg-background p-4" data-testid="badge-trust-nmls">
+                  <Shield className="h-5 w-5 text-primary" />
+                  <span className="text-xs font-medium text-center">NMLS Licensed</span>
+                </div>
+                <div className="flex flex-col items-center gap-1.5 rounded-xl border bg-background p-4" data-testid="badge-trust-encryption">
+                  <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                  <span className="text-xs font-medium text-center">256-bit Encrypted</span>
+                </div>
+                <div className="flex flex-col items-center gap-1.5 rounded-xl border bg-background p-4" data-testid="badge-trust-mismo">
+                  <FileText className="h-5 w-5 text-primary" />
+                  <span className="text-xs font-medium text-center">MISMO 3.4</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* CTA Section */}
       <section className="px-4 py-20 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-4xl text-center">
@@ -240,5 +378,63 @@ export default function Landing() {
 
       <Footer />
     </div>
+  );
+}
+
+interface RatePreview {
+  id: number;
+  programName: string;
+  interestRate: string;
+  apr: string;
+  loanType: string;
+}
+
+function RatesTeaser() {
+  const { data: rates } = useQuery<RatePreview[]>({
+    queryKey: ["/api/rates"],
+  });
+
+  const topRates = (rates || []).slice(0, 3);
+
+  if (topRates.length === 0) return null;
+
+  return (
+    <section className="px-4 py-20 sm:px-6 lg:px-8" data-testid="section-rates-teaser">
+      <div className="mx-auto max-w-6xl">
+        <div className="text-center">
+          <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
+            Today's mortgage rates
+          </h2>
+          <p className="mt-4 text-lg text-muted-foreground">
+            Competitive rates updated daily
+          </p>
+        </div>
+
+        <div className="mt-12 grid gap-6 sm:grid-cols-3">
+          {topRates.map((rate) => (
+            <Card key={rate.id} className="text-center" data-testid={`card-rate-teaser-${rate.id}`}>
+              <CardContent className="p-6">
+                <p className="text-sm font-medium text-muted-foreground">{rate.programName}</p>
+                <p className="mt-2 text-4xl font-bold text-primary">{rate.interestRate}%</p>
+                <p className="mt-1 text-sm text-muted-foreground">{rate.apr}% APR</p>
+                <p className="mt-3 text-xs text-muted-foreground">{rate.loanType}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        <div className="mt-8 text-center">
+          <Link href="/rates">
+            <Button variant="outline" className="gap-2" data-testid="button-view-all-rates">
+              View All Rates
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          </Link>
+          <p className="mt-3 text-xs text-muted-foreground">
+            Rates are for illustrative purposes. Your rate may vary based on credit, property, and loan terms.
+          </p>
+        </div>
+      </div>
+    </section>
   );
 }

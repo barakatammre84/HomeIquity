@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
+import { SEOHead } from "@/components/SEOHead";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -99,6 +100,7 @@ export default function MortgageRates() {
 
   return (
     <>
+      <SEOHead title="Today's Mortgage Rates" description="Compare current mortgage rates for purchase, refinance, cash-out, HELOC, and VA loans. Updated daily with competitive rates from top lenders." />
       <div className="bg-gradient-to-b from-primary/5 to-background pb-12">
         <div className="max-w-6xl mx-auto px-4 py-8 sm:py-12">
           <div className="text-center mb-8">
