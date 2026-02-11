@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { formatCurrency, getStatusLabel } from "@/lib/authUtils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,6 +31,8 @@ import {
   Bot,
   Sparkles,
   Users,
+  Download,
+  Loader2,
 } from "lucide-react";
 
 interface DashboardData {
@@ -338,6 +342,10 @@ export default function Dashboard() {
           </Card>
         )}
 
+        {activeApplication && ["submitted", "analyzing"].includes(activeApplication.status) && (
+          <PreQualLetterCard applicationId={activeApplication.id} />
+        )}
+
         {activities.length > 0 && (
           <Card className="shadow-md" data-testid="card-recent-activity">
             <CardHeader className="pb-2 border-b">
@@ -420,5 +428,91 @@ export default function Dashboard() {
 
       </div>
     </div>
+  );
+}
+
+function PreQualLetterCard({ applicationId }: { applicationId: string }) {
+  const { toast } = useToast();
+
+  const statusQuery = useQuery<{ hasLetter: boolean; letterNumber?: string; estimatedAmount?: string }>({
+    queryKey: ["/api/loan-applications", applicationId, "prequal-status"],
+  });
+
+  const generateMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", `/api/loan-applications/${applicationId}/generate-prequal`);
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      toast({ title: "Letter Ready", description: `Your pre-qualification letter #${data.letterNumber} has been generated.` });
+      queryClient.invalidateQueries({ queryKey: ["/api/loan-applications", applicationId, "prequal-status"] });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Could not generate letter. Please try again.", variant: "destructive" });
+    },
+  });
+
+  const handleDownload = async () => {
+    try {
+      const res = await fetch(`/api/loan-applications/${applicationId}/prequal-pdf`, { credentials: "include" });
+      if (!res.ok) throw new Error("Download failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `pre-qualification-letter.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast({ title: "Error", description: "Could not download letter.", variant: "destructive" });
+    }
+  };
+
+  const hasLetter = statusQuery.data?.hasLetter;
+
+  return (
+    <Card className="shadow-md" data-testid="card-prequal-letter">
+      <CardContent className="p-4">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-amber-500">
+              <FileText className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+            </div>
+            <div>
+              <p className="font-medium" data-testid="text-prequal-title">
+                Pre-Qualification Letter
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {hasLetter
+                  ? "Your letter is ready to download"
+                  : "Get a preliminary qualification letter based on your application"}
+              </p>
+            </div>
+          </div>
+          {hasLetter ? (
+            <Button onClick={handleDownload} variant="outline" size="sm" className="gap-2" data-testid="button-download-prequal-dash">
+              <Download className="h-4 w-4" />
+              Download
+            </Button>
+          ) : (
+            <Button
+              onClick={() => generateMutation.mutate()}
+              disabled={generateMutation.isPending}
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              data-testid="button-generate-prequal-dash"
+            >
+              {generateMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <FileText className="h-4 w-4" />
+              )}
+              {generateMutation.isPending ? "Generating..." : "Generate"}
+            </Button>
+          )}
+        </div>
+      </CardContent>
+    </Card>
   );
 }

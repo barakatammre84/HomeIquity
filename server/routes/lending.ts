@@ -1167,4 +1167,236 @@ export function registerLendingRoutes(
       res.status(500).json({ error: "Failed to check letter status" });
     }
   });
+
+  app.post("/api/loan-applications/:id/generate-prequal", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const { id } = req.params;
+
+      const application = await storage.getLoanApplicationWithAccess(id, user.id, user.role);
+      if (!application) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+
+      const validStatuses = ["submitted", "analyzing", "pre_approved", "verified", "underwriting", "approved"];
+      if (!validStatuses.includes(application.status)) {
+        return res.status(400).json({ error: "Application must be submitted before generating a pre-qualification letter" });
+      }
+
+      const { generatePreQualificationPDF } = await import("../services/pdfLetterGenerator");
+      const crypto = await import("crypto");
+
+      const letterNumber = `PQ-${Date.now().toString(36).toUpperCase()}-${crypto.randomBytes(2).toString("hex").toUpperCase()}`;
+      const expirationDate = new Date();
+      expirationDate.setDate(expirationDate.getDate() + 60);
+
+      const borrowerName = user.firstName && user.lastName
+        ? `${user.firstName} ${user.lastName}`
+        : (user.email?.split("@")[0] || "Borrower");
+
+      const loanAmount = application.preApprovalAmount || application.purchasePrice || "0";
+      const downPayment = application.downPayment ? parseFloat(application.downPayment) : 0;
+      const purchasePrice = application.purchasePrice ? parseFloat(application.purchasePrice) : 0;
+      const estimatedAmount = purchasePrice > 0 ? (purchasePrice - downPayment).toString() : loanAmount.toString();
+
+      let creditScoreRange = "Not provided";
+      if (application.creditScore) {
+        const cs = application.creditScore;
+        if (cs >= 760) creditScoreRange = "760+";
+        else if (cs >= 720) creditScoreRange = "720-759";
+        else if (cs >= 680) creditScoreRange = "680-719";
+        else if (cs >= 640) creditScoreRange = "640-679";
+        else creditScoreRange = "Below 640";
+      }
+
+      let downPaymentPercent: string | undefined;
+      if (downPayment > 0 && purchasePrice > 0) {
+        downPaymentPercent = ((downPayment / purchasePrice) * 100).toFixed(1);
+      }
+
+      const pdfBuffer = await generatePreQualificationPDF({
+        letterNumber,
+        borrowerName,
+        estimatedAmount,
+        productType: application.preferredLoanType || "conventional",
+        occupancy: "Primary",
+        loanPurpose: application.loanPurpose || "Purchase",
+        annualIncome: application.annualIncome?.toString(),
+        creditScoreRange,
+        employmentType: application.employmentType || undefined,
+        estimatedDti: application.dtiRatio?.toString(),
+        downPaymentPercent,
+        companyLegalName: "Baranest Mortgage Corp.",
+        companyNmlsId: "1234567",
+        expirationDate,
+        generatedAt: new Date(),
+      });
+
+      const { db: database } = await import("../db");
+      const { preQualificationLetters } = await import("@shared/schema");
+
+      const storageKey = `prequal-letters/${letterNumber}.pdf`;
+      let pdfStorageKey: string | null = null;
+      try {
+        const { objectStorageClient } = await import("../replit_integrations/object_storage/objectStorage");
+        const privateDir = process.env.PRIVATE_OBJECT_DIR || "";
+        if (privateDir) {
+          const fullPath = `${privateDir}/${storageKey}`;
+          const parts = fullPath.startsWith("/") ? fullPath.slice(1).split("/") : fullPath.split("/");
+          const bucketName = parts[0];
+          const objectName = parts.slice(1).join("/");
+          const bucket = objectStorageClient.bucket(bucketName);
+          const file = bucket.file(objectName);
+          await file.save(pdfBuffer, { contentType: "application/pdf" });
+          pdfStorageKey = storageKey;
+        }
+      } catch (storageErr) {
+        console.warn("[PreQual] Could not store PDF in object storage:", storageErr);
+      }
+
+      const [letter] = await database.insert(preQualificationLetters).values({
+        letterNumber,
+        borrowerName,
+        applicationId: id,
+        estimatedAmount,
+        productType: application.preferredLoanType || "conventional",
+        occupancy: "Primary",
+        loanPurpose: application.loanPurpose || "Purchase",
+        annualIncome: application.annualIncome?.toString(),
+        creditScoreRange,
+        employmentType: application.employmentType,
+        estimatedDti: application.dtiRatio?.toString(),
+        downPaymentPercent,
+        expirationDate,
+        status: "issued",
+        companyLegalName: "Baranest Mortgage Corp.",
+        companyNmlsId: "1234567",
+        pdfStorageKey,
+        pdfGeneratedAt: new Date(),
+      }).returning();
+
+      res.json({
+        letterNumber: letter.letterNumber,
+        expirationDate: letter.expirationDate,
+        estimatedAmount: letter.estimatedAmount,
+        pdfAvailable: true,
+      });
+    } catch (error) {
+      console.error("Generate prequal letter error:", error);
+      res.status(500).json({ error: "Failed to generate pre-qualification letter" });
+    }
+  });
+
+  app.get("/api/loan-applications/:id/prequal-pdf", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const { id } = req.params;
+
+      const application = await storage.getLoanApplicationWithAccess(id, user.id, user.role);
+      if (!application) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+
+      const { db: database } = await import("../db");
+      const { preQualificationLetters } = await import("@shared/schema");
+      const { eq, desc } = await import("drizzle-orm");
+
+      const [letter] = await database.select().from(preQualificationLetters)
+        .where(eq(preQualificationLetters.applicationId, id))
+        .orderBy(desc(preQualificationLetters.createdAt))
+        .limit(1);
+
+      if (!letter) {
+        return res.status(404).json({ error: "No pre-qualification letter found" });
+      }
+
+      if (letter.pdfStorageKey) {
+        try {
+          const { objectStorageClient } = await import("../replit_integrations/object_storage/objectStorage");
+          const privateDir = process.env.PRIVATE_OBJECT_DIR || "";
+          const fullPath = `${privateDir}/${letter.pdfStorageKey}`;
+          const parts = fullPath.startsWith("/") ? fullPath.slice(1).split("/") : fullPath.split("/");
+          const bucketName = parts[0];
+          const objectName = parts.slice(1).join("/");
+          const bucket = objectStorageClient.bucket(bucketName);
+          const file = bucket.file(objectName);
+          const [exists] = await file.exists();
+          if (exists) {
+            const [contents] = await file.download();
+            res.setHeader("Content-Type", "application/pdf");
+            res.setHeader("Content-Disposition", `inline; filename="PreQualification-${letter.letterNumber}.pdf"`);
+            return res.send(contents);
+          }
+        } catch (downloadErr) {
+          console.warn("[PreQual] Could not download from storage, regenerating:", downloadErr);
+        }
+      }
+
+      const { generatePreQualificationPDF } = await import("../services/pdfLetterGenerator");
+      const borrowerName = letter.borrowerName;
+
+      const pdfBuffer = await generatePreQualificationPDF({
+        letterNumber: letter.letterNumber,
+        borrowerName,
+        estimatedAmount: letter.estimatedAmount,
+        productType: letter.productType,
+        occupancy: letter.occupancy,
+        loanPurpose: letter.loanPurpose || undefined,
+        annualIncome: letter.annualIncome?.toString(),
+        creditScoreRange: letter.creditScoreRange || undefined,
+        employmentType: letter.employmentType || undefined,
+        estimatedDti: letter.estimatedDti?.toString(),
+        downPaymentPercent: letter.downPaymentPercent?.toString(),
+        companyLegalName: letter.companyLegalName,
+        companyNmlsId: letter.companyNmlsId,
+        expirationDate: new Date(letter.expirationDate),
+        generatedAt: new Date(letter.generatedAt || letter.createdAt!),
+      });
+
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `inline; filename="PreQualification-${letter.letterNumber}.pdf"`);
+      res.send(pdfBuffer);
+    } catch (error) {
+      console.error("PreQual PDF error:", error);
+      res.status(500).json({ error: "Failed to retrieve pre-qualification letter" });
+    }
+  });
+
+  app.get("/api/loan-applications/:id/prequal-status", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const { id } = req.params;
+
+      const application = await storage.getLoanApplicationWithAccess(id, user.id, user.role);
+      if (!application) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+
+      const { db: database } = await import("../db");
+      const { preQualificationLetters } = await import("@shared/schema");
+      const { eq, desc } = await import("drizzle-orm");
+
+      const [letter] = await database.select().from(preQualificationLetters)
+        .where(eq(preQualificationLetters.applicationId, id))
+        .orderBy(desc(preQualificationLetters.createdAt))
+        .limit(1);
+
+      if (!letter) {
+        return res.json({ hasLetter: false });
+      }
+
+      res.json({
+        hasLetter: true,
+        letterNumber: letter.letterNumber,
+        status: letter.status,
+        expirationDate: letter.expirationDate,
+        estimatedAmount: letter.estimatedAmount,
+        generatedAt: letter.generatedAt,
+        pdfAvailable: !!(letter.pdfStorageKey || letter.pdfGeneratedAt),
+      });
+    } catch (error) {
+      console.error("PreQual status error:", error);
+      res.status(500).json({ error: "Failed to check pre-qualification status" });
+    }
+  });
 }

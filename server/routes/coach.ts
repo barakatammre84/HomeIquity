@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { isAuthenticated } from "../auth";
 import { storage } from "../storage";
-import { generateCoachResponse } from "../services/coachingService";
+import { generateCoachResponse, type VerifiedUserContext } from "../services/coachingService";
 import type { User } from "@shared/schema";
 import { z } from "zod";
 
@@ -9,6 +9,80 @@ const messageSchema = z.object({
   message: z.string().min(1).max(5000),
   conversationId: z.string().optional(),
 });
+
+async function buildVerifiedContext(userId: string, user: User): Promise<VerifiedUserContext> {
+  try {
+    const applications = await storage.getLoanApplicationsByUser(userId);
+    const activeApp = applications.find(a => a.status !== "draft" && a.status !== "denied") || applications[0];
+
+    if (!activeApp) {
+      return {
+        hasApplication: false,
+        userName: user.firstName && user.lastName
+          ? `${user.firstName} ${user.lastName}`
+          : (user.email?.split("@")[0] || undefined),
+      };
+    }
+
+    let employmentHistory: VerifiedUserContext["employmentHistory"] = [];
+    try {
+      const { db: database } = await import("../db");
+      const { employmentHistory: empTable } = await import("@shared/schema");
+      const { eq } = await import("drizzle-orm");
+      const empRecords = await database.select().from(empTable)
+        .where(eq(empTable.applicationId, activeApp.id));
+      employmentHistory = empRecords.map(e => ({
+        employerName: e.employerName,
+        positionTitle: e.positionTitle,
+        isSelfEmployed: e.isSelfEmployed || false,
+        startDate: e.startDate,
+        totalMonthlyIncome: e.totalMonthlyIncome,
+      }));
+    } catch (e) {
+      console.warn("[Coach] Could not fetch employment history:", e);
+    }
+
+    let uploadedDocuments: VerifiedUserContext["uploadedDocuments"] = [];
+    try {
+      const docs = await storage.getDocumentsByApplication(activeApp.id);
+      uploadedDocuments = docs.map(d => ({
+        documentType: d.documentType,
+        status: d.status || "uploaded",
+      }));
+    } catch (e) {
+      console.warn("[Coach] Could not fetch documents:", e);
+    }
+
+    return {
+      hasApplication: true,
+      applicationStatus: activeApp.status,
+      annualIncome: activeApp.annualIncome,
+      monthlyDebts: activeApp.monthlyDebts,
+      creditScore: activeApp.creditScore,
+      employmentType: activeApp.employmentType,
+      employmentYears: activeApp.employmentYears,
+      employerName: activeApp.employerName,
+      isVeteran: activeApp.isVeteran || false,
+      isFirstTimeBuyer: activeApp.isFirstTimeBuyer || false,
+      dtiRatio: activeApp.dtiRatio,
+      ltvRatio: activeApp.ltvRatio,
+      preApprovalAmount: activeApp.preApprovalAmount,
+      purchasePrice: activeApp.purchasePrice,
+      downPayment: activeApp.downPayment,
+      preferredLoanType: activeApp.preferredLoanType,
+      propertyType: activeApp.propertyType,
+      loanPurpose: activeApp.loanPurpose,
+      employmentHistory,
+      uploadedDocuments,
+      userName: user.firstName && user.lastName
+        ? `${user.firstName} ${user.lastName}`
+        : (user.email?.split("@")[0] || undefined),
+    };
+  } catch (error) {
+    console.error("[Coach] Error building verified context:", error);
+    return { hasApplication: false };
+  }
+}
 
 export function registerCoachRoutes(app: Express) {
   app.get("/api/coach/conversations", isAuthenticated, async (req, res) => {
@@ -73,10 +147,13 @@ export function registerCoachRoutes(app: Express) {
         content: m.content,
       }));
 
+      const verifiedContext = await buildVerifiedContext(user.id, user);
+
       const coachResponse = await generateCoachResponse(
         message,
         history,
         conversation.financialProfile,
+        verifiedContext,
       );
 
       const assistantMsg = await storage.createCoachMessage({

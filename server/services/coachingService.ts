@@ -39,6 +39,94 @@ export interface CoachResponse {
   documentChecklist?: DocumentRequirement[];
 }
 
+export interface VerifiedUserContext {
+  hasApplication: boolean;
+  applicationStatus?: string;
+  annualIncome?: string | null;
+  monthlyDebts?: string | null;
+  creditScore?: number | null;
+  employmentType?: string | null;
+  employmentYears?: number | null;
+  employerName?: string | null;
+  isVeteran?: boolean;
+  isFirstTimeBuyer?: boolean;
+  dtiRatio?: string | null;
+  ltvRatio?: string | null;
+  preApprovalAmount?: string | null;
+  purchasePrice?: string | null;
+  downPayment?: string | null;
+  preferredLoanType?: string | null;
+  propertyType?: string | null;
+  loanPurpose?: string | null;
+  employmentHistory?: Array<{
+    employerName?: string | null;
+    positionTitle?: string | null;
+    isSelfEmployed?: boolean;
+    startDate?: string | null;
+    totalMonthlyIncome?: string | null;
+  }>;
+  uploadedDocuments?: Array<{
+    documentType: string;
+    status: string;
+  }>;
+  userName?: string;
+}
+
+function buildVerifiedContextPrompt(ctx: VerifiedUserContext): string {
+  if (!ctx.hasApplication) {
+    const greeting = ctx.userName ? `The user's name is ${ctx.userName}.` : "";
+    return `\n\n${greeting} This user has not yet submitted a loan application. They are exploring or early-stage. Focus on general guidance and help them understand what they need to get started.`;
+  }
+
+  const lines: string[] = [
+    "\n\nVERIFIED APPLICATION DATA (from the user's actual loan application on file - PRIORITIZE this over anything they say in chat):",
+    `Application Status: ${ctx.applicationStatus}`,
+  ];
+
+  if (ctx.userName) lines.push(`Borrower Name: ${ctx.userName}`);
+  if (ctx.annualIncome) lines.push(`Annual Income: $${parseFloat(ctx.annualIncome).toLocaleString()}`);
+  if (ctx.monthlyDebts) lines.push(`Monthly Debts: $${parseFloat(ctx.monthlyDebts).toLocaleString()}`);
+  if (ctx.creditScore) lines.push(`Credit Score: ${ctx.creditScore}`);
+  if (ctx.employmentType) lines.push(`Employment Type: ${ctx.employmentType}`);
+  if (ctx.employmentYears) lines.push(`Years Employed: ${ctx.employmentYears}`);
+  if (ctx.employerName) lines.push(`Employer: ${ctx.employerName}`);
+  if (ctx.isVeteran) lines.push(`Veteran Status: Yes (VA loan eligible)`);
+  if (ctx.isFirstTimeBuyer) lines.push(`First-Time Buyer: Yes`);
+  if (ctx.dtiRatio) lines.push(`DTI Ratio: ${ctx.dtiRatio}%`);
+  if (ctx.ltvRatio) lines.push(`LTV Ratio: ${ctx.ltvRatio}%`);
+  if (ctx.preApprovalAmount) lines.push(`Pre-Approval Amount: $${parseFloat(ctx.preApprovalAmount).toLocaleString()}`);
+  if (ctx.purchasePrice) lines.push(`Target Purchase Price: $${parseFloat(ctx.purchasePrice).toLocaleString()}`);
+  if (ctx.downPayment) lines.push(`Down Payment: $${parseFloat(ctx.downPayment).toLocaleString()}`);
+  if (ctx.preferredLoanType) lines.push(`Preferred Loan Type: ${ctx.preferredLoanType}`);
+  if (ctx.propertyType) lines.push(`Property Type: ${ctx.propertyType}`);
+  if (ctx.loanPurpose) lines.push(`Loan Purpose: ${ctx.loanPurpose}`);
+
+  if (ctx.employmentHistory && ctx.employmentHistory.length > 0) {
+    lines.push("\nEmployment History:");
+    for (const emp of ctx.employmentHistory) {
+      const parts = [];
+      if (emp.employerName) parts.push(emp.employerName);
+      if (emp.positionTitle) parts.push(emp.positionTitle);
+      if (emp.isSelfEmployed) parts.push("(Self-Employed)");
+      if (emp.startDate) parts.push(`since ${emp.startDate}`);
+      if (emp.totalMonthlyIncome) parts.push(`$${parseFloat(emp.totalMonthlyIncome).toLocaleString()}/month`);
+      lines.push(`  - ${parts.join(" | ")}`);
+    }
+  }
+
+  if (ctx.uploadedDocuments && ctx.uploadedDocuments.length > 0) {
+    lines.push("\nDocuments Already Uploaded:");
+    for (const doc of ctx.uploadedDocuments) {
+      lines.push(`  - ${doc.documentType}: ${doc.status}`);
+    }
+    lines.push("\nWhen recommending documents, acknowledge which ones the user has already provided and focus on what's still missing.");
+  }
+
+  lines.push("\nIMPORTANT: Use this verified data as the ground truth. If the user mentions different numbers in chat, politely note the discrepancy and ask them to clarify, but base your assessment on the application data unless they explicitly state it has changed.");
+
+  return lines.join("\n");
+}
+
 const SYSTEM_PROMPT = `You are Baranest AI Coach, a friendly and knowledgeable mortgage readiness advisor. Your role is to help potential homebuyers understand where they stand financially, what they need to do to become mortgage-ready, and exactly which documents they'll need.
 
 CORE PRINCIPLES:
@@ -47,6 +135,8 @@ CORE PRINCIPLES:
 - Base advice on real mortgage industry guidelines (Fannie Mae, FHA, VA, USDA).
 - Be specific about numbers and timelines.
 - Always tailor advice to the person's unique situation.
+- CRITICAL: When verified application data is provided, ALWAYS use it as the primary source of truth. Do not ask the user for information you already have from their application.
+- If verified data conflicts with what the user says in chat, note the discrepancy and suggest they update their application if their situation has changed.
 
 READINESS TIERS:
 - "ready_now": DTI < 43%, credit 680+, stable employment 2+ years, adequate savings for down payment + closing + reserves. Can apply today.
@@ -62,7 +152,7 @@ First-Time Buyer: Homebuyer education certificate (recommended)
 All: Government ID, Social Security card, proof of residence, gift letters (if receiving gift funds)
 Additional: Divorce decree, child support docs, rental history, explanation letters for credit issues
 
-When responding, always provide your answer as conversational text. When you have enough information to assess the user's situation, also include structured data in a JSON block at the end of your message wrapped in <coach_data> tags.
+When responding, always provide your answer as conversational text. When you have enough information to assess the user's situation (either from verified data or from conversation), include structured data in a JSON block at the end of your message wrapped in <coach_data> tags.
 
 The JSON should follow this format:
 <coach_data>
@@ -99,9 +189,11 @@ The JSON should follow this format:
 }
 </coach_data>
 
-Only include the structured data when you have gathered enough information about the user's financial situation (at minimum: income, debts, credit score range, employment situation). If you're still asking questions, just respond conversationally without the data block.
+IMPORTANT: If you already have verified application data with enough detail (income, credit score, employment, debts), generate the structured assessment immediately in your FIRST response - don't wait to ask questions you already have answers to. Only ask follow-up questions about information you're genuinely missing.
 
-Start conversations by warmly greeting the user and asking about their homeownership goals. Then naturally gather information about their:
+If you're still gathering information and don't have enough for an assessment, just respond conversationally without the data block.
+
+When no verified data is available, start conversations by warmly greeting the user and asking about their homeownership goals. Then naturally gather information about their:
 1. Employment situation (type, duration, income)
 2. Monthly debts (car payments, student loans, credit cards)
 3. Credit score range (if they know it)
@@ -119,9 +211,10 @@ export async function generateCoachResponse(
   userMessage: string,
   conversationHistory: Array<{ role: string; content: string }>,
   existingProfile?: any,
+  verifiedContext?: VerifiedUserContext,
 ): Promise<CoachResponse> {
   if (!genAI) {
-    return generateFallbackResponse(userMessage, conversationHistory);
+    return generateFallbackResponse(userMessage, conversationHistory, verifiedContext);
   }
 
   const history = buildConversationHistory(conversationHistory);
@@ -129,7 +222,9 @@ export async function generateCoachResponse(
     ? `\n\nExisting financial profile from previous assessment:\n${JSON.stringify(existingProfile, null, 2)}\n\nUse this as context but update if the user provides new information.`
     : "";
 
-  const prompt = `${SYSTEM_PROMPT}${contextNote}
+  const verifiedNote = verifiedContext ? buildVerifiedContextPrompt(verifiedContext) : "";
+
+  const prompt = `${SYSTEM_PROMPT}${verifiedNote}${contextNote}
 
 CONVERSATION SO FAR:
 ${history}
@@ -148,7 +243,7 @@ Respond as the AI Coach:`;
     return parseCoachResponse(text);
   } catch (error) {
     console.error("[Coach] Gemini API error:", error);
-    return generateFallbackResponse(userMessage, conversationHistory);
+    return generateFallbackResponse(userMessage, conversationHistory, verifiedContext);
   }
 }
 
@@ -175,8 +270,33 @@ function parseCoachResponse(text: string): CoachResponse {
 function generateFallbackResponse(
   userMessage: string,
   history: Array<{ role: string; content: string }>,
+  verifiedContext?: VerifiedUserContext,
 ): CoachResponse {
   const isFirstMessage = history.length <= 1;
+
+  if (isFirstMessage && verifiedContext?.hasApplication) {
+    const app = verifiedContext;
+    const parts: string[] = [];
+    parts.push(`Welcome back! I can see you already have an application on file (status: ${app.applicationStatus}).`);
+
+    if (app.annualIncome || app.creditScore || app.employmentType) {
+      parts.push("\nHere's what I know from your application:");
+      if (app.annualIncome) parts.push(`- **Annual Income:** $${parseFloat(app.annualIncome).toLocaleString()}`);
+      if (app.creditScore) parts.push(`- **Credit Score:** ${app.creditScore}`);
+      if (app.employmentType) parts.push(`- **Employment:** ${app.employmentType === "self_employed" ? "Self-Employed" : app.employmentType.charAt(0).toUpperCase() + app.employmentType.slice(1)}`);
+      if (app.monthlyDebts) parts.push(`- **Monthly Debts:** $${parseFloat(app.monthlyDebts).toLocaleString()}`);
+      if (app.dtiRatio) parts.push(`- **DTI Ratio:** ${app.dtiRatio}%`);
+      if (app.isVeteran) parts.push(`- **Veteran:** Yes (VA loan eligible)`);
+    }
+
+    parts.push("\nI'll use this verified information to give you the most accurate guidance. What would you like help with? I can:");
+    parts.push("- Assess your mortgage readiness and create an action plan");
+    parts.push("- Tell you exactly which documents you'll need");
+    parts.push("- Help you understand your loan options");
+    parts.push("- Answer any questions about the mortgage process");
+
+    return { message: parts.join("\n") };
+  }
 
   if (isFirstMessage) {
     return {
@@ -209,31 +329,8 @@ What's your credit score range, if you know it? And how about your current debts
   }
 
   if (lowerMsg.includes("document") || lowerMsg.includes("paperwork") || lowerMsg.includes("what do i need")) {
-    return {
-      message: `Great that you're thinking ahead about documents! The specific documents you'll need depend on your situation, but here are the basics most lenders require:
-
-**For everyone:**
-- Government-issued photo ID
-- Social Security card
-- Bank statements (last 2 months, all pages)
-
-**For W-2 employees:**
-- Recent pay stubs (last 30 days)
-- W-2 forms (last 2 years)
-- Federal tax returns (last 2 years)
-
-**For self-employed borrowers:**
-- Federal tax returns (last 2 years, personal AND business)
-- Profit & loss statements
-- Business license
-
-**Additional (if applicable):**
-- VA borrowers: DD-214 and Certificate of Eligibility
-- Gift funds: Gift letter from the donor
-- Divorce: Divorce decree and settlement agreement
-
-Tell me more about your employment situation and I can give you a precise checklist tailored to your needs.`,
-    };
+    const docResponse = buildDocumentResponse(verifiedContext);
+    return { message: docResponse };
   }
 
   return {
@@ -245,4 +342,70 @@ Tell me more about your employment situation and I can give you a precise checkl
 
 This will help me determine your readiness tier and create a tailored action plan just for you.`,
   };
+}
+
+function buildDocumentResponse(ctx?: VerifiedUserContext): string {
+  const parts: string[] = [];
+
+  if (ctx?.hasApplication && ctx.employmentType) {
+    parts.push("Based on your application, here's your personalized document checklist:\n");
+
+    parts.push("**For everyone:**");
+    parts.push("- Government-issued photo ID");
+    parts.push("- Social Security card");
+    parts.push("- Bank statements (last 2 months, all pages)\n");
+
+    if (ctx.employmentType === "self_employed") {
+      parts.push("**For self-employed borrowers (like you):**");
+      parts.push("- Federal tax returns (last 2 years, personal AND business)");
+      parts.push("- Profit & loss statements (year-to-date)");
+      parts.push("- 1099 forms");
+      parts.push("- Business bank statements (last 2 months)");
+      parts.push("- Business license\n");
+    } else {
+      parts.push("**For W-2 employees (like you):**");
+      parts.push("- Recent pay stubs (last 30 days)");
+      parts.push("- W-2 forms (last 2 years)");
+      parts.push("- Federal tax returns (last 2 years)\n");
+    }
+
+    if (ctx.isVeteran) {
+      parts.push("**For VA loan eligibility:**");
+      parts.push("- DD-214 (Certificate of Release or Discharge)");
+      parts.push("- Certificate of Eligibility (COE)\n");
+    }
+
+    if (ctx.isFirstTimeBuyer) {
+      parts.push("**Recommended for first-time buyers:**");
+      parts.push("- Homebuyer education certificate\n");
+    }
+
+    if (ctx.uploadedDocuments && ctx.uploadedDocuments.length > 0) {
+      const uploaded = ctx.uploadedDocuments.filter(d => d.status === "verified" || d.status === "uploaded");
+      if (uploaded.length > 0) {
+        parts.push(`You've already uploaded ${uploaded.length} document(s). I can see what's still missing if you'd like a more detailed breakdown.`);
+      }
+    }
+  } else {
+    parts.push("Great that you're thinking ahead about documents! The specific documents you'll need depend on your situation, but here are the basics most lenders require:\n");
+    parts.push("**For everyone:**");
+    parts.push("- Government-issued photo ID");
+    parts.push("- Social Security card");
+    parts.push("- Bank statements (last 2 months, all pages)\n");
+    parts.push("**For W-2 employees:**");
+    parts.push("- Recent pay stubs (last 30 days)");
+    parts.push("- W-2 forms (last 2 years)");
+    parts.push("- Federal tax returns (last 2 years)\n");
+    parts.push("**For self-employed borrowers:**");
+    parts.push("- Federal tax returns (last 2 years, personal AND business)");
+    parts.push("- Profit & loss statements");
+    parts.push("- Business license\n");
+    parts.push("**Additional (if applicable):**");
+    parts.push("- VA borrowers: DD-214 and Certificate of Eligibility");
+    parts.push("- Gift funds: Gift letter from the donor");
+    parts.push("- Divorce: Divorce decree and settlement agreement\n");
+    parts.push("Tell me more about your employment situation and I can give you a precise checklist tailored to your needs.");
+  }
+
+  return parts.join("\n");
 }

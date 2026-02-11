@@ -5117,6 +5117,66 @@ export const insertPreApprovalConditionSchema = createInsertSchema(preApprovalCo
   createdAt: true,
 });
 
+// Pre-Qualification Letters - lighter-weight preliminary assessment letters
+// Can be generated from submitted applications before full underwriting
+export const preQualificationLetters = pgTable("pre_qualification_letters", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  letterNumber: varchar("letter_number", { length: 50 }).notNull().unique(),
+  borrowerName: varchar("borrower_name", { length: 255 }).notNull(),
+  applicationId: varchar("application_id").references(() => loanApplications.id).notNull(),
+
+  estimatedAmount: decimal("estimated_amount", { precision: 14, scale: 2 }).notNull(),
+  productType: varchar("product_type", { length: 20 }).notNull(),
+  occupancy: varchar("occupancy", { length: 20 }).notNull(),
+  loanPurpose: varchar("loan_purpose", { length: 50 }),
+
+  annualIncome: decimal("annual_income", { precision: 12, scale: 2 }),
+  creditScoreRange: varchar("credit_score_range", { length: 50 }),
+  employmentType: varchar("employment_type", { length: 50 }),
+  estimatedDti: decimal("estimated_dti", { precision: 5, scale: 2 }),
+  downPaymentPercent: decimal("down_payment_percent", { precision: 5, scale: 2 }),
+
+  expirationDate: timestamp("expiration_date").notNull(),
+  status: varchar("status", { length: 20 }).notNull().default("issued"),
+
+  generatedAt: timestamp("generated_at").defaultNow(),
+  companyLegalName: varchar("company_legal_name", { length: 255 }).notNull(),
+  companyNmlsId: varchar("company_nmls_id", { length: 50 }).notNull(),
+  companyContactInfo: text("company_contact_info"),
+
+  loanOfficerId: varchar("loan_officer_id").references(() => users.id),
+  loanOfficerNmlsId: varchar("loan_officer_nmls_id", { length: 50 }),
+
+  pdfStorageKey: varchar("pdf_storage_key", { length: 500 }),
+  pdfGeneratedAt: timestamp("pdf_generated_at"),
+
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_pre_qual_letters_application").on(table.applicationId),
+  index("idx_pre_qual_letters_status").on(table.status),
+]);
+
+export const preQualificationLettersRelations = relations(preQualificationLetters, ({ one }) => ({
+  application: one(loanApplications, {
+    fields: [preQualificationLetters.applicationId],
+    references: [loanApplications.id],
+  }),
+  loanOfficer: one(users, {
+    fields: [preQualificationLetters.loanOfficerId],
+    references: [users.id],
+  }),
+}));
+
+export const insertPreQualificationLetterSchema = createInsertSchema(preQualificationLetters).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertPreQualificationLetter = z.infer<typeof insertPreQualificationLetterSchema>;
+export type PreQualificationLetter = typeof preQualificationLetters.$inferSelect;
+
 // Letter Generation Log - audit trail of letter creation events
 // Tracks every letter generation attempt for compliance
 export const LETTER_GENERATION_EVENTS = [

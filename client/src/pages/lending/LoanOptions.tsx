@@ -125,6 +125,7 @@ export default function LoanOptions() {
             </p>
             <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
               <GenerateLetterButton applicationId={application.id} status={application.status} />
+              <PreQualLetterButton applicationId={application.id} status={application.status} />
             </div>
           </div>
         </div>
@@ -302,6 +303,78 @@ export default function LoanOptions() {
 
       <Footer />
     </div>
+  );
+}
+
+function PreQualLetterButton({ applicationId, status }: { applicationId: string; status: string }) {
+  const { toast } = useToast();
+
+  const prequalStatusQuery = useQuery<{ hasLetter: boolean; letterNumber?: string; estimatedAmount?: string }>({
+    queryKey: ["/api/loan-applications", applicationId, "prequal-status"],
+  });
+
+  const generateMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", `/api/loan-applications/${applicationId}/generate-prequal`);
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      toast({ title: "Letter Generated", description: `Pre-qualification letter #${data.letterNumber} is ready.` });
+      queryClient.invalidateQueries({ queryKey: ["/api/loan-applications", applicationId, "prequal-status"] });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to generate pre-qualification letter.", variant: "destructive" });
+    },
+  });
+
+  const handleDownload = async () => {
+    try {
+      const res = await fetch(`/api/loan-applications/${applicationId}/prequal-pdf`, { credentials: "include" });
+      if (!res.ok) throw new Error("Download failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `pre-qualification-letter.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast({ title: "Error", description: "Failed to download letter.", variant: "destructive" });
+    }
+  };
+
+  const validStatuses = ["submitted", "analyzing", "pre_approved", "verified", "underwriting", "approved"];
+  if (!validStatuses.includes(status)) return null;
+
+  if (status === "pre_approved") return null;
+
+  const hasLetter = prequalStatusQuery.data?.hasLetter;
+
+  return (
+    <>
+      {!hasLetter && (
+        <Button
+          onClick={() => generateMutation.mutate()}
+          disabled={generateMutation.isPending}
+          variant="outline"
+          className="gap-2"
+          data-testid="button-generate-prequal"
+        >
+          {generateMutation.isPending ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <FileText className="h-4 w-4" />
+          )}
+          {generateMutation.isPending ? "Generating..." : "Get Pre-Qualification Letter"}
+        </Button>
+      )}
+      {hasLetter && (
+        <Button onClick={handleDownload} variant="outline" className="gap-2" data-testid="button-download-prequal">
+          <Download className="h-4 w-4" />
+          Download Pre-Qualification Letter
+        </Button>
+      )}
+    </>
   );
 }
 
