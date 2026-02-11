@@ -12,7 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { BorrowerRequests } from "@/components/BorrowerRequests";
 import { ApplicationSwitcher } from "@/components/ApplicationSwitcher";
 import { JourneyTracker } from "@/components/JourneyTracker";
-import { WhatsNext } from "@/components/WhatsNext";
+import { WhatsNext, FirstVisitWelcome } from "@/components/WhatsNext";
 import { isStaffRole } from "@shared/schema";
 import type { LoanApplication, DealActivity } from "@shared/schema";
 import {
@@ -387,44 +387,34 @@ export default function Dashboard() {
         )}
 
         {!activeApplication && (
-          <Card className="shadow-lg" data-testid="card-empty-state">
-            <CardContent className="py-12 text-center">
-              <div className="flex h-16 w-16 mx-auto items-center justify-center rounded-full border-2 border-dashed mb-4">
-                <FileText className="h-8 w-8 text-muted-foreground" />
+          <FirstVisitWelcome
+            userName={user?.firstName || undefined}
+            hasApplication={applications.length > 0}
+            hasDocuments={(data?.stats?.pendingDocuments || 0) > 0 || applications.some(a => a.status !== "draft")}
+          />
+        )}
+
+        {activeApplication && (
+          <Card className="hover-elevate" data-testid="card-ai-coach-cta">
+            <CardContent className="flex items-center gap-4 py-6">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                <Sparkles className="h-6 w-6 text-primary" />
               </div>
-              <h3 className="text-lg font-semibold mb-2">Ready to get started?</h3>
-              <p className="text-muted-foreground mb-6 max-w-sm mx-auto">
-                Get pre-approved in as little as 3 minutes. No commitment, no credit impact.
-              </p>
-              <Link href="/apply">
-                <Button size="lg" data-testid="button-get-preapproved">
-                  Get Pre-Approved
+              <div className="flex-1 min-w-0">
+                <h3 className="font-semibold">AI Homebuyer Coach</h3>
+                <p className="text-sm text-muted-foreground">
+                  Get personalized guidance on your mortgage readiness, documents you'll need, and steps to strengthen your application.
+                </p>
+              </div>
+              <Link href="/ai-coach">
+                <Button variant="outline" data-testid="button-open-ai-coach">
+                  Start Chat
                   <ArrowRight className="h-4 w-4 ml-2" />
                 </Button>
               </Link>
             </CardContent>
           </Card>
         )}
-
-        <Card className="hover-elevate" data-testid="card-ai-coach-cta">
-          <CardContent className="flex items-center gap-4 py-6">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10">
-              <Sparkles className="h-6 w-6 text-primary" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h3 className="font-semibold">AI Homebuyer Coach</h3>
-              <p className="text-sm text-muted-foreground">
-                Get personalized guidance on your mortgage readiness, documents you'll need, and steps to strengthen your application.
-              </p>
-            </div>
-            <Link href="/ai-coach">
-              <Button variant="outline" data-testid="button-open-ai-coach">
-                Start Chat
-                <ArrowRight className="h-4 w-4 ml-2" />
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
 
       </div>
     </div>

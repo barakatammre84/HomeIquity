@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useParams, Link, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -129,6 +130,7 @@ function DocumentRequestDialog({
   const [selectedDocType, setSelectedDocType] = useState("");
   const [description, setDescription] = useState("");
   const [, navigate] = useLocation();
+  const { toast } = useToast();
   
   const sendDocRequestMutation = useMutation({
     mutationFn: async (data: { 
@@ -143,9 +145,13 @@ function DocumentRequestDialog({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/messages", recipientId] });
       queryClient.invalidateQueries({ queryKey: ["/api/messages/conversations"] });
+      toast({ title: "Document requested", description: "Your request has been sent to the team." });
       setOpen(false);
       setSelectedDocType("");
       setDescription("");
+    },
+    onError: () => {
+      toast({ title: "Request failed", description: "Could not send the document request. Please try again.", variant: "destructive" });
     },
   });
   
@@ -301,6 +307,7 @@ export default function Messages() {
   const memberId = params.memberId;
   const [message, setMessage] = useState("");
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
 
   // Presence heartbeat - update every 30 seconds
   useEffect(() => {
@@ -348,6 +355,9 @@ export default function Messages() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/messages", memberId] });
       queryClient.invalidateQueries({ queryKey: ["/api/messages/conversations"] });
+    },
+    onError: () => {
+      toast({ title: "Message not sent", description: "Something went wrong. Please try again.", variant: "destructive" });
     },
   });
 

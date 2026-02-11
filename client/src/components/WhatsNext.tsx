@@ -1,6 +1,7 @@
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import {
   ArrowRight,
   Upload,
@@ -12,8 +13,10 @@ import {
   Calculator,
   Shield,
   Clock,
+  Bot,
+  CheckCircle2,
 } from "lucide-react";
-import type { LoanApplication, Task } from "@shared/schema";
+import type { LoanApplication } from "@shared/schema";
 
 interface WhatsNextProps {
   application: LoanApplication | null;
@@ -231,6 +234,198 @@ export function WhatsNext(props: WhatsNextProps) {
           </Card>
         );
       })}
+    </div>
+  );
+}
+
+const ONBOARDING_STEPS = [
+  {
+    step: 1,
+    icon: FileText,
+    iconColor: "text-emerald-500",
+    bgColor: "bg-emerald-500",
+    title: "Get pre-approved",
+    description: "Answer a few questions about your finances. Takes about 3 minutes and won't affect your credit score.",
+    href: "/apply",
+    buttonLabel: "Start Application",
+  },
+  {
+    step: 2,
+    icon: Upload,
+    iconColor: "text-blue-500",
+    bgColor: "bg-blue-500",
+    title: "Upload your documents",
+    description: "Share pay stubs, bank statements, and tax returns so we can verify your information.",
+    href: "/documents",
+    buttonLabel: "View Documents",
+  },
+  {
+    step: 3,
+    icon: Bot,
+    iconColor: "text-purple-500",
+    bgColor: "bg-purple-500",
+    title: "Talk to your AI Coach",
+    description: "Get personalized guidance on your mortgage readiness and a step-by-step action plan.",
+    href: "/ai-coach",
+    buttonLabel: "Open Coach",
+  },
+  {
+    step: 4,
+    icon: Home,
+    iconColor: "text-amber-500",
+    bgColor: "bg-amber-500",
+    title: "Browse properties",
+    description: "Explore homes that fit your budget with instant mortgage estimates for each listing.",
+    href: "/properties",
+    buttonLabel: "Browse Homes",
+  },
+];
+
+interface FirstVisitWelcomeProps {
+  userName?: string;
+  hasApplication?: boolean;
+  hasDocuments?: boolean;
+}
+
+export function FirstVisitWelcome({ userName, hasApplication, hasDocuments }: FirstVisitWelcomeProps) {
+  const completedSteps = [
+    hasApplication,
+    hasDocuments,
+    false,
+    false,
+  ];
+
+  const firstIncompleteIndex = completedSteps.findIndex(s => !s);
+  const completedCount = completedSteps.filter(Boolean).length;
+
+  return (
+    <div className="space-y-5" data-testid="first-visit-welcome">
+      <div className="text-center py-2">
+        <div className="mx-auto w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
+          <Sparkles className="h-7 w-7 text-primary" />
+        </div>
+        <h2 className="text-xl font-bold text-foreground" data-testid="text-welcome-heading">
+          {userName ? `Welcome, ${userName}!` : "Welcome to Baranest"}
+        </h2>
+        <p className="text-sm text-muted-foreground mt-2 max-w-md mx-auto leading-relaxed">
+          Your path to homeownership starts here. Follow these steps to get pre-approved and start shopping for your dream home.
+        </p>
+      </div>
+
+      <div className="flex items-center justify-center gap-2 pb-1">
+        <Badge variant="secondary" className="text-xs" data-testid="badge-progress">
+          {completedCount} of {ONBOARDING_STEPS.length} completed
+        </Badge>
+      </div>
+
+      <div className="space-y-3">
+        {ONBOARDING_STEPS.map((step, index) => {
+          const Icon = step.icon;
+          const isComplete = completedSteps[index];
+          const isActive = index === firstIncompleteIndex;
+
+          return (
+            <Card
+              key={step.step}
+              className={isActive ? "border-primary/30 shadow-md" : ""}
+              data-testid={`card-onboarding-step-${step.step}`}
+            >
+              <CardContent className="p-4">
+                <div className="flex items-start gap-3">
+                  <div className="flex flex-col items-center gap-1">
+                    <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
+                      isComplete
+                        ? "border-emerald-500 bg-emerald-500 text-white"
+                        : isActive
+                        ? `border-primary bg-primary/10 ${step.iconColor}`
+                        : "border-border text-muted-foreground"
+                    }`}>
+                      {isComplete ? (
+                        <CheckCircle2 className="h-4 w-4" />
+                      ) : (
+                        <Icon className="h-4 w-4" />
+                      )}
+                    </div>
+                    {index < ONBOARDING_STEPS.length - 1 && (
+                      <div className={`w-0.5 h-4 rounded-full ${
+                        isComplete ? "bg-emerald-500" : "bg-border"
+                      }`} />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0 pt-0.5">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className={`text-sm font-medium ${
+                        isComplete ? "text-muted-foreground line-through" : "text-foreground"
+                      }`} data-testid={`text-step-title-${step.step}`}>
+                        {step.title}
+                      </p>
+                      {isComplete && (
+                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20">
+                          Done
+                        </Badge>
+                      )}
+                      {isActive && (
+                        <Badge variant="default" className="text-[10px] px-1.5 py-0">
+                          Next
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                      {step.description}
+                    </p>
+                  </div>
+                  {(isActive || isComplete) && (
+                    <Link href={step.href} className="shrink-0" data-testid={`link-step-${step.step}`}>
+                      <Button
+                        variant={isActive ? "default" : "ghost"}
+                        size="sm"
+                        data-testid={`button-step-${step.step}`}
+                      >
+                        {isActive ? step.buttonLabel : "View"}
+                        <ArrowRight className="h-3 w-3 ml-1" />
+                      </Button>
+                    </Link>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+
+      <Card className="hover-elevate" data-testid="card-quick-tools">
+        <CardContent className="p-4">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+            Quick Tools
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            <Link href="/calculators/affordability" data-testid="link-quick-calculator">
+              <Button variant="outline" size="sm" className="w-full justify-start gap-2" data-testid="button-quick-calculator">
+                <Calculator className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                Affordability
+              </Button>
+            </Link>
+            <Link href="/rates" data-testid="link-quick-rates">
+              <Button variant="outline" size="sm" className="w-full justify-start gap-2" data-testid="button-quick-rates">
+                <Shield className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                Today's Rates
+              </Button>
+            </Link>
+            <Link href="/first-time-buyer" data-testid="link-quick-ftb">
+              <Button variant="outline" size="sm" className="w-full justify-start gap-2" data-testid="button-quick-ftb">
+                <BookOpen className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                Buyer Guide
+              </Button>
+            </Link>
+            <Link href="/down-payment-wizard" data-testid="link-quick-dpa">
+              <Button variant="outline" size="sm" className="w-full justify-start gap-2" data-testid="button-quick-dpa">
+                <Sparkles className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                Down Payment
+              </Button>
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

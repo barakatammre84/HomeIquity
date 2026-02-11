@@ -172,7 +172,7 @@ export default function Documents() {
         }),
       });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
-      toast({ title: "Document uploaded successfully" });
+      toast({ title: "Document uploaded", description: "We'll review it shortly. You'll be notified when it's processed." });
     }
 
     if (fileInputRef.current) {

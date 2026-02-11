@@ -537,6 +537,7 @@ export default function PreApproval() {
       } else {
         toast({ 
           title: "Please fill out this field", 
+          description: "This information is required to continue.",
           variant: "destructive" 
         });
       }
