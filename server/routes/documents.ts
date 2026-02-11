@@ -8,6 +8,7 @@ import {
 import { upload } from "./utils";
 import { ObjectStorageService, ObjectNotFoundError } from "../replit_integrations/object_storage";
 import { isStaffRole, type User } from "@shared/schema";
+import { logAudit } from "../auditLog";
 
 const objectStorageService = new ObjectStorageService();
 
@@ -63,6 +64,7 @@ export function registerDocumentRoutes(
       if (!hasAccess) {
         return res.status(403).json({ error: "Unauthorized" });
       }
+      logAudit(req, "document.download", "document", req.path, { staffAccess: isStaffRole(user.role) });
       const objectFile = await objectStorageService.getObjectEntityFile(req.path);
       await objectStorageService.downloadObject(objectFile, res);
     } catch (error) {

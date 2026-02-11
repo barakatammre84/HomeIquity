@@ -10,9 +10,31 @@ import { generateMISMO34XML, type MISMOLoanDTO } from "../mismo";
 import { z } from "zod";
 import crypto from "crypto";
 import { upload } from "./utils";
+import { logAudit } from "../auditLog";
 
 const declarationsValidationSchema = insertBorrowerDeclarationsSchema.partial().extend({
   applicationId: z.string().optional(),
+});
+
+const loanApplicationInputSchema = z.object({
+  annualIncome: z.string().or(z.number()).transform(v => String(v).replace(/[,$]/g, "")),
+  monthlyDebts: z.string().or(z.number()).transform(v => String(v).replace(/[,$]/g, "")),
+  creditScore: z.string().or(z.number()).transform(v => {
+    const n = parseInt(String(v));
+    return isNaN(n) ? 700 : Math.max(300, Math.min(850, n));
+  }),
+  employmentType: z.string().min(1).max(50).optional(),
+  employmentYears: z.string().or(z.number()).transform(v => {
+    const n = parseInt(String(v));
+    return isNaN(n) ? 0 : Math.max(0, Math.min(80, n));
+  }).optional(),
+  propertyType: z.string().max(50).optional(),
+  purchasePrice: z.string().or(z.number()).transform(v => String(v).replace(/[,$]/g, "")),
+  downPayment: z.string().or(z.number()).transform(v => String(v).replace(/[,$]/g, "")),
+  loanPurpose: z.string().max(50).optional(),
+  isVeteran: z.boolean().optional().default(false),
+  isFirstTimeBuyer: z.boolean().optional().default(false),
+  propertyState: z.string().max(2).optional(),
 });
 
 export function registerLendingRoutes(
@@ -265,9 +287,12 @@ export function registerLendingRoutes(
       const user = req.user as User;
       const userId = user.id;
       
-      const formData = req.body;
+      const parsed = loanApplicationInputSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid input", details: parsed.error.flatten().fieldErrors });
+      }
+      const formData = parsed.data;
       
-      // Check if user was referred by someone - set as referring broker for commissions
       let referringBrokerId: string | undefined = undefined;
       if (user.referredByUserId) {
         referringBrokerId = user.referredByUserId;
@@ -276,22 +301,23 @@ export function registerLendingRoutes(
       const applicationData = {
         userId,
         status: "submitted" as const,
-        annualIncome: formData.annualIncome?.replace(/[,$]/g, "") || "0",
-        monthlyDebts: formData.monthlyDebts?.replace(/[,$]/g, "") || "0",
-        creditScore: parseInt(formData.creditScore) || 700,
+        annualIncome: formData.annualIncome || "0",
+        monthlyDebts: formData.monthlyDebts || "0",
+        creditScore: formData.creditScore,
         employmentType: formData.employmentType,
-        employmentYears: parseInt(formData.employmentYears) || 0,
+        employmentYears: formData.employmentYears || 0,
         propertyType: formData.propertyType,
-        purchasePrice: formData.purchasePrice?.replace(/[,$]/g, "") || "0",
-        downPayment: formData.downPayment?.replace(/[,$]/g, "") || "0",
+        purchasePrice: formData.purchasePrice || "0",
+        downPayment: formData.downPayment || "0",
         loanPurpose: formData.loanPurpose,
-        isVeteran: formData.isVeteran || false,
-        isFirstTimeBuyer: formData.isFirstTimeBuyer || false,
+        isVeteran: formData.isVeteran,
+        isFirstTimeBuyer: formData.isFirstTimeBuyer,
         propertyState: formData.propertyState,
         referringBrokerId,
       };
 
       const application = await storage.createLoanApplication(applicationData);
+      logAudit(req, "loan_application.created", "loan_application", application.id);
 
       await storage.createDealActivity({
         applicationId: application.id,
@@ -309,7 +335,7 @@ export function registerLendingRoutes(
         const analysisResult = await analyzeLoanApplication({
           annualIncome: applicationData.annualIncome,
           monthlyDebts: applicationData.monthlyDebts,
-          creditScore: formData.creditScore,
+          creditScore: String(formData.creditScore),
           purchasePrice: applicationData.purchasePrice,
           downPayment: applicationData.downPayment,
           propertyType: applicationData.propertyType || "single_family",
@@ -317,7 +343,7 @@ export function registerLendingRoutes(
           isVeteran: applicationData.isVeteran,
           isFirstTimeBuyer: applicationData.isFirstTimeBuyer,
           employmentType: applicationData.employmentType || "employed",
-          employmentYears: formData.employmentYears || "0",
+          employmentYears: String(formData.employmentYears || 0),
         });
 
         const newStatus = analysisResult.isApproved ? "pre_approved" : "denied";

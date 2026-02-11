@@ -204,6 +204,9 @@ import {
   type InsertNotification,
   type StaffInvite,
   type InsertStaffInvite,
+  auditLogs,
+  type AuditLog,
+  type InsertAuditLog,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -721,6 +724,7 @@ export interface IStorage {
   getStaffInviteByCode(code: string): Promise<StaffInvite | undefined>;
   getStaffInvites(): Promise<StaffInvite[]>;
   redeemStaffInvite(code: string, userId: string): Promise<StaffInvite | undefined>;
+  createAuditLog(data: InsertAuditLog): Promise<AuditLog>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -3803,6 +3807,11 @@ export class DatabaseStorage implements IStorage {
       .where(and(eq(staffInvites.code, code), sql`${staffInvites.usedAt} IS NULL`))
       .returning();
     return updated;
+  }
+
+  async createAuditLog(data: InsertAuditLog): Promise<AuditLog> {
+    const [log] = await db.insert(auditLogs).values(data).returning();
+    return log;
   }
 }
 

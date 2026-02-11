@@ -2,6 +2,7 @@ import type { Express } from "express";
 import type { IStorage } from "../storage";
 import type { User } from "@shared/schema";
 import crypto from "crypto";
+import { logAudit } from "../auditLog";
 
 export function registerStaffInviteRoutes(app: Express, storage: IStorage, isAuthenticated: any, isAdmin: any) {
   app.post("/api/staff-invites", isAdmin, async (req, res) => {
@@ -91,6 +92,7 @@ export function registerStaffInviteRoutes(app: Express, storage: IStorage, isAut
       }
       
       await storage.updateUserRole(user.id, invite.role);
+      logAudit(req, "invite.redeemed", "staff_invite", code, { role: invite.role, userId: user.id });
       
       res.json({ 
         success: true, 

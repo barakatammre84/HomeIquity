@@ -6,6 +6,8 @@ import express, {
   Response,
   NextFunction,
 } from "express";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 
 import { registerRoutes } from "./routes";
 
@@ -21,6 +23,45 @@ export function log(message: string, source = "express") {
 }
 
 export const app = express();
+
+app.set("trust proxy", 1);
+
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false,
+}));
+
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 500,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many requests, please try again later" },
+  skip: (req) => !req.path.startsWith("/api"),
+});
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many login attempts, please try again later" },
+});
+
+const uploadLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 50,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many upload requests, please try again later" },
+});
+
+app.use("/api/login", authLimiter);
+app.use("/api/callback", authLimiter);
+app.use("/api/test-login", authLimiter);
+app.use("/api/uploads", uploadLimiter);
+app.use("/api/documents/upload", uploadLimiter);
+app.use(generalLimiter);
 
 declare module 'http' {
   interface IncomingMessage {

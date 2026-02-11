@@ -1,7 +1,27 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
+let sessionExpiredHandled = false;
+
+function handleSessionExpired() {
+  if (sessionExpiredHandled) return;
+  sessionExpiredHandled = true;
+  
+  const currentPath = window.location.pathname;
+  if (currentPath === "/" || currentPath === "/api/login") return;
+  
+  setTimeout(() => {
+    window.location.href = "/api/login";
+  }, 100);
+}
+
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
+    if (res.status === 401) {
+      const url = typeof res.url === "string" ? res.url : "";
+      if (!url.includes("/api/auth/user") && !url.includes("/api/notifications/unread-count")) {
+        handleSessionExpired();
+      }
+    }
     const text = (await res.text()) || res.statusText;
     throw new Error(`${res.status}: ${text}`);
   }

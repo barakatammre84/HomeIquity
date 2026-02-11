@@ -8,6 +8,7 @@ import {
   type User,
 } from "@shared/schema";
 import { z } from "zod";
+import { logAudit } from "../auditLog";
 import { refreshRates } from "../services/rateService";
 
 export function registerAdminRoutes(
@@ -68,6 +69,7 @@ export function registerAdminRoutes(
       if (!user) {
         return res.status(404).json({ error: "User not found" });
       }
+      logAudit(req, "user.role_change", "user", req.params.id, { newRole: role, previousRole: user.role });
       res.json(user);
     } catch (error) {
       console.error("Update user role error:", error);
