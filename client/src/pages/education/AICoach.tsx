@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
+import { useToast } from "@/hooks/use-toast";
 import {
   Send,
   Bot,
@@ -23,6 +24,9 @@ import {
   ChevronRight,
   Plus,
   Loader2,
+  Lightbulb,
+  Zap,
+  AlertCircle,
 } from "lucide-react";
 
 interface CoachMessage {
@@ -74,6 +78,20 @@ interface DocumentRequirement {
   category: string;
 }
 
+interface CoachInsight {
+  type: string;
+  title: string;
+  description: string;
+  action?: string;
+}
+
+interface CoachUsage {
+  todayCount: number;
+  dailyLimit: number;
+  remaining: number;
+  isLimited: boolean;
+}
+
 const TIER_CONFIG: Record<string, { label: string; color: string; icon: typeof Target }> = {
   ready_now: { label: "Ready Now", color: "bg-emerald-500", icon: CheckCircle2 },
   almost_ready: { label: "Almost Ready", color: "bg-blue-500", icon: TrendingUp },
@@ -89,6 +107,51 @@ const CATEGORY_ICONS: Record<string, typeof Target> = {
   documents: FileText,
   education: Sparkles,
 };
+
+const FOLLOW_UP_SUGGESTIONS: Record<string, string[]> = {
+  default: [
+    "What loan types am I eligible for?",
+    "How much can I afford?",
+    "What's my next step?",
+  ],
+  credit: [
+    "How do I dispute errors on my credit report?",
+    "What's the fastest way to boost my score?",
+    "Should I pay off collections?",
+  ],
+  documents: [
+    "Where can I get my tax transcripts?",
+    "Do I need all pages of my bank statements?",
+    "What if I'm missing a W-2?",
+  ],
+  income: [
+    "Does overtime count toward my income?",
+    "How is self-employment income calculated?",
+    "Can I use a co-borrower's income?",
+  ],
+  readiness: [
+    "Create an action plan for me",
+    "What should I work on first?",
+    "When will I be ready to apply?",
+  ],
+};
+
+function getFollowUpSuggestions(lastMessage: string): string[] {
+  const lower = lastMessage.toLowerCase();
+  if (lower.includes("credit") || lower.includes("score") || lower.includes("fico")) {
+    return FOLLOW_UP_SUGGESTIONS.credit;
+  }
+  if (lower.includes("document") || lower.includes("paperwork") || lower.includes("w-2") || lower.includes("tax")) {
+    return FOLLOW_UP_SUGGESTIONS.documents;
+  }
+  if (lower.includes("income") || lower.includes("salary") || lower.includes("employment")) {
+    return FOLLOW_UP_SUGGESTIONS.income;
+  }
+  if (lower.includes("readiness") || lower.includes("ready") || lower.includes("assess") || lower.includes("plan")) {
+    return FOLLOW_UP_SUGGESTIONS.readiness;
+  }
+  return FOLLOW_UP_SUGGESTIONS.default;
+}
 
 function ReadinessPanel({ profile }: { profile: CoachProfile }) {
   const tier = TIER_CONFIG[profile.readinessTier] || TIER_CONFIG.exploring;
@@ -163,7 +226,15 @@ function ReadinessPanel({ profile }: { profile: CoachProfile }) {
   );
 }
 
-function ActionPlanPanel({ plan }: { plan: ActionPlanItem[] }) {
+function ActionPlanPanel({
+  plan,
+  conversationId,
+  onToggle,
+}: {
+  plan: ActionPlanItem[];
+  conversationId: string | null;
+  onToggle?: (itemId: string) => void;
+}) {
   const completedCount = plan.filter(a => a.completed).length;
 
   return (
@@ -184,10 +255,11 @@ function ActionPlanPanel({ plan }: { plan: ActionPlanItem[] }) {
           {plan.map((item) => {
             const CatIcon = CATEGORY_ICONS[item.category] || Target;
             return (
-              <div
+              <button
                 key={item.id}
-                className={`flex items-start gap-3 p-2.5 rounded-lg border ${
-                  item.completed ? "bg-muted/50 border-muted" : "border-border"
+                onClick={() => onToggle?.(item.id)}
+                className={`w-full text-left flex items-start gap-3 p-2.5 rounded-lg border transition-colors ${
+                  item.completed ? "bg-muted/50 border-muted" : "border-border hover-elevate"
                 }`}
                 data-testid={`action-item-${item.id}`}
               >
@@ -211,10 +283,25 @@ function ActionPlanPanel({ plan }: { plan: ActionPlanItem[] }) {
                   <p className="text-xs text-muted-foreground mt-0.5">{item.description}</p>
                 </div>
                 <CatIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
-              </div>
+              </button>
             );
           })}
         </div>
+        {completedCount > 0 && completedCount < plan.length && (
+          <div className="mt-3">
+            <Progress value={(completedCount / plan.length) * 100} className="h-1.5" />
+            <p className="text-[10px] text-muted-foreground mt-1 text-center">
+              {completedCount} of {plan.length} completed
+            </p>
+          </div>
+        )}
+        {completedCount === plan.length && plan.length > 0 && (
+          <div className="mt-3 p-2 rounded-lg bg-emerald-500/10 text-center">
+            <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
+              All action items completed!
+            </p>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
@@ -314,7 +401,96 @@ function MessageContent({ content }: { content: string }) {
   );
 }
 
-function WelcomeState({ onStart }: { onStart: (msg: string) => void }) {
+function SuggestedPrompts({
+  suggestions,
+  onSelect,
+  disabled,
+}: {
+  suggestions: string[];
+  onSelect: (msg: string) => void;
+  disabled: boolean;
+}) {
+  return (
+    <div className="flex flex-wrap gap-1.5 px-1 pb-2" data-testid="suggested-prompts">
+      {suggestions.map((s, i) => (
+        <Button
+          key={i}
+          variant="outline"
+          size="sm"
+          className="text-xs gap-1.5 h-auto py-1.5"
+          onClick={() => onSelect(s)}
+          disabled={disabled}
+          data-testid={`button-suggestion-${i}`}
+        >
+          <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" />
+          {s}
+        </Button>
+      ))}
+    </div>
+  );
+}
+
+function InsightsBanner({
+  insights,
+  onAction,
+}: {
+  insights: CoachInsight[];
+  onAction: (msg: string) => void;
+}) {
+  if (insights.length === 0) return null;
+
+  return (
+    <div className="space-y-2 px-4 pt-4" data-testid="insights-banner">
+      {insights.slice(0, 2).map((insight, i) => (
+        <div
+          key={i}
+          className="flex items-start gap-3 p-3 rounded-lg border border-amber-500/20 bg-amber-500/5"
+          data-testid={`insight-${insight.type}`}
+        >
+          <Lightbulb className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-foreground">{insight.title}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{insight.description}</p>
+          </div>
+          {insight.action && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="shrink-0 text-xs"
+              onClick={() => onAction(insight.action!)}
+              data-testid={`button-insight-action-${insight.type}`}
+            >
+              <Zap className="h-3 w-3 mr-1" />
+              Ask
+            </Button>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function UsageMeter({ usage }: { usage: CoachUsage }) {
+  if (!usage.isLimited && usage.remaining > 10) return null;
+
+  return (
+    <div className="flex items-center gap-2 px-1 pb-1" data-testid="usage-meter">
+      {usage.isLimited ? (
+        <div className="flex items-center gap-1.5 text-xs text-destructive">
+          <AlertCircle className="h-3 w-3" />
+          <span>Daily limit reached. Resets tomorrow.</span>
+        </div>
+      ) : (
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Clock className="h-3 w-3" />
+          <span>{usage.remaining} messages remaining today</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function WelcomeState({ onStart, insights }: { onStart: (msg: string) => void; insights: CoachInsight[] }) {
   const starters = [
     { label: "I want to buy my first home", icon: Target },
     { label: "Am I ready for a mortgage?", icon: TrendingUp },
@@ -337,6 +513,37 @@ function WelcomeState({ onStart }: { onStart: (msg: string) => void }) {
             and tell you exactly which documents you'll need for your mortgage application.
           </p>
         </div>
+
+        {insights.length > 0 && (
+          <div className="space-y-2 text-left">
+            {insights.slice(0, 2).map((insight, i) => (
+              <div
+                key={i}
+                className="flex items-start gap-3 p-3 rounded-lg border border-amber-500/20 bg-amber-500/5"
+                data-testid={`welcome-insight-${insight.type}`}
+              >
+                <Lightbulb className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-foreground">{insight.title}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{insight.description}</p>
+                </div>
+                {insight.action && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0 text-xs"
+                    onClick={() => onStart(insight.action!)}
+                    data-testid={`button-welcome-insight-${insight.type}`}
+                  >
+                    <Zap className="h-3 w-3 mr-1" />
+                    Ask
+                  </Button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
         <div className="grid grid-cols-1 gap-2">
           {starters.map((s) => (
             <Button
@@ -420,6 +627,7 @@ export default function AICoach() {
   const [showSidebar, setShowSidebar] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const { toast } = useToast();
 
   const { data: conversations = [], isLoading: loadingConvs } = useQuery<CoachConversation[]>({
     queryKey: ["/api/coach/conversations"],
@@ -431,6 +639,14 @@ export default function AICoach() {
   }>({
     queryKey: ["/api/coach/conversations", activeConversationId],
     enabled: !!activeConversationId,
+  });
+
+  const { data: usage } = useQuery<CoachUsage>({
+    queryKey: ["/api/coach/usage"],
+  });
+
+  const { data: insightsData } = useQuery<{ insights: CoachInsight[]; hasApplication: boolean; hasAssessment: boolean }>({
+    queryKey: ["/api/coach/insights"],
   });
 
   const sendMessage = useMutation({
@@ -447,6 +663,34 @@ export default function AICoach() {
       }
       queryClient.invalidateQueries({ queryKey: ["/api/coach/conversations"] });
       queryClient.invalidateQueries({ queryKey: ["/api/coach/conversations", data.conversationId || activeConversationId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/coach/usage"] });
+    },
+    onError: (error: Error) => {
+      if (error.message.includes("429")) {
+        toast({
+          title: "Daily Limit Reached",
+          description: "You've reached your daily message limit. It resets tomorrow.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to send message. Please try again.",
+          variant: "destructive",
+        });
+      }
+    },
+  });
+
+  const toggleActionItem = useMutation({
+    mutationFn: async (itemId: string) => {
+      if (!activeConversationId) return;
+      const res = await apiRequest("PATCH", `/api/coach/conversations/${activeConversationId}/action-plan/${itemId}`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/coach/conversations", activeConversationId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/coach/conversations"] });
     },
   });
 
@@ -454,11 +698,11 @@ export default function AICoach() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [activeData?.messages]);
 
-  const handleSend = () => {
-    const msg = inputValue.trim();
-    if (!msg || sendMessage.isPending) return;
+  const handleSend = (msg?: string) => {
+    const text = (msg || inputValue).trim();
+    if (!text || sendMessage.isPending || usage?.isLimited) return;
     setInputValue("");
-    sendMessage.mutate(msg);
+    sendMessage.mutate(text);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -474,6 +718,12 @@ export default function AICoach() {
   const actionPlan = activeConv?.actionPlan as ActionPlanItem[] | null;
   const documentChecklist = activeConv?.documentChecklist as DocumentRequirement[] | null;
   const hasSidePanel = profile || actionPlan || documentChecklist;
+
+  const lastAssistantMsg = [...messages].reverse().find(m => m.role === "assistant");
+  const suggestions = lastAssistantMsg ? getFollowUpSuggestions(lastAssistantMsg.content) : [];
+  const showSuggestions = messages.length > 0 && !sendMessage.isPending && suggestions.length > 0;
+
+  const insights = insightsData?.insights || [];
 
   return (
     <div className="flex h-[calc(100vh-4rem)]" data-testid="page-ai-coach">
@@ -500,51 +750,66 @@ export default function AICoach() {
 
       <div className="flex-1 flex flex-col min-w-0">
         {!activeConversationId && messages.length === 0 ? (
-          <WelcomeState onStart={(msg) => {
-            setInputValue("");
-            sendMessage.mutate(msg);
-          }} />
+          <WelcomeState
+            onStart={(msg) => handleSend(msg)}
+            insights={insights}
+          />
         ) : (
-          <div className="flex-1 overflow-y-auto p-4 space-y-4" data-testid="chat-messages-container">
-            {messages.map((msg) => (
-              <ChatMessage key={msg.id} message={msg} />
-            ))}
-            {sendMessage.isPending && (
-              <div className="flex gap-3">
-                <div className="shrink-0 h-8 w-8 rounded-full flex items-center justify-center bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                  <Bot className="h-4 w-4" />
-                </div>
-                <div className="bg-muted rounded-xl px-4 py-3 flex items-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span className="text-sm text-muted-foreground">Thinking...</span>
-                </div>
-              </div>
+          <>
+            {insights.length > 0 && messages.length === 0 && (
+              <InsightsBanner insights={insights} onAction={(msg) => handleSend(msg)} />
             )}
-            <div ref={messagesEndRef} />
-          </div>
+            <div className="flex-1 overflow-y-auto p-4 space-y-4" data-testid="chat-messages-container">
+              {messages.map((msg) => (
+                <ChatMessage key={msg.id} message={msg} />
+              ))}
+              {sendMessage.isPending && (
+                <div className="flex gap-3">
+                  <div className="shrink-0 h-8 w-8 rounded-full flex items-center justify-center bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                    <Bot className="h-4 w-4" />
+                  </div>
+                  <div className="bg-muted rounded-xl px-4 py-3 flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span className="text-sm text-muted-foreground">Thinking...</span>
+                  </div>
+                </div>
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+          </>
         )}
 
         <div className="border-t p-3">
-          <div className="flex gap-2 max-w-3xl mx-auto">
-            <Textarea
-              ref={textareaRef}
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Ask about your mortgage readiness, documents, credit..."
-              className="resize-none min-h-[44px] max-h-[120px] text-sm"
-              rows={1}
-              disabled={sendMessage.isPending}
-              data-testid="input-coach-message"
-            />
-            <Button
-              size="icon"
-              onClick={handleSend}
-              disabled={!inputValue.trim() || sendMessage.isPending}
-              data-testid="button-send-message"
-            >
-              <Send className="h-4 w-4" />
-            </Button>
+          <div className="max-w-3xl mx-auto space-y-2">
+            {showSuggestions && (
+              <SuggestedPrompts
+                suggestions={suggestions}
+                onSelect={(msg) => handleSend(msg)}
+                disabled={sendMessage.isPending || !!usage?.isLimited}
+              />
+            )}
+            {usage && <UsageMeter usage={usage} />}
+            <div className="flex gap-2">
+              <Textarea
+                ref={textareaRef}
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder={usage?.isLimited ? "Daily limit reached. Try again tomorrow." : "Ask about your mortgage readiness, documents, credit..."}
+                className="resize-none min-h-[44px] max-h-[120px] text-sm"
+                rows={1}
+                disabled={sendMessage.isPending || !!usage?.isLimited}
+                data-testid="input-coach-message"
+              />
+              <Button
+                size="icon"
+                onClick={() => handleSend()}
+                disabled={!inputValue.trim() || sendMessage.isPending || !!usage?.isLimited}
+                data-testid="button-send-message"
+              >
+                <Send className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -552,7 +817,13 @@ export default function AICoach() {
       {hasSidePanel && (
         <div className="w-80 border-l overflow-y-auto p-3 space-y-3 hidden xl:block" data-testid="coach-side-panel">
           {profile && <ReadinessPanel profile={profile} />}
-          {actionPlan && actionPlan.length > 0 && <ActionPlanPanel plan={actionPlan} />}
+          {actionPlan && actionPlan.length > 0 && (
+            <ActionPlanPanel
+              plan={actionPlan}
+              conversationId={activeConversationId}
+              onToggle={(itemId) => toggleActionItem.mutate(itemId)}
+            />
+          )}
           {documentChecklist && documentChecklist.length > 0 && <DocumentChecklistPanel docs={documentChecklist} />}
         </div>
       )}

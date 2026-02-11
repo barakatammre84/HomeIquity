@@ -120,6 +120,27 @@ export function registerCoachRoutes(app: Express) {
       }
 
       const { message, conversationId } = parsed.data;
+
+      const allConvs = await storage.getCoachConversationsByUser(user.id);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      let todayCount = 0;
+      const dailyLimit = 30;
+      for (const c of allConvs) {
+        const msgs = await storage.getCoachMessages(c.id);
+        todayCount += msgs.filter(m =>
+          m.role === "user" && m.createdAt && new Date(m.createdAt) >= today
+        ).length;
+      }
+      if (todayCount >= dailyLimit) {
+        return res.status(429).json({
+          error: "Daily message limit reached",
+          remaining: 0,
+          dailyLimit,
+          resetsAt: new Date(today.getTime() + 24 * 60 * 60 * 1000).toISOString(),
+        });
+      }
+
       let conversation;
 
       if (conversationId) {
@@ -196,6 +217,123 @@ export function registerCoachRoutes(app: Express) {
     } catch (error) {
       console.error("Coach message error:", error);
       res.status(500).json({ error: "Failed to process message" });
+    }
+  });
+
+  app.patch("/api/coach/conversations/:id/action-plan/:itemId", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const conversation = await storage.getCoachConversation(req.params.id);
+      if (!conversation || conversation.userId !== user.id) {
+        return res.status(404).json({ error: "Conversation not found" });
+      }
+
+      const plan = (conversation.actionPlan as any[]) || [];
+      const itemIndex = plan.findIndex((item: any) => item.id === req.params.itemId);
+      if (itemIndex === -1) {
+        return res.status(404).json({ error: "Action item not found" });
+      }
+
+      plan[itemIndex].completed = !plan[itemIndex].completed;
+      await storage.updateCoachConversation(conversation.id, { actionPlan: plan });
+
+      res.json({ actionPlan: plan, toggled: plan[itemIndex] });
+    } catch (error) {
+      console.error("Toggle action item error:", error);
+      res.status(500).json({ error: "Failed to toggle action item" });
+    }
+  });
+
+  app.get("/api/coach/usage", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const conversations = await storage.getCoachConversationsByUser(user.id);
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      let todayCount = 0;
+      const dailyLimit = 30;
+
+      for (const conv of conversations) {
+        const msgs = await storage.getCoachMessages(conv.id);
+        todayCount += msgs.filter(m =>
+          m.role === "user" && m.createdAt && new Date(m.createdAt) >= today
+        ).length;
+      }
+
+      res.json({
+        todayCount,
+        dailyLimit,
+        remaining: Math.max(0, dailyLimit - todayCount),
+        isLimited: todayCount >= dailyLimit,
+      });
+    } catch (error) {
+      console.error("Coach usage error:", error);
+      res.status(500).json({ error: "Failed to fetch usage" });
+    }
+  });
+
+  app.get("/api/coach/insights", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const verifiedContext = await buildVerifiedContext(user.id, user);
+      const conversations = await storage.getCoachConversationsByUser(user.id);
+      const hasAssessment = conversations.some(c => c.financialProfile);
+      const totalConversations = conversations.length;
+
+      const insights: Array<{ type: string; title: string; description: string; action?: string }> = [];
+
+      if (verifiedContext.hasApplication && !hasAssessment) {
+        insights.push({
+          type: "readiness_check",
+          title: "Get Your Readiness Assessment",
+          description: "You have application data on file. Ask the coach to assess your mortgage readiness for a personalized action plan.",
+          action: "Assess my mortgage readiness based on my application",
+        });
+      }
+
+      if (verifiedContext.hasApplication && verifiedContext.uploadedDocuments) {
+        const uploaded = verifiedContext.uploadedDocuments.length;
+        if (uploaded === 0) {
+          insights.push({
+            type: "missing_docs",
+            title: "Upload Your Documents",
+            description: "No documents uploaded yet. The coach can create a personalized checklist for you.",
+            action: "What documents do I need to upload?",
+          });
+        }
+      }
+
+      if (verifiedContext.hasApplication && verifiedContext.creditScore && verifiedContext.creditScore < 680) {
+        insights.push({
+          type: "credit_improvement",
+          title: "Credit Score Tips",
+          description: `Your credit score is ${verifiedContext.creditScore}. The coach can help you create a plan to improve it.`,
+          action: "How can I improve my credit score for a better mortgage rate?",
+        });
+      }
+
+      if (verifiedContext.hasApplication && verifiedContext.dtiRatio && parseFloat(verifiedContext.dtiRatio) > 43) {
+        insights.push({
+          type: "dti_high",
+          title: "DTI Ratio Guidance",
+          description: `Your debt-to-income ratio is ${verifiedContext.dtiRatio}%. The coach can help you strategize to lower it.`,
+          action: "My DTI is high. What can I do to bring it down?",
+        });
+      }
+
+      if (!verifiedContext.hasApplication && totalConversations === 0) {
+        insights.push({
+          type: "get_started",
+          title: "Start Your Homebuying Journey",
+          description: "Chat with the coach to understand what you need for a mortgage and create a personalized plan.",
+        });
+      }
+
+      res.json({ insights, hasApplication: verifiedContext.hasApplication, hasAssessment });
+    } catch (error) {
+      console.error("Coach insights error:", error);
+      res.status(500).json({ error: "Failed to fetch insights" });
     }
   });
 
