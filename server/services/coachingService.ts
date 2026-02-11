@@ -32,9 +32,24 @@ export interface DocumentRequirement {
   category: string;
 }
 
+export interface CoachIntakeData {
+  annualIncome?: string;
+  monthlyDebts?: string;
+  creditScore?: string;
+  employmentType?: string;
+  employmentYears?: string;
+  downPayment?: string;
+  purchasePrice?: string;
+  propertyType?: string;
+  loanPurpose?: string;
+  isVeteran?: boolean;
+  isFirstTimeBuyer?: boolean;
+}
+
 export interface CoachResponse {
   message: string;
   profile?: CoachingProfile;
+  intake?: CoachIntakeData;
   actionPlan?: ActionPlanItem[];
   documentChecklist?: DocumentRequirement[];
 }
@@ -166,6 +181,19 @@ The JSON should follow this format:
     "recommendedLoanTypes": ["conventional", "fha"],
     "estimatedTimeline": "2-3 months"
   },
+  "intake": {
+    "annualIncome": "85000",
+    "monthlyDebts": "1200",
+    "creditScore": "720",
+    "employmentType": "employed",
+    "employmentYears": "5",
+    "downPayment": "50000",
+    "purchasePrice": "350000",
+    "propertyType": "single_family",
+    "loanPurpose": "purchase",
+    "isVeteran": false,
+    "isFirstTimeBuyer": true
+  },
   "actionPlan": [
     {
       "id": "action-1",
@@ -188,6 +216,19 @@ The JSON should follow this format:
   ]
 }
 </coach_data>
+
+The "intake" object captures specific financial details the user shared during the conversation. ALWAYS include an "intake" object whenever you have gathered any concrete financial data from the user (income, debts, credit score, employment, property goals, etc.). Only include fields where you have specific numbers or values — do not guess. Use these field values:
+- annualIncome: string (numeric, no commas)
+- monthlyDebts: string (numeric, no commas)
+- creditScore: string (use the midpoint of their stated range, e.g. "720" for "Very Good 720-759")
+- employmentType: "employed" | "self_employed" | "retired" | "other"
+- employmentYears: string (numeric)
+- downPayment: string (numeric, no commas)
+- purchasePrice: string (numeric, no commas)
+- propertyType: "single_family" | "condo" | "townhouse" | "multi_family"
+- loanPurpose: "purchase" | "refinance" | "cash_out"
+- isVeteran: boolean
+- isFirstTimeBuyer: boolean
 
 IMPORTANT: If you already have verified application data with enough detail (income, credit score, employment, debts), generate the structured assessment immediately in your FIRST response - don't wait to ask questions you already have answers to. Only ask follow-up questions about information you're genuinely missing.
 
@@ -257,6 +298,7 @@ function parseCoachResponse(text: string): CoachResponse {
     try {
       const data = JSON.parse(dataMatch[1]);
       if (data.profile) result.profile = data.profile;
+      if (data.intake) result.intake = data.intake;
       if (data.actionPlan) result.actionPlan = data.actionPlan;
       if (data.documentChecklist) result.documentChecklist = data.documentChecklist;
     } catch (e) {

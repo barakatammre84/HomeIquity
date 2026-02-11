@@ -441,12 +441,39 @@ export default function PreApproval() {
     enabled: isAuthenticated,
   });
 
-  // Initialize with draft data if available
+  // Load coach intake data to pre-fill empty fields
+  const { data: coachIntake } = useQuery<{
+    intake: {
+      annualIncome?: string;
+      monthlyDebts?: string;
+      creditScore?: string;
+      employmentType?: string;
+      employmentYears?: string;
+      downPayment?: string;
+      purchasePrice?: string;
+      propertyType?: string;
+      loanPurpose?: string;
+      isVeteran?: boolean;
+      isFirstTimeBuyer?: boolean;
+    } | null;
+    readinessTier?: string;
+    readinessScore?: number;
+  } | null>({
+    queryKey: ["/api/coach/intake/latest"],
+    enabled: isAuthenticated,
+  });
+
+  const [prefillApplied, setPrefillApplied] = useState(false);
+
+  // Initialize with draft data, then fill remaining gaps with coach intake
   useEffect(() => {
+    if (prefillApplied) return;
+
+    const formData: Partial<PreApprovalFormData> = {};
+    let hasData = false;
+
     if (draftApp) {
       setApplicationId(draftApp.id);
-      const formData: Partial<PreApprovalFormData> = {};
-      
       if (draftApp.annualIncome) formData.annualIncome = String(draftApp.annualIncome);
       if (draftApp.employmentType) formData.employmentType = draftApp.employmentType;
       if (draftApp.employmentYears) formData.employmentYears = String(draftApp.employmentYears);
@@ -459,10 +486,45 @@ export default function PreApproval() {
       formData.isVeteran = draftApp.isVeteran || false;
       formData.isFirstTimeBuyer = draftApp.isFirstTimeBuyer || false;
       if (draftApp.propertyState) formData.propertyState = draftApp.propertyState;
-
-      form.reset(formData as PreApprovalFormData);
+      hasData = true;
     }
-  }, [draftApp, form]);
+
+    const ci = coachIntake?.intake;
+    if (ci) {
+      const validEmploymentTypes = ["employed", "self_employed", "retired", "other"] as const;
+      const validPropertyTypes = ["single_family", "condo", "townhouse", "multi_family"] as const;
+      const validLoanPurposes = ["purchase", "refinance", "cash_out"] as const;
+      const validCreditScores = ["760", "720", "680", "640", "600"] as const;
+
+      if (!formData.annualIncome && ci.annualIncome) formData.annualIncome = ci.annualIncome.replace(/[^0-9.]/g, "");
+      if (!formData.monthlyDebts && ci.monthlyDebts) formData.monthlyDebts = ci.monthlyDebts.replace(/[^0-9.]/g, "");
+      if (!formData.creditScore && ci.creditScore) {
+        const score = parseInt(ci.creditScore.replace(/[^0-9]/g, ""), 10);
+        const matched = validCreditScores.find(v => Math.abs(parseInt(v) - score) <= 30);
+        if (matched) formData.creditScore = matched;
+      }
+      if (!formData.employmentType && ci.employmentType && validEmploymentTypes.includes(ci.employmentType as any)) {
+        formData.employmentType = ci.employmentType as PreApprovalFormData["employmentType"];
+      }
+      if (!formData.employmentYears && ci.employmentYears) formData.employmentYears = ci.employmentYears.replace(/[^0-9]/g, "");
+      if (!formData.downPayment && ci.downPayment) formData.downPayment = ci.downPayment.replace(/[^0-9.]/g, "");
+      if (!formData.purchasePrice && ci.purchasePrice) formData.purchasePrice = ci.purchasePrice.replace(/[^0-9.]/g, "");
+      if (!formData.propertyType && ci.propertyType && validPropertyTypes.includes(ci.propertyType as any)) {
+        formData.propertyType = ci.propertyType as PreApprovalFormData["propertyType"];
+      }
+      if (!formData.loanPurpose && ci.loanPurpose && validLoanPurposes.includes(ci.loanPurpose as any)) {
+        formData.loanPurpose = ci.loanPurpose as PreApprovalFormData["loanPurpose"];
+      }
+      if (formData.isVeteran === undefined && ci.isVeteran !== undefined) formData.isVeteran = ci.isVeteran;
+      if (formData.isFirstTimeBuyer === undefined && ci.isFirstTimeBuyer !== undefined) formData.isFirstTimeBuyer = ci.isFirstTimeBuyer;
+      hasData = true;
+    }
+
+    if (hasData) {
+      form.reset({ ...form.getValues(), ...formData } as PreApprovalFormData);
+      setPrefillApplied(true);
+    }
+  }, [draftApp, coachIntake, form, prefillApplied]);
 
   // Create/update application mutation
   const submitMutation = useMutation({

@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { Link } from "wouter";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -219,6 +220,23 @@ function ReadinessPanel({ profile }: { profile: CoachProfile }) {
                 </Badge>
               ))}
             </div>
+          </div>
+        )}
+
+        {(profile.readinessTier === "ready_now" || profile.readinessTier === "almost_ready") && (
+          <div className="pt-2 border-t">
+            <Link href="/apply" data-testid="link-ready-to-apply">
+              <Button className="w-full gap-2" data-testid="button-ready-to-apply">
+                <FileText className="h-4 w-4" />
+                {profile.readinessTier === "ready_now"
+                  ? "Start Your Pre-Approval"
+                  : "Get a Head Start on Your Application"}
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </Link>
+            <p className="text-xs text-muted-foreground text-center mt-2">
+              Your coach data will be used to pre-fill the application
+            </p>
           </div>
         )}
       </CardContent>

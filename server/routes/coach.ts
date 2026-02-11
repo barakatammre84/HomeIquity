@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { isAuthenticated } from "../auth";
 import { storage } from "../storage";
-import { generateCoachResponse, type VerifiedUserContext } from "../services/coachingService";
+import { generateCoachResponse, type VerifiedUserContext, type CoachIntakeData } from "../services/coachingService";
 import type { User } from "@shared/schema";
 import { z } from "zod";
 
@@ -84,6 +84,25 @@ async function buildVerifiedContext(userId: string, user: User): Promise<Verifie
   }
 }
 
+function getLatestIntakeFromConversation(
+  conversation: any,
+  latestResponse?: { intake?: CoachIntakeData }
+): CoachIntakeData | null {
+  const intake: CoachIntakeData = {};
+  
+  const existingProfile = conversation.financialProfile as any;
+  if (existingProfile) {
+    if (existingProfile.annualIncome) intake.annualIncome = String(existingProfile.annualIncome);
+    if (existingProfile.creditScore) intake.creditScore = String(existingProfile.creditScore);
+  }
+
+  if (latestResponse?.intake) {
+    Object.assign(intake, latestResponse.intake);
+  }
+
+  return Object.keys(intake).length > 0 ? intake : null;
+}
+
 export function registerCoachRoutes(app: Express) {
   app.get("/api/coach/conversations", isAuthenticated, async (req, res) => {
     try {
@@ -93,6 +112,61 @@ export function registerCoachRoutes(app: Express) {
     } catch (error) {
       console.error("Get coach conversations error:", error);
       res.status(500).json({ error: "Failed to fetch conversations" });
+    }
+  });
+
+  app.get("/api/coach/intake/latest", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const conversations = await storage.getCoachConversationsByUser(user.id);
+
+      if (!conversations || conversations.length === 0) {
+        return res.json(null);
+      }
+
+      const sorted = [...conversations].sort((a, b) =>
+        new Date(b.updatedAt || b.createdAt || 0).getTime() - new Date(a.updatedAt || a.createdAt || 0).getTime()
+      );
+
+      const intake: CoachIntakeData = {};
+
+      for (const conv of sorted) {
+        const messages = await storage.getCoachMessages(conv.id);
+        const messagesWithData = messages
+          .filter(m => m.role === "assistant" && m.structuredData)
+          .sort((a, b) =>
+            new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+          );
+
+        for (const msg of messagesWithData) {
+          const sd = msg.structuredData as any;
+          if (sd?.intake) {
+            for (const [key, val] of Object.entries(sd.intake)) {
+              if (val !== null && val !== undefined && val !== "" && !(key in intake)) {
+                (intake as any)[key] = val;
+              }
+            }
+          }
+        }
+      }
+
+      const latestConv = sorted[0];
+      const profile = latestConv.financialProfile as any;
+      const readinessTier = latestConv.readinessTier;
+      const readinessScore = latestConv.readinessScore;
+
+      res.json({
+        intake: Object.keys(intake).length > 0 ? intake : null,
+        readinessTier,
+        readinessScore,
+        profile: profile || null,
+        actionPlan: latestConv.actionPlan || null,
+        documentChecklist: latestConv.documentChecklist || null,
+        updatedAt: latestConv.updatedAt,
+      });
+    } catch (error) {
+      console.error("Get coach intake error:", error);
+      res.status(500).json({ error: "Failed to fetch coach intake" });
     }
   });
 
@@ -177,20 +251,23 @@ export function registerCoachRoutes(app: Express) {
         verifiedContext,
       );
 
+      const hasStructuredData = coachResponse.profile || coachResponse.intake || coachResponse.actionPlan || coachResponse.documentChecklist;
+
       const assistantMsg = await storage.createCoachMessage({
         conversationId: conversation.id,
         role: "assistant",
         content: coachResponse.message,
-        structuredData: coachResponse.profile || coachResponse.actionPlan || coachResponse.documentChecklist
+        structuredData: hasStructuredData
           ? {
               profile: coachResponse.profile || null,
+              intake: coachResponse.intake || null,
               actionPlan: coachResponse.actionPlan || null,
               documentChecklist: coachResponse.documentChecklist || null,
             }
           : null,
       });
 
-      if (coachResponse.profile || coachResponse.actionPlan || coachResponse.documentChecklist) {
+      if (hasStructuredData) {
         const updateData: Record<string, any> = {};
         if (coachResponse.profile) {
           updateData.financialProfile = coachResponse.profile;
@@ -207,10 +284,13 @@ export function registerCoachRoutes(app: Express) {
         await storage.updateCoachConversation(conversation.id, updateData);
       }
 
+      const existingIntake = getLatestIntakeFromConversation(conversation, coachResponse);
+
       res.json({
         conversationId: conversation.id,
         message: assistantMsg,
         profile: coachResponse.profile || conversation.financialProfile || null,
+        intake: existingIntake,
         actionPlan: coachResponse.actionPlan || conversation.actionPlan || null,
         documentChecklist: coachResponse.documentChecklist || conversation.documentChecklist || null,
       });

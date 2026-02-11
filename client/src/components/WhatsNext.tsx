@@ -375,6 +375,14 @@ export function FirstVisitWelcome({ userName, hasApplication = false, hasDocumen
                     <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
                       {step.description}
                     </p>
+                    {step.step === 2 && isActive && (
+                      <Link href="/apply" className="inline-flex items-center gap-1 mt-1" data-testid="link-have-property">
+                        <p className="text-xs text-primary hover:underline cursor-pointer" data-testid="text-have-property">
+                          Already found a home? Skip to application
+                        </p>
+                        <ArrowRight className="h-3 w-3 text-primary" />
+                      </Link>
+                    )}
                   </div>
                   {(isActive || isComplete) && (
                     <Link href={step.href} className="shrink-0" data-testid={`link-step-${step.step}`}>
