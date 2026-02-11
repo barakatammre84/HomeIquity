@@ -8,7 +8,7 @@ import { PrivateLayout } from "@/components/layouts/PrivateLayout";
 
 import NotFound from "@/pages/not-found";
 import { PreApproval, LoanOptions, LoanPipeline, LoanEstimate, ApplicationSummary, BorrowerDealComparison } from "@/pages/lending";
-import { Dashboard, Documents, Tasks, TaskDetail, Messages, URLAForm, CreditConsent, Verification, IdentityVerification, OnboardingJourney, EConsent, GapCalculator, BuyerProperties } from "@/pages/borrower";
+import { Dashboard, Documents, Tasks, TaskDetail, Messages, URLAForm, CreditConsent, Verification, IdentityVerification, OnboardingJourney, EConsent, GapCalculator, BuyerProperties, HmdaDemographics } from "@/pages/borrower";
 import { StaffDashboard, PipelineQueue, BorrowerFile, ComplianceDashboard, PolicyOps, TaskOperations, Staff } from "@/pages/staff";
 import { AgentCoBranding, AgentDashboard, AgentEdit, AgentPipeline, BrokerDashboard, InviteGenerator, AnalyticsDashboard, PartnerServices, ReferralLanding, PartnerLanding, ApplyInvite } from "@/pages/agent-broker";
 import { ScenarioDesk, DealRescue, StrategySessions, ClosingGuarantee } from "@/pages/realtor-engine";
@@ -19,6 +19,8 @@ import { PurchaseRates, RefinanceRates, CashOutRates, HelocRates, VaRates, Mortg
 import { RentVsBuyCalculator, AffordabilityCalculator, MortgageCalculator } from "@/pages/calculators";
 import { AdminDashboard, AdminRates, AdminContent, AdminUsers } from "@/pages/admin";
 import { Landing, Privacy, Terms, Disclosures, TestLogin, RedeemInvite } from "@/pages/public";
+
+const isProduction = !!import.meta.env.VITE_REPL_DEPLOYMENT;
 
 function PublicPage({ children }: { children: React.ReactNode }) {
   return <PublicLayout>{children}</PublicLayout>;
@@ -45,7 +47,7 @@ function Router() {
     <Switch>
       {/* Public Pages - Anyone can access */}
       <Route path="/" component={Landing} />
-      <Route path="/test-login" component={TestLogin} />
+      {!isProduction && <Route path="/test-login" component={TestLogin} />}
       <Route path="/redeem-invite" component={RedeemInvite} />
       <Route path="/redeem-invite/:code" component={RedeemInvite} />
       <Route path="/apply" component={PreApproval} />
@@ -172,6 +174,9 @@ function Router() {
       </Route>
       <Route path="/credit-consent/:id">
         {(params) => <BorrowerPage><CreditConsent /></BorrowerPage>}
+      </Route>
+      <Route path="/hmda/:id">
+        {(params) => <BorrowerPage><HmdaDemographics /></BorrowerPage>}
       </Route>
       <Route path="/urla-form">
         <BorrowerPage><URLAForm /></BorrowerPage>

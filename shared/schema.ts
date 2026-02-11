@@ -7631,3 +7631,64 @@ export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({
 });
 export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
 export type AuditLog = typeof auditLogs.$inferSelect;
+
+// ===== HMDA DEMOGRAPHIC DATA COLLECTION (Regulation C Compliance) =====
+export const hmdaDemographics = pgTable("hmda_demographics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  applicationId: varchar("application_id").references(() => loanApplications.id).notNull(),
+  borrowerId: varchar("borrower_id").references(() => users.id).notNull(),
+
+  ethnicityHispanicLatino: boolean("ethnicity_hispanic_latino"),
+  ethnicityMexican: boolean("ethnicity_mexican").default(false),
+  ethnicityCuban: boolean("ethnicity_cuban").default(false),
+  ethnicityPuertoRican: boolean("ethnicity_puerto_rican").default(false),
+  ethnicityOtherHispanicLatino: boolean("ethnicity_other_hispanic_latino").default(false),
+  ethnicityOtherText: varchar("ethnicity_other_text", { length: 255 }),
+  ethnicityNotHispanicLatino: boolean("ethnicity_not_hispanic_latino"),
+  ethnicityNotProvided: boolean("ethnicity_not_provided").default(false),
+
+  raceAmericanIndian: boolean("race_american_indian").default(false),
+  raceAmericanIndianTribe: varchar("race_american_indian_tribe", { length: 255 }),
+  raceAsian: boolean("race_asian").default(false),
+  raceAsianIndian: boolean("race_asian_indian").default(false),
+  raceChinese: boolean("race_chinese").default(false),
+  raceFilipino: boolean("race_filipino").default(false),
+  raceJapanese: boolean("race_japanese").default(false),
+  raceKorean: boolean("race_korean").default(false),
+  raceVietnamese: boolean("race_vietnamese").default(false),
+  raceOtherAsian: boolean("race_other_asian").default(false),
+  raceOtherAsianText: varchar("race_other_asian_text", { length: 255 }),
+  raceBlack: boolean("race_black").default(false),
+  raceNativeHawaiian: boolean("race_native_hawaiian").default(false),
+  raceGuamanian: boolean("race_guamanian").default(false),
+  raceSamoan: boolean("race_samoan").default(false),
+  raceOtherPacificIslander: boolean("race_other_pacific_islander").default(false),
+  raceOtherPacificIslanderText: varchar("race_other_pacific_islander_text", { length: 255 }),
+  raceWhite: boolean("race_white").default(false),
+  raceNotProvided: boolean("race_not_provided").default(false),
+
+  sexFemale: boolean("sex_female"),
+  sexMale: boolean("sex_male"),
+  sexNotProvided: boolean("sex_not_provided").default(false),
+
+  age: integer("age"),
+  ageNotProvided: boolean("age_not_provided").default(false),
+
+  collectionMethod: varchar("collection_method", { length: 30 }).notNull().default("borrower"),
+  observedByVisual: boolean("observed_by_visual").default(false),
+  observedBySurname: boolean("observed_by_surname").default(false),
+
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_hmda_application").on(table.applicationId),
+  index("idx_hmda_borrower").on(table.borrowerId),
+]);
+
+export const insertHmdaDemographicsSchema = createInsertSchema(hmdaDemographics).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertHmdaDemographics = z.infer<typeof insertHmdaDemographicsSchema>;
+export type HmdaDemographics = typeof hmdaDemographics.$inferSelect;

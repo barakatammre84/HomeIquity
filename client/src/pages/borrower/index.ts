@@ -11,3 +11,4 @@ export { default as OnboardingJourney } from "./OnboardingJourney";
 export { default as EConsent } from "./EConsent";
 export { default as GapCalculator } from "./GapCalculator";
 export { default as BuyerProperties } from "./BuyerProperties";
+export { default as HmdaDemographics } from "./HmdaDemographics";

@@ -27,6 +27,7 @@ import {
   Calendar,
   User,
   Bot,
+  Users,
 } from "lucide-react";
 
 interface DashboardData {
@@ -300,6 +301,34 @@ export default function Dashboard() {
                 <Link href={`/pipeline/${activeApplication.id}/offers`}>
                   <Button variant="outline" size="sm" data-testid="button-compare-offers">
                     Compare
+                    <ArrowRight className="h-4 w-4 ml-1" />
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {activeApplication && (
+          <Card className="shadow-md" data-testid="card-hmda-compliance">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between gap-4 flex-wrap">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-blue-500">
+                    <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <div>
+                    <p className="font-medium" data-testid="text-hmda-title">
+                      Government Monitoring
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Required demographic information (HMDA)
+                    </p>
+                  </div>
+                </div>
+                <Link href={`/hmda/${activeApplication.id}`}>
+                  <Button variant="outline" size="sm" data-testid="button-complete-hmda">
+                    Complete
                     <ArrowRight className="h-4 w-4 ml-1" />
                   </Button>
                 </Link>

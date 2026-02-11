@@ -830,4 +830,93 @@ export function registerComplianceRoutes(
       res.status(500).json({ error: "Failed to get credit summary" });
     }
   });
+
+  // ============================================================================
+  // HMDA DEMOGRAPHIC DATA COLLECTION (Regulation C Compliance)
+  // ============================================================================
+
+  app.get("/api/loan-applications/:id/hmda", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const { id } = req.params;
+
+      const application = await storage.getLoanApplicationWithAccess(id, user.id, user.role);
+      if (!application) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+
+      const { db: database } = await import("../db");
+      const { hmdaDemographics } = await import("@shared/schema");
+      const { eq, and } = await import("drizzle-orm");
+
+      const [record] = await database.select().from(hmdaDemographics)
+        .where(eq(hmdaDemographics.applicationId, id))
+        .limit(1);
+
+      res.json({ demographics: record || null });
+    } catch (error) {
+      console.error("Get HMDA demographics error:", error);
+      res.status(500).json({ error: "Failed to get demographic data" });
+    }
+  });
+
+  app.post("/api/loan-applications/:id/hmda", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const { id } = req.params;
+
+      const application = await storage.getLoanApplicationWithAccess(id, user.id, user.role);
+      if (!application) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+
+      const { db: database } = await import("../db");
+      const { hmdaDemographics, insertHmdaDemographicsSchema } = await import("@shared/schema");
+      const { eq } = await import("drizzle-orm");
+
+      const validationSchema = insertHmdaDemographicsSchema.omit({
+        applicationId: true,
+        borrowerId: true,
+        collectionMethod: true,
+      });
+
+      const parsed = validationSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid demographic data", details: parsed.error.flatten() });
+      }
+
+      const collectionMethod = isStaffRole(user.role) ? "loan_officer" : "borrower";
+
+      const [existing] = await database.select().from(hmdaDemographics)
+        .where(eq(hmdaDemographics.applicationId, id))
+        .limit(1);
+
+      let record;
+      if (existing) {
+        [record] = await database.update(hmdaDemographics)
+          .set({
+            ...parsed.data,
+            collectionMethod,
+            updatedAt: new Date(),
+          })
+          .where(eq(hmdaDemographics.id, existing.id))
+          .returning();
+      } else {
+        [record] = await database.insert(hmdaDemographics).values({
+          ...parsed.data,
+          applicationId: id,
+          borrowerId: application.userId,
+          collectionMethod,
+        }).returning();
+      }
+
+      const { logAudit } = await import("../auditLog");
+      logAudit(req, "hmda_demographics.saved", "hmda_demographics", record.id);
+
+      res.json({ demographics: record });
+    } catch (error) {
+      console.error("Save HMDA demographics error:", error);
+      res.status(500).json({ error: "Failed to save demographic data" });
+    }
+  });
 }
