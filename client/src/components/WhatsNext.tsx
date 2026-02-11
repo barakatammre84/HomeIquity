@@ -241,43 +241,43 @@ export function WhatsNext(props: WhatsNextProps) {
 const ONBOARDING_STEPS = [
   {
     step: 1,
-    icon: FileText,
-    iconColor: "text-emerald-500",
-    bgColor: "bg-emerald-500",
-    title: "Get pre-approved",
-    description: "Answer a few questions about your finances. Takes about 3 minutes and won't affect your credit score.",
-    href: "/apply",
-    buttonLabel: "Start Application",
-  },
-  {
-    step: 2,
-    icon: Upload,
-    iconColor: "text-blue-500",
-    bgColor: "bg-blue-500",
-    title: "Upload your documents",
-    description: "Share pay stubs, bank statements, and tax returns so we can verify your information.",
-    href: "/documents",
-    buttonLabel: "View Documents",
-  },
-  {
-    step: 3,
     icon: Bot,
     iconColor: "text-purple-500",
     bgColor: "bg-purple-500",
-    title: "Talk to your AI Coach",
-    description: "Get personalized guidance on your mortgage readiness and a step-by-step action plan.",
+    title: "Meet your AI Coach",
+    description: "Start a quick chat to understand your mortgage readiness and learn exactly what you'll need.",
     href: "/ai-coach",
-    buttonLabel: "Open Coach",
+    buttonLabel: "Start Chat",
   },
   {
-    step: 4,
+    step: 2,
     icon: Home,
     iconColor: "text-amber-500",
     bgColor: "bg-amber-500",
     title: "Browse properties",
-    description: "Explore homes that fit your budget with instant mortgage estimates for each listing.",
+    description: "Explore homes in your price range with instant mortgage estimates for each listing.",
     href: "/properties",
     buttonLabel: "Browse Homes",
+  },
+  {
+    step: 3,
+    icon: FileText,
+    iconColor: "text-emerald-500",
+    bgColor: "bg-emerald-500",
+    title: "Get pre-approved",
+    description: "Apply in about 3 minutes. Your coach already prepared you, so this will feel easy.",
+    href: "/apply",
+    buttonLabel: "Start Application",
+  },
+  {
+    step: 4,
+    icon: Upload,
+    iconColor: "text-blue-500",
+    bgColor: "bg-blue-500",
+    title: "Upload your documents",
+    description: "Share pay stubs, bank statements, and tax returns to complete your verification.",
+    href: "/documents",
+    buttonLabel: "Upload Docs",
   },
 ];
 
@@ -285,14 +285,16 @@ interface FirstVisitWelcomeProps {
   userName?: string;
   hasApplication?: boolean;
   hasDocuments?: boolean;
+  hasCoachSession?: boolean;
+  hasBrowsedProperties?: boolean;
 }
 
-export function FirstVisitWelcome({ userName, hasApplication, hasDocuments }: FirstVisitWelcomeProps) {
+export function FirstVisitWelcome({ userName, hasApplication = false, hasDocuments = false, hasCoachSession = false, hasBrowsedProperties = false }: FirstVisitWelcomeProps) {
   const completedSteps = [
+    hasCoachSession,
+    hasBrowsedProperties,
     hasApplication,
     hasDocuments,
-    false,
-    false,
   ];
 
   const firstIncompleteIndex = completedSteps.findIndex(s => !s);
@@ -308,7 +310,7 @@ export function FirstVisitWelcome({ userName, hasApplication, hasDocuments }: Fi
           {userName ? `Welcome, ${userName}!` : "Welcome to Baranest"}
         </h2>
         <p className="text-sm text-muted-foreground mt-2 max-w-md mx-auto leading-relaxed">
-          Your path to homeownership starts here. Follow these steps to get pre-approved and start shopping for your dream home.
+          Your path to homeownership starts here. We'll walk you through each step — beginning with a free chat with your AI Coach.
         </p>
       </div>
 

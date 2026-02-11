@@ -102,6 +102,10 @@ export default function Properties() {
   const suggestionsRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  useEffect(() => {
+    try { localStorage.setItem("baranest_browsed_properties", "true"); } catch {}
+  }, []);
+
   const debouncedInput = useDebounce(inputValue, 300);
 
   const autoCompleteUrl = debouncedInput.length >= 2

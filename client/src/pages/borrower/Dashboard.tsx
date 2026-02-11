@@ -101,6 +101,18 @@ export default function Dashboard() {
     enabled: !authLoading && !isStaff,
   });
 
+  const { data: coachConversations } = useQuery<{ id: number }[]>({
+    queryKey: ["/api/coach/conversations"],
+    enabled: !authLoading && !isStaff,
+  });
+
+  const [browsedProperties, setBrowsedProperties] = useState(false);
+  useEffect(() => {
+    try {
+      setBrowsedProperties(localStorage.getItem("baranest_browsed_properties") === "true");
+    } catch {}
+  }, []);
+
   if (authLoading || isLoading || isStaff) {
     return (
       <div className="p-8 max-w-2xl mx-auto space-y-4">
@@ -389,6 +401,8 @@ export default function Dashboard() {
         {!activeApplication && (
           <FirstVisitWelcome
             userName={user?.firstName || undefined}
+            hasCoachSession={(coachConversations?.length || 0) > 0}
+            hasBrowsedProperties={browsedProperties}
             hasApplication={applications.length > 0}
             hasDocuments={(data?.stats?.pendingDocuments || 0) > 0 || applications.some(a => a.status !== "draft")}
           />

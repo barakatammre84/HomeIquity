@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
 import { useParams, Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Navigation } from "@/components/Navigation";
@@ -151,6 +151,10 @@ function calculateQualification(
 export default function PropertyDetail() {
   const params = useParams();
   const propertyId = params?.id as string;
+
+  useEffect(() => {
+    try { localStorage.setItem("baranest_browsed_properties", "true"); } catch {}
+  }, []);
 
   const { data: property, isLoading: propertyLoading } = useQuery<Property>({
     queryKey: [`/api/properties/${propertyId}`],
