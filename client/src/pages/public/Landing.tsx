@@ -1,6 +1,7 @@
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
 import { SEOHead } from "@/components/SEOHead";
@@ -170,72 +171,72 @@ export default function Landing() {
           </div>
 
           <div className="mt-16 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            <Card className="border-0 bg-white shadow-lg dark:bg-card" data-testid="card-feature-preapproval">
+            <Card data-testid="card-feature-preapproval">
               <CardContent className="p-6">
                 <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
                   <FileText className="h-6 w-6" />
                 </div>
-                <h3 className="mt-4 text-lg font-semibold">Instant Pre-Approval</h3>
+                <h3 className="mt-4 text-lg font-semibold" data-testid="text-feature-title-preapproval">Instant Pre-Approval</h3>
                 <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
                   Get a real pre-approval letter in minutes. No credit score impact, no hidden fees, no games.
                 </p>
               </CardContent>
             </Card>
 
-            <Card className="border-0 bg-white shadow-lg dark:bg-card" data-testid="card-feature-properties">
+            <Card data-testid="card-feature-properties">
               <CardContent className="p-6">
                 <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
                   <Search className="h-6 w-6" />
                 </div>
-                <h3 className="mt-4 text-lg font-semibold">Live Property Search</h3>
+                <h3 className="mt-4 text-lg font-semibold" data-testid="text-feature-title-properties">Live Property Search</h3>
                 <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
                   Browse homes across the US with live MLS data and see instant mortgage estimates for every listing.
                 </p>
               </CardContent>
             </Card>
 
-            <Card className="border-0 bg-white shadow-lg dark:bg-card" data-testid="card-feature-rates">
+            <Card data-testid="card-feature-rates">
               <CardContent className="p-6">
                 <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
                   <Percent className="h-6 w-6" />
                 </div>
-                <h3 className="mt-4 text-lg font-semibold">Competitive Rates</h3>
+                <h3 className="mt-4 text-lg font-semibold" data-testid="text-feature-title-rates">Competitive Rates</h3>
                 <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
                   Compare mortgage rates from top lenders updated daily. Conventional, FHA, VA, and more.
                 </p>
               </CardContent>
             </Card>
 
-            <Card className="border-0 bg-white shadow-lg dark:bg-card" data-testid="card-feature-calculators">
+            <Card data-testid="card-feature-calculators">
               <CardContent className="p-6">
                 <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
                   <Calculator className="h-6 w-6" />
                 </div>
-                <h3 className="mt-4 text-lg font-semibold">Smart Calculators</h3>
+                <h3 className="mt-4 text-lg font-semibold" data-testid="text-feature-title-calculators">Smart Calculators</h3>
                 <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
                   Affordability, rent vs buy, and mortgage calculators to help you make informed decisions.
                 </p>
               </CardContent>
             </Card>
 
-            <Card className="border-0 bg-white shadow-lg dark:bg-card" data-testid="card-feature-dashboard">
+            <Card data-testid="card-feature-dashboard">
               <CardContent className="p-6">
                 <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400">
                   <TrendingUp className="h-6 w-6" />
                 </div>
-                <h3 className="mt-4 text-lg font-semibold">Track Your Progress</h3>
+                <h3 className="mt-4 text-lg font-semibold" data-testid="text-feature-title-dashboard">Track Your Progress</h3>
                 <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
                   A personal dashboard to monitor your application, upload documents, and track milestones.
                 </p>
               </CardContent>
             </Card>
 
-            <Card className="border-0 bg-white shadow-lg dark:bg-card" data-testid="card-feature-education">
+            <Card data-testid="card-feature-education">
               <CardContent className="p-6">
                 <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400">
                   <Home className="h-6 w-6" />
                 </div>
-                <h3 className="mt-4 text-lg font-semibold">Buyer Education</h3>
+                <h3 className="mt-4 text-lg font-semibold" data-testid="text-feature-title-education">Buyer Education</h3>
                 <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
                   First-time buyer guides, down payment assistance tools, and educational resources.
                 </p>
@@ -270,27 +271,27 @@ export default function Landing() {
 
             {/* Stats */}
             <div className="grid gap-6 sm:grid-cols-2">
-              <Card className="border-0 bg-white shadow-lg dark:bg-card">
+              <Card data-testid="card-stat-time">
                 <CardContent className="p-6 text-center">
-                  <p className="text-4xl font-bold text-primary">3 min</p>
+                  <p className="text-4xl font-bold text-primary" data-testid="text-stat-time">3 min</p>
                   <p className="mt-2 text-sm text-muted-foreground">Average application time</p>
                 </CardContent>
               </Card>
-              <Card className="border-0 bg-white shadow-lg dark:bg-card">
+              <Card data-testid="card-stat-satisfaction">
                 <CardContent className="p-6 text-center">
-                  <p className="text-4xl font-bold text-emerald-500">97%</p>
+                  <p className="text-4xl font-bold text-emerald-500" data-testid="text-stat-satisfaction">97%</p>
                   <p className="mt-2 text-sm text-muted-foreground">Customer satisfaction</p>
                 </CardContent>
               </Card>
-              <Card className="border-0 bg-white shadow-lg dark:bg-card">
+              <Card data-testid="card-stat-approval">
                 <CardContent className="p-6 text-center">
-                  <p className="text-4xl font-bold text-primary">$450K</p>
+                  <p className="text-4xl font-bold text-primary" data-testid="text-stat-approval">$450K</p>
                   <p className="mt-2 text-sm text-muted-foreground">Average approval amount</p>
                 </CardContent>
               </Card>
-              <Card className="border-0 bg-white shadow-lg dark:bg-card">
+              <Card data-testid="card-stat-support">
                 <CardContent className="p-6 text-center">
-                  <p className="text-4xl font-bold text-emerald-500">24/7</p>
+                  <p className="text-4xl font-bold text-emerald-500" data-testid="text-stat-support">24/7</p>
                   <p className="mt-2 text-sm text-muted-foreground">Support available</p>
                 </CardContent>
               </Card>
@@ -351,7 +352,7 @@ export default function Landing() {
             <Link href="/apply" className="w-full sm:w-auto">
               <Button
                 size="lg"
-                className="w-full gap-2 bg-emerald-500 px-10 py-6 text-base font-semibold shadow-lg shadow-emerald-500/25 sm:w-auto"
+                className="w-full gap-2 bg-emerald-500 font-semibold shadow-lg shadow-emerald-500/25 sm:w-auto"
                 data-testid="button-cta-preapprove"
               >
                 Get Pre-Approved Now
@@ -362,7 +363,7 @@ export default function Landing() {
               <Button
                 variant="outline"
                 size="lg"
-                className="w-full gap-2 px-10 py-6 text-base sm:w-auto"
+                className="w-full gap-2 sm:w-auto"
                 data-testid="button-cta-browse"
               >
                 Browse Properties
@@ -390,13 +391,14 @@ interface RatePreview {
 }
 
 function RatesTeaser() {
-  const { data: rates } = useQuery<RatePreview[]>({
+  const { data: rates, isLoading } = useQuery<RatePreview[]>({
     queryKey: ["/api/rates"],
   });
 
   const topRates = (rates || []).slice(0, 3);
+  const hasRates = topRates.length > 0;
 
-  if (topRates.length === 0) return null;
+  if (!isLoading && !hasRates) return null;
 
   return (
     <section className="px-4 py-20 sm:px-6 lg:px-8" data-testid="section-rates-teaser">
@@ -411,16 +413,27 @@ function RatesTeaser() {
         </div>
 
         <div className="mt-12 grid gap-6 sm:grid-cols-3">
-          {topRates.map((rate) => (
-            <Card key={rate.id} className="text-center" data-testid={`card-rate-teaser-${rate.id}`}>
-              <CardContent className="p-6">
-                <p className="text-sm font-medium text-muted-foreground">{rate.programName}</p>
-                <p className="mt-2 text-4xl font-bold text-primary">{rate.interestRate}%</p>
-                <p className="mt-1 text-sm text-muted-foreground">{rate.apr}% APR</p>
-                <p className="mt-3 text-xs text-muted-foreground">{rate.loanType}</p>
-              </CardContent>
-            </Card>
-          ))}
+          {isLoading
+            ? [1, 2, 3].map((i) => (
+                <Card key={i} className="text-center">
+                  <CardContent className="flex flex-col items-center p-6">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="mt-3 h-10 w-24" />
+                    <Skeleton className="mt-2 h-4 w-20" />
+                    <Skeleton className="mt-3 h-3 w-16" />
+                  </CardContent>
+                </Card>
+              ))
+            : topRates.map((rate) => (
+                <Card key={rate.id} className="text-center" data-testid={`card-rate-teaser-${rate.id}`}>
+                  <CardContent className="p-6">
+                    <p className="text-sm font-medium text-muted-foreground" data-testid={`text-rate-name-${rate.id}`}>{rate.programName}</p>
+                    <p className="mt-2 text-4xl font-bold text-primary" data-testid={`text-rate-value-${rate.id}`}>{rate.interestRate}%</p>
+                    <p className="mt-1 text-sm text-muted-foreground">{rate.apr}% APR</p>
+                    <p className="mt-3 text-xs text-muted-foreground">{rate.loanType}</p>
+                  </CardContent>
+                </Card>
+              ))}
         </div>
 
         <div className="mt-8 text-center">
