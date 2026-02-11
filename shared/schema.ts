@@ -7692,3 +7692,48 @@ export const insertHmdaDemographicsSchema = createInsertSchema(hmdaDemographics)
 });
 export type InsertHmdaDemographics = z.infer<typeof insertHmdaDemographicsSchema>;
 export type HmdaDemographics = typeof hmdaDemographics.$inferSelect;
+
+// ===== AI HOMEBUYER COACH =====
+export const coachConversations = pgTable("coach_conversations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  title: varchar("title", { length: 200 }).default("New Conversation"),
+  readinessTier: varchar("readiness_tier", { length: 30 }),
+  readinessScore: integer("readiness_score"),
+  financialProfile: jsonb("financial_profile"),
+  actionPlan: jsonb("action_plan"),
+  recommendedLoanTypes: jsonb("recommended_loan_types"),
+  documentChecklist: jsonb("document_checklist"),
+  status: varchar("status", { length: 20 }).default("active").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_coach_conversations_user").on(table.userId),
+  index("idx_coach_conversations_status").on(table.status),
+]);
+
+export const insertCoachConversationSchema = createInsertSchema(coachConversations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertCoachConversation = z.infer<typeof insertCoachConversationSchema>;
+export type CoachConversation = typeof coachConversations.$inferSelect;
+
+export const coachMessages = pgTable("coach_messages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  conversationId: varchar("conversation_id").references(() => coachConversations.id).notNull(),
+  role: varchar("role", { length: 20 }).notNull(),
+  content: text("content").notNull(),
+  structuredData: jsonb("structured_data"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_coach_messages_conversation").on(table.conversationId),
+]);
+
+export const insertCoachMessageSchema = createInsertSchema(coachMessages).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertCoachMessage = z.infer<typeof insertCoachMessageSchema>;
+export type CoachMessage = typeof coachMessages.$inferSelect;

@@ -207,6 +207,12 @@ import {
   auditLogs,
   type AuditLog,
   type InsertAuditLog,
+  coachConversations,
+  coachMessages,
+  type CoachConversation,
+  type InsertCoachConversation,
+  type CoachMessage,
+  type InsertCoachMessage,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -725,6 +731,14 @@ export interface IStorage {
   getStaffInvites(): Promise<StaffInvite[]>;
   redeemStaffInvite(code: string, userId: string): Promise<StaffInvite | undefined>;
   createAuditLog(data: InsertAuditLog): Promise<AuditLog>;
+
+  // AI Coach
+  createCoachConversation(data: InsertCoachConversation): Promise<CoachConversation>;
+  getCoachConversationsByUser(userId: string): Promise<CoachConversation[]>;
+  getCoachConversation(id: string): Promise<CoachConversation | undefined>;
+  updateCoachConversation(id: string, data: Partial<CoachConversation>): Promise<CoachConversation | undefined>;
+  createCoachMessage(data: InsertCoachMessage): Promise<CoachMessage>;
+  getCoachMessages(conversationId: string): Promise<CoachMessage[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -3812,6 +3826,43 @@ export class DatabaseStorage implements IStorage {
   async createAuditLog(data: InsertAuditLog): Promise<AuditLog> {
     const [log] = await db.insert(auditLogs).values(data).returning();
     return log;
+  }
+
+  // AI Coach
+  async createCoachConversation(data: InsertCoachConversation): Promise<CoachConversation> {
+    const [conv] = await db.insert(coachConversations).values(data).returning();
+    return conv;
+  }
+
+  async getCoachConversationsByUser(userId: string): Promise<CoachConversation[]> {
+    return db.select().from(coachConversations)
+      .where(eq(coachConversations.userId, userId))
+      .orderBy(desc(coachConversations.updatedAt));
+  }
+
+  async getCoachConversation(id: string): Promise<CoachConversation | undefined> {
+    const [conv] = await db.select().from(coachConversations)
+      .where(eq(coachConversations.id, id)).limit(1);
+    return conv;
+  }
+
+  async updateCoachConversation(id: string, data: Partial<CoachConversation>): Promise<CoachConversation | undefined> {
+    const [conv] = await db.update(coachConversations)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(coachConversations.id, id))
+      .returning();
+    return conv;
+  }
+
+  async createCoachMessage(data: InsertCoachMessage): Promise<CoachMessage> {
+    const [msg] = await db.insert(coachMessages).values(data).returning();
+    return msg;
+  }
+
+  async getCoachMessages(conversationId: string): Promise<CoachMessage[]> {
+    return db.select().from(coachMessages)
+      .where(eq(coachMessages.conversationId, conversationId))
+      .orderBy(asc(coachMessages.createdAt));
   }
 }
 

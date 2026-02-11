@@ -27,6 +27,7 @@ import {
   Calendar,
   User,
   Bot,
+  Sparkles,
   Users,
 } from "lucide-react";
 
@@ -396,6 +397,26 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         )}
+
+        <Card className="hover-elevate" data-testid="card-ai-coach-cta">
+          <CardContent className="flex items-center gap-4 py-6">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10">
+              <Sparkles className="h-6 w-6 text-primary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="font-semibold">AI Homebuyer Coach</h3>
+              <p className="text-sm text-muted-foreground">
+                Get personalized guidance on your mortgage readiness, documents you'll need, and steps to strengthen your application.
+              </p>
+            </div>
+            <Link href="/ai-coach">
+              <Button variant="outline" data-testid="button-open-ai-coach">
+                Start Chat
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
 
       </div>
     </div>

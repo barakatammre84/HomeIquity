@@ -13,7 +13,7 @@ import { StaffDashboard, PipelineQueue, BorrowerFile, ComplianceDashboard, Polic
 import { AgentCoBranding, AgentDashboard, AgentEdit, AgentPipeline, BrokerDashboard, InviteGenerator, AnalyticsDashboard, PartnerServices, ReferralLanding, PartnerLanding, ApplyInvite } from "@/pages/agent-broker";
 import { ScenarioDesk, DealRescue, StrategySessions, ClosingGuarantee } from "@/pages/realtor-engine";
 import { Properties, PropertyDetail, LivePropertyDetail, PropertyForm } from "@/pages/property";
-import { FirstTimeBuyerHub, DownPaymentWizard, LearningCenter, ArticleDetail, FAQ, Resources, AcceleratorProgram } from "@/pages/education";
+import { FirstTimeBuyerHub, DownPaymentWizard, LearningCenter, ArticleDetail, FAQ, Resources, AcceleratorProgram, AICoach } from "@/pages/education";
 import { HomeownerDashboard } from "@/pages/homeowner";
 import { PurchaseRates, RefinanceRates, CashOutRates, HelocRates, VaRates, MortgageRates } from "@/pages/rates";
 import { RentVsBuyCalculator, AffordabilityCalculator, MortgageCalculator } from "@/pages/calculators";
@@ -242,6 +242,9 @@ function Router() {
       </Route>
       <Route path="/accelerator">
         <BorrowerPage><AcceleratorProgram /></BorrowerPage>
+      </Route>
+      <Route path="/ai-coach">
+        <AnyAuthPage><AICoach /></AnyAuthPage>
       </Route>
       <Route path="/homeowner-dashboard">
         <BorrowerPage><HomeownerDashboard /></BorrowerPage>

@@ -13,6 +13,7 @@ import { registerComplianceRoutes } from "./routes/compliance";
 import { registerBorrowerRoutes } from "./routes/borrower";
 import { registerNotificationRoutes } from "./routes/notifications";
 import { registerStaffInviteRoutes } from "./routes/staff-invites";
+import { registerCoachRoutes } from "./routes/coach";
 import { seedDatabase } from "./seed";
 
 
@@ -35,6 +36,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerBorrowerRoutes(app, storage, isAuthenticated, isAdmin);
   registerNotificationRoutes(app, storage, isAuthenticated);
   registerStaffInviteRoutes(app, storage, isAuthenticated, isAdmin);
+  registerCoachRoutes(app);
 
   const httpServer = createServer(app);
 
