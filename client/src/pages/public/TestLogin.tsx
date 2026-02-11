@@ -14,19 +14,20 @@ import {
   ClipboardCheck, 
   Banknote, 
   Star, 
-  Home 
+  Home,
+  Handshake,
+  Building2,
 } from "lucide-react";
 
-// Test accounts for different mortgage industry roles
 const testAccounts = [
-  // Staff roles
   { email: "admin@test.com", password: "admin123", role: "Tech/Ops Lead", roleKey: "admin", icon: Wrench, description: "Full system access & configuration", category: "staff" },
   { email: "lo@test.com", password: "lo123", role: "Loan Officer", roleKey: "lo", icon: UserCheck, description: "Sales & lead qualification", category: "staff" },
   { email: "loa@test.com", password: "loa123", role: "LOA", roleKey: "loa", icon: Briefcase, description: "Document collection & appointments", category: "staff" },
   { email: "processor@test.com", password: "processor123", role: "Processor", roleKey: "processor", icon: FileCheck, description: "File bundling & pre-underwriting", category: "staff" },
   { email: "underwriter@test.com", password: "underwriter123", role: "Underwriter", roleKey: "underwriter", icon: ClipboardCheck, description: "Final loan decisions", category: "staff" },
   { email: "closer@test.com", password: "closer123", role: "Closer/Funder", roleKey: "closer", icon: Banknote, description: "Wire management & final docs", category: "staff" },
-  // Client roles
+  { email: "broker@test.com", password: "broker123", role: "Mortgage Broker", roleKey: "broker", icon: Handshake, description: "Loan origination & deal management", category: "staff" },
+  { email: "lender@test.com", password: "lender123", role: "Lender Rep", roleKey: "lender", icon: Building2, description: "Loan product & pricing management", category: "staff" },
   { email: "renter@test.com", password: "renter123", role: "Aspiring Owner", roleKey: "aspiring_owner", icon: Star, description: "Explore homeownership & gap calculator", category: "client" },
   { email: "buyer@test.com", password: "buyer123", role: "Active Buyer", roleKey: "active_buyer", icon: Home, description: "Apply for mortgages & upload docs", category: "client" },
 ];
@@ -59,7 +60,7 @@ export default function TestLogin() {
       });
 
       // Route based on role type
-      const staffRoles = ["admin", "lo", "loa", "processor", "underwriter", "closer"];
+      const staffRoles = ["admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"];
       if (data.user.role === "admin") {
         setLocation("/admin");
       } else if (staffRoles.includes(data.user.role)) {

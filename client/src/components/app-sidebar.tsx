@@ -261,12 +261,20 @@ export function AppSidebar() {
     navigation = activeBuyerNavigation;
   }
   
-  // Get role display name for portal label
-  const portalLabel = isStaff 
-    ? "Staff Portal" 
-    : isAspiringOwner 
-      ? "Aspiring Owner" 
-      : "Active Buyer";
+  const isBroker = userRole === "broker";
+  const isLender = userRole === "lender";
+  
+  const portalLabel = isAdmin
+    ? "Admin Portal"
+    : isBroker
+      ? "Broker Portal"
+      : isLender
+        ? "Lender Portal"
+        : isStaff 
+          ? "Staff Portal" 
+          : isAspiringOwner 
+            ? "Aspiring Owner" 
+            : "Active Buyer";
 
   // Check which team roles are missing
   const assignedRoles = teamMembers.map(m => m.role);

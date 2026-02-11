@@ -8,11 +8,18 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { MobileBottomNav } from "@/components/MobileBottomNav";
 import { NotificationsBell } from "@/components/NotificationsPanel";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { isStaffRole } from "@shared/schema";
 import type { DealActivity } from "@shared/schema";
 
 interface PrivateLayoutProps {
   children: React.ReactNode;
   requiredRoles?: string[];
+}
+
+function getRoleHomeRoute(role: string): string {
+  if (role === "admin") return "/admin";
+  if (isStaffRole(role)) return "/staff-dashboard";
+  return "/dashboard";
 }
 
 export function PrivateLayout({ children, requiredRoles }: PrivateLayoutProps) {
@@ -38,8 +45,8 @@ export function PrivateLayout({ children, requiredRoles }: PrivateLayoutProps) {
   useEffect(() => {
     if (!isLoading && isAuthenticated && requiredRoles && requiredRoles.length > 0) {
       const hasRequiredRole = requiredRoles.some(role => user?.role === role);
-      if (!hasRequiredRole) {
-        navigate("/dashboard");
+      if (!hasRequiredRole && user?.role) {
+        navigate(getRoleHomeRoute(user.role));
       }
     }
   }, [isLoading, isAuthenticated, user, requiredRoles, navigate]);

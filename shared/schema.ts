@@ -24,6 +24,8 @@ export const STAFF_ROLES = [
   "processor",       // Processor - File bundling & pre-underwriting
   "underwriter",     // Underwriter - Final loan decisions
   "closer",          // Closer/Funder - Wire management & final docs
+  "broker",          // Mortgage Broker - Loan origination & lender relationships
+  "lender",          // Lender Representative - Loan product & pricing management
 ] as const;
 
 // Client Roles
@@ -44,6 +46,8 @@ export const ROLE_DISPLAY_NAMES: Record<UserRole, string> = {
   processor: "Processor",
   underwriter: "Underwriter",
   closer: "Closer/Funder",
+  broker: "Mortgage Broker",
+  lender: "Lender Representative",
   aspiring_owner: "Aspiring Owner",
   active_buyer: "Active Buyer",
 };
@@ -56,6 +60,8 @@ export const ROLE_DESCRIPTIONS: Record<UserRole, string> = {
   processor: "File bundling, pre-underwriting, condition management",
   underwriter: "Final loan approval/denial, risk assessment",
   closer: "Wire management, final document sign-off",
+  broker: "Loan origination, lender relationships, deal management",
+  lender: "Loan product management, pricing, approvals",
   aspiring_owner: "Explore homeownership, sandbox mode, gap calculator",
   active_buyer: "Apply for mortgages, upload documents, track progress",
 };

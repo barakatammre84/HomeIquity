@@ -59,6 +59,8 @@ function setupDevTestLogin(app: Express) {
       "processor@test.com": { password: "processor123", role: "processor", firstName: "Loan", lastName: "Processor" },
       "underwriter@test.com": { password: "underwriter123", role: "underwriter", firstName: "Loan", lastName: "Underwriter" },
       "closer@test.com": { password: "closer123", role: "closer", firstName: "Loan", lastName: "Closer" },
+      "broker@test.com": { password: "broker123", role: "broker", firstName: "Mortgage", lastName: "Broker" },
+      "lender@test.com": { password: "lender123", role: "lender", firstName: "Lender", lastName: "Rep" },
       "renter@test.com": { password: "renter123", role: "aspiring_owner", firstName: "Aspiring", lastName: "Owner" },
       "buyer@test.com": { password: "buyer123", role: "active_buyer", firstName: "Active", lastName: "Buyer" },
     };

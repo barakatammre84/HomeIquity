@@ -561,27 +561,29 @@ export function registerPropertyRoutes(
     }
   });
 
-  // Property CRUD for agents
   app.post("/api/properties", isAuthenticated, async (req, res) => {
     try {
       const userId = req.user!.id;
+      const userRole = req.user?.role || "";
       const agentProfile = await storage.getAgentProfileByUserId(userId);
       
-      if (!agentProfile) {
+      if (!agentProfile && userRole !== "admin") {
         return res.status(403).json({ error: "Agent profile required to create listings" });
       }
 
       const propertyData = {
         ...req.body,
-        agentId: agentProfile.id,
+        agentId: agentProfile?.id || null,
         listedAt: new Date(),
       };
 
       const property = await storage.createProperty(propertyData);
       
-      await storage.updateAgentProfile(agentProfile.id, {
-        activeListings: (agentProfile.activeListings || 0) + 1,
-      });
+      if (agentProfile) {
+        await storage.updateAgentProfile(agentProfile.id, {
+          activeListings: (agentProfile.activeListings || 0) + 1,
+        });
+      }
 
       res.status(201).json(property);
     } catch (error) {
@@ -593,15 +595,18 @@ export function registerPropertyRoutes(
   app.patch("/api/properties/:id", isAuthenticated, async (req, res) => {
     try {
       const userId = req.user!.id;
+      const userRole = req.user?.role || "";
       const property = await storage.getProperty(req.params.id);
       
       if (!property) {
         return res.status(404).json({ error: "Property not found" });
       }
 
-      const agentProfile = await storage.getAgentProfileByUserId(userId);
-      if (!agentProfile || property.agentId !== agentProfile.id) {
-        return res.status(403).json({ error: "Not authorized to update this property" });
+      if (userRole !== "admin") {
+        const agentProfile = await storage.getAgentProfileByUserId(userId);
+        if (!agentProfile || property.agentId !== agentProfile.id) {
+          return res.status(403).json({ error: "Not authorized to update this property" });
+        }
       }
 
       const updated = await storage.updateProperty(req.params.id, req.body);
@@ -615,6 +620,7 @@ export function registerPropertyRoutes(
   app.delete("/api/properties/:id", isAuthenticated, async (req, res) => {
     try {
       const userId = req.user!.id;
+      const userRole = req.user?.role || "";
       const property = await storage.getProperty(req.params.id);
       
       if (!property) {
@@ -622,13 +628,13 @@ export function registerPropertyRoutes(
       }
 
       const agentProfile = await storage.getAgentProfileByUserId(userId);
-      if (!agentProfile || property.agentId !== agentProfile.id) {
+      if (userRole !== "admin" && (!agentProfile || property.agentId !== agentProfile.id)) {
         return res.status(403).json({ error: "Not authorized to delete this property" });
       }
 
       await storage.deleteProperty(req.params.id);
       
-      if (property.status === "active") {
+      if (property.status === "active" && agentProfile) {
         await storage.updateAgentProfile(agentProfile.id, {
           activeListings: Math.max((agentProfile.activeListings || 1) - 1, 0),
         });

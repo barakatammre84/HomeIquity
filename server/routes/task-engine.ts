@@ -78,6 +78,16 @@ export async function registerTaskEngineRoutes(
   app.get("/api/tasks/application/:applicationId", isAuthenticated, async (req, res) => {
     try {
       const { applicationId } = req.params;
+      const userId = req.user!.id;
+      const userRole = req.user?.role || "";
+
+      if (!isStaffRole(userRole)) {
+        const app = await storage.getLoanApplication(applicationId);
+        if (!app || app.userId !== userId) {
+          return res.status(403).json({ error: "Unauthorized" });
+        }
+      }
+
       const tasks = await storage.getTasksByApplication(applicationId);
       res.json(tasks);
     } catch (error) {
@@ -91,6 +101,15 @@ export async function registerTaskEngineRoutes(
       const task = await storage.getTask(req.params.id);
       if (!task) {
         return res.status(404).json({ error: "Task not found" });
+      }
+
+      const userId = req.user!.id;
+      const userRole = req.user?.role || "";
+      if (!isStaffRole(userRole) && task.assignedToUserId !== userId) {
+        const app = task.applicationId ? await storage.getLoanApplication(task.applicationId) : null;
+        if (!app || app.userId !== userId) {
+          return res.status(403).json({ error: "Unauthorized" });
+        }
       }
 
       const taskDocs = await storage.getTaskDocuments(task.id);

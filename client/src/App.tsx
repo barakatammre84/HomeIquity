@@ -25,15 +25,19 @@ function PublicPage({ children }: { children: React.ReactNode }) {
 }
 
 function BorrowerPage({ children }: { children: React.ReactNode }) {
-  return <PrivateLayout>{children}</PrivateLayout>;
+  return <PrivateLayout requiredRoles={["aspiring_owner", "active_buyer"]}>{children}</PrivateLayout>;
 }
 
 function StaffPage({ children }: { children: React.ReactNode }) {
-  return <PrivateLayout requiredRoles={["admin", "lo", "loa", "processor", "underwriter", "closer"]}>{children}</PrivateLayout>;
+  return <PrivateLayout requiredRoles={["admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"]}>{children}</PrivateLayout>;
 }
 
 function AdminPage({ children }: { children: React.ReactNode }) {
   return <PrivateLayout requiredRoles={["admin"]}>{children}</PrivateLayout>;
+}
+
+function AnyAuthPage({ children }: { children: React.ReactNode }) {
+  return <PrivateLayout>{children}</PrivateLayout>;
 }
 
 function Router() {
@@ -122,10 +126,27 @@ function Router() {
         <PublicPage><MortgageCalculator /></PublicPage>
       </Route>
 
-      {/* Private Pages - Borrower (logged-in clients working on their application) */}
+      {/* Private Pages - Any authenticated user (role-aware content) */}
       <Route path="/dashboard">
-        <BorrowerPage><Dashboard /></BorrowerPage>
+        <AnyAuthPage><Dashboard /></AnyAuthPage>
       </Route>
+      <Route path="/tasks">
+        <AnyAuthPage><Tasks /></AnyAuthPage>
+      </Route>
+      <Route path="/task/:id">
+        {(params) => <AnyAuthPage><TaskDetail /></AnyAuthPage>}
+      </Route>
+      <Route path="/messages">
+        <AnyAuthPage><Messages /></AnyAuthPage>
+      </Route>
+      <Route path="/messages/:memberId">
+        {(params) => <AnyAuthPage><Messages /></AnyAuthPage>}
+      </Route>
+      <Route path="/documents">
+        <AnyAuthPage><Documents /></AnyAuthPage>
+      </Route>
+
+      {/* Private Pages - Borrower only (clients working on their mortgage) */}
       <Route path="/gap-calculator">
         <BorrowerPage><GapCalculator /></BorrowerPage>
       </Route>
@@ -137,12 +158,6 @@ function Router() {
       </Route>
       <Route path="/application-summary">
         <BorrowerPage><ApplicationSummary /></BorrowerPage>
-      </Route>
-      <Route path="/tasks">
-        <BorrowerPage><Tasks /></BorrowerPage>
-      </Route>
-      <Route path="/task/:id">
-        {(params) => <BorrowerPage><TaskDetail /></BorrowerPage>}
       </Route>
       <Route path="/verification">
         <BorrowerPage><Verification /></BorrowerPage>
@@ -159,17 +174,8 @@ function Router() {
       <Route path="/urla-form">
         <BorrowerPage><URLAForm /></BorrowerPage>
       </Route>
-      <Route path="/documents">
-        <BorrowerPage><Documents /></BorrowerPage>
-      </Route>
       <Route path="/compare-offers/:id">
         {(params) => <BorrowerPage><BorrowerDealComparison /></BorrowerPage>}
-      </Route>
-      <Route path="/messages">
-        <BorrowerPage><Messages /></BorrowerPage>
-      </Route>
-      <Route path="/messages/:memberId">
-        {(params) => <BorrowerPage><Messages /></BorrowerPage>}
       </Route>
 
       {/* Private Pages - Staff (brokers, lenders processing mortgage applications) */}
