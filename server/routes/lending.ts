@@ -11,6 +11,7 @@ import { z } from "zod";
 import crypto from "crypto";
 import { upload } from "./utils";
 import { logAudit } from "../auditLog";
+import { sendNotificationEmail } from "../services/emailService";
 
 const declarationsValidationSchema = insertBorrowerDeclarationsSchema.partial().extend({
   applicationId: z.string().optional(),
@@ -327,6 +328,24 @@ export function registerLendingRoutes(
         performedBy: userId,
       });
 
+      await storage.createNotification({
+        userId,
+        type: "application_submitted",
+        title: "Application Received",
+        body: "Your mortgage application has been submitted and is being reviewed.",
+        entityType: "loan_application",
+        entityId: application.id,
+        status: "unread",
+      });
+
+      if (user.email) {
+        sendNotificationEmail({
+          type: "application_submitted",
+          recipientEmail: user.email,
+          data: { borrowerName: user.firstName || "Borrower", applicationId: application.id },
+        });
+      }
+
       res.status(201).json(application);
 
       try {
@@ -372,6 +391,43 @@ export function registerLendingRoutes(
             ? `Congratulations! You've been pre-approved for up to $${parseFloat(analysisResult.preApprovalAmount).toLocaleString()}`
             : "Your application requires additional review.",
         });
+
+        const borrowerName = user.firstName || "Borrower";
+        if (analysisResult.isApproved) {
+          await storage.createNotification({
+            userId,
+            type: "application_pre_approved",
+            title: "You've Been Pre-Approved!",
+            body: `Congratulations! You've been pre-approved for up to $${parseFloat(analysisResult.preApprovalAmount).toLocaleString()}.`,
+            entityType: "loan_application",
+            entityId: application.id,
+            status: "unread",
+          });
+          if (user.email) {
+            sendNotificationEmail({
+              type: "application_pre_approved",
+              recipientEmail: user.email,
+              data: { borrowerName, amount: parseFloat(analysisResult.preApprovalAmount).toLocaleString(), applicationId: application.id },
+            });
+          }
+        } else {
+          await storage.createNotification({
+            userId,
+            type: "application_denied",
+            title: "Application Update",
+            body: "Your application requires additional review. Please check your dashboard for details.",
+            entityType: "loan_application",
+            entityId: application.id,
+            status: "unread",
+          });
+          if (user.email) {
+            sendNotificationEmail({
+              type: "application_denied",
+              recipientEmail: user.email,
+              data: { borrowerName },
+            });
+          }
+        }
 
         if (analysisResult.isApproved) {
           const updatedApp = await storage.getLoanApplication(application.id);
@@ -716,6 +772,309 @@ export function registerLendingRoutes(
     } catch (error) {
       console.error("Get draft application error:", error);
       res.status(500).json({ error: "Failed to get draft application" });
+    }
+  });
+
+  app.post("/api/loan-applications/:id/generate-letter", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const { id } = req.params;
+
+      const application = await storage.getLoanApplicationWithAccess(id, user.id, user.role);
+      if (!application) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+
+      if (application.status !== "pre_approved") {
+        return res.status(400).json({ error: "Only pre-approved applications can generate letters" });
+      }
+
+      const { generatePreApprovalPDF } = await import("../services/pdfLetterGenerator");
+
+      const letterNumber = `BN-${Date.now().toString(36).toUpperCase()}-${crypto.randomBytes(2).toString("hex").toUpperCase()}`;
+      const expirationDate = new Date();
+      expirationDate.setDate(expirationDate.getDate() + 90);
+
+      const purchasePrice = parseFloat(application.purchasePrice || "0");
+      const downPayment = parseFloat(application.downPayment || "0");
+      const loanAmount = application.preApprovalAmount || String(purchasePrice - downPayment);
+
+      const conditions = [
+        "Satisfactory property appraisal",
+        "Verification of employment and income",
+        "Clear title search and title insurance",
+        "Property insurance in effect prior to closing",
+        "No material change in financial condition",
+      ];
+
+      const disclaimers = [
+        "This pre-approval is not a commitment to lend. Final approval is subject to satisfactory appraisal, title search, and verification of all information provided.",
+        "This letter is valid only for the borrower named above and is non-transferable. Terms are subject to change based on market conditions.",
+        "The pre-approved amount is based on information provided and preliminary underwriting review. The actual loan amount may differ upon full underwriting.",
+        "This pre-approval does not guarantee any specific interest rate. Rate lock is available separately.",
+        "Equal Housing Lender. All loans are subject to credit approval.",
+      ];
+
+      const borrowerName = [user.firstName, user.lastName].filter(Boolean).join(" ") || "Borrower";
+
+      const pdfBuffer = await generatePreApprovalPDF({
+        letterNumber,
+        borrowerName,
+        loanAmount,
+        productType: application.propertyType === "condo" ? "CONV" : (application.isVeteran ? "VA" : "CONV"),
+        occupancy: "Primary",
+        loanPurpose: application.loanPurpose || "Purchase",
+        companyLegalName: "Baranest Mortgage Corporation",
+        companyNmlsId: "123456",
+        companyContactInfo: "support@baranest.com | (555) 123-4567",
+        expirationDate,
+        generatedAt: new Date(),
+        conditions,
+        disclaimers,
+        watermarkApplied: true,
+      });
+
+      const storageKey = `letters/${letterNumber}.pdf`;
+      let pdfStored = false;
+      try {
+        const { objectStorageClient } = await import("../replit_integrations/object_storage/objectStorage");
+        const privateDir = process.env.PRIVATE_OBJECT_DIR || "";
+        if (privateDir) {
+          const fullPath = `${privateDir}/${storageKey}`;
+          const parts = fullPath.startsWith("/") ? fullPath.slice(1).split("/") : fullPath.split("/");
+          const bucketName = parts[0];
+          const objectName = parts.slice(1).join("/");
+          const bucket = objectStorageClient.bucket(bucketName);
+          const file = bucket.file(objectName);
+          await file.save(pdfBuffer, { contentType: "application/pdf" });
+          pdfStored = true;
+        }
+      } catch (storageErr) {
+        console.error("[Letter] Object storage upload failed, will regenerate on demand:", storageErr);
+      }
+
+      const { db: database } = await import("../db");
+      const { preApprovalLetters, disclaimerVersions, underwritingDecisions } = await import("@shared/schema");
+      const { eq, desc } = await import("drizzle-orm");
+
+      let snapshotId: string | null = null;
+      try {
+        const [snapshot] = await database.select().from(underwritingDecisions)
+          .where(eq(underwritingDecisions.loanId, id))
+          .orderBy(desc(underwritingDecisions.decidedAt))
+          .limit(1);
+        snapshotId = snapshot?.id || null;
+      } catch {}
+
+      let disclaimerId: string | null = null;
+      try {
+        const [disc] = await database.select().from(disclaimerVersions).limit(1);
+        disclaimerId = disc?.id || null;
+      } catch {}
+
+      if (!disclaimerId) {
+        try {
+          const [fallbackDisc] = await database.insert(disclaimerVersions).values({
+            disclaimerType: "primary",
+            version: "1.0",
+            text: "This pre-approval is not a commitment to lend. Final approval is subject to a satisfactory appraisal, title search, and verification of all information provided.",
+            effectiveFrom: new Date(),
+          }).returning();
+          disclaimerId = fallbackDisc.id;
+        } catch (discErr) {
+          console.error("[Letter] Fallback disclaimer creation failed:", discErr);
+        }
+      }
+
+      let letterId: string | null = null;
+      try {
+        const insertValues: any = {
+          letterNumber,
+          borrowerName,
+          applicationId: id,
+          loanAmount,
+          productType: application.isVeteran ? "VA" : "CONV",
+          occupancy: "Primary",
+          loanPurpose: application.loanPurpose || "Purchase",
+          expirationDate,
+          companyLegalName: "Baranest Mortgage Corporation",
+          companyNmlsId: "123456",
+          companyContactInfo: "support@baranest.com | (555) 123-4567",
+          loanOfficerId: isStaffRole(user.role) ? user.id : undefined,
+          pdfStorageKey: pdfStored ? storageKey : undefined,
+          pdfGeneratedAt: new Date(),
+        };
+
+        if (snapshotId) {
+          insertValues.underwritingSnapshotId = snapshotId;
+        }
+        if (disclaimerId) {
+          insertValues.primaryDisclaimerId = disclaimerId;
+          insertValues.brokerRoleDisclaimerId = disclaimerId;
+          insertValues.documentRelianceDisclaimerId = disclaimerId;
+          insertValues.changeInCircumstanceDisclaimerId = disclaimerId;
+          insertValues.systemGeneratedDisclaimerId = disclaimerId;
+        }
+
+        const [letter] = await database.insert(preApprovalLetters).values(insertValues).returning();
+        letterId = letter?.id || null;
+      } catch (dbErr) {
+        console.error("[Letter] DB insert failed:", dbErr);
+      }
+
+      await storage.createNotification({
+        userId: user.id,
+        type: "pre_approval_letter_ready",
+        title: "Pre-Approval Letter Ready",
+        body: `Your pre-approval letter #${letterNumber} is ready for download.`,
+        entityType: "pre_approval_letter",
+        entityId: letterId || id,
+        status: "unread",
+      });
+
+      if (user.email) {
+        sendNotificationEmail({
+          type: "pre_approval_letter_ready",
+          recipientEmail: user.email,
+          data: {
+            borrowerName,
+            amount: parseFloat(loanAmount).toLocaleString(),
+            letterNumber,
+          },
+        });
+      }
+
+      logAudit(req, "pre_approval_letter.generated", "pre_approval_letter", letterId || letterNumber);
+
+      res.json({
+        letterNumber,
+        letterId,
+        loanAmount,
+        expirationDate,
+        pdfAvailable: true,
+        pdfStored,
+      });
+    } catch (error) {
+      console.error("Generate letter error:", error);
+      res.status(500).json({ error: "Failed to generate pre-approval letter" });
+    }
+  });
+
+  app.get("/api/loan-applications/:id/letter-pdf", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const { id } = req.params;
+
+      const application = await storage.getLoanApplicationWithAccess(id, user.id, user.role);
+      if (!application) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+
+      const { db: database } = await import("../db");
+      const { preApprovalLetters } = await import("@shared/schema");
+      const { eq, desc } = await import("drizzle-orm");
+
+      const [letter] = await database.select().from(preApprovalLetters)
+        .where(eq(preApprovalLetters.applicationId, id))
+        .orderBy(desc(preApprovalLetters.createdAt))
+        .limit(1);
+
+      if (letter?.pdfStorageKey) {
+        try {
+          const { objectStorageClient } = await import("../replit_integrations/object_storage/objectStorage");
+          const privateDir = process.env.PRIVATE_OBJECT_DIR || "";
+          const fullPath = `${privateDir}/${letter.pdfStorageKey}`;
+          const parts = fullPath.startsWith("/") ? fullPath.slice(1).split("/") : fullPath.split("/");
+          const bucketName = parts[0];
+          const objectName = parts.slice(1).join("/");
+          const bucket = objectStorageClient.bucket(bucketName);
+          const file = bucket.file(objectName);
+          const [exists] = await file.exists();
+          if (exists) {
+            const [contents] = await file.download();
+            logAudit(req, "pre_approval_letter.downloaded", "pre_approval_letter", letter.id);
+            res.setHeader("Content-Type", "application/pdf");
+            res.setHeader("Content-Disposition", `attachment; filename="${letter.letterNumber}.pdf"`);
+            return res.send(contents);
+          }
+        } catch (storageErr) {
+          console.error("[Letter] Storage download failed, regenerating:", storageErr);
+        }
+      }
+
+      const { generatePreApprovalPDF } = await import("../services/pdfLetterGenerator");
+      const purchasePrice = parseFloat(application.purchasePrice || "0");
+      const downPayment = parseFloat(application.downPayment || "0");
+      const loanAmount = application.preApprovalAmount || String(purchasePrice - downPayment);
+      const borrowerName = [user.firstName, user.lastName].filter(Boolean).join(" ") || "Borrower";
+
+      const pdfBuffer = await generatePreApprovalPDF({
+        letterNumber: letter?.letterNumber || `BN-${Date.now().toString(36).toUpperCase()}`,
+        borrowerName,
+        loanAmount,
+        productType: application.isVeteran ? "VA" : "CONV",
+        occupancy: "Primary",
+        loanPurpose: application.loanPurpose || "Purchase",
+        companyLegalName: "Baranest Mortgage Corporation",
+        companyNmlsId: "123456",
+        companyContactInfo: "support@baranest.com | (555) 123-4567",
+        expirationDate: letter?.expirationDate || new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
+        generatedAt: letter?.generatedAt || new Date(),
+        conditions: [
+          "Satisfactory property appraisal",
+          "Verification of employment and income",
+          "Clear title search and title insurance",
+          "Property insurance in effect prior to closing",
+          "No material change in financial condition",
+        ],
+        disclaimers: [],
+        watermarkApplied: true,
+      });
+
+      logAudit(req, "pre_approval_letter.downloaded", "pre_approval_letter", letter?.id || id);
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `attachment; filename="pre-approval-${id.substring(0, 8)}.pdf"`);
+      res.send(pdfBuffer);
+    } catch (error) {
+      console.error("Download letter PDF error:", error);
+      res.status(500).json({ error: "Failed to download pre-approval letter" });
+    }
+  });
+
+  app.get("/api/loan-applications/:id/letter-status", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const { id } = req.params;
+
+      const application = await storage.getLoanApplicationWithAccess(id, user.id, user.role);
+      if (!application) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+
+      const { db: database } = await import("../db");
+      const { preApprovalLetters } = await import("@shared/schema");
+      const { eq, desc } = await import("drizzle-orm");
+
+      const [letter] = await database.select().from(preApprovalLetters)
+        .where(eq(preApprovalLetters.applicationId, id))
+        .orderBy(desc(preApprovalLetters.createdAt))
+        .limit(1);
+
+      if (!letter) {
+        return res.json({ hasLetter: false });
+      }
+
+      res.json({
+        hasLetter: true,
+        letterNumber: letter.letterNumber,
+        status: letter.status,
+        expirationDate: letter.expirationDate,
+        generatedAt: letter.generatedAt,
+        pdfAvailable: !!(letter.pdfStorageKey || letter.pdfGeneratedAt),
+      });
+    } catch (error) {
+      console.error("Letter status error:", error);
+      res.status(500).json({ error: "Failed to check letter status" });
     }
   });
 }

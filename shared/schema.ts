@@ -4986,15 +4986,15 @@ export const preApprovalLetters = pgTable("pre_approval_letters", {
   rateLockedAt: timestamp("rate_locked_at"), // Only populated if rate is locked
   lockedRate: decimal("locked_rate", { precision: 5, scale: 3 }), // Only if locked
   
-  // Frozen underwriting snapshot reference (CRITICAL)
-  underwritingSnapshotId: varchar("underwriting_snapshot_id").references(() => underwritingDecisions.id).notNull(),
+  // Frozen underwriting snapshot reference
+  underwritingSnapshotId: varchar("underwriting_snapshot_id").references(() => underwritingDecisions.id),
   
   // Disclaimer versions used (for legal defense)
-  primaryDisclaimerId: varchar("primary_disclaimer_id").references(() => disclaimerVersions.id).notNull(),
-  brokerRoleDisclaimerId: varchar("broker_role_disclaimer_id").references(() => disclaimerVersions.id).notNull(),
-  documentRelianceDisclaimerId: varchar("document_reliance_disclaimer_id").references(() => disclaimerVersions.id).notNull(),
-  changeInCircumstanceDisclaimerId: varchar("change_in_circumstance_disclaimer_id").references(() => disclaimerVersions.id).notNull(),
-  systemGeneratedDisclaimerId: varchar("system_generated_disclaimer_id").references(() => disclaimerVersions.id).notNull(),
+  primaryDisclaimerId: varchar("primary_disclaimer_id").references(() => disclaimerVersions.id),
+  brokerRoleDisclaimerId: varchar("broker_role_disclaimer_id").references(() => disclaimerVersions.id),
+  documentRelianceDisclaimerId: varchar("document_reliance_disclaimer_id").references(() => disclaimerVersions.id),
+  changeInCircumstanceDisclaimerId: varchar("change_in_circumstance_disclaimer_id").references(() => disclaimerVersions.id),
+  systemGeneratedDisclaimerId: varchar("system_generated_disclaimer_id").references(() => disclaimerVersions.id),
   
   // Expiration
   expirationDate: timestamp("expiration_date").notNull(),

@@ -3,6 +3,7 @@ import type { IStorage } from "../storage";
 import type { User } from "@shared/schema";
 import crypto from "crypto";
 import { logAudit } from "../auditLog";
+import { sendNotificationEmail } from "../services/emailService";
 
 export function registerStaffInviteRoutes(app: Express, storage: IStorage, isAuthenticated: any, isAdmin: any) {
   app.post("/api/staff-invites", isAdmin, async (req, res) => {
@@ -26,6 +27,18 @@ export function registerStaffInviteRoutes(app: Express, storage: IStorage, isAut
         expiresAt,
         createdBy: user.id,
       });
+
+      if (email) {
+        sendNotificationEmail({
+          type: "invite_sent",
+          recipientEmail: email,
+          data: {
+            role,
+            code,
+            inviterName: user.firstName || "Admin",
+          },
+        });
+      }
       
       res.status(201).json({ invite });
     } catch (error) {

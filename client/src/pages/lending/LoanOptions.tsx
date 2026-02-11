@@ -23,6 +23,8 @@ import {
   Shield,
   Clock,
   AlertCircle,
+  Download,
+  Loader2,
 } from "lucide-react";
 
 interface LoanOptionsData {
@@ -121,6 +123,9 @@ export default function LoanOptions() {
             <p className="mt-4 text-muted-foreground">
               Compare your loan options below and lock in your rate today.
             </p>
+            <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+              <GenerateLetterButton applicationId={application.id} status={application.status} />
+            </div>
           </div>
         </div>
       </div>
@@ -297,5 +302,73 @@ export default function LoanOptions() {
 
       <Footer />
     </div>
+  );
+}
+
+function GenerateLetterButton({ applicationId, status }: { applicationId: string; status: string }) {
+  const { toast } = useToast();
+
+  const letterStatusQuery = useQuery<{ hasLetter: boolean; letterNumber?: string }>({
+    queryKey: ["/api/loan-applications", applicationId, "letter-status"],
+  });
+
+  const generateMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", `/api/loan-applications/${applicationId}/generate-letter`);
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      toast({ title: "Letter Generated", description: `Pre-approval letter #${data.letterNumber} is ready.` });
+      queryClient.invalidateQueries({ queryKey: ["/api/loan-applications", applicationId, "letter-status"] });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to generate letter. Please try again.", variant: "destructive" });
+    },
+  });
+
+  const handleDownload = async () => {
+    try {
+      const res = await fetch(`/api/loan-applications/${applicationId}/letter-pdf`, { credentials: "include" });
+      if (!res.ok) throw new Error("Download failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `pre-approval-letter.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast({ title: "Error", description: "Failed to download letter.", variant: "destructive" });
+    }
+  };
+
+  if (status !== "pre_approved") return null;
+
+  const hasLetter = letterStatusQuery.data?.hasLetter;
+
+  return (
+    <>
+      {!hasLetter && (
+        <Button
+          onClick={() => generateMutation.mutate()}
+          disabled={generateMutation.isPending}
+          className="gap-2"
+          data-testid="button-generate-letter"
+        >
+          {generateMutation.isPending ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <FileText className="h-4 w-4" />
+          )}
+          {generateMutation.isPending ? "Generating..." : "Generate Pre-Approval Letter"}
+        </Button>
+      )}
+      {hasLetter && (
+        <Button onClick={handleDownload} variant="outline" className="gap-2" data-testid="button-download-letter">
+          <Download className="h-4 w-4" />
+          Download Pre-Approval Letter
+        </Button>
+      )}
+    </>
   );
 }
