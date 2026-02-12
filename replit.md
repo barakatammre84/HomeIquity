@@ -14,7 +14,7 @@ The frontend is built with React 18, TypeScript, Vite, Wouter, and TanStack Quer
 ### Technical Implementations
 The backend is developed with Node.js, Express.js, and TypeScript, utilizing PostgreSQL (Neon serverless) and Drizzle ORM. Authentication is session-based with Passport.js (Replit OIDC) and implements role-based access control. The API is RESTful with structured error handling and robust logging. Security measures include Helmet, CSRF protection, and rate limiting. An email notification service uses Nodemailer for transactional emails with branded HTML templates. PDFKit generates branded pre-approval and pre-qualification letters.
 
-An AI Homebuyer Coach, powered by Gemini 2.5 Flash, provides conversational mortgage readiness advice. It uses a 3-tier data quality hierarchy (document-extracted > application form > chat input) to ensure accuracy, prioritizing verified document data for income and financial assessments. This coach also feeds structured intake data into the pre-approval application form for pre-filling.
+An AI Homebuyer Coach, powered by OpenAI GPT-5-mini (via Replit AI Integrations), provides conversational mortgage readiness advice. It uses a 3-tier data quality hierarchy (document-extracted > application form > chat input) to ensure accuracy, prioritizing verified document data for income and financial assessments. This coach also feeds structured intake data into the pre-approval application form for pre-filling.
 
 The platform's core features include a **Deterministic Underwriting Engine** that applies hard-coded Fannie Mae/Freddie Mac aligned rules for eligibility, DTI, and property. It incorporates a Pricing Engine, income stream enhancement, and an Underwriting Rules DSL for non-technical guideline management. **AI Integration** is strictly for document data extraction to feed the deterministic underwriting engine, not for decision-making. **MISMO 3.4 GSE Compliance** is supported with XML export. A **Document Management System** provides underwriting-aware OCR, classification, and data extraction, along with an Underwriting Event Engine. A rules-driven **Loan Pipeline & Borrower Dashboards** manage the loan process, and a **Property Search & Qualification** feature includes an affordability marketplace. **Compliance & Security** features include MISMO/ULAD Validation, TRID-compliant Loan Estimates, and robust access controls. A **Pre-Approval Letter Generator** creates lender-grade letters. Additional features include an **AI Homebuyer Coach**, a **Policy Operations Admin UI** for managing underwriting guidelines, a **Realtor Revenue Engine** for agent enablement, and a **Lifetime Homeowner Value Dashboard** for post-close engagement.
 
@@ -26,6 +26,7 @@ The project utilizes a domain-based modular structure for both server routes and
 ### Third-Party Services
 -   **Neon Database:** Serverless PostgreSQL hosting.
 -   **Google Gemini AI:** Used for document data extraction.
+-   **OpenAI (via Replit AI Integrations):** Powers the AI Homebuyer Coach (GPT-5-mini). No separate API key needed.
 -   **Plaid:** For automated employment, identity, income, and asset verification.
 
 ### UI Component Libraries
