@@ -385,7 +385,7 @@ export async function generateCoachResponse(
     const response = await openai.chat.completions.create({
       model: "gpt-5-mini",
       messages,
-      max_completion_tokens: 4096,
+      max_completion_tokens: 16384,
     });
 
     const text = response.choices[0]?.message?.content || "";
