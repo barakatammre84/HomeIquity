@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { isAuthenticated } from "../auth";
 import { storage } from "../storage";
-import { generateCoachResponse, type VerifiedUserContext, type CoachIntakeData } from "../services/coachingService";
+import { generateCoachResponse, type VerifiedUserContext, type CoachIntakeData, type DocumentExtractedData } from "../services/coachingService";
 import type { User } from "@shared/schema";
 import { z } from "zod";
 
@@ -43,12 +43,45 @@ async function buildVerifiedContext(userId: string, user: User): Promise<Verifie
     }
 
     let uploadedDocuments: VerifiedUserContext["uploadedDocuments"] = [];
+    let documentExtractedData: DocumentExtractedData[] = [];
     try {
       const docs = await storage.getDocumentsByApplication(activeApp.id);
       uploadedDocuments = docs.map(d => ({
         documentType: d.documentType,
         status: d.status || "uploaded",
       }));
+
+      for (const doc of docs) {
+        if (!doc.notes) continue;
+        try {
+          const parsed = JSON.parse(doc.notes as string);
+          if (!parsed.confidence || parsed.confidence === "low") continue;
+
+          const extracted: DocumentExtractedData = {
+            documentType: doc.documentType,
+            confidence: parsed.confidence,
+          };
+
+          if (parsed.grossIncome) extracted.grossIncome = parsed.grossIncome;
+          if (parsed.adjustedGrossIncome) extracted.adjustedGrossIncome = parsed.adjustedGrossIncome;
+          if (parsed.taxableIncome) extracted.taxableIncome = parsed.taxableIncome;
+          if (parsed.filingStatus) extracted.filingStatus = parsed.filingStatus;
+          if (parsed.documentYear) extracted.documentYear = parsed.documentYear;
+          if (parsed.grossPay) extracted.grossPay = parsed.grossPay;
+          if (parsed.netPay) extracted.netPay = parsed.netPay;
+          if (parsed.ytdGross) extracted.ytdGross = parsed.ytdGross;
+          if (parsed.employerName) extracted.employerName = parsed.employerName;
+          if (parsed.employeeName) extracted.employeeName = parsed.employeeName;
+          if (parsed.closingBalance) extracted.closingBalance = parsed.closingBalance;
+          if (parsed.totalDeposits) extracted.totalDeposits = parsed.totalDeposits;
+          if (parsed.accountType) extracted.accountType = parsed.accountType;
+
+          const hasData = Object.keys(extracted).length > 2;
+          if (hasData) documentExtractedData.push(extracted);
+        } catch {
+          // notes is not valid JSON extraction data, skip
+        }
+      }
     } catch (e) {
       console.warn("[Coach] Could not fetch documents:", e);
     }
@@ -74,6 +107,7 @@ async function buildVerifiedContext(userId: string, user: User): Promise<Verifie
       loanPurpose: activeApp.loanPurpose,
       employmentHistory,
       uploadedDocuments,
+      documentExtractedData: documentExtractedData.length > 0 ? documentExtractedData : undefined,
       userName: user.firstName && user.lastName
         ? `${user.firstName} ${user.lastName}`
         : (user.email?.split("@")[0] || undefined),

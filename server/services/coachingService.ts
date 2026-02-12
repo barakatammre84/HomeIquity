@@ -2,7 +2,7 @@ import { GoogleGenAI } from "@google/genai";
 
 const apiKey = process.env.AI_INTEGRATIONS_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
 const baseUrl = process.env.AI_INTEGRATIONS_GEMINI_BASE_URL;
-const genAI = apiKey ? new GoogleGenAI({ apiKey, ...(baseUrl ? { httpOptions: { baseUrl } } : {}) }) : null;
+const genAI = apiKey ? new GoogleGenAI({ apiKey, ...(baseUrl ? { httpOptions: { baseUrl, apiVersion: "" } } : {}) }) : null;
 
 export interface CoachingProfile {
   readinessTier: "ready_now" | "almost_ready" | "building" | "exploring";
@@ -54,6 +54,24 @@ export interface CoachResponse {
   documentChecklist?: DocumentRequirement[];
 }
 
+export interface DocumentExtractedData {
+  documentType: string;
+  confidence: "high" | "medium" | "low";
+  grossIncome?: number | null;
+  adjustedGrossIncome?: number | null;
+  taxableIncome?: number | null;
+  filingStatus?: string | null;
+  documentYear?: string | null;
+  grossPay?: number | null;
+  netPay?: number | null;
+  ytdGross?: number | null;
+  employerName?: string | null;
+  employeeName?: string | null;
+  closingBalance?: number | null;
+  totalDeposits?: number | null;
+  accountType?: string | null;
+}
+
 export interface VerifiedUserContext {
   hasApplication: boolean;
   applicationStatus?: string;
@@ -84,19 +102,69 @@ export interface VerifiedUserContext {
     documentType: string;
     status: string;
   }>;
+  documentExtractedData?: DocumentExtractedData[];
   userName?: string;
 }
 
 function buildVerifiedContextPrompt(ctx: VerifiedUserContext): string {
   if (!ctx.hasApplication) {
     const greeting = ctx.userName ? `The user's name is ${ctx.userName}.` : "";
-    return `\n\n${greeting} This user has not yet submitted a loan application. They are exploring or early-stage. Focus on general guidance and help them understand what they need to get started.`;
+    return `\n\n${greeting} This user has not yet submitted a loan application. They are exploring or early-stage. Focus on general guidance and help them understand what they need to get started.\n\nIMPORTANT: Any financial information this user shares in chat is SELF-REPORTED and UNVERIFIED. Treat it as approximate and advisory. Do NOT use self-reported chat data as definitive fact. Always recommend they provide documentation to verify their claims.`;
   }
 
-  const lines: string[] = [
-    "\n\nVERIFIED APPLICATION DATA (from the user's actual loan application on file - PRIORITIZE this over anything they say in chat):",
-    `Application Status: ${ctx.applicationStatus}`,
-  ];
+  const lines: string[] = [];
+
+  if (ctx.documentExtractedData && ctx.documentExtractedData.length > 0) {
+    lines.push("\n\n=== TIER 1: DOCUMENT-VERIFIED DATA (HIGHEST TRUST) ===");
+    lines.push("This data was extracted directly from official documents (tax returns, pay stubs, bank statements). Treat this as the most authoritative and reliable source. This overrides EVERYTHING else — application data AND chat input.");
+
+    const taxReturns = ctx.documentExtractedData.filter(d => d.documentType === "tax_return" || d.documentType === "tax_returns");
+    const payStubs = ctx.documentExtractedData.filter(d => d.documentType === "pay_stub" || d.documentType === "pay_stubs");
+    const bankStatements = ctx.documentExtractedData.filter(d => d.documentType === "bank_statement" || d.documentType === "bank_statements");
+
+    if (taxReturns.length > 0) {
+      lines.push("\nTax Return Data (official IRS filings — HIGHEST quality):");
+      for (const tr of taxReturns) {
+        const parts = [];
+        if (tr.documentYear) parts.push(`Year: ${tr.documentYear}`);
+        if (tr.grossIncome) parts.push(`Gross Income: $${tr.grossIncome.toLocaleString()}`);
+        if (tr.adjustedGrossIncome) parts.push(`AGI: $${tr.adjustedGrossIncome.toLocaleString()}`);
+        if (tr.taxableIncome) parts.push(`Taxable Income: $${tr.taxableIncome.toLocaleString()}`);
+        if (tr.filingStatus) parts.push(`Filing Status: ${tr.filingStatus}`);
+        parts.push(`Extraction Confidence: ${tr.confidence}`);
+        lines.push(`  - ${parts.join(" | ")}`);
+      }
+    }
+
+    if (payStubs.length > 0) {
+      lines.push("\nPay Stub Data (employer-issued — HIGH quality):");
+      for (const ps of payStubs) {
+        const parts = [];
+        if (ps.employerName) parts.push(`Employer: ${ps.employerName}`);
+        if (ps.grossPay) parts.push(`Gross Pay: $${ps.grossPay.toLocaleString()}`);
+        if (ps.netPay) parts.push(`Net Pay: $${ps.netPay.toLocaleString()}`);
+        if (ps.ytdGross) parts.push(`YTD Gross: $${ps.ytdGross.toLocaleString()}`);
+        parts.push(`Extraction Confidence: ${ps.confidence}`);
+        lines.push(`  - ${parts.join(" | ")}`);
+      }
+    }
+
+    if (bankStatements.length > 0) {
+      lines.push("\nBank Statement Data (financial institution — HIGH quality):");
+      for (const bs of bankStatements) {
+        const parts = [];
+        if (bs.accountType) parts.push(`Account: ${bs.accountType}`);
+        if (bs.closingBalance) parts.push(`Balance: $${bs.closingBalance.toLocaleString()}`);
+        if (bs.totalDeposits) parts.push(`Total Deposits: $${bs.totalDeposits.toLocaleString()}`);
+        parts.push(`Extraction Confidence: ${bs.confidence}`);
+        lines.push(`  - ${parts.join(" | ")}`);
+      }
+    }
+  }
+
+  lines.push("\n\n=== TIER 2: APPLICATION DATA (MEDIUM TRUST) ===");
+  lines.push("This data comes from the user's loan application form. It is self-reported but formally submitted. Use it when no document-verified data is available for a given field.");
+  lines.push(`Application Status: ${ctx.applicationStatus}`);
 
   if (ctx.userName) lines.push(`Borrower Name: ${ctx.userName}`);
   if (ctx.annualIncome) lines.push(`Annual Income: $${parseFloat(ctx.annualIncome).toLocaleString()}`);
@@ -137,7 +205,15 @@ function buildVerifiedContextPrompt(ctx: VerifiedUserContext): string {
     lines.push("\nWhen recommending documents, acknowledge which ones the user has already provided and focus on what's still missing.");
   }
 
-  lines.push("\nIMPORTANT: Use this verified data as the ground truth. If the user mentions different numbers in chat, politely note the discrepancy and ask them to clarify, but base your assessment on the application data unless they explicitly state it has changed.");
+  lines.push("\n\n=== TIER 3: CHAT INPUT (LOWEST TRUST — TREAT WITH CAUTION) ===");
+  lines.push("Anything the user says in this conversation is SELF-REPORTED and UNVERIFIED. It is the LEAST reliable data source.");
+  lines.push("RULES FOR HANDLING CHAT INPUT:");
+  lines.push("- NEVER treat chat-reported numbers as fact. Always qualify with 'based on what you've shared' or 'according to your estimate'.");
+  lines.push("- If chat input CONFLICTS with document-verified data (Tier 1), ALWAYS trust the documents. Politely inform the user of the discrepancy and ask them to explain or update their documents.");
+  lines.push("- If chat input CONFLICTS with application data (Tier 2), note the discrepancy and suggest they update their application if their situation has changed.");
+  lines.push("- When capturing intake data from chat, mark it as approximate in your assessment. Encourage the user to upload supporting documents to verify.");
+  lines.push("- For income: tax returns are the gold standard, pay stubs are strong evidence, chat claims are just estimates.");
+  lines.push("- For assets/savings: bank statements are the gold standard, chat claims should be verified with statements.");
 
   return lines.join("\n");
 }
@@ -150,8 +226,33 @@ CORE PRINCIPLES:
 - Base advice on real mortgage industry guidelines (Fannie Mae, FHA, VA, USDA).
 - Be specific about numbers and timelines.
 - Always tailor advice to the person's unique situation.
-- CRITICAL: When verified application data is provided, ALWAYS use it as the primary source of truth. Do not ask the user for information you already have from their application.
-- If verified data conflicts with what the user says in chat, note the discrepancy and suggest they update their application if their situation has changed.
+
+DATA QUALITY HIERARCHY (CRITICAL — you MUST follow this strictly):
+You receive data from three sources, ranked by reliability:
+
+  TIER 1 — DOCUMENT-VERIFIED DATA (HIGHEST TRUST):
+  Data extracted from uploaded official documents: tax returns, pay stubs, W-2s, bank statements.
+  These are machine-read from real documents and represent the closest thing to ground truth.
+  Tax returns are the GOLD STANDARD for income verification — they are IRS filings.
+  Pay stubs verify current employment and income. Bank statements verify assets and cash flow.
+  ALWAYS prefer Tier 1 data over anything else. If Tier 1 data is available for a field, use it.
+
+  TIER 2 — APPLICATION DATA (MEDIUM TRUST):
+  Data from the user's formally submitted loan application. Self-reported but submitted with legal attestation.
+  Use this when no Tier 1 document data covers that field. Prefer it over chat input.
+
+  TIER 3 — CHAT INPUT (LOWEST TRUST — TREAT WITH CAUTION):
+  Anything the user tells you in conversation is UNVERIFIED. People may misremember, round numbers,
+  or be optimistic. NEVER treat chat-stated income, assets, or debts as confirmed fact.
+  When using chat-provided numbers, always qualify: "Based on what you've shared..." or "Your estimate of..."
+  Always encourage the user to upload documents to verify what they say.
+  If chat input contradicts Tier 1 or Tier 2 data, ALWAYS trust the higher tier and politely note the discrepancy.
+
+CONFLICT RESOLUTION:
+- If a user says in chat "I make $120K" but their tax return shows $95K AGI → trust the tax return. Say: "Your tax return shows an adjusted gross income of $95,000. Lenders will use this figure. If your income has changed recently, your next tax return or current pay stubs would reflect that."
+- If a user says "I have $50K saved" but bank statements show $30K → trust the bank statement. Suggest they may have other accounts and ask them to upload those statements too.
+- If application says income is $80K but tax return says $85K → trust the tax return and note the minor difference.
+- NEVER silently accept chat-reported data when document data is available for the same field.
 
 READINESS TIERS:
 - "ready_now": DTI < 43%, credit 680+, stable employment 2+ years, adequate savings for down payment + closing + reserves. Can apply today.
@@ -217,7 +318,11 @@ The JSON should follow this format:
 }
 </coach_data>
 
-The "intake" object captures specific financial details the user shared during the conversation. ALWAYS include an "intake" object whenever you have gathered any concrete financial data from the user (income, debts, credit score, employment, property goals, etc.). Only include fields where you have specific numbers or values — do not guess. Use these field values:
+The "intake" object captures financial details for pre-filling the loan application. Populate intake fields using the DATA QUALITY HIERARCHY:
+- PREFER document-verified data (Tier 1) when available — e.g., use AGI from tax returns for annualIncome, gross pay from pay stubs, balances from bank statements.
+- Fall back to application data (Tier 2) if no documents cover that field.
+- Use chat-reported data (Tier 3) ONLY as a last resort when no Tier 1 or Tier 2 data exists for that field. Chat data is unverified estimates.
+ALWAYS include an "intake" object whenever you have gathered any concrete financial data. Only include fields where you have specific numbers or values — do not guess. Use these field values:
 - annualIncome: string (numeric, no commas)
 - monthlyDebts: string (numeric, no commas)
 - creditScore: string (use the midpoint of their stated range, e.g. "720" for "Very Good 720-759")
