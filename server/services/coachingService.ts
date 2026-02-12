@@ -1,8 +1,9 @@
-import { GoogleGenAI } from "@google/genai";
+import OpenAI from "openai";
 
-const apiKey = process.env.AI_INTEGRATIONS_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
-const baseUrl = process.env.AI_INTEGRATIONS_GEMINI_BASE_URL;
-const genAI = apiKey ? new GoogleGenAI({ apiKey, ...(baseUrl ? { httpOptions: { baseUrl, apiVersion: "" } } : {}) }) : null;
+const openai = new OpenAI({
+  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+});
 
 export interface CoachingProfile {
   readinessTier: "ready_now" | "almost_ready" | "building" | "exploring";
@@ -359,36 +360,38 @@ export async function generateCoachResponse(
   existingProfile?: any,
   verifiedContext?: VerifiedUserContext,
 ): Promise<CoachResponse> {
-  if (!genAI) {
-    return generateFallbackResponse(userMessage, conversationHistory, verifiedContext);
-  }
-
-  const history = buildConversationHistory(conversationHistory);
   const contextNote = existingProfile
     ? `\n\nExisting financial profile from previous assessment:\n${JSON.stringify(existingProfile, null, 2)}\n\nUse this as context but update if the user provides new information.`
     : "";
 
   const verifiedNote = verifiedContext ? buildVerifiedContextPrompt(verifiedContext) : "";
 
-  const prompt = `${SYSTEM_PROMPT}${verifiedNote}${contextNote}
+  const systemContent = `${SYSTEM_PROMPT}${verifiedNote}${contextNote}`;
 
-CONVERSATION SO FAR:
-${history}
+  const messages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
+    { role: "system", content: systemContent },
+  ];
 
-User: ${userMessage}
+  for (const msg of conversationHistory) {
+    messages.push({
+      role: msg.role === "user" ? "user" : "assistant",
+      content: msg.content,
+    });
+  }
 
-Respond as the AI Coach:`;
+  messages.push({ role: "user", content: userMessage });
 
   try {
-    const response = await genAI.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: prompt,
+    const response = await openai.chat.completions.create({
+      model: "gpt-5-mini",
+      messages,
+      max_completion_tokens: 4096,
     });
 
-    const text = response.text || "";
+    const text = response.choices[0]?.message?.content || "";
     return parseCoachResponse(text);
   } catch (error) {
-    console.error("[Coach] Gemini API error:", error);
+    console.error("[Coach] OpenAI API error:", error);
     return generateFallbackResponse(userMessage, conversationHistory, verifiedContext);
   }
 }
