@@ -107,7 +107,7 @@ interface NudgeItem {
   priority: number;
 }
 
-function PersonalizedNudges({ application }: { application: LoanApplication | null }) {
+function PersonalizedNudges({ application, expirationInfo }: { application: LoanApplication | null; expirationInfo: { label: string; daysLeft: number; urgency: "expired" | "urgent" | "normal" } | null }) {
   const { data: activitySummary } = useQuery<{
     totalPageViews: number;
     propertySearches: number;
@@ -135,6 +135,18 @@ function PersonalizedNudges({ application }: { application: LoanApplication | nu
     });
   }
 
+  if (activitySummary.calculatorUses > 0 && !application) {
+    nudges.push({
+      id: "calculated-no-app",
+      icon: Calculator,
+      title: "You've done the math",
+      description: "You already know the numbers. Take the next step and see what you actually qualify for.",
+      action: "Get Pre-Approved",
+      href: "/apply",
+      priority: 2,
+    });
+  }
+
   if (activitySummary.propertySearches > 2 && application && status === "pre_approved") {
     nudges.push({
       id: "active-browser",
@@ -147,6 +159,54 @@ function PersonalizedNudges({ application }: { application: LoanApplication | nu
     });
   }
 
+  if (application && status === "draft") {
+    nudges.push({
+      id: "resume-draft",
+      icon: FileText,
+      title: "You have an unfinished application",
+      description: "Pick up right where you left off. It only takes a few minutes to complete.",
+      action: "Resume Application",
+      href: "/apply",
+      priority: 1,
+    });
+  }
+
+  if (expirationInfo && expirationInfo.urgency === "expired" && application) {
+    nudges.push({
+      id: "expired-renew",
+      icon: AlertTriangle,
+      title: "Your pre-approval has expired",
+      description: "Renew your pre-approval to keep shopping with confidence. It only takes a few minutes.",
+      action: "Renew Now",
+      href: "/apply",
+      priority: 1,
+    });
+  }
+
+  if (expirationInfo && expirationInfo.urgency === "urgent" && application) {
+    nudges.push({
+      id: "expiring-soon",
+      icon: Clock,
+      title: `Pre-approval expires in ${expirationInfo.daysLeft} day${expirationInfo.daysLeft !== 1 ? "s" : ""}`,
+      description: "Found a home you love? Move quickly before your pre-approval expires.",
+      action: "Browse Properties",
+      href: "/properties",
+      priority: 1,
+    });
+  }
+
+  if (activitySummary.coachChats === 0 && !application) {
+    nudges.push({
+      id: "try-coach-new",
+      icon: Bot,
+      title: "Not sure where to start?",
+      description: "Chat with our AI coach to understand your mortgage readiness and get a personalized plan.",
+      action: "Talk to Coach",
+      href: "/ai-coach",
+      priority: 3,
+    });
+  }
+
   if (activitySummary.coachChats === 0 && application) {
     nudges.push({
       id: "try-coach",
@@ -154,7 +214,7 @@ function PersonalizedNudges({ application }: { application: LoanApplication | nu
       title: "Get personalized guidance",
       description: "Our AI homebuyer coach can answer your mortgage questions and help you understand your options.",
       action: "Chat with Coach",
-      href: "/coach",
+      href: "/ai-coach",
       priority: 5,
     });
   }
@@ -166,7 +226,7 @@ function PersonalizedNudges({ application }: { application: LoanApplication | nu
       title: "See what fits your budget",
       description: "Use our mortgage calculator to explore different payment scenarios and find your comfort zone.",
       action: "Open Calculator",
-      href: "/calculators",
+      href: "/calculators/mortgage",
       priority: 6,
     });
   }
@@ -192,6 +252,30 @@ function PersonalizedNudges({ application }: { application: LoanApplication | nu
       action: "View Status",
       href: `/pipeline/${application.id}`,
       priority: 4,
+    });
+  }
+
+  if (activitySummary.totalPageViews > 8 && !application && activitySummary.calculatorUses === 0 && activitySummary.propertySearches === 0) {
+    nudges.push({
+      id: "high-engagement",
+      icon: Sparkles,
+      title: "You've been exploring Baranest",
+      description: "Ready to take the next step? Our 3-minute pre-approval has no impact on your credit score.",
+      action: "Get Started",
+      href: "/apply",
+      priority: 2,
+    });
+  }
+
+  if (application && ["doc_collection", "processing"].includes(status || "") && activitySummary.totalPageViews > 3) {
+    nudges.push({
+      id: "docs-progress",
+      icon: FileText,
+      title: "Keep the momentum going",
+      description: "Upload any remaining documents to speed up your approval. Every document helps us move faster.",
+      action: "Upload Documents",
+      href: "/documents",
+      priority: 3,
     });
   }
 
@@ -402,7 +486,7 @@ export default function Dashboard() {
           unreadMessages={unreadMessages}
         />
 
-        <PersonalizedNudges application={activeApplication || null} />
+        <PersonalizedNudges application={activeApplication || null} expirationInfo={expirationInfo} />
 
         {activeApplication && (
           <Card className="shadow-md" data-testid="card-loan-snapshot">

@@ -1,7 +1,8 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
+import { usePageView, useTrackActivity } from "@/hooks/useActivityTracker";
 import { apiRequest } from "@/lib/queryClient";
 import { formatCurrency } from "@/lib/authUtils";
 import { Button } from "@/components/ui/button";
@@ -146,7 +147,18 @@ export default function AffordabilityCalculator() {
   const queryClient = useQueryClient();
   const [inputs, setInputs] = useState<AffordabilityInputs>(defaultInputs);
 
+  usePageView("/calculators/affordability");
+  const trackActivity = useTrackActivity();
+  const trackedRef = useRef(false);
+
   const results = useMemo(() => calculateAffordability(inputs), [inputs]);
+
+  useEffect(() => {
+    if (!trackedRef.current) {
+      trackedRef.current = true;
+      trackActivity("calculator_use", "/calculators/affordability", { type: "affordability" });
+    }
+  }, [trackActivity]);
 
   const saveResultsMutation = useMutation({
     mutationFn: async (data: { inputs: AffordabilityInputs; results: AffordabilityResults }) => {

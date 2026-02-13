@@ -79,9 +79,9 @@ export function registerLendingRoutes(
       try {
         const { hmdaDemographics } = await import("@shared/schema");
         const { eq } = await import("drizzle-orm");
-        const { database } = await import("./utils");
+        const { db } = await import("../db");
         for (const app of applications.slice(0, 3)) {
-          const [record] = await database.select({ id: hmdaDemographics.id })
+          const [record] = await db.select({ id: hmdaDemographics.id })
             .from(hmdaDemographics)
             .where(eq(hmdaDemographics.applicationId, app.id))
             .limit(1);

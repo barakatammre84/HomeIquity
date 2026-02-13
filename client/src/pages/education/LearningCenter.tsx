@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
+import { usePageView } from "@/hooks/useActivityTracker";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -105,6 +106,8 @@ function CategoryCard({ category, articleCount }: { category: ContentCategory; a
 export default function LearningCenter() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+
+  usePageView("/learn");
 
   const { data: categories = [], isLoading: categoriesLoading } = useQuery<ContentCategory[]>({
     queryKey: ["/api/content-categories"],

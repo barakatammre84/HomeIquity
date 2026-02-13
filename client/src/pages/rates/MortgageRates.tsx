@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
+import { usePageView } from "@/hooks/useActivityTracker";
 import { SEOHead } from "@/components/SEOHead";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -58,6 +59,8 @@ interface MortgageRateWithProgram {
 export default function MortgageRates() {
   const [zipcode, setZipcode] = useState("");
   const [searchZipcode, setSearchZipcode] = useState("");
+
+  usePageView("/rates");
 
   const { data: rates, isLoading } = useQuery<MortgageRateWithProgram[]>({
     queryKey: ["/api/mortgage-rates", { zipcode: searchZipcode }],

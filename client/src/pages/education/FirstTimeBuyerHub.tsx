@@ -1,4 +1,5 @@
 import { Link } from "wouter";
+import { usePageView } from "@/hooks/useActivityTracker";
 import { SEOHead } from "@/components/SEOHead";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -148,6 +149,8 @@ const COMMON_MISTAKES = [
 ];
 
 export default function FirstTimeBuyerHub() {
+  usePageView("/first-time-buyer");
+
   return (
     <div className="p-4 md:p-6 max-w-4xl mx-auto" data-testid="first-time-buyer-hub">
       <SEOHead title="First-Time Homebuyer Guide" description="Everything you need to know about buying your first home. Learn about down payments, credit scores, mortgage types, and the home buying process." />

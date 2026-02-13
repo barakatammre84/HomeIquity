@@ -1,7 +1,8 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
+import { usePageView, useTrackActivity } from "@/hooks/useActivityTracker";
 import { apiRequest } from "@/lib/queryClient";
 import { formatCurrency } from "@/lib/authUtils";
 import { Button } from "@/components/ui/button";
@@ -138,7 +139,18 @@ export default function MortgageCalculator() {
   const queryClient = useQueryClient();
   const [inputs, setInputs] = useState<MortgageInputs>(defaultInputs);
 
+  usePageView("/calculators/mortgage");
+  const trackActivity = useTrackActivity();
+  const trackedRef = useRef(false);
+
   const results = useMemo(() => calculateMortgage(inputs), [inputs]);
+
+  useEffect(() => {
+    if (!trackedRef.current) {
+      trackedRef.current = true;
+      trackActivity("calculator_use", "/calculators/mortgage", { type: "mortgage" });
+    }
+  }, [trackActivity]);
 
   const saveResultsMutation = useMutation({
     mutationFn: async (data: { inputs: MortgageInputs; results: Omit<MortgageResults, 'amortizationSchedule'> }) => {
