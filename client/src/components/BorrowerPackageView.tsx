@@ -2,6 +2,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   User,
+  Users,
   Briefcase,
   PiggyBank,
   CreditCard,
@@ -19,8 +20,13 @@ import {
 
 interface BorrowerPackageData {
   generatedDate?: string;
+  borrowerOverview?: {
+    borrowerNames?: string;
+    householdComposition?: string;
+    primaryResidenceState?: string;
+    incomeProfileType?: string;
+  };
   householdOverview?: {
-    borrowerName?: string;
     firstTimeBuyer?: string;
     veteranStatus?: string;
     propertyIntent?: string;
@@ -210,6 +216,7 @@ function DataRow({ label, value, testId, children }: { label: string; value?: st
 export default function BorrowerPackageView({ data }: { data: BorrowerPackageData }) {
   if (!data) return null;
 
+  const overview = data.borrowerOverview || {};
   const household = data.householdOverview || {};
   const incomeSources = data.incomeSources || [];
   const assetCategories = data.assetCategories || [];
@@ -234,11 +241,22 @@ export default function BorrowerPackageView({ data }: { data: BorrowerPackageDat
         )}
       </div>
 
+      <Card data-testid="section-borrower-overview">
+        <CardContent className="pt-4 pb-3 px-4 space-y-0">
+          <SectionHeader icon={User} title="Borrower Overview" number={1} />
+          <div className="space-y-0.5">
+            <DataRow label="Borrower Name(s)" value={overview.borrowerNames} testId="row-borrower-names" />
+            <DataRow label="Household Composition" value={overview.householdComposition} testId="row-household-composition" />
+            <DataRow label="Primary Residence State" value={overview.primaryResidenceState} testId="row-residence-state" />
+            <DataRow label="Income Profile Type" value={overview.incomeProfileType} testId="row-income-profile-type" />
+          </div>
+        </CardContent>
+      </Card>
+
       <Card data-testid="section-household">
         <CardContent className="pt-4 pb-3 px-4 space-y-0">
-          <SectionHeader icon={User} title="Household Overview" number={1} />
+          <SectionHeader icon={Users} title="Household Details" number={2} />
           <div className="space-y-0.5">
-            <DataRow label="Borrower Name" value={household.borrowerName} testId="row-borrower-name" />
             <DataRow label="First-Time Buyer" value={household.firstTimeBuyer} testId="row-first-time-buyer" />
             <DataRow label="Veteran Status" value={household.veteranStatus} testId="row-veteran-status" />
             <DataRow label="Property Intent" value={household.propertyIntent} testId="row-property-intent" />
@@ -250,7 +268,7 @@ export default function BorrowerPackageView({ data }: { data: BorrowerPackageDat
 
       <Card data-testid="section-income">
         <CardContent className="pt-4 pb-3 px-4">
-          <SectionHeader icon={Briefcase} title="Declared Income Sources" number={2} />
+          <SectionHeader icon={Briefcase} title="Declared Income Sources" number={3} />
           {incomeSources.length === 0 ? (
             <p className="text-sm text-muted-foreground opacity-60" data-testid="text-income-empty">Not Provided</p>
           ) : (
@@ -299,7 +317,7 @@ export default function BorrowerPackageView({ data }: { data: BorrowerPackageDat
 
       <Card data-testid="section-assets">
         <CardContent className="pt-4 pb-3 px-4">
-          <SectionHeader icon={PiggyBank} title="Asset Categories" number={3} />
+          <SectionHeader icon={PiggyBank} title="Asset Categories" number={4} />
           {assetCategories.length === 0 ? (
             <p className="text-sm text-muted-foreground opacity-60" data-testid="text-assets-empty">Not Provided</p>
           ) : (
@@ -342,7 +360,7 @@ export default function BorrowerPackageView({ data }: { data: BorrowerPackageDat
 
       <Card data-testid="section-credit">
         <CardContent className="pt-4 pb-3 px-4 space-y-0">
-          <SectionHeader icon={CreditCard} title="Credit and Debt Signals" number={4} />
+          <SectionHeader icon={CreditCard} title="Credit and Debt Signals" number={5} />
           <div className="space-y-0.5">
             <DataRow label="Credit Score" testId="row-credit-score">
               <div className="flex items-center gap-2 flex-wrap justify-end">
@@ -372,7 +390,7 @@ export default function BorrowerPackageView({ data }: { data: BorrowerPackageDat
 
       <Card data-testid="section-property">
         <CardContent className="pt-4 pb-3 px-4 space-y-0">
-          <SectionHeader icon={Home} title="Property Intent" number={5} />
+          <SectionHeader icon={Home} title="Property Intent" number={6} />
           <div className="space-y-0.5">
             <DataRow label="Purchase Price" testId="row-purchase-price">
               <span className={`text-sm font-medium ${isNotProvided(property.purchasePrice) ? "opacity-60" : ""}`}>
@@ -395,7 +413,7 @@ export default function BorrowerPackageView({ data }: { data: BorrowerPackageDat
 
       <Card data-testid="section-documents">
         <CardContent className="pt-4 pb-3 px-4">
-          <SectionHeader icon={FileText} title="Document Inventory" number={6} />
+          <SectionHeader icon={FileText} title="Document Inventory" number={7} />
           {documents.length === 0 ? (
             <p className="text-sm text-muted-foreground opacity-60" data-testid="text-documents-empty">No documents tracked</p>
           ) : (
@@ -438,7 +456,7 @@ export default function BorrowerPackageView({ data }: { data: BorrowerPackageDat
 
       <Card data-testid="section-readiness">
         <CardContent className="pt-4 pb-3 px-4">
-          <SectionHeader icon={Target} title="Readiness Status" number={7} />
+          <SectionHeader icon={Target} title="Readiness Status" number={8} />
           <div className="space-y-2">
             <div className="flex items-center justify-between gap-2 flex-wrap" data-testid="row-readiness-tier">
               <span className="text-sm text-muted-foreground">Readiness Tier</span>
@@ -492,7 +510,7 @@ export default function BorrowerPackageView({ data }: { data: BorrowerPackageDat
 
       <Card data-testid="section-validation">
         <CardContent className="pt-4 pb-3 px-4">
-          <SectionHeader icon={Shield} title="Validation Notes" number={8} />
+          <SectionHeader icon={Shield} title="Validation Notes" number={9} />
           {validationNotes.length > 0 ? (
             <ul className="space-y-1">
               {validationNotes.map((note, i) => (

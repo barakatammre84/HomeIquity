@@ -49,8 +49,13 @@ export interface CoachIntakeData {
 
 export interface BorrowerPackage {
   generatedDate: string;
+  borrowerOverview: {
+    borrowerNames: string;
+    householdComposition: string;
+    primaryResidenceState: string;
+    incomeProfileType: string;
+  };
   householdOverview: {
-    borrowerName: string;
     firstTimeBuyer: string;
     veteranStatus: string;
     propertyIntent: string;
@@ -1178,8 +1183,13 @@ The "nextRequiredInput" object should ALWAYS be included. It is the single next 
 The "borrowerPackage" should be null unless the user is "ready_now" or the user explicitly asks for their borrower summary. When generating, use this exact JSON structure:
 {
   "generatedDate": "YYYY-MM-DD",
+  "borrowerOverview": {
+    "borrowerNames": "Primary borrower full name; co-borrower full name if applicable, or 'Not Provided'",
+    "householdComposition": "Single Borrower | Co-Borrowers (Married) | Co-Borrowers (Non-Married) | Not Provided",
+    "primaryResidenceState": "Two-letter state code or 'Not Provided'",
+    "incomeProfileType": "W-2 | Self-Employed | Mixed | Investor | Not Provided"
+  },
   "householdOverview": {
-    "borrowerName": "string or 'Not Provided'",
     "firstTimeBuyer": "Yes | No | Not Provided",
     "veteranStatus": "Yes | No | Not Provided",
     "propertyIntent": "Purchase | Refinance | Cash-Out Refinance | Not Provided",
