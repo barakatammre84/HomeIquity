@@ -31,6 +31,7 @@ import {
   Shield,
 } from "lucide-react";
 import { SEOHead } from "@/components/SEOHead";
+import { AffordabilityBadge } from "@/components/AffordabilityBadge";
 import familyImage from "@assets/stock_images/happy_family_new_hom_d488bf67.jpg";
 
 const PROPERTY_TYPES = [
@@ -589,7 +590,7 @@ function PropertyCard({ property, viewMode }: { property: Property; viewMode: "g
             <div>
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="text-2xl font-bold text-primary">
+                  <p className="text-2xl font-bold">
                     {formatCurrency(property.price)}
                   </p>
                   <div className="mt-1 flex items-center gap-1 text-muted-foreground">
@@ -658,7 +659,7 @@ function PropertyCard({ property, viewMode }: { property: Property; viewMode: "g
         </Button>
       </div>
       <CardContent className="p-4">
-        <p className="text-2xl font-bold text-primary">
+        <p className="text-2xl font-bold">
           {formatCurrency(property.price)}
         </p>
         <div className="mt-1 flex items-center gap-1 text-muted-foreground">
@@ -727,7 +728,7 @@ function LivePropertyCard({ property, viewMode }: { property: LiveProperty; view
             <div>
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <p className="text-2xl font-bold text-primary">
+                  <p className="text-2xl font-bold">
                     {formatCurrency(displayPrice)}
                   </p>
                   {isSold && formattedSoldDate && (
@@ -737,6 +738,11 @@ function LivePropertyCard({ property, viewMode }: { property: LiveProperty; view
                     <MapPin className="h-4 w-4" />
                     <span className="text-sm">{property.address}, {property.city}, {property.stateCode} {property.zipcode}</span>
                   </div>
+                  {!isSold && (
+                    <div className="mt-1.5">
+                      <AffordabilityBadge price={displayPrice} />
+                    </div>
+                  )}
                 </div>
                 <Badge variant="secondary" className="shrink-0 capitalize">{property.propertyType.replace("_", " ")}</Badge>
               </div>
@@ -802,12 +808,17 @@ function LivePropertyCard({ property, viewMode }: { property: LiveProperty; view
         )}
       </div>
       <CardContent className="p-4">
-        <p className="text-2xl font-bold text-primary">
-          {formatCurrency(displayPrice)}
-        </p>
-        {isSold && formattedSoldDate && (
-          <p className="text-xs text-muted-foreground">Sold {formattedSoldDate}</p>
-        )}
+        <div className="flex items-start justify-between gap-2 flex-wrap">
+          <div>
+            <p className="text-2xl font-bold">
+              {formatCurrency(displayPrice)}
+            </p>
+            {isSold && formattedSoldDate && (
+              <p className="text-xs text-muted-foreground">Sold {formattedSoldDate}</p>
+            )}
+          </div>
+          {!isSold && <AffordabilityBadge price={displayPrice} compact />}
+        </div>
         <div className="mt-1 flex items-center gap-1 text-muted-foreground">
           <MapPin className="h-4 w-4" />
           <span className="text-sm truncate">

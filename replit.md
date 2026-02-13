@@ -59,6 +59,9 @@ The project utilizes a domain-based modular structure for both server routes and
 - **Predictive Signals**: likelyToApply, likelyToAbandon, engagementLevel, daysSinceLastActivity, suggestedNextAction — behavioral intelligence.
 - **Property Affordability**: Uses graph data to calculate canAfford, estimatedDTI, estimatedMonthlyPayment, additionalSavingsNeeded for any property price.
 - **Dashboard Integration**: `FinancialSnapshot` component on borrower dashboard shows credit score, DTI, income, max purchase, assets, eligible programs, and gaps — all powered by borrower graph.
+- **Property Intelligence Layer**: `AffordabilityBadge` component on property listings shows personalized badges ("Fits Your Budget", "Possible Stretch", savings needed). `AffordabilityDetail` on property detail page shows monthly payment, DTI, down payment, eligible programs. Uses `useAffordability` hook calling `/api/borrower-graph/affordability?price=N`.
+- **Property→Coach→Apply Loop**: Property detail page has "Discuss with AI Coach" CTA that passes `propertyPrice` and `propertyAddress` params to Coach. Coach `getSourceContext()` reads these params and auto-starts a property-specific conversation. Coach updates readiness → dashboard shows updated nudge → user applies.
+- **Home Readiness Passport**: `HomeReadinessPassport` component (`client/src/components/HomeReadinessPassport.tsx`) shows readiness score ring, tier badge, verification checklist (credit, income, assets, employment, documents), eligible programs, gaps, and dual CTAs (Coach + Apply). Supports compact mode for sidebar. Powered by Borrower Graph.
 
 ### Conversion & Engagement Optimization
 - **ConversionCTA Component**: Reusable `client/src/components/ConversionCTA.tsx` providing context-aware dual-action CTAs (Get Pre-Approved + Talk to Coach). Accepts `context`, `purchasePrice`, `state`, `propertyType` props. Used in calculator pages.

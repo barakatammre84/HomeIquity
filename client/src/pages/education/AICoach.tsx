@@ -829,6 +829,22 @@ function getSourceContext(): { banner: string; autoMessage: string } | null {
       autoMessage: "I'm looking at investment properties. Can you help me understand mortgage requirements for rental properties?",
     };
   }
+  const propertyPrice = params.get("propertyPrice");
+  const propertyAddress = params.get("propertyAddress");
+  if (propertyPrice && propertyAddress) {
+    const formattedPrice = parseFloat(propertyPrice).toLocaleString();
+    return {
+      banner: `Property Analysis`,
+      autoMessage: `I'm looking at a property at ${decodeURIComponent(propertyAddress)} listed at $${formattedPrice}. Can you help me understand if this home fits my budget and what my monthly payments would look like?`,
+    };
+  }
+  if (propertyPrice) {
+    const formattedPrice = parseFloat(propertyPrice).toLocaleString();
+    return {
+      banner: "Property Analysis",
+      autoMessage: `I'm considering a home priced at $${formattedPrice}. Can you help me understand if I can afford it and what loan options might work?`,
+    };
+  }
   return null;
 }
 

@@ -13,6 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { BorrowerRequests } from "@/components/BorrowerRequests";
 import { ApplicationSwitcher } from "@/components/ApplicationSwitcher";
 import { JourneyTracker } from "@/components/JourneyTracker";
+import { HomeReadinessPassport } from "@/components/HomeReadinessPassport";
 import { isStaffRole } from "@shared/schema";
 import type { LoanApplication, DealActivity } from "@shared/schema";
 import {
@@ -965,6 +966,9 @@ export default function Dashboard() {
 
         {/* Section 3: Tools (quiet, secondary) */}
         <QuietToolsGrid application={activeApplication || null} />
+
+        {/* Home Readiness Passport - powered by Borrower Graph */}
+        <HomeReadinessPassport />
 
         {/* Financial Snapshot - powered by Borrower Graph */}
         {borrowerGraph && !graphError && (

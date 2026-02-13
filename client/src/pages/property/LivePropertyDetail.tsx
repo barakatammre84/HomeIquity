@@ -10,6 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { formatCurrency } from "@/lib/authUtils";
+import { useAuth } from "@/hooks/useAuth";
+import { AffordabilityBadge, AffordabilityDetail } from "@/components/AffordabilityBadge";
 import {
   MapPin,
   Bed,
@@ -33,6 +35,7 @@ import {
   Layers,
   TreePine,
   BarChart3,
+  Bot,
 } from "lucide-react";
 
 interface SimilarHome {
@@ -136,6 +139,48 @@ interface LivePropertyDetail {
   branding: { type: string; name: string; phone: string | null }[];
 }
 
+function PersonalizedAffordabilityCard({ price, address }: { price: number; address: string }) {
+  const { user } = useAuth();
+
+  if (!user) {
+    return (
+      <Card data-testid="card-personalized-affordability-anon">
+        <CardContent className="p-5 text-center">
+          <TrendingUp className="mx-auto h-6 w-6 text-muted-foreground" />
+          <p className="mt-2 text-sm font-medium">Can you afford this home?</p>
+          <p className="mt-1 text-xs text-muted-foreground">Sign in to see a personalized affordability check</p>
+          <Link href="/api/login">
+            <Button variant="outline" className="mt-3 w-full gap-2" size="sm" data-testid="button-signin-affordability">
+              Sign In to Check
+            </Button>
+          </Link>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card data-testid="card-personalized-affordability">
+      <CardHeader className="pb-2">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <TrendingUp className="h-5 w-5" />
+          Your Affordability
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <AffordabilityDetail price={price} />
+        <Separator className="my-3" />
+        <Link href={`/ai-coach?propertyPrice=${price}&propertyAddress=${encodeURIComponent(address)}`}>
+          <Button variant="outline" className="w-full gap-2" data-testid="button-check-with-coach">
+            <Bot className="h-4 w-4" />
+            Discuss with AI Coach
+          </Button>
+        </Link>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function LivePropertyDetailPage() {
   const searchString = useSearch();
   const params = new URLSearchParams(searchString);
@@ -213,9 +258,12 @@ export default function LivePropertyDetailPage() {
             <div className="mb-6">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
-                  <h1 className="text-3xl font-bold" data-testid="text-live-detail-price">
-                    {formatCurrency(property.price)}
-                  </h1>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <h1 className="text-3xl font-bold" data-testid="text-live-detail-price">
+                      {formatCurrency(property.price)}
+                    </h1>
+                    <AffordabilityBadge price={property.price} />
+                  </div>
                   {property.pricePerSqft && (
                     <p className="text-sm text-muted-foreground">
                       {formatCurrency(property.pricePerSqft)}/sqft
@@ -530,6 +578,8 @@ export default function LivePropertyDetailPage() {
                 </CardContent>
               </Card>
             )}
+
+            <PersonalizedAffordabilityCard price={property.price} address={fullAddress} />
 
             <Card className="bg-primary text-primary-foreground">
               <CardContent className="p-6 text-center">
