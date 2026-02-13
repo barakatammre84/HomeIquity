@@ -13,6 +13,7 @@ import {
 } from "@shared/schema";
 import crypto from "crypto";
 import { z } from "zod";
+import { buildBorrowerGraph, getPropertyAffordability } from "../services/borrowerGraph";
 
 export function registerBorrowerRoutes(
   app: Express,
@@ -3084,6 +3085,32 @@ export function registerBorrowerRoutes(
     } catch (error) {
       console.error("Activity summary error:", error);
       res.status(500).json({ error: "Failed to load activity summary" });
+    }
+  });
+
+  app.get("/api/borrower-graph", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const graph = await buildBorrowerGraph(user.id);
+      res.json(graph);
+    } catch (error) {
+      console.error("Borrower graph error:", error);
+      res.status(500).json({ error: "Failed to build borrower profile" });
+    }
+  });
+
+  app.get("/api/borrower-graph/affordability", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const price = parseFloat(req.query.price as string);
+      if (!price || isNaN(price) || price <= 0) {
+        return res.status(400).json({ error: "Valid price parameter required" });
+      }
+      const result = await getPropertyAffordability(user.id, price);
+      res.json(result);
+    } catch (error) {
+      console.error("Affordability check error:", error);
+      res.status(500).json({ error: "Failed to check affordability" });
     }
   });
 }

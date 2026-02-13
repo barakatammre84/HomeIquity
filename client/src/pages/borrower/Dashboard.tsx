@@ -38,6 +38,10 @@ import {
   ChevronUp,
   BookOpen,
   MessageCircle,
+  Shield,
+  Target,
+  Briefcase,
+  PiggyBank,
 } from "lucide-react";
 
 interface DashboardData {
@@ -349,6 +353,185 @@ function getProgressNudge(readiness: number, application: LoanApplication | null
   return null;
 }
 
+interface BorrowerGraphData {
+  bestAnnualIncome: number | null;
+  bestIncomeSource: string | null;
+  totalVerifiedAssets: number | null;
+  totalMonthlyDebts: number | null;
+  documentsUploaded: number;
+  documentsVerified: number;
+  documentsMissing: string[];
+  readiness: {
+    score: number;
+    tier: string;
+    strengths: string[];
+    gaps: string[];
+  };
+  eligibility: {
+    estimatedDTI: number | null;
+    estimatedLTV: number | null;
+    creditTier: string;
+    creditScore: number | null;
+    employmentStable: boolean | null;
+    hasAdequateSavings: boolean | null;
+    estimatedMaxPurchase: number | null;
+    eligibleLoanTypes: string[];
+  };
+  predictiveSignals: {
+    engagementLevel: string;
+    suggestedNextAction: string;
+  };
+}
+
+function FinancialSnapshot({ graph }: { graph: BorrowerGraphData }) {
+  const [expanded, setExpanded] = useState(false);
+  const { eligibility } = graph;
+
+  const hasData = eligibility.creditScore || graph.bestAnnualIncome || eligibility.estimatedDTI;
+  if (!hasData) return null;
+
+  const creditColor = {
+    excellent: "text-emerald-600 dark:text-emerald-400",
+    very_good: "text-emerald-600 dark:text-emerald-400",
+    good: "text-sky-600 dark:text-sky-400",
+    fair: "text-amber-600 dark:text-amber-400",
+    poor: "text-red-600 dark:text-red-400",
+    unknown: "text-muted-foreground",
+  }[eligibility.creditTier] || "text-muted-foreground";
+
+  const dtiColor = eligibility.estimatedDTI
+    ? eligibility.estimatedDTI <= 36
+      ? "text-emerald-600 dark:text-emerald-400"
+      : eligibility.estimatedDTI <= 43
+      ? "text-amber-600 dark:text-amber-400"
+      : "text-red-600 dark:text-red-400"
+    : "text-muted-foreground";
+
+  const signals: Array<{ icon: any; label: string; value: string; color: string; testId: string }> = [];
+
+  if (eligibility.creditScore) {
+    signals.push({
+      icon: Shield,
+      label: "Credit Score",
+      value: `${eligibility.creditScore} (${eligibility.creditTier.replace("_", " ")})`,
+      color: creditColor,
+      testId: "signal-credit",
+    });
+  }
+
+  if (eligibility.estimatedDTI !== null) {
+    signals.push({
+      icon: Percent,
+      label: "Debt-to-Income",
+      value: `${eligibility.estimatedDTI}%`,
+      color: dtiColor,
+      testId: "signal-dti",
+    });
+  }
+
+  if (graph.bestAnnualIncome) {
+    signals.push({
+      icon: Briefcase,
+      label: "Annual Income",
+      value: `$${Math.round(graph.bestAnnualIncome).toLocaleString()}`,
+      color: "",
+      testId: "signal-income",
+    });
+  }
+
+  if (eligibility.estimatedMaxPurchase) {
+    signals.push({
+      icon: Target,
+      label: "Est. Max Purchase",
+      value: `$${eligibility.estimatedMaxPurchase.toLocaleString()}`,
+      color: "",
+      testId: "signal-max-purchase",
+    });
+  }
+
+  if (graph.totalVerifiedAssets) {
+    signals.push({
+      icon: PiggyBank,
+      label: "Verified Assets",
+      value: `$${graph.totalVerifiedAssets.toLocaleString()}`,
+      color: "",
+      testId: "signal-assets",
+    });
+  }
+
+  if (eligibility.eligibleLoanTypes.length > 0) {
+    signals.push({
+      icon: CheckCircle2,
+      label: "Eligible Programs",
+      value: eligibility.eligibleLoanTypes.map(t => t.toUpperCase()).join(", "),
+      color: "text-emerald-600 dark:text-emerald-400",
+      testId: "signal-programs",
+    });
+  }
+
+  if (signals.length === 0) return null;
+
+  const previewSignals = signals.slice(0, 3);
+  const extraSignals = signals.slice(3);
+
+  return (
+    <div className="space-y-2" data-testid="section-financial-snapshot">
+      <button
+        type="button"
+        onClick={() => setExpanded(!expanded)}
+        className="flex items-center gap-2 w-full text-left group"
+        data-testid="button-toggle-snapshot"
+      >
+        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+          Your Financial Profile
+        </h3>
+        {extraSignals.length > 0 && (
+          expanded ? (
+            <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" />
+          ) : (
+            <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+          )
+        )}
+      </button>
+      <Card data-testid="card-financial-snapshot">
+        <CardContent className="p-4">
+          <div className="space-y-3">
+            {previewSignals.map((signal) => (
+              <div key={signal.testId} className="flex items-center justify-between gap-3 flex-wrap" data-testid={signal.testId}>
+                <div className="flex items-center gap-2.5">
+                  <signal.icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                  <span className="text-xs text-muted-foreground">{signal.label}</span>
+                </div>
+                <span className={`text-xs font-medium ${signal.color}`}>{signal.value}</span>
+              </div>
+            ))}
+            {expanded && extraSignals.map((signal) => (
+              <div key={signal.testId} className="flex items-center justify-between gap-3 flex-wrap animate-in fade-in slide-in-from-top-1 duration-200" data-testid={signal.testId}>
+                <div className="flex items-center gap-2.5">
+                  <signal.icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                  <span className="text-xs text-muted-foreground">{signal.label}</span>
+                </div>
+                <span className={`text-xs font-medium ${signal.color}`}>{signal.value}</span>
+              </div>
+            ))}
+          </div>
+          {graph.readiness.gaps.length > 0 && expanded && (
+            <div className="mt-3 pt-3 border-t space-y-1.5">
+              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Areas to Strengthen</p>
+              {graph.readiness.gaps.slice(0, 3).map((gap, i) => (
+                <div key={i} className="flex items-center gap-2" data-testid={`text-gap-${i}`}>
+                  <AlertCircle className="h-3 w-3 text-amber-500 shrink-0" />
+                  <span className="text-xs text-muted-foreground">{gap}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 function QuietToolsGrid({ application }: { application: LoanApplication | null }) {
   const tools = [
     { icon: Home, label: "Listings", href: "/properties", testId: "tool-listings" },
@@ -579,6 +762,13 @@ export default function Dashboard() {
     enabled: !authLoading && !isStaff,
   });
 
+  const { data: borrowerGraph, isError: graphError } = useQuery<BorrowerGraphData>({
+    queryKey: ["/api/borrower-graph"],
+    enabled: !authLoading && !isStaff,
+    retry: 1,
+    staleTime: 60000,
+  });
+
   const [browsedProperties, setBrowsedProperties] = useState(false);
   useEffect(() => {
     try {
@@ -775,6 +965,11 @@ export default function Dashboard() {
 
         {/* Section 3: Tools (quiet, secondary) */}
         <QuietToolsGrid application={activeApplication || null} />
+
+        {/* Financial Snapshot - powered by Borrower Graph */}
+        {borrowerGraph && !graphError && (
+          <FinancialSnapshot graph={borrowerGraph} />
+        )}
 
         {/* Section 4: Collapsible Insights */}
         {activeApplication && (

@@ -49,6 +49,17 @@ The project utilizes a domain-based modular structure for both server routes and
 -   **lucide-react:** Icon library.
 -   **framer-motion:** Animation library.
 
+### Borrower Graph (Unified Intelligence Layer)
+- **Service**: `server/services/borrowerGraph.ts` — aggregates all user data into a single queryable profile per user.
+- **API**: `GET /api/borrower-graph` (authenticated) returns full `BorrowerGraph` object. `GET /api/borrower-graph/affordability?price=N` returns affordability assessment for a property price.
+- **Data Sources**: Applications, income (documents/app/coach/goals), assets, liabilities, documents, coach assessments, activity tracking, homeownership goals, employment history.
+- **3-Tier Data Trust**: Tier 1 (document-verified) > Tier 2 (application data) > Tier 3 (chat/unverified). Best available data used for income, credit score, debts.
+- **Eligibility Signals**: estimatedDTI, estimatedLTV, creditTier, creditScore, employmentStable, hasAdequateSavings, estimatedMaxPurchase, eligibleLoanTypes.
+- **Readiness Snapshot**: Score (0-100), tier (ready_now/almost_ready/building/exploring), strengths, gaps, recommended loan types. Uses coach assessment if available, otherwise calculates from data.
+- **Predictive Signals**: likelyToApply, likelyToAbandon, engagementLevel, daysSinceLastActivity, suggestedNextAction — behavioral intelligence.
+- **Property Affordability**: Uses graph data to calculate canAfford, estimatedDTI, estimatedMonthlyPayment, additionalSavingsNeeded for any property price.
+- **Dashboard Integration**: `FinancialSnapshot` component on borrower dashboard shows credit score, DTI, income, max purchase, assets, eligible programs, and gaps — all powered by borrower graph.
+
 ### Conversion & Engagement Optimization
 - **ConversionCTA Component**: Reusable `client/src/components/ConversionCTA.tsx` providing context-aware dual-action CTAs (Get Pre-Approved + Talk to Coach). Accepts `context`, `purchasePrice`, `state`, `propertyType` props. Used in calculator pages.
 - **Property→Apply Bridge**: Property card CTAs pass `price`, `state`, `propertyType` as URL params to `/apply`. PreApproval form reads these params to pre-fill form fields.
