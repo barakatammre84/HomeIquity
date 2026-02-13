@@ -2975,12 +2975,20 @@ export function registerBorrowerRoutes(
     }
   });
 
+  const trackSchema = z.object({
+    activityType: z.string().min(1).max(64).regex(/^[a-z_]+$/),
+    page: z.string().max(256).optional(),
+    metadata: z.record(z.union([z.string(), z.number(), z.boolean(), z.null()])).optional(),
+    sessionId: z.string().max(64).optional(),
+  });
+
   app.post("/api/track", async (req, res) => {
     try {
-      const { activityType, page, metadata, sessionId } = req.body;
-      if (!activityType) {
-        return res.status(400).json({ error: "activityType is required" });
+      const parsed = trackSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid tracking data" });
       }
+      const { activityType, page, metadata, sessionId } = parsed.data;
       const userId = req.user ? (req.user as User).id : null;
       const { userActivities } = await import("@shared/schema");
       const { db } = await import("../db");
@@ -2989,7 +2997,7 @@ export function registerBorrowerRoutes(
         sessionId: sessionId || null,
         activityType,
         page: page || null,
-        metadata: metadata || null,
+        metadata: metadata ? metadata : null,
       });
       res.json({ ok: true });
     } catch (error) {

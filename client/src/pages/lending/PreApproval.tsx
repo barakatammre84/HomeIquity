@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useForm, UseFormReturn } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocation } from "wouter";
@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
+import { usePageView, useTrackActivity } from "@/hooks/useActivityTracker";
 import { 
   ArrowRight, 
   ChevronLeft, 
@@ -405,6 +406,14 @@ export default function PreApproval() {
   const { toast } = useToast();
   const { user, isAuthenticated } = useAuth();
 
+  usePageView("/apply");
+  const track = useTrackActivity();
+  const prevStepRef = useRef(0);
+
+  const urlParams = new URLSearchParams(window.location.search);
+  const urlType = urlParams.get("type");
+  const defaultLoanPurpose = urlType === "refinance" ? "refinance" : urlType === "heloc" ? "cash_out" : "purchase";
+
   const form = useForm<PreApprovalFormData>({
     resolver: zodResolver(preApprovalFormSchema),
     mode: "onChange",
@@ -414,7 +423,7 @@ export default function PreApproval() {
       employmentYears: "",
       monthlyDebts: "",
       creditScore: "",
-      loanPurpose: "purchase",
+      loanPurpose: defaultLoanPurpose,
       propertyType: "single_family",
       purchasePrice: "",
       downPayment: "",
@@ -429,6 +438,17 @@ export default function PreApproval() {
   // All hooks must be called at top, before any conditional returns
   const watchedValues = form.watch();
   const dynamicTitle = useMemo(() => getDynamicTitle(currentQ, watchedValues), [currentQ, watchedValues]);
+
+  useEffect(() => {
+    if (currentStep !== prevStepRef.current && currentStep > 0) {
+      track("preapproval_step", "/apply", {
+        step: currentStep,
+        step_id: currentQ?.id || "",
+        total: QUESTIONS.length - 1,
+      });
+      prevStepRef.current = currentStep;
+    }
+  }, [currentStep, currentQ, track]);
 
   // Load draft application if user is authenticated
   const { data: draftApp } = useQuery({
@@ -859,9 +879,14 @@ export default function PreApproval() {
         >
           <ChevronLeft className="w-6 h-6 text-muted-foreground" />
         </button>
-        <span className="text-sm font-medium text-muted-foreground" data-testid="text-step-counter">
-          Step {currentStep} of {QUESTIONS.length - 1}
-        </span>
+        <div className="flex flex-col items-center" data-testid="text-step-counter">
+          <span className="text-sm font-medium text-muted-foreground">
+            Step {currentStep} of {QUESTIONS.length - 1}
+          </span>
+          <span className="text-[11px] text-muted-foreground/60">
+            {currentStep <= 3 ? "~2 min left" : currentStep <= 7 ? "~1 min left" : "Almost done"}
+          </span>
+        </div>
         <div className="w-10" />
       </div>
 

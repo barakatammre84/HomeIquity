@@ -11,6 +11,7 @@ import {
   Wallet
 } from "lucide-react";
 import RatePageHeader, { RateRow } from "@/components/RatePageHeader";
+import { usePageView } from "@/hooks/useActivityTracker";
 
 interface MortgageRateProgram {
   id: string;
@@ -58,6 +59,7 @@ function getStateFromZip(zip: string): string | undefined {
 }
 
 export default function HelocRates() {
+  usePageView("/rates/heloc");
   const [zipcode, setZipcode] = useState("");
   const [searchZipcode, setSearchZipcode] = useState("");
 

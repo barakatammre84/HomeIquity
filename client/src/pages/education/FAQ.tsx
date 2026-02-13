@@ -23,8 +23,10 @@ import {
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Faq, ContentCategory } from "@shared/schema";
+import { usePageView } from "@/hooks/useActivityTracker";
 
 export default function FAQ() {
+  usePageView("/faq");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [feedbackGiven, setFeedbackGiven] = useState<Record<string, boolean>>({});

@@ -11,6 +11,7 @@ import {
   CheckSquare,
   Home,
 } from "lucide-react";
+import { usePageView } from "@/hooks/useActivityTracker";
 
 type Category = "all" | "affordability" | "agent" | "offer" | "process";
 
@@ -117,6 +118,7 @@ const resources: ResourceCard[] = [
 ];
 
 export default function Resources() {
+  usePageView("/resources");
   const [activeCategory, setActiveCategory] = useState<Category>("all");
 
   const filteredResources = activeCategory === "all" 

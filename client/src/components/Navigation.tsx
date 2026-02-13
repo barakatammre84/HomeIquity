@@ -1,6 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
+import { useQuery } from "@tanstack/react-query";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -9,7 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LayoutDashboard, Users, Menu, X, Phone, ChevronDown, Home, Calculator, FileText, HelpCircle, DollarSign, Percent, Bot, MessageCircle, FolderOpen, CheckSquare } from "lucide-react";
+import { LayoutDashboard, Users, Menu, X, Phone, ChevronDown, Home, Calculator, FileText, HelpCircle, DollarSign, Percent, Bot, MessageCircle, FolderOpen, CheckSquare, ArrowRight } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 
@@ -138,9 +139,33 @@ function MobileNavSection({ label, items, onItemClick }: { label: string; items:
 export function Navigation() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [location] = useLocation();
+
+  const { data: dashboardData } = useQuery<{ applications: Array<{ id: number; status: string }> }>({
+    queryKey: ["/api/dashboard"],
+    enabled: isAuthenticated && !location.startsWith("/apply") && !location.startsWith("/dashboard"),
+  });
+
+  const hasDraft = dashboardData?.applications?.some(
+    (app) => app.status === "submitted" || app.status === "under_review" || app.status === "pending"
+  );
 
   return (
     <nav className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+      {isAuthenticated && hasDraft && !location.startsWith("/dashboard") && !location.startsWith("/apply") && (
+        <div className="bg-primary/10 border-b border-primary/20">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-4 py-2">
+            <span className="text-sm text-foreground/80" data-testid="text-resume-banner">
+              You have an application in progress.
+            </span>
+            <Link href="/dashboard">
+              <Button variant="ghost" size="sm" className="gap-1 text-primary text-sm font-medium" data-testid="button-resume-app">
+                Go to Dashboard <ArrowRight className="h-3 w-3" />
+              </Button>
+            </Link>
+          </div>
+        </div>
+      )}
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}

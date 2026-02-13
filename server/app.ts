@@ -56,11 +56,20 @@ const uploadLimiter = rateLimit({
   message: { error: "Too many upload requests, please try again later" },
 });
 
+const trackLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many tracking requests" },
+});
+
 app.use("/api/login", authLimiter);
 app.use("/api/callback", authLimiter);
 app.use("/api/test-login", authLimiter);
 app.use("/api/uploads", uploadLimiter);
 app.use("/api/documents/upload", uploadLimiter);
+app.use("/api/track", trackLimiter);
 app.use(generalLimiter);
 
 declare module 'http' {
@@ -128,9 +137,12 @@ app.use((req, res, next) => {
     return next();
   }
 
-  // If neither origin nor referer match, reject request
   if (!origin && !referer) {
-    return next(); // Allow if no origin/referer (e.g., API testing tools in development)
+    if (isDev) {
+      return next();
+    }
+    log(`CSRF check failed: no origin or referer header, host=${host}`);
+    return res.status(403).json({ error: 'CSRF validation failed' });
   }
 
   log(`CSRF check failed: origin=${origin}, referer=${referer}, host=${host}`);
