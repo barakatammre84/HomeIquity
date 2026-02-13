@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { 
   Upload, 
   FileText,
@@ -86,11 +87,14 @@ export function BorrowerRequests({ applicationId, "data-testid": testId }: Borro
   const displayTasks = pendingTasks.slice(0, 3);
 
   return (
-    <Card className="shadow-md border-l-4 border-l-amber-500" data-testid={testId || "card-what-we-need"}>
+    <Card className="shadow-md" data-testid={testId || "card-what-we-need"}>
       <CardHeader className="pb-3 border-b">
-        <CardTitle className="text-base font-semibold flex items-center gap-2 flex-wrap">
-          <FileText className="h-4 w-4" />
+        <CardTitle className="text-sm font-semibold flex items-center gap-2 flex-wrap">
+          <div className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-500/15">
+            <FileText className="h-3 w-3 text-amber-600 dark:text-amber-400" />
+          </div>
           What We Need From You
+          <Badge variant="secondary" className="text-[10px] ml-auto">{pendingTasks.length}</Badge>
         </CardTitle>
       </CardHeader>
       <CardContent className="pt-4 space-y-3">
