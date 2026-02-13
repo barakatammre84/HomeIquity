@@ -95,11 +95,10 @@ export interface BorrowerPackage {
     flags: string[];
   }>;
   readinessStatus: {
-    tier: string;
-    inputsPresent: string;
-    completedCategories: string[];
-    outstandingGaps: string[];
-    strengths: string[];
+    intakeStatus: string;
+    documentStatus: string;
+    packageStatus: string;
+    pendingItems: string[];
   };
   validationNotes: {
     recencyChecks: string[];
@@ -1232,11 +1231,10 @@ The "borrowerPackage" should be null unless the user is "ready_now" or the user 
     }
   ],
   "readinessStatus": {
-    "tier": "exploring | building | almost_ready | ready_now",
-    "inputsPresent": "X of Y",
-    "completedCategories": ["list of completed input categories"],
-    "outstandingGaps": ["list of specific missing items"] or [],
-    "strengths": ["factual strengths — no qualitative assessment"]
+    "intakeStatus": "Started | Complete",
+    "documentStatus": "Complete | Partial | Not Started",
+    "packageStatus": "Ready for Underwriting Review | Pending Items",
+    "pendingItems": ["list of specific remaining items if packageStatus is 'Pending Items', or empty array if ready — frame as procedural readiness only, do not assess eligibility or risk"]
   },
   "validationNotes": {
     "recencyChecks": ["neutral observations about document age or staleness, e.g. 'Pay stub dated more than 30 days prior to intake' — empty array if none"],

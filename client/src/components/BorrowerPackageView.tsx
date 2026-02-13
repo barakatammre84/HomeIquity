@@ -67,11 +67,10 @@ interface BorrowerPackageData {
     flags?: string[];
   }>;
   readinessStatus?: {
-    tier?: string;
-    inputsPresent?: string;
-    completedCategories?: string[];
-    outstandingGaps?: string[];
-    strengths?: string[];
+    intakeStatus?: string;
+    documentStatus?: string;
+    packageStatus?: string;
+    pendingItems?: string[];
   };
   validationNotes?: {
     recencyChecks?: string[];
@@ -173,17 +172,19 @@ function DocStatusBadge({ status }: { status: string }) {
   return <Badge variant="outline" className="text-xs" data-testid="badge-doc-other">{status}</Badge>;
 }
 
-function TierBadge({ tier }: { tier: string }) {
-  const config: Record<string, { label: string; className: string }> = {
-    ready_now: { label: "Ready Now", className: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200" },
-    almost_ready: { label: "Almost Ready", className: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" },
-    building: { label: "Building", className: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200" },
-    exploring: { label: "Exploring", className: "bg-slate-100 text-slate-800 dark:bg-slate-900 dark:text-slate-200" },
-  };
-  const c = config[tier || "exploring"] || config.exploring;
+function StatusBadge({ status }: { status: string }) {
+  const lower = (status || "").toLowerCase();
+  let className = "bg-slate-100 text-slate-800 dark:bg-slate-900 dark:text-slate-200";
+  if (lower === "complete" || lower === "ready for underwriting review") {
+    className = "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200";
+  } else if (lower === "started" || lower === "partial") {
+    className = "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200";
+  } else if (lower === "pending items" || lower === "not started") {
+    className = "bg-slate-100 text-slate-800 dark:bg-slate-900 dark:text-slate-200";
+  }
   return (
-    <Badge className={`text-xs no-default-hover-elevate no-default-active-elevate ${c.className}`} data-testid={`badge-readiness-${tier || "unknown"}`}>
-      {c.label}
+    <Badge className={`text-xs no-default-hover-elevate no-default-active-elevate ${className}`} data-testid={`badge-status-${lower.replace(/\s+/g, "-")}`}>
+      {status}
     </Badge>
   );
 }
@@ -428,56 +429,32 @@ export default function BorrowerPackageView({ data }: { data: BorrowerPackageDat
       </Card>
 
       <Card data-testid="section-readiness">
-        <CardContent className="pt-4 pb-3 px-4">
+        <CardContent className="pt-4 pb-3 px-4 space-y-0">
           <SectionHeader icon={Target} title="Readiness Status" number={9} />
-          <div className="space-y-2">
-            <div className="flex items-center justify-between gap-2 flex-wrap" data-testid="row-readiness-tier">
-              <span className="text-sm text-muted-foreground">Readiness Tier</span>
-              <TierBadge tier={readiness.tier || "exploring"} />
-            </div>
-            <DataRow label="Required Inputs Present" value={readiness.inputsPresent} testId="row-inputs-present" />
-
-            {(readiness.completedCategories || []).length > 0 && (
-              <div data-testid="list-completed-categories">
-                <span className="text-xs text-muted-foreground">Completed Categories</span>
-                <div className="flex gap-1 flex-wrap mt-1">
-                  {(readiness.completedCategories || []).map((cat, i) => (
-                    <Badge key={i} variant="secondary" className="text-xs gap-1" data-testid={`badge-completed-${i}`}>
-                      <CheckCircle2 className="w-3 h-3" /> {cat}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {(readiness.outstandingGaps || []).length > 0 && (
-              <div data-testid="list-outstanding-gaps">
-                <span className="text-xs text-muted-foreground">Outstanding Gaps</span>
-                <ul className="mt-1 space-y-0.5">
-                  {(readiness.outstandingGaps || []).map((gap, i) => (
-                    <li key={i} className="text-sm flex items-start gap-1.5" data-testid={`text-gap-${i}`}>
-                      <XCircle className="w-3.5 h-3.5 mt-0.5 text-muted-foreground flex-shrink-0" />
-                      {gap}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {(readiness.strengths || []).length > 0 && (
-              <div data-testid="list-strengths">
-                <span className="text-xs text-muted-foreground">Strengths</span>
-                <ul className="mt-1 space-y-0.5">
-                  {(readiness.strengths || []).map((s, i) => (
-                    <li key={i} className="text-sm flex items-start gap-1.5" data-testid={`text-strength-${i}`}>
-                      <CheckCircle2 className="w-3.5 h-3.5 mt-0.5 text-muted-foreground flex-shrink-0" />
-                      {s}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
+          <div className="space-y-1">
+            <DataRow label="Intake Status" testId="row-intake-status">
+              <StatusBadge status={safe(readiness.intakeStatus)} />
+            </DataRow>
+            <DataRow label="Document Status" testId="row-document-status">
+              <StatusBadge status={safe(readiness.documentStatus)} />
+            </DataRow>
+            <DataRow label="Package Status" testId="row-package-status">
+              <StatusBadge status={safe(readiness.packageStatus)} />
+            </DataRow>
           </div>
+          {(readiness.pendingItems || []).length > 0 && (
+            <div className="mt-3 pt-2 border-t" data-testid="list-pending-items">
+              <span className="text-xs text-muted-foreground">Pending Items</span>
+              <ul className="mt-1 space-y-0.5">
+                {(readiness.pendingItems || []).map((item, i) => (
+                  <li key={i} className="text-sm flex items-start gap-1.5" data-testid={`text-pending-${i}`}>
+                    <Clock className="w-3.5 h-3.5 mt-0.5 text-muted-foreground flex-shrink-0" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </CardContent>
       </Card>
 
