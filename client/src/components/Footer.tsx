@@ -25,9 +25,9 @@ export function Footer() {
                 </a>
               </li>
               <li>
-                <a href="tel:1-800-MORTGAGE" className="flex items-center gap-2 rounded-md px-2 py-2 -mx-2 hover:text-white transition-colors" data-testid="link-footer-phone">
+                <a href="tel:1-800-BARANEST" className="flex items-center gap-2 rounded-md px-2 py-2 -mx-2 hover:text-white transition-colors" data-testid="link-footer-phone">
                   <Phone className="h-4 w-4 shrink-0" />
-                  1-800-MORTGAGE
+                  1-800-BARANEST
                 </a>
               </li>
               <li><Link href="/faq" className="block rounded-md px-2 py-2 -mx-2 hover:text-white transition-colors" data-testid="link-footer-faq">FAQ</Link></li>

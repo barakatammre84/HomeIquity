@@ -3,6 +3,7 @@ import { useParams, Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
+import { usePageView, useTrackActivity } from "@/hooks/useActivityTracker";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -151,6 +152,8 @@ function calculateQualification(
 export default function PropertyDetail() {
   const params = useParams();
   const propertyId = params?.id as string;
+  usePageView("/properties/detail");
+  const trackActivity = useTrackActivity();
 
   useEffect(() => {
     try { localStorage.setItem("baranest_browsed_properties", "true"); } catch {}
@@ -159,6 +162,12 @@ export default function PropertyDetail() {
   const { data: property, isLoading: propertyLoading } = useQuery<Property>({
     queryKey: [`/api/properties/${propertyId}`],
   });
+
+  useEffect(() => {
+    if (property) {
+      trackActivity("property_view", `/properties/${params.id}`, { propertyId: params.id });
+    }
+  }, [property?.id]);
 
   const { data: applications } = useQuery<LoanApplication[]>({
     queryKey: ["/api/loan-applications"],

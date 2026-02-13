@@ -6,6 +6,7 @@ import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
 import { SEOHead } from "@/components/SEOHead";
 import { useQuery } from "@tanstack/react-query";
+import { usePageView } from "@/hooks/useActivityTracker";
 import { 
   CheckCircle2,
   Sparkles,
@@ -23,6 +24,7 @@ import {
 } from "lucide-react";
 
 export default function Landing() {
+  usePageView("/");
   return (
     <div className="min-h-screen bg-background">
       <SEOHead

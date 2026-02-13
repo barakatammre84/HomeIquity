@@ -19,7 +19,7 @@ const teamMembers = [
       "Get expert guidance to fast-track your approval",
       "Find a financing solution tailored to your goals",
     ],
-    phone: "1-800-MORTGAGE",
+    phone: "1-800-BARANEST",
     showPhone: true,
   },
   {

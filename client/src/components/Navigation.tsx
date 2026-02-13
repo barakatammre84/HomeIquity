@@ -9,7 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LayoutDashboard, Users, Menu, X, Phone, ChevronDown, Home, Calculator, FileText, HelpCircle, DollarSign, Percent } from "lucide-react";
+import { LayoutDashboard, Users, Menu, X, Phone, ChevronDown, Home, Calculator, FileText, HelpCircle, DollarSign, Percent, Bot, MessageCircle, FolderOpen, CheckSquare } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 
@@ -221,18 +221,45 @@ export function Navigation() {
                   </div>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
-                    <Link href="/dashboard" className="w-full cursor-pointer">
+                    <Link href="/dashboard" className="w-full cursor-pointer" data-testid="menu-dashboard">
                       <LayoutDashboard className="mr-2 h-4 w-4" />
                       Dashboard
                     </Link>
                   </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/ai-coach" className="w-full cursor-pointer" data-testid="menu-ai-coach">
+                      <Bot className="mr-2 h-4 w-4" />
+                      AI Coach
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/messages" className="w-full cursor-pointer" data-testid="menu-messages">
+                      <MessageCircle className="mr-2 h-4 w-4" />
+                      Messages
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/documents" className="w-full cursor-pointer" data-testid="menu-documents">
+                      <FolderOpen className="mr-2 h-4 w-4" />
+                      Documents
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/tasks" className="w-full cursor-pointer" data-testid="menu-tasks">
+                      <CheckSquare className="mr-2 h-4 w-4" />
+                      Tasks
+                    </Link>
+                  </DropdownMenuItem>
                   {user.role === "admin" && (
-                    <DropdownMenuItem asChild>
-                      <Link href="/admin" className="w-full cursor-pointer">
-                        <Users className="mr-2 h-4 w-4" />
-                        Admin Panel
-                      </Link>
-                    </DropdownMenuItem>
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem asChild>
+                        <Link href="/admin" className="w-full cursor-pointer" data-testid="menu-admin">
+                          <Users className="mr-2 h-4 w-4" />
+                          Admin Panel
+                        </Link>
+                      </DropdownMenuItem>
+                    </>
                   )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
@@ -303,7 +330,47 @@ export function Navigation() {
                 </button>
               </Link>
               
-              {!isAuthenticated && (
+              {isAuthenticated ? (
+                <div className="mt-4 flex flex-col gap-1">
+                  <Link href="/dashboard">
+                    <button className="flex w-full items-center gap-3 rounded-lg px-2 py-3 text-left text-sm font-medium text-foreground hover-elevate" onClick={() => setMobileMenuOpen(false)} data-testid="mobile-link-dashboard">
+                      <LayoutDashboard className="h-4 w-4 text-muted-foreground" />
+                      Dashboard
+                    </button>
+                  </Link>
+                  <Link href="/ai-coach">
+                    <button className="flex w-full items-center gap-3 rounded-lg px-2 py-3 text-left text-sm font-medium text-foreground hover-elevate" onClick={() => setMobileMenuOpen(false)} data-testid="mobile-link-ai-coach">
+                      <Bot className="h-4 w-4 text-muted-foreground" />
+                      AI Coach
+                    </button>
+                  </Link>
+                  <Link href="/messages">
+                    <button className="flex w-full items-center gap-3 rounded-lg px-2 py-3 text-left text-sm font-medium text-foreground hover-elevate" onClick={() => setMobileMenuOpen(false)} data-testid="mobile-link-messages">
+                      <MessageCircle className="h-4 w-4 text-muted-foreground" />
+                      Messages
+                    </button>
+                  </Link>
+                  <Link href="/documents">
+                    <button className="flex w-full items-center gap-3 rounded-lg px-2 py-3 text-left text-sm font-medium text-foreground hover-elevate" onClick={() => setMobileMenuOpen(false)} data-testid="mobile-link-documents">
+                      <FolderOpen className="h-4 w-4 text-muted-foreground" />
+                      Documents
+                    </button>
+                  </Link>
+                  <Link href="/tasks">
+                    <button className="flex w-full items-center gap-3 rounded-lg px-2 py-3 text-left text-sm font-medium text-foreground hover-elevate" onClick={() => setMobileMenuOpen(false)} data-testid="mobile-link-tasks">
+                      <CheckSquare className="h-4 w-4 text-muted-foreground" />
+                      Tasks
+                    </button>
+                  </Link>
+                  <div className="mt-2 border-t pt-3">
+                    <a href="/api/logout">
+                      <Button variant="outline" size="lg" className="w-full text-destructive" onClick={() => setMobileMenuOpen(false)} data-testid="mobile-button-logout">
+                        Sign out
+                      </Button>
+                    </a>
+                  </div>
+                </div>
+              ) : (
                 <div className="mt-4 flex flex-col gap-3">
                   <a href="/api/login">
                     <Button variant="outline" size="lg" className="w-full" onClick={() => setMobileMenuOpen(false)} data-testid="mobile-button-login">
