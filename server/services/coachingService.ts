@@ -71,11 +71,9 @@ export interface BorrowerPackage {
     documentationStatus: string;
   }>;
   assetCategories: Array<{
-    category: string;
-    estimatedValue: string;
-    verificationTier: string;
-    source?: string | null;
-    giftLetterStatus?: string | null;
+    assetType: string;
+    declaredPresence: string;
+    documentationStatus: string;
   }>;
   creditAndDebt: {
     creditScore: string;
@@ -1206,11 +1204,9 @@ The "borrowerPackage" should be null unless the user is "ready_now" or the user 
   ],
   "assetCategories": [
     {
-      "category": "Checking/Savings | Down Payment | Retirement | Investment | Other",
-      "estimatedValue": "numeric string or 'Not Provided'",
-      "verificationTier": "Tier 1 | Tier 2 | Tier 3",
-      "source": "Personal Savings | Gift | Grant | Sale of Property | null",
-      "giftLetterStatus": "On File | Pending | Not Provided | null"
+      "assetType": "Checking | Savings | Investment | Retirement | Other",
+      "declaredPresence": "Yes | No",
+      "documentationStatus": "Uploaded | Pending | Not Provided"
     }
   ],
   "creditAndDebt": {

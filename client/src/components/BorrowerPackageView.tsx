@@ -43,11 +43,9 @@ interface BorrowerPackageData {
     documentationStatus?: string;
   }>;
   assetCategories?: Array<{
-    category?: string;
-    estimatedValue?: string;
-    verificationTier?: string;
-    source?: string | null;
-    giftLetterStatus?: string | null;
+    assetType?: string;
+    declaredPresence?: string;
+    documentationStatus?: string;
   }>;
   creditAndDebt?: {
     creditScore?: string;
@@ -308,7 +306,7 @@ export default function BorrowerPackageView({ data }: { data: BorrowerPackageDat
 
       <Card data-testid="section-assets">
         <CardContent className="pt-4 pb-3 px-4">
-          <SectionHeader icon={PiggyBank} title="Asset Categories" number={5} />
+          <SectionHeader icon={PiggyBank} title="Asset Overview" number={5} />
           {assetCategories.length === 0 ? (
             <p className="text-sm text-muted-foreground opacity-60" data-testid="text-assets-empty">Not Provided</p>
           ) : (
@@ -316,30 +314,17 @@ export default function BorrowerPackageView({ data }: { data: BorrowerPackageDat
               <table className="w-full text-sm" data-testid="table-assets">
                 <thead>
                   <tr className="border-b" data-testid="row-assets-header">
-                    <th className="text-left py-1.5 pr-3 text-muted-foreground font-medium text-xs">Category</th>
-                    <th className="text-right py-1.5 pr-3 text-muted-foreground font-medium text-xs">Est. Value</th>
-                    <th className="text-left py-1.5 pr-3 text-muted-foreground font-medium text-xs">Source</th>
-                    <th className="text-right py-1.5 text-muted-foreground font-medium text-xs">Verification</th>
+                    <th className="text-left py-1.5 pr-3 text-muted-foreground font-medium text-xs">Asset Type</th>
+                    <th className="text-left py-1.5 pr-3 text-muted-foreground font-medium text-xs">Declared</th>
+                    <th className="text-left py-1.5 text-muted-foreground font-medium text-xs">Documentation</th>
                   </tr>
                 </thead>
                 <tbody>
                   {assetCategories.map((asset, i) => (
                     <tr key={i} className="border-b last:border-0" data-testid={`row-asset-${i}`}>
-                      <td className="py-1.5 pr-3" data-testid={`text-asset-category-${i}`}>
-                        <div>{safe(asset.category)}</div>
-                        {asset.giftLetterStatus && asset.giftLetterStatus !== "null" && !isNotProvided(asset.giftLetterStatus) && (
-                          <div className="text-xs text-muted-foreground">Gift letter: {asset.giftLetterStatus}</div>
-                        )}
-                      </td>
-                      <td className="py-1.5 pr-3 text-right font-medium" data-testid={`text-asset-value-${i}`}>
-                        {isNotProvided(asset.estimatedValue) ? (
-                          <span className="opacity-60">Not Provided</span>
-                        ) : (
-                          formatCurrency(asset.estimatedValue!)
-                        )}
-                      </td>
-                      <td className="py-1.5 pr-3" data-testid={`text-asset-source-${i}`}>{asset.source || "—"}</td>
-                      <td className="py-1.5 text-right"><VerificationBadge tier={safe(asset.verificationTier)} /></td>
+                      <td className="py-1.5 pr-3" data-testid={`text-asset-type-${i}`}>{safe(asset.assetType)}</td>
+                      <td className="py-1.5 pr-3" data-testid={`text-asset-declared-${i}`}>{safe(asset.declaredPresence)}</td>
+                      <td className="py-1.5"><DocStatusBadge status={safe(asset.documentationStatus)} /></td>
                     </tr>
                   ))}
                 </tbody>
