@@ -73,7 +73,11 @@ interface BorrowerPackageData {
     outstandingGaps?: string[];
     strengths?: string[];
   };
-  validationNotes?: string[];
+  validationNotes?: {
+    recencyChecks?: string[];
+    completenessChecks?: string[];
+    consistencyObservations?: string[];
+  };
   complianceFooter?: string;
 }
 
@@ -219,7 +223,11 @@ export default function BorrowerPackageView({ data }: { data: BorrowerPackageDat
   const propertyCtx = data.propertyContext || {};
   const documents = data.documentInventory || [];
   const readiness = data.readinessStatus || {};
-  const validationNotes = data.validationNotes || [];
+  const validation = data.validationNotes || {};
+  const recencyChecks = validation.recencyChecks || [];
+  const completenessChecks = validation.completenessChecks || [];
+  const consistencyObservations = validation.consistencyObservations || [];
+  const hasValidationNotes = recencyChecks.length > 0 || completenessChecks.length > 0 || consistencyObservations.length > 0;
   const footer = data.complianceFooter || COMPLIANCE_FOOTER;
 
   return (
@@ -476,15 +484,48 @@ export default function BorrowerPackageView({ data }: { data: BorrowerPackageDat
       <Card data-testid="section-validation">
         <CardContent className="pt-4 pb-3 px-4">
           <SectionHeader icon={Shield} title="Validation Notes" number={10} />
-          {validationNotes.length > 0 ? (
-            <ul className="space-y-1">
-              {validationNotes.map((note, i) => (
-                <li key={i} className="text-sm flex items-start gap-1.5" data-testid={`text-validation-${i}`}>
-                  <AlertTriangle className="w-3.5 h-3.5 mt-0.5 text-muted-foreground flex-shrink-0" />
-                  {note}
-                </li>
-              ))}
-            </ul>
+          {hasValidationNotes ? (
+            <div className="space-y-3">
+              {recencyChecks.length > 0 && (
+                <div data-testid="list-recency-checks">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <Clock className="w-3.5 h-3.5 text-muted-foreground" />
+                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Document Recency</span>
+                  </div>
+                  <ul className="space-y-0.5 pl-5">
+                    {recencyChecks.map((note, i) => (
+                      <li key={i} className="text-sm text-foreground" data-testid={`text-recency-${i}`}>{note}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {completenessChecks.length > 0 && (
+                <div data-testid="list-completeness-checks">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <AlertTriangle className="w-3.5 h-3.5 text-muted-foreground" />
+                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Completeness</span>
+                  </div>
+                  <ul className="space-y-0.5 pl-5">
+                    {completenessChecks.map((note, i) => (
+                      <li key={i} className="text-sm text-foreground" data-testid={`text-completeness-${i}`}>{note}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {consistencyObservations.length > 0 && (
+                <div data-testid="list-consistency-observations">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <FileText className="w-3.5 h-3.5 text-muted-foreground" />
+                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Consistency</span>
+                  </div>
+                  <ul className="space-y-0.5 pl-5">
+                    {consistencyObservations.map((note, i) => (
+                      <li key={i} className="text-sm text-foreground" data-testid={`text-consistency-${i}`}>{note}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
           ) : (
             <p className="text-sm text-muted-foreground" data-testid="text-no-validation-issues">No validation concerns identified at this time.</p>
           )}

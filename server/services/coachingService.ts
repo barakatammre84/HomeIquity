@@ -101,7 +101,11 @@ export interface BorrowerPackage {
     outstandingGaps: string[];
     strengths: string[];
   };
-  validationNotes: string[];
+  validationNotes: {
+    recencyChecks: string[];
+    completenessChecks: string[];
+    consistencyObservations: string[];
+  };
   complianceFooter: string;
 }
 
@@ -1234,7 +1238,11 @@ The "borrowerPackage" should be null unless the user is "ready_now" or the user 
     "outstandingGaps": ["list of specific missing items"] or [],
     "strengths": ["factual strengths — no qualitative assessment"]
   },
-  "validationNotes": ["array of strings describing discrepancies or flagged items, or empty if none"],
+  "validationNotes": {
+    "recencyChecks": ["neutral observations about document age or staleness, e.g. 'Pay stub dated more than 30 days prior to intake' — empty array if none"],
+    "completenessChecks": ["neutral observations about missing or incomplete inputs, e.g. 'Asset documentation not yet provided' — empty array if none"],
+    "consistencyObservations": ["neutral observations about discrepancies between declared information and documents, e.g. 'Declared employer name differs from W-2 employer field' — do not assess risk or eligibility — empty array if none"]
+  },
   "complianceFooter": "This intake summary is prepared for informational purposes only. It does not constitute a lending decision, pre-approval, commitment to lend, or assessment of creditworthiness. All information is borrower-declared or document-extracted and has not been independently verified by a lender. Loan eligibility, terms, and approval are determined solely during formal underwriting review."
 }
 Every field that has no data MUST be "Not Provided" or "Pending" or "Insufficient Data" — never omit fields or leave them null. Every data point must include its verification tier.
