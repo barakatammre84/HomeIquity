@@ -165,6 +165,17 @@ async function buildVerifiedContext(userId: string, user: User, propertyContext?
         const multipleIncomes = (employmentHistory?.length || 0) > 1;
         context.hasMultipleIncomes = multipleIncomes;
         context.hasBusinessIncome = selfEmployed || false;
+
+        const investmentPropertyTypes = ["investment", "investment_property", "rental", "multi_family"];
+        const propertyTypeVal = (activeApp?.propertyType || "").toLowerCase();
+        const loanPurposeVal = (activeApp?.loanPurpose || "").toLowerCase();
+        const occupancyVal = ((activeApp as any)?.occupancyType || (activeApp as any)?.occupancy || "").toLowerCase();
+        context.hasInvestmentProperties = investmentPropertyTypes.includes(propertyTypeVal)
+          || loanPurposeVal.includes("investment")
+          || loanPurposeVal.includes("rental")
+          || occupancyVal === "investment"
+          || occupancyVal === "non_owner_occupied"
+          || occupancyVal === "investor";
       }
     } catch (e) {
       console.warn("[Coach] Could not enrich context from Borrower Graph:", e);
