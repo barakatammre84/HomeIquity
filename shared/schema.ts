@@ -7817,3 +7817,12 @@ export const insertUserActivitySchema = createInsertSchema(userActivities).omit(
 });
 export type InsertUserActivity = z.infer<typeof insertUserActivitySchema>;
 export type UserActivity = typeof userActivities.$inferSelect;
+
+export const emailCaptures = pgTable("email_captures", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  email: varchar("email", { length: 255 }).notNull(),
+  source: varchar("source", { length: 50 }).default("website"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_email_captures_email").on(table.email),
+]);

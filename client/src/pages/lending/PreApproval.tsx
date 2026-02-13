@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useForm, UseFormReturn } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocation } from "wouter";
@@ -433,11 +433,90 @@ export default function PreApproval() {
     },
   });
 
+  const AUTOSAVE_KEY = "baranest_preapproval_draft";
+  const AUTOSAVE_STEP_KEY = "baranest_preapproval_step";
+  const [autosaveRestored, setAutosaveRestored] = useState(false);
+  const [showRestoreBanner, setShowRestoreBanner] = useState(false);
+  const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const saveToLocalStorage = useCallback((values: PreApprovalFormData, step: number) => {
+    try {
+      const hasData = Object.entries(values).some(([k, v]) => {
+        if (k === "isVeteran" || k === "isFirstTimeBuyer") return false;
+        if (k === "employmentType" && v === "employed") return false;
+        if (k === "propertyType" && v === "single_family") return false;
+        if (k === "loanPurpose" && v === defaultLoanPurpose) return false;
+        return typeof v === "string" && v.length > 0;
+      });
+      if (hasData) {
+        localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(values));
+        localStorage.setItem(AUTOSAVE_STEP_KEY, String(step));
+      }
+    } catch {}
+  }, [defaultLoanPurpose]);
+
+  const clearAutosave = useCallback(() => {
+    try {
+      localStorage.removeItem(AUTOSAVE_KEY);
+      localStorage.removeItem(AUTOSAVE_STEP_KEY);
+    } catch {}
+  }, []);
+
   const currentQ = QUESTIONS[currentStep];
   
-  // All hooks must be called at top, before any conditional returns
   const watchedValues = form.watch();
   const dynamicTitle = useMemo(() => getDynamicTitle(currentQ, watchedValues), [currentQ, watchedValues]);
+
+  useEffect(() => {
+    if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+    autosaveTimerRef.current = setTimeout(() => {
+      if (currentStep > 0) {
+        saveToLocalStorage(watchedValues, currentStep);
+      }
+    }, 800);
+    return () => {
+      if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+    };
+  }, [watchedValues, currentStep, saveToLocalStorage]);
+
+  useEffect(() => {
+    if (autosaveRestored) return;
+    try {
+      const saved = localStorage.getItem(AUTOSAVE_KEY);
+      const savedStep = localStorage.getItem(AUTOSAVE_STEP_KEY);
+      if (saved && savedStep) {
+        const parsed = JSON.parse(saved);
+        const step = parseInt(savedStep, 10);
+        if (step > 0 && step < QUESTIONS.length) {
+          setShowRestoreBanner(true);
+          setAutosaveRestored(true);
+        }
+      }
+    } catch {}
+    setAutosaveRestored(true);
+  }, [autosaveRestored]);
+
+  const handleRestoreDraft = useCallback(() => {
+    try {
+      const saved = localStorage.getItem(AUTOSAVE_KEY);
+      const savedStep = localStorage.getItem(AUTOSAVE_STEP_KEY);
+      if (saved && savedStep) {
+        const parsed = JSON.parse(saved);
+        const step = parseInt(savedStep, 10);
+        form.reset({ ...form.getValues(), ...parsed });
+        setCurrentStep(step);
+        setShowRestoreBanner(false);
+        toast({ title: "Progress restored", description: "We picked up where you left off." });
+      }
+    } catch {
+      setShowRestoreBanner(false);
+    }
+  }, [form, toast]);
+
+  const handleDismissRestore = useCallback(() => {
+    setShowRestoreBanner(false);
+    clearAutosave();
+  }, [clearAutosave]);
 
   useEffect(() => {
     if (currentStep !== prevStepRef.current && currentStep > 0) {
@@ -566,6 +645,7 @@ export default function PreApproval() {
       }
     },
     onSuccess: (result) => {
+      clearAutosave();
       queryClient.invalidateQueries({ queryKey: ["/api/loan-applications"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
       toast({
@@ -814,10 +894,37 @@ export default function PreApproval() {
     }
   };
 
-  // Intro Screen
+  const restoreBanner = showRestoreBanner ? (
+    <motion.div
+      initial={{ opacity: 0, y: -20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="fixed top-2 left-1/2 -translate-x-1/2 z-50 w-full max-w-md px-4"
+      data-testid="banner-restore-draft"
+    >
+      <div className="bg-card border shadow-lg rounded-xl p-4 flex items-center gap-3">
+        <div className="bg-primary/10 rounded-lg p-2 shrink-0">
+          <Clock className="h-4 w-4 text-primary" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium">You have unsaved progress</p>
+          <p className="text-xs text-muted-foreground">Pick up where you left off?</p>
+        </div>
+        <div className="flex gap-2 shrink-0">
+          <Button size="sm" variant="ghost" onClick={handleDismissRestore} data-testid="button-dismiss-restore">
+            No
+          </Button>
+          <Button size="sm" onClick={handleRestoreDraft} data-testid="button-restore-draft">
+            Restore
+          </Button>
+        </div>
+      </div>
+    </motion.div>
+  ) : null;
+
   if (currentQ.type === "intro") {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-background text-center">
+        {restoreBanner}
         <motion.div 
           initial={{ opacity: 0, y: 20 }} 
           animate={{ opacity: 1, y: 0 }}
@@ -858,6 +965,7 @@ export default function PreApproval() {
   return (
     <div className="min-h-screen flex flex-col bg-background overflow-hidden">
       <SEOHead title="Get Pre-Approved in 3 Minutes" description="Start your mortgage pre-approval application. Answer a few questions about your income and finances to get a clear, confident approval decision." />
+      {restoreBanner}
       
       {/* Progress Bar */}
       <div className="fixed top-0 left-0 w-full h-1 bg-muted z-50">

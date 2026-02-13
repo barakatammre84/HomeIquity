@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { PublicLayout } from "@/components/layouts/PublicLayout";
 import { PrivateLayout } from "@/components/layouts/PrivateLayout";
+import { EmailCaptureModal } from "@/components/EmailCaptureModal";
 import { Loader2 } from "lucide-react";
 
 const Landing = lazy(() => import("@/pages/public/Landing"));
@@ -384,6 +385,7 @@ function App() {
       <TooltipProvider>
         <Toaster />
         <Router />
+        <EmailCaptureModal />
       </TooltipProvider>
     </QueryClientProvider>
   );

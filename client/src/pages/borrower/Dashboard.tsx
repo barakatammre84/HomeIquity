@@ -38,6 +38,7 @@ import {
   Calculator,
   MessageSquare,
   AlertTriangle,
+  AlertCircle,
 } from "lucide-react";
 
 interface DashboardData {
@@ -248,10 +249,34 @@ function PersonalizedNudges({ application, expirationInfo }: { application: Loan
       id: "app-submitted",
       icon: Clock,
       title: "Your application is being reviewed",
-      description: "We're working on your application. You'll be notified as soon as we have an update.",
+      description: "Most pre-approvals are processed within 1 business day. You'll be notified via email and dashboard as soon as we have a decision.",
       action: "View Status",
       href: `/pipeline/${application.id}`,
       priority: 4,
+    });
+  }
+
+  if (application && status === "underwriting") {
+    nudges.push({
+      id: "underwriting-timeline",
+      icon: Clock,
+      title: "Underwriting in progress",
+      description: "Your file is being reviewed by our underwriting team. This typically takes 3-5 business days. We'll reach out if we need anything.",
+      action: "View Details",
+      href: `/pipeline/${application.id}`,
+      priority: 2,
+    });
+  }
+
+  if (application && status === "conditional") {
+    nudges.push({
+      id: "conditional-action",
+      icon: AlertCircle,
+      title: "Conditional approval - action needed",
+      description: "Your loan is conditionally approved! Review and fulfill the remaining conditions to move to final approval.",
+      action: "View Conditions",
+      href: `/pipeline/${application.id}`,
+      priority: 1,
     });
   }
 
@@ -279,7 +304,7 @@ function PersonalizedNudges({ application, expirationInfo }: { application: Loan
     });
   }
 
-  const sorted = nudges.sort((a, b) => a.priority - b.priority).slice(0, 2);
+  const sorted = nudges.sort((a, b) => a.priority - b.priority).slice(0, 3);
   if (sorted.length === 0) return null;
 
   return (

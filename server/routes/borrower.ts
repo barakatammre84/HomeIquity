@@ -3006,6 +3006,40 @@ export function registerBorrowerRoutes(
     }
   });
 
+  const emailCaptureSchema = z.object({
+    email: z.string().email().max(255),
+    source: z.string().max(50).optional(),
+  });
+
+  app.post("/api/email-capture", async (req, res) => {
+    try {
+      const parsed = emailCaptureSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid email address" });
+      }
+      const { emailCaptures } = await import("@shared/schema");
+      const { db } = await import("../db");
+      const { eq } = await import("drizzle-orm");
+
+      const existing = await db
+        .select({ id: emailCaptures.id })
+        .from(emailCaptures)
+        .where(eq(emailCaptures.email, parsed.data.email))
+        .limit(1);
+
+      if (existing.length === 0) {
+        await db.insert(emailCaptures).values({
+          email: parsed.data.email,
+          source: parsed.data.source || "website",
+        });
+      }
+      res.json({ ok: true });
+    } catch (error) {
+      console.error("Email capture error:", error);
+      res.json({ ok: true });
+    }
+  });
+
   app.get("/api/user-activity-summary", isAuthenticated, async (req, res) => {
     try {
       const userId = (req.user as User).id;

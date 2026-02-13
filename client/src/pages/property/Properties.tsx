@@ -93,25 +93,68 @@ function useDebounce(value: string, delay: number) {
   return debounced;
 }
 
+const SEARCH_FILTERS_KEY = "baranest_property_filters";
+
+interface SavedFilters {
+  locationId: string | null;
+  locationLabel: string;
+  searchMode: SearchMode;
+  propertyType: string;
+  priceRange: [number, number];
+  savedAt: number;
+}
+
+function loadSavedFilters(): SavedFilters | null {
+  try {
+    const raw = localStorage.getItem(SEARCH_FILTERS_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as SavedFilters;
+    if (Date.now() - parsed.savedAt > 7 * 24 * 60 * 60 * 1000) {
+      localStorage.removeItem(SEARCH_FILTERS_KEY);
+      return null;
+    }
+    return parsed;
+  } catch { return null; }
+}
+
 export default function Properties() {
   const { isAuthenticated } = useAuth();
   usePageView("/properties");
   const trackActivity = useTrackActivity();
-  const [searchQuery, setSearchQuery] = useState("");
-  const [inputValue, setInputValue] = useState("");
+
+  const saved = useRef(loadSavedFilters());
+  const [searchQuery, setSearchQuery] = useState(saved.current?.locationLabel || "");
+  const [inputValue, setInputValue] = useState(saved.current?.locationLabel || "");
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
-  const [selectedLocationLabel, setSelectedLocationLabel] = useState("");
-  const [searchMode, setSearchMode] = useState<SearchMode>("buy");
-  const [propertyType, setPropertyType] = useState("all");
-  const [priceRange, setPriceRange] = useState([0, 2000000]);
+  const [selectedLocation, setSelectedLocation] = useState<string | null>(saved.current?.locationId || null);
+  const [selectedLocationLabel, setSelectedLocationLabel] = useState(saved.current?.locationLabel || "");
+  const [searchMode, setSearchMode] = useState<SearchMode>(saved.current?.searchMode || "buy");
+  const [propertyType, setPropertyType] = useState(saved.current?.propertyType || "all");
+  const [priceRange, setPriceRange] = useState(saved.current?.priceRange || [0, 2000000]);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [showSavedBanner, setShowSavedBanner] = useState(!!saved.current?.locationId);
   const suggestionsRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     try { localStorage.setItem("baranest_browsed_properties", "true"); } catch {}
   }, []);
+
+  useEffect(() => {
+    if (selectedLocation) {
+      try {
+        const filters: SavedFilters = {
+          locationId: selectedLocation,
+          locationLabel: selectedLocationLabel,
+          searchMode,
+          propertyType,
+          priceRange: priceRange as [number, number],
+          savedAt: Date.now(),
+        };
+        localStorage.setItem(SEARCH_FILTERS_KEY, JSON.stringify(filters));
+      } catch {}
+    }
+  }, [selectedLocation, selectedLocationLabel, searchMode, propertyType, priceRange]);
 
   const debouncedInput = useDebounce(inputValue, 300);
 
@@ -195,6 +238,8 @@ export default function Properties() {
     setSearchQuery("");
     setSelectedLocation(null);
     setSelectedLocationLabel("");
+    setShowSavedBanner(false);
+    try { localStorage.removeItem(SEARCH_FILTERS_KEY); } catch {}
   }, []);
 
   const buildQueryString = () => {
@@ -386,6 +431,28 @@ export default function Properties() {
             </div>
           </CardContent>
         </Card>
+
+        {showSavedBanner && selectedLocation && (
+          <div className="mb-4 flex items-center gap-2 rounded-lg border bg-primary/5 px-4 py-2.5" data-testid="banner-saved-search">
+            <MapPin className="h-4 w-4 text-primary shrink-0" />
+            <p className="text-sm text-foreground flex-1">
+              Showing your last search: <span className="font-medium">{selectedLocationLabel}</span>
+            </p>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="shrink-0 text-xs"
+              onClick={() => {
+                setShowSavedBanner(false);
+                handleClearSearch();
+                try { localStorage.removeItem(SEARCH_FILTERS_KEY); } catch {}
+              }}
+              data-testid="button-clear-saved-search"
+            >
+              Clear
+            </Button>
+          </div>
+        )}
 
         <div className="mb-6 flex flex-wrap items-center justify-between gap-2">
           <div className="flex flex-wrap items-center gap-2">
