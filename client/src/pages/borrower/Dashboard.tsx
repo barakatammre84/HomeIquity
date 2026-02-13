@@ -54,6 +54,7 @@ interface DashboardData {
   loanOptionCounts?: Record<string, number>;
   hmdaStatus?: Record<string, boolean>;
   recentOptions?: Array<{ id: string; applicationId: string; interestRate: string; loanType: string; programName: string }>;
+  verificationStatus?: Record<string, { hasCreditConsent: boolean; hasIdVerification: boolean; hasBankConnected: boolean; hasRateLocked: boolean }>;
 }
 
 function getConfidenceLabel(status: string): { label: string; color: string } {
@@ -233,11 +234,13 @@ function PersonalizedNudges({ application, expirationInfo, whatsNextHrefs = [] }
   }
 
   if (activitySummary.propertySearches === 0 && application && status === "pre_approved") {
+    const approvedAmt = application.purchasePrice ? Number(application.purchasePrice) : 0;
+    const amtStr = approvedAmt > 0 ? ` up to $${approvedAmt.toLocaleString()}` : "";
     nudges.push({
       id: "start-searching",
       icon: Search,
       title: "Ready to find your home",
-      description: "You're pre-approved! Start browsing properties that match your budget.",
+      description: `You're pre-approved${amtStr}! Start browsing properties that match your budget.`,
       action: "Browse Properties",
       href: "/properties",
       priority: 3,
@@ -304,7 +307,7 @@ function PersonalizedNudges({ application, expirationInfo, whatsNextHrefs = [] }
     });
   }
 
-  const deduped = nudges.filter(n => !whatsNextHrefs.some(wh => n.href === wh || n.href.startsWith(wh)));
+  const deduped = nudges.filter(n => !whatsNextHrefs.some(wh => n.href === wh));
   const sorted = deduped.sort((a, b) => a.priority - b.priority).slice(0, 3);
   if (sorted.length === 0) return null;
 
@@ -510,6 +513,10 @@ export default function Dashboard() {
           pendingTasks={pendingTaskCount}
           pendingDocuments={data?.stats?.pendingDocuments || 0}
           unreadMessages={unreadMessages}
+          hasCreditConsent={activeApplication ? (data?.verificationStatus?.[activeApplication.id]?.hasCreditConsent ?? true) : true}
+          hasIdVerification={activeApplication ? (data?.verificationStatus?.[activeApplication.id]?.hasIdVerification ?? true) : true}
+          hasBankConnected={activeApplication ? (data?.verificationStatus?.[activeApplication.id]?.hasBankConnected ?? true) : true}
+          hasRateLocked={activeApplication ? (data?.verificationStatus?.[activeApplication.id]?.hasRateLocked ?? true) : true}
         />
 
         <PersonalizedNudges

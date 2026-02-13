@@ -3009,6 +3009,7 @@ export function registerBorrowerRoutes(
   const emailCaptureSchema = z.object({
     email: z.string().email().max(255),
     source: z.string().max(100).optional(),
+    website: z.string().optional(),
   });
 
   app.post("/api/email-capture", async (req, res) => {
@@ -3016,6 +3017,9 @@ export function registerBorrowerRoutes(
       const parsed = emailCaptureSchema.safeParse(req.body);
       if (!parsed.success) {
         return res.status(400).json({ error: "Invalid email address" });
+      }
+      if (parsed.data.website) {
+        return res.json({ ok: true });
       }
       const { emailCaptures } = await import("@shared/schema");
       const { db } = await import("../db");

@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useForm, UseFormReturn } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import { SEOHead } from "@/components/SEOHead";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
@@ -275,7 +275,7 @@ function AdvisoryPanel({ formValues, currentStepId }: AdvisoryPanelProps) {
       case "monthlyDebts":
         return "Include car payments, student loans, credit cards, and other monthly obligations.";
       case "creditScore":
-        return "A score above 740 typically qualifies for the best interest rates.";
+        return "A score above 740 typically qualifies for the best interest rates. Not sure? Most Americans score between 670-739. Check yours free at annualcreditreport.com.";
       case "veteranAndFirstTime":
         return "Veterans may qualify for VA loans with no down payment. First-time buyers may access special programs.";
       case "final":
@@ -417,6 +417,8 @@ export default function PreApproval() {
   const urlPrice = urlParams.get("price");
   const urlState = urlParams.get("state");
   const urlPropertyType = urlParams.get("propertyType");
+  const urlPropertyId = urlParams.get("propertyId");
+  const urlSource = urlParams.get("source");
   const defaultLoanPurpose = urlType === "refinance" ? "refinance" : urlType === "heloc" ? "cash_out" : "purchase";
 
   const form = useForm<PreApprovalFormData>({
@@ -436,6 +438,11 @@ export default function PreApproval() {
       isFirstTimeBuyer: false,
       propertyState: urlState || "",
     },
+  });
+
+  const { data: serverDraft, isLoading: serverDraftLoading } = useQuery<any>({
+    queryKey: ["/api/loan-applications/draft/latest"],
+    enabled: isAuthenticated,
   });
 
   const AUTOSAVE_KEY = "baranest_preapproval_draft";
@@ -486,22 +493,56 @@ export default function PreApproval() {
 
   useEffect(() => {
     if (autosaveRestored) return;
+    if (isAuthenticated && serverDraftLoading) return;
+
+    if (isAuthenticated && serverDraft) {
+      const d = serverDraft as any;
+      const hasMeaningfulData = d.annualIncome || d.purchasePrice || d.creditScore || d.monthlyDebts;
+      if (hasMeaningfulData) {
+        setShowRestoreBanner(true);
+        setAutosaveRestored(true);
+        return;
+      }
+    }
+
     try {
       const saved = localStorage.getItem(AUTOSAVE_KEY);
       const savedStep = localStorage.getItem(AUTOSAVE_STEP_KEY);
       if (saved && savedStep) {
-        const parsed = JSON.parse(saved);
         const step = parseInt(savedStep, 10);
         if (step > 0 && step < QUESTIONS.length) {
           setShowRestoreBanner(true);
           setAutosaveRestored(true);
+          return;
         }
       }
     } catch {}
     setAutosaveRestored(true);
-  }, [autosaveRestored]);
+  }, [autosaveRestored, isAuthenticated, serverDraft, serverDraftLoading]);
 
   const handleRestoreDraft = useCallback(() => {
+    if (isAuthenticated && serverDraft && (serverDraft as any).annualIncome) {
+      const draft = serverDraft as any;
+      form.reset({
+        ...form.getValues(),
+        annualIncome: draft.annualIncome || "",
+        employmentType: draft.employmentType || "employed",
+        employmentYears: draft.employmentYears ? String(draft.employmentYears) : "",
+        monthlyDebts: draft.monthlyDebts || "",
+        creditScore: draft.creditScore ? String(draft.creditScore) : "",
+        loanPurpose: draft.loanPurpose || "purchase",
+        propertyType: draft.propertyType || "single_family",
+        purchasePrice: draft.purchasePrice || "",
+        downPayment: draft.downPayment || "",
+        isVeteran: !!draft.isVeteran,
+        isFirstTimeBuyer: !!draft.isFirstTimeBuyer,
+        propertyState: draft.propertyState || "",
+      });
+      setCurrentStep(1);
+      setShowRestoreBanner(false);
+      toast({ title: "Draft restored from your account", description: "We loaded your saved progress." });
+      return;
+    }
     try {
       const saved = localStorage.getItem(AUTOSAVE_KEY);
       const savedStep = localStorage.getItem(AUTOSAVE_STEP_KEY);
@@ -516,7 +557,7 @@ export default function PreApproval() {
     } catch {
       setShowRestoreBanner(false);
     }
-  }, [form, toast]);
+  }, [form, toast, isAuthenticated, serverDraft]);
 
   const handleDismissRestore = useCallback(() => {
     setShowRestoreBanner(false);
@@ -962,6 +1003,13 @@ export default function PreApproval() {
               Sign in
             </a>
           </p>
+          {urlPropertyId && urlSource === "property-detail" && (
+            <Link href={`/properties/${urlPropertyId}`}>
+              <Button variant="ghost" size="sm" className="mt-4 gap-1.5 text-muted-foreground" data-testid="button-back-to-property">
+                <ChevronLeft className="h-3.5 w-3.5" /> Back to property listing
+              </Button>
+            </Link>
+          )}
         </motion.div>
       </div>
     );

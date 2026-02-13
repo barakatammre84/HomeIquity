@@ -51,6 +51,10 @@ export function EmailCaptureModal() {
     if (isLoading) return;
     if (isAuthenticated) return;
 
+    const excludedPaths = ["/apply", "/ai-coach", "/dashboard", "/documents", "/tasks", "/messages", "/verification", "/credit-consent", "/e-consent"];
+    const currentPath = window.location.pathname;
+    if (excludedPaths.some(p => currentPath.startsWith(p))) return;
+
     const state = getState();
     if (state.captured || state.dismissed) {
       if (state.dismissedAt && Date.now() - state.dismissedAt > 7 * 24 * 60 * 60 * 1000) {
@@ -79,6 +83,8 @@ export function EmailCaptureModal() {
       return;
     }
     setSubmitting(true);
+    const form = e.target as HTMLFormElement;
+    const honeypot = (form.elements.namedItem("website") as HTMLInputElement)?.value || "";
     try {
       await fetch("/api/email-capture", {
         method: "POST",
@@ -86,6 +92,7 @@ export function EmailCaptureModal() {
         body: JSON.stringify({
           email: email.trim(),
           source: window.location.pathname,
+          website: honeypot,
         }),
       });
       setState({ dismissed: false, captured: true });
@@ -145,6 +152,9 @@ export function EmailCaptureModal() {
                   autoFocus
                   data-testid="input-email-capture"
                 />
+                <div className="absolute -left-[9999px]" aria-hidden="true">
+                  <input type="text" name="website" tabIndex={-1} autoComplete="off" data-testid="input-honeypot" />
+                </div>
                 <Button type="submit" className="w-full gap-2" disabled={submitting} data-testid="button-submit-email">
                   {submitting ? "Sending..." : "Get Updates"}
                   {!submitting && <ArrowRight className="h-4 w-4" />}

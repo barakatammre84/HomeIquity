@@ -362,7 +362,7 @@ export default function PropertyDetail() {
                   <p className="mt-2 text-sm text-muted-foreground">
                     Complete a loan application to see personalized affordability calculations for this property
                   </p>
-                  <Link href="/apply">
+                  <Link href={`/apply?price=${property.price}&state=${property.state || ''}&propertyType=${property.propertyType || ''}&source=property-detail&propertyId=${propertyId}`}>
                     <Button className="mt-4 w-full">
                       Start Pre-Approval
                     </Button>
@@ -545,7 +545,7 @@ export default function PropertyDetail() {
                 <p className="mt-1 text-sm opacity-90">
                   Get a detailed loan estimate for this property
                 </p>
-                <Link href="/apply">
+                <Link href={`/apply?price=${property.price}&state=${property.state || ''}&propertyType=${property.propertyType || ''}&source=property-detail&propertyId=${propertyId}`}>
                   <Button variant="secondary" className="mt-4 w-full">
                     Get Loan Estimate
                   </Button>

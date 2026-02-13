@@ -89,6 +89,42 @@ export function registerLendingRoutes(
         }
       } catch {}
 
+      const verificationStatus: Record<string, { hasCreditConsent: boolean; hasIdVerification: boolean; hasBankConnected: boolean; hasRateLocked: boolean }> = {};
+      try {
+        const { creditConsents, verifications } = await import("@shared/schema");
+        const { eq, and } = await import("drizzle-orm");
+        const { db } = await import("../db");
+        for (const app of applications.slice(0, 3)) {
+          const [consent] = await db.select({ id: creditConsents.id })
+            .from(creditConsents)
+            .where(eq(creditConsents.applicationId, app.id))
+            .limit(1);
+          let hasIdVer = false;
+          try {
+            const [ver] = await db.select({ identityVerified: verifications.identityVerified })
+              .from(verifications)
+              .where(and(eq(verifications.applicationId, app.id), eq(verifications.verificationType, "identity")))
+              .limit(1);
+            hasIdVer = !!ver?.identityVerified;
+          } catch {}
+          let hasBankConn = false;
+          try {
+            const [ver] = await db.select({ id: verifications.id })
+              .from(verifications)
+              .where(and(eq(verifications.applicationId, app.id), eq(verifications.verificationType, "income")))
+              .limit(1);
+            hasBankConn = !!ver;
+          } catch {}
+          const lockedOption = recentOptions.find((o: any) => o.applicationId === app.id && o.rateLockedAt);
+          verificationStatus[app.id] = {
+            hasCreditConsent: !!consent,
+            hasIdVerification: hasIdVer,
+            hasBankConnected: hasBankConn,
+            hasRateLocked: !!lockedOption,
+          };
+        }
+      } catch {}
+
       const allActivities = Object.values(activitiesMap).flat()
         .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
         .slice(0, 10);
@@ -103,6 +139,7 @@ export function registerLendingRoutes(
         activities: allActivities,
         loanOptionCounts,
         hmdaStatus,
+        verificationStatus,
       });
     } catch (error) {
       console.error("Dashboard error:", error);
@@ -760,6 +797,31 @@ export function registerLendingRoutes(
     }
   });
 
+  const loanApplicationUpdateSchema = z.object({
+    annualIncome: z.string().or(z.number()).transform(v => String(v).replace(/[,$]/g, "")).optional(),
+    monthlyDebts: z.string().or(z.number()).transform(v => String(v).replace(/[,$]/g, "")).optional(),
+    creditScore: z.string().or(z.number()).transform(v => {
+      const n = parseInt(String(v));
+      return isNaN(n) ? 700 : Math.max(300, Math.min(850, n));
+    }).optional(),
+    employmentType: z.string().min(1).max(50).optional(),
+    employmentYears: z.string().or(z.number()).transform(v => {
+      const n = parseInt(String(v));
+      return isNaN(n) ? 0 : Math.max(0, Math.min(80, n));
+    }).optional(),
+    propertyType: z.string().max(50).optional(),
+    purchasePrice: z.string().or(z.number()).transform(v => String(v).replace(/[,$]/g, "")).optional(),
+    downPayment: z.string().or(z.number()).transform(v => String(v).replace(/[,$]/g, "")).optional(),
+    loanPurpose: z.string().max(50).optional(),
+    isVeteran: z.boolean().optional(),
+    isFirstTimeBuyer: z.boolean().optional(),
+    propertyState: z.string().max(2).optional(),
+    employerName: z.string().max(200).optional(),
+    propertyAddress: z.string().max(500).optional(),
+    propertyCity: z.string().max(100).optional(),
+    propertyZip: z.string().max(10).optional(),
+  });
+
   app.patch("/api/loan-applications/:id", isAuthenticated, async (req, res) => {
     try {
       const userId = req.user!.id;
@@ -774,19 +836,24 @@ export function registerLendingRoutes(
         return res.status(403).json({ error: "Unauthorized" });
       }
 
-      const formData = req.body;
+      const parsed = loanApplicationUpdateSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid input", details: parsed.error.flatten().fieldErrors });
+      }
+
+      const formData = parsed.data;
       const updateData: any = {
         status: "draft",
       };
 
-      if (formData.annualIncome !== undefined) updateData.annualIncome = formData.annualIncome?.replace(/[,$]/g, "") || "0";
-      if (formData.monthlyDebts !== undefined) updateData.monthlyDebts = formData.monthlyDebts?.replace(/[,$]/g, "") || "0";
-      if (formData.creditScore !== undefined) updateData.creditScore = parseInt(formData.creditScore) || 700;
+      if (formData.annualIncome !== undefined) updateData.annualIncome = formData.annualIncome || "0";
+      if (formData.monthlyDebts !== undefined) updateData.monthlyDebts = formData.monthlyDebts || "0";
+      if (formData.creditScore !== undefined) updateData.creditScore = formData.creditScore;
       if (formData.employmentType !== undefined) updateData.employmentType = formData.employmentType;
-      if (formData.employmentYears !== undefined) updateData.employmentYears = parseInt(formData.employmentYears) || 0;
+      if (formData.employmentYears !== undefined) updateData.employmentYears = formData.employmentYears;
       if (formData.propertyType !== undefined) updateData.propertyType = formData.propertyType;
-      if (formData.purchasePrice !== undefined) updateData.purchasePrice = formData.purchasePrice?.replace(/[,$]/g, "") || "0";
-      if (formData.downPayment !== undefined) updateData.downPayment = formData.downPayment?.replace(/[,$]/g, "") || "0";
+      if (formData.purchasePrice !== undefined) updateData.purchasePrice = formData.purchasePrice || "0";
+      if (formData.downPayment !== undefined) updateData.downPayment = formData.downPayment || "0";
       if (formData.loanPurpose !== undefined) updateData.loanPurpose = formData.loanPurpose;
       if (formData.isVeteran !== undefined) updateData.isVeteran = formData.isVeteran;
       if (formData.isFirstTimeBuyer !== undefined) updateData.isFirstTimeBuyer = formData.isFirstTimeBuyer;
