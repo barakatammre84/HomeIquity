@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { isAuthenticated } from "../auth";
 import { storage } from "../storage";
-import { generateCoachResponse, type VerifiedUserContext, type CoachIntakeData, type DocumentExtractedData } from "../services/coachingService";
+import { generateCoachResponse, type VerifiedUserContext, type CoachIntakeData, type DocumentExtractedData, deriveUserType, deriveReadinessState, deriveCompletionPercentage, deriveCompletedSteps } from "../services/coachingService";
 import { buildBorrowerGraph } from "../services/borrowerGraph";
 import type { User } from "@shared/schema";
 import { z } from "zod";
@@ -142,6 +142,11 @@ async function buildVerifiedContext(userId: string, user: User, propertyContext?
     if (propertyContext) {
       context.propertyContext = propertyContext;
     }
+
+    context.userType = deriveUserType(context);
+    context.readinessState = deriveReadinessState(context);
+    context.completionPercentage = deriveCompletionPercentage(context);
+    context.completedSteps = deriveCompletedSteps(context);
 
     return context;
   } catch (error) {

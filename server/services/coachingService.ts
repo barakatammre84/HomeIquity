@@ -73,6 +73,9 @@ export interface DocumentExtractedData {
   accountType?: string | null;
 }
 
+export type UserType = "renter" | "first_time_buyer" | "current_homeowner" | "affluent_borrower" | "investor";
+export type ReadinessState = "not_started" | "intake_started" | "intake_complete" | "docs_uploaded" | "docs_validated" | "package_ready";
+
 export interface VerifiedUserContext {
   hasApplication: boolean;
   applicationStatus?: string;
@@ -105,6 +108,10 @@ export interface VerifiedUserContext {
   }>;
   documentExtractedData?: DocumentExtractedData[];
   userName?: string;
+  userType?: UserType;
+  readinessState?: ReadinessState;
+  completionPercentage?: number;
+  completedSteps?: string[];
   readinessScore?: number | null;
   readinessTier?: string | null;
   readinessGaps?: string[];
@@ -125,10 +132,163 @@ export interface VerifiedUserContext {
   } | null;
 }
 
+export function deriveUserType(ctx: VerifiedUserContext): UserType {
+  if (ctx.hasInvestmentProperties) return "investor";
+  if (ctx.hasMultipleIncomes || ctx.hasBusinessIncome) return "affluent_borrower";
+  if (ctx.loanPurpose === "refinance" || ctx.loanPurpose === "cash_out") return "current_homeowner";
+  if (ctx.isFirstTimeBuyer) return "first_time_buyer";
+  if (!ctx.hasApplication) return "renter";
+  return "first_time_buyer";
+}
+
+export function deriveReadinessState(ctx: VerifiedUserContext): ReadinessState {
+  if (!ctx.hasApplication) return "not_started";
+
+  const hasVerifiedDocs = ctx.documentsVerified !== undefined && ctx.documentsVerified > 0;
+  const hasUploadedDocs = ctx.documentsUploaded !== undefined && ctx.documentsUploaded > 0;
+  const noMissingDocs = !ctx.documentsMissing || ctx.documentsMissing.length === 0;
+  const hasFinancials = !!(ctx.annualIncome && ctx.creditScore && ctx.monthlyDebts && ctx.employmentType);
+
+  if (hasFinancials && hasVerifiedDocs && noMissingDocs) return "package_ready";
+  if (hasVerifiedDocs) return "docs_validated";
+  if (hasUploadedDocs) return "docs_uploaded";
+  if (hasFinancials) return "intake_complete";
+  return "intake_started";
+}
+
+export function deriveCompletedSteps(ctx: VerifiedUserContext): string[] {
+  const steps: string[] = [];
+  if (ctx.employmentType) steps.push("employment_type");
+  if (ctx.annualIncome) steps.push("annual_income");
+  if (ctx.creditScore) steps.push("credit_score");
+  if (ctx.monthlyDebts) steps.push("monthly_debts");
+  if (ctx.purchasePrice) steps.push("purchase_price");
+  if (ctx.downPayment) steps.push("down_payment");
+  if (ctx.propertyType) steps.push("property_type");
+  if (ctx.loanPurpose) steps.push("loan_purpose");
+  if (ctx.isVeteran !== undefined) steps.push("veteran_status");
+  if (ctx.employmentYears) steps.push("employment_years");
+  if (ctx.employerName) steps.push("employer_name");
+  if (ctx.uploadedDocuments && ctx.uploadedDocuments.length > 0) {
+    for (const doc of ctx.uploadedDocuments) {
+      steps.push(`doc_uploaded:${doc.documentType}`);
+    }
+  }
+  if (ctx.documentExtractedData && ctx.documentExtractedData.length > 0) {
+    for (const doc of ctx.documentExtractedData) {
+      steps.push(`doc_verified:${doc.documentType}`);
+    }
+  }
+  return steps;
+}
+
+export function deriveCompletionPercentage(ctx: VerifiedUserContext): number {
+  if (!ctx.hasApplication) return 0;
+  const coreFields = [
+    ctx.employmentType,
+    ctx.annualIncome,
+    ctx.creditScore,
+    ctx.monthlyDebts,
+    ctx.purchasePrice,
+    ctx.downPayment,
+    ctx.propertyType,
+    ctx.loanPurpose,
+  ];
+  const filledCore = coreFields.filter(Boolean).length;
+  const coreWeight = 60;
+  const corePercent = (filledCore / coreFields.length) * coreWeight;
+
+  const docWeight = 30;
+  const uploaded = ctx.documentsUploaded || 0;
+  const verified = ctx.documentsVerified || 0;
+  const missing = ctx.documentsMissing?.length || 0;
+  const totalDocs = uploaded + missing;
+  const docPercent = totalDocs > 0
+    ? ((verified * 1.0 + (uploaded - verified) * 0.7) / totalDocs) * docWeight
+    : 0;
+
+  const readyWeight = 10;
+  const readyPercent = (ctx.readinessScore || 0) >= 80 ? readyWeight : ((ctx.readinessScore || 0) / 80) * readyWeight;
+
+  return Math.min(100, Math.round(corePercent + docPercent + readyPercent));
+}
+
+function buildUserProfileHeader(ctx: VerifiedUserContext): string {
+  const lines: string[] = [];
+  lines.push("\n\n=== USER PROFILE ===");
+
+  const userTypeLabels: Record<UserType, string> = {
+    renter: "Renter (no current homeownership)",
+    first_time_buyer: "First-Time Buyer",
+    current_homeowner: "Current Homeowner (refinance or equity access)",
+    affluent_borrower: "Affluent/Complex Borrower (multiple income sources or business income)",
+    investor: "Investor (investment properties)",
+  };
+
+  const readinessStateLabels: Record<ReadinessState, string> = {
+    not_started: "Not Started — intake has not begun",
+    intake_started: "Intake Started — some financial information provided, more required",
+    intake_complete: "Intake Complete — core financial inputs collected, documents needed",
+    docs_uploaded: "Documents Uploaded — awaiting validation",
+    docs_validated: "Documents Validated — verified against inputs",
+    package_ready: "Package Ready — all inputs complete, documents verified, ready for underwriting review",
+  };
+
+  if (ctx.userName) lines.push(`Name: ${ctx.userName}`);
+  lines.push(`User Type: ${userTypeLabels[ctx.userType || "renter"]}`);
+  lines.push(`Readiness State: ${readinessStateLabels[ctx.readinessState || "not_started"]}`);
+  lines.push(`Completion: ${ctx.completionPercentage || 0}%`);
+
+  if (ctx.completedSteps && ctx.completedSteps.length > 0) {
+    lines.push(`\nCOMPLETED STEPS (DO NOT ask for these again):`);
+    for (const step of ctx.completedSteps) {
+      lines.push(`  - ${step}`);
+    }
+  }
+
+  if (ctx.documentsMissing && ctx.documentsMissing.length > 0) {
+    lines.push(`\nMISSING INPUTS (recommend the FIRST one only):`);
+    for (const doc of ctx.documentsMissing) {
+      lines.push(`  - ${doc}`);
+    }
+  }
+
+  lines.push("\nCRITICAL: Never repeat a completed step. Never ask for information already provided. Use this profile to identify ONLY the next missing input.");
+
+  return lines.join("\n");
+}
+
+function buildToneDirective(ctx: VerifiedUserContext): string {
+  const userType = ctx.userType || "renter";
+  const state = ctx.readinessState || "not_started";
+
+  if (userType === "affluent_borrower" || userType === "investor") {
+    return "\n\nTONE: Professional, efficient, precise. This user is financially sophisticated. Minimize basic explanations. Focus on organization, speed, and completeness. Respect their time.";
+  }
+
+  if (userType === "first_time_buyer" || userType === "renter") {
+    if (state === "not_started" || state === "intake_started") {
+      return "\n\nTONE: Warm, patient, encouraging. This user is new to the mortgage process. Explain concepts simply. Break complex requirements into small steps. Celebrate progress.";
+    }
+    if (state === "intake_complete" || state === "docs_uploaded") {
+      return "\n\nTONE: Supportive and focused. The user has made real progress. Acknowledge what they've accomplished and guide them through the document phase with clear, specific instructions.";
+    }
+  }
+
+  if (state === "package_ready") {
+    return "\n\nTONE: Confident and reassuring. This user's package is complete. Reinforce that their preparation has been thorough and explain next steps clearly.";
+  }
+
+  return "\n\nTONE: Calm, neutral, and supportive. Focus on clarity and reducing friction.";
+}
+
 function buildVerifiedContextPrompt(ctx: VerifiedUserContext): string {
   if (!ctx.hasApplication) {
     const greeting = ctx.userName ? `The user's name is ${ctx.userName}.` : "";
-    let noAppContext = `\n\n${greeting} This user has not yet submitted a loan application. They are in the "exploring" readiness state — intake has not started. Focus on collecting the first required inputs for underwriting readiness.\n\nIMPORTANT: Any financial information this user shares in chat is SELF-REPORTED and UNVERIFIED. Treat it as approximate and advisory. Do NOT use self-reported chat data as definitive fact. Always recommend they provide documentation to verify their claims.`;
+    let noAppContext = buildUserProfileHeader(ctx);
+    noAppContext += `\n\n${greeting} This user has not yet submitted a loan application. Focus on collecting the first required inputs for underwriting readiness.`;
+    noAppContext += buildToneDirective(ctx);
+    noAppContext += `\n\nIMPORTANT: Any financial information this user shares in chat is SELF-REPORTED and UNVERIFIED. Treat it as approximate and advisory. Do NOT use self-reported chat data as definitive fact. Always recommend they provide documentation to verify their claims.`;
 
     if (ctx.propertyContext) {
       noAppContext += `\n\n=== PROPERTY CONTEXT ===\nThe user is asking about a specific property: ${ctx.propertyContext.address}\nListed Price: $${ctx.propertyContext.price.toLocaleString()}\nFocus your guidance on this property. Help them understand what inputs are needed to evaluate readiness at this price point.`;
@@ -138,6 +298,8 @@ function buildVerifiedContextPrompt(ctx: VerifiedUserContext): string {
   }
 
   const lines: string[] = [];
+  lines.push(buildUserProfileHeader(ctx));
+  lines.push(buildToneDirective(ctx));
 
   if (ctx.documentExtractedData && ctx.documentExtractedData.length > 0) {
     lines.push("\n\n=== TIER 1: DOCUMENT-VERIFIED DATA (HIGHEST TRUST) ===");
@@ -352,7 +514,25 @@ CONFLICT RESOLUTION:
 - Application says $80K but tax return says $85K → trust the tax return and note the minor difference.
 - NEVER silently accept chat-reported data when document data is available for the same field.
 
-=== 3. NEXT REQUIRED INPUT ENGINE ===
+=== 3. USER CONTEXT AWARENESS ===
+You receive a USER PROFILE section with every interaction. It includes:
+- User Type: renter, first_time_buyer, current_homeowner, affluent_borrower, or investor
+- Readiness State: not_started → intake_started → intake_complete → docs_uploaded → docs_validated → package_ready
+- Completion Percentage: 0-100%
+- Completed Steps: specific inputs already provided (employment_type, annual_income, credit_score, etc.)
+- Missing Inputs: documents or data still needed
+- Documents uploaded and their validation status
+- Declared income and asset types
+- Property intent (if any)
+- Time since last activity
+
+Use this context to:
+- NEVER repeat completed steps. If the user profile shows "employment_type" as completed, DO NOT ask for employment type again.
+- Recommend ONLY the next required input. Look at the MISSING INPUTS list and recommend the FIRST one.
+- Adjust tone and explanation depth based on user type and complexity.
+- Reference completion percentage when showing progress ("You're at 65% — one more document brings you to 80%").
+
+=== 4. NEXT REQUIRED INPUT ENGINE ===
 Based on the user's current context, ALWAYS identify the SINGLE next required input for underwriting readiness.
 
 Present it as:
@@ -368,7 +548,7 @@ Example: "Uploading your most recent pay stub will move your profile from 40% to
 
 Never repeat steps already completed. Never overwhelm the user with multiple inputs.
 
-=== 4. DOCUMENT VALIDATION & COACHING ===
+=== 5. DOCUMENT VALIDATION & COACHING ===
 When a document is requested, discussed, or uploaded:
 - Explain what the document is in plain language
 - Why underwriting systems require it (not "why lenders want it")
@@ -386,7 +566,7 @@ First-Time Buyer: Homebuyer education certificate (recommended)
 All: Government ID, Social Security card, proof of residence, gift letters (if receiving gift funds)
 Additional: Divorce decree, child support docs, rental history, explanation letters for credit issues
 
-=== 5. BORROWER PACKAGE BUILDER ===
+=== 6. BORROWER PACKAGE BUILDER ===
 When a user reaches lender-ready status (readiness tier "ready_now"), generate a lender-ready borrower intake summary including:
 - Household overview
 - Declared income sources (citing verification tier used)
@@ -398,7 +578,7 @@ When a user reaches lender-ready status (readiness tier "ready_now"), generate a
 
 This summary is informational and does NOT imply approval. Format as a clean, professional summary suitable for underwriting review. Do not include speculation or guarantees.
 
-=== 6. BEHAVIORAL NUDGE ENGINE ===
+=== 7. BEHAVIORAL NUDGE ENGINE ===
 If the user stalls, goes quiet, or seems disengaged:
 - Identify the smallest possible next step
 - Frame it as progress, not obligation
@@ -408,7 +588,7 @@ If the user stalls, goes quiet, or seems disengaged:
 Avoid urgency language. Avoid fear-based messaging.
 Example: "You've already completed 3 of 5 steps. Uploading your bank statement would bring you to 80% — and it only takes a minute."
 
-=== 7. AFFLUENT / COMPLEX BORROWER MODE ===
+=== 8. AFFLUENT / COMPLEX BORROWER MODE ===
 If the user has multiple income sources, businesses, investment properties, or complex financial situations:
 - Shift tone to professional and efficient
 - Emphasize organization, speed, and clarity
@@ -416,7 +596,7 @@ If the user has multiple income sources, businesses, investment properties, or c
 - Reduce explanations, increase precision
 - Acknowledge their sophistication without being presumptuous
 
-=== 8. UNDERWRITING REVIEW HANDOFF ===
+=== 9. UNDERWRITING REVIEW HANDOFF ===
 When the user reaches lender-ready status:
 - Explain what information will be included in the borrower package for underwriting review
 - Explain what will NOT be shared
