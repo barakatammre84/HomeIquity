@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   User,
   Users,
+  ArrowRightLeft,
   Briefcase,
   PiggyBank,
   CreditCard,
@@ -29,9 +30,11 @@ interface BorrowerPackageData {
   householdOverview?: {
     firstTimeBuyer?: string;
     veteranStatus?: string;
+  };
+  transactionIntent?: {
+    transactionType?: string;
     propertyIntent?: string;
-    propertyType?: string;
-    occupancy?: string;
+    targetTimeframe?: string;
   };
   incomeSources?: Array<{
     source?: string;
@@ -218,6 +221,7 @@ export default function BorrowerPackageView({ data }: { data: BorrowerPackageDat
 
   const overview = data.borrowerOverview || {};
   const household = data.householdOverview || {};
+  const transaction = data.transactionIntent || {};
   const incomeSources = data.incomeSources || [];
   const assetCategories = data.assetCategories || [];
   const credit = data.creditAndDebt || {};
@@ -259,16 +263,24 @@ export default function BorrowerPackageView({ data }: { data: BorrowerPackageDat
           <div className="space-y-0.5">
             <DataRow label="First-Time Buyer" value={household.firstTimeBuyer} testId="row-first-time-buyer" />
             <DataRow label="Veteran Status" value={household.veteranStatus} testId="row-veteran-status" />
-            <DataRow label="Property Intent" value={household.propertyIntent} testId="row-property-intent" />
-            <DataRow label="Property Type" value={household.propertyType} testId="row-household-property-type" />
-            <DataRow label="Occupancy" value={household.occupancy} testId="row-occupancy" />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card data-testid="section-transaction-intent">
+        <CardContent className="pt-4 pb-3 px-4 space-y-0">
+          <SectionHeader icon={ArrowRightLeft} title="Transaction Intent" number={3} />
+          <div className="space-y-0.5">
+            <DataRow label="Transaction Type" value={transaction.transactionType} testId="row-transaction-type" />
+            <DataRow label="Property Intent" value={transaction.propertyIntent} testId="row-property-intent" />
+            <DataRow label="Target Timeframe" value={transaction.targetTimeframe} testId="row-target-timeframe" />
           </div>
         </CardContent>
       </Card>
 
       <Card data-testid="section-income">
         <CardContent className="pt-4 pb-3 px-4">
-          <SectionHeader icon={Briefcase} title="Declared Income Sources" number={3} />
+          <SectionHeader icon={Briefcase} title="Declared Income Sources" number={4} />
           {incomeSources.length === 0 ? (
             <p className="text-sm text-muted-foreground opacity-60" data-testid="text-income-empty">Not Provided</p>
           ) : (
@@ -317,7 +329,7 @@ export default function BorrowerPackageView({ data }: { data: BorrowerPackageDat
 
       <Card data-testid="section-assets">
         <CardContent className="pt-4 pb-3 px-4">
-          <SectionHeader icon={PiggyBank} title="Asset Categories" number={4} />
+          <SectionHeader icon={PiggyBank} title="Asset Categories" number={5} />
           {assetCategories.length === 0 ? (
             <p className="text-sm text-muted-foreground opacity-60" data-testid="text-assets-empty">Not Provided</p>
           ) : (
@@ -360,7 +372,7 @@ export default function BorrowerPackageView({ data }: { data: BorrowerPackageDat
 
       <Card data-testid="section-credit">
         <CardContent className="pt-4 pb-3 px-4 space-y-0">
-          <SectionHeader icon={CreditCard} title="Credit and Debt Signals" number={5} />
+          <SectionHeader icon={CreditCard} title="Credit and Debt Signals" number={6} />
           <div className="space-y-0.5">
             <DataRow label="Credit Score" testId="row-credit-score">
               <div className="flex items-center gap-2 flex-wrap justify-end">
@@ -390,7 +402,7 @@ export default function BorrowerPackageView({ data }: { data: BorrowerPackageDat
 
       <Card data-testid="section-property">
         <CardContent className="pt-4 pb-3 px-4 space-y-0">
-          <SectionHeader icon={Home} title="Property Intent" number={6} />
+          <SectionHeader icon={Home} title="Property Details" number={7} />
           <div className="space-y-0.5">
             <DataRow label="Purchase Price" testId="row-purchase-price">
               <span className={`text-sm font-medium ${isNotProvided(property.purchasePrice) ? "opacity-60" : ""}`}>
@@ -413,7 +425,7 @@ export default function BorrowerPackageView({ data }: { data: BorrowerPackageDat
 
       <Card data-testid="section-documents">
         <CardContent className="pt-4 pb-3 px-4">
-          <SectionHeader icon={FileText} title="Document Inventory" number={7} />
+          <SectionHeader icon={FileText} title="Document Inventory" number={8} />
           {documents.length === 0 ? (
             <p className="text-sm text-muted-foreground opacity-60" data-testid="text-documents-empty">No documents tracked</p>
           ) : (
@@ -456,7 +468,7 @@ export default function BorrowerPackageView({ data }: { data: BorrowerPackageDat
 
       <Card data-testid="section-readiness">
         <CardContent className="pt-4 pb-3 px-4">
-          <SectionHeader icon={Target} title="Readiness Status" number={8} />
+          <SectionHeader icon={Target} title="Readiness Status" number={9} />
           <div className="space-y-2">
             <div className="flex items-center justify-between gap-2 flex-wrap" data-testid="row-readiness-tier">
               <span className="text-sm text-muted-foreground">Readiness Tier</span>
@@ -510,7 +522,7 @@ export default function BorrowerPackageView({ data }: { data: BorrowerPackageDat
 
       <Card data-testid="section-validation">
         <CardContent className="pt-4 pb-3 px-4">
-          <SectionHeader icon={Shield} title="Validation Notes" number={9} />
+          <SectionHeader icon={Shield} title="Validation Notes" number={10} />
           {validationNotes.length > 0 ? (
             <ul className="space-y-1">
               {validationNotes.map((note, i) => (

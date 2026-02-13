@@ -58,9 +58,11 @@ export interface BorrowerPackage {
   householdOverview: {
     firstTimeBuyer: string;
     veteranStatus: string;
+  };
+  transactionIntent: {
+    transactionType: string;
     propertyIntent: string;
-    propertyType: string;
-    occupancy: string;
+    targetTimeframe: string;
   };
   incomeSources: Array<{
     source: string;
@@ -1191,10 +1193,12 @@ The "borrowerPackage" should be null unless the user is "ready_now" or the user 
   },
   "householdOverview": {
     "firstTimeBuyer": "Yes | No | Not Provided",
-    "veteranStatus": "Yes | No | Not Provided",
-    "propertyIntent": "Purchase | Refinance | Cash-Out Refinance | Not Provided",
-    "propertyType": "string or 'Not Provided'",
-    "occupancy": "Primary Residence | Second Home | Investment | Not Provided"
+    "veteranStatus": "Yes | No | Not Provided"
+  },
+  "transactionIntent": {
+    "transactionType": "Purchase | Refinance | Cash-Out Refinance | Not Provided",
+    "propertyIntent": "Primary Residence | Second Home | Investment | Not Provided",
+    "targetTimeframe": "string describing borrower-stated timeframe or 'Not Provided' — do not infer or suggest"
   },
   "incomeSources": [
     {
