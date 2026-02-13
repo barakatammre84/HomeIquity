@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import BorrowerPackageView from "@/components/BorrowerPackageView";
 import { useToast } from "@/hooks/use-toast";
 import { usePageView, useTrackActivity, useTrackCoachSession } from "@/hooks/useActivityTracker";
 import {
@@ -395,6 +396,7 @@ function DocumentChecklistPanel({ docs }: { docs: DocumentRequirement[] }) {
 
 function ChatMessage({ message }: { message: CoachMessage }) {
   const isUser = message.role === "user";
+  const borrowerPackage = message.structuredData?.borrowerPackage;
 
   return (
     <div className={`flex gap-3 ${isUser ? "flex-row-reverse" : ""}`} data-testid={`chat-message-${message.id}`}>
@@ -411,6 +413,11 @@ function ChatMessage({ message }: { message: CoachMessage }) {
         }`}>
           <MessageContent content={message.content} />
         </div>
+        {borrowerPackage && (
+          <div className="mt-3 text-left" data-testid="inline-borrower-package">
+            <BorrowerPackageView data={borrowerPackage} />
+          </div>
+        )}
         <p className="text-[10px] text-muted-foreground mt-1 px-1">
           {new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
         </p>

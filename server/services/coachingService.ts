@@ -47,12 +47,73 @@ export interface CoachIntakeData {
   isFirstTimeBuyer?: boolean;
 }
 
+export interface BorrowerPackage {
+  generatedDate: string;
+  householdOverview: {
+    borrowerName: string;
+    firstTimeBuyer: string;
+    veteranStatus: string;
+    propertyIntent: string;
+    propertyType: string;
+    occupancy: string;
+  };
+  incomeSources: Array<{
+    source: string;
+    type: string;
+    amount: string;
+    period: string;
+    verificationTier: string;
+    employerName?: string | null;
+    yearsEmployed?: string;
+    businessStructure?: string | null;
+  }>;
+  assetCategories: Array<{
+    category: string;
+    estimatedValue: string;
+    verificationTier: string;
+    source?: string | null;
+    giftLetterStatus?: string | null;
+  }>;
+  creditAndDebt: {
+    creditScore: string;
+    creditScoreVerification: string;
+    monthlyDebts: string;
+    monthlyDebtsVerification: string;
+    dtiRatio: string;
+    dtiNote: string;
+  };
+  propertyIntent: {
+    purchasePrice: string;
+    downPayment: string;
+    downPaymentPercent: string;
+    ltvRatio: string;
+    propertyType: string;
+    location: string;
+  };
+  documentInventory: Array<{
+    docType: string;
+    label: string;
+    status: string;
+    flags: string[];
+  }>;
+  readinessStatus: {
+    tier: string;
+    inputsPresent: string;
+    completedCategories: string[];
+    outstandingGaps: string[];
+    strengths: string[];
+  };
+  validationNotes: string[];
+  complianceFooter: string;
+}
+
 export interface CoachResponse {
   message: string;
   profile?: CoachingProfile;
   intake?: CoachIntakeData;
   actionPlan?: ActionPlanItem[];
   documentChecklist?: DocumentRequirement[];
+  borrowerPackage?: BorrowerPackage;
 }
 
 export interface DocumentExtractedData {
@@ -765,71 +826,99 @@ All: Government ID, Social Security card, proof of residence, gift letters (if r
 Additional: Divorce decree, child support docs, rental history, explanation letters for credit issues
 
 === 6. BORROWER PACKAGE BUILDER ===
-When a user reaches lender-ready status (readiness tier "ready_now"), or when the user explicitly asks for their borrower summary, generate a lender-ready borrower intake summary. Use neutral, professional language throughout. Do not imply approval, eligibility, or likelihood of any outcome. Format for quick underwriting review.
+When a user reaches lender-ready status (readiness tier "ready_now"), or when the user explicitly asks for their borrower summary, generate a lender-ready borrower intake summary in BOTH the conversational message AND the structured borrowerPackage JSON.
+
+FORMATTING RULES:
+- Use neutral, factual language throughout — no adjectives implying quality ("strong," "solid," "excellent," "concerning")
+- Do not imply approval, eligibility, or likelihood of any outcome
+- Do not include recommendations, predictions, or product suggestions
+- Include ONLY verified or user-declared information — never infer, estimate, or assume missing data
+- If information is missing, mark the field as "Not Provided" (never collected) or "Pending" (expected but not yet received)
+- Format for fast underwriting review: clear section headers, structured lists, consistent labeling
 
 REQUIRED SECTIONS (use these exact headings):
 
-**BORROWER INTAKE SUMMARY — PREPARED FOR UNDERWRITING REVIEW**
+**BORROWER INTAKE SUMMARY**
+Generated: [current date]
 
 1. HOUSEHOLD OVERVIEW
-   - Borrower name (as declared on application)
-   - First-time buyer status (yes/no)
-   - Veteran status (yes/no, if applicable note VA program evaluation)
-   - Property intent: purchase, refinance, or cash-out refinance
-   - Target property type (single family, condo, townhouse, multi-family)
+   - Borrower name: [as declared] or "Not Provided"
+   - First-time buyer: Yes / No / Not Provided
+   - Veteran status: Yes / No / Not Provided
+   - Property intent: Purchase / Refinance / Cash-Out Refinance / Not Provided
+   - Target property type: [type] or "Not Provided"
+   - Occupancy: Primary Residence / Second Home / Investment / Not Provided
 
 2. DECLARED INCOME SOURCES
-   - List each income source with amount and verification tier used:
-     - "[Tier 1 — Document Verified]" if confirmed by extracted document data
-     - "[Tier 2 — Application Declared]" if from the loan application form
-     - "[Tier 3 — Self-Reported]" if from chat conversation only
-   - Employment type, employer name, years employed
-   - For self-employed: business name, years in business, P&L status
+   List each income source as a row with these columns:
+   | Source | Type | Amount | Period | Verification |
+   - Verification must be one of:
+     - "Tier 1 — Document Verified" — confirmed by extracted document data
+     - "Tier 2 — Application Declared" — from the loan application form
+     - "Tier 3 — Self-Reported" — from chat conversation only
+   - Include: employer name, employment type, years employed
+   - For self-employed: business name, structure (LLC/S-Corp/etc.), years in business
+   - If no income data collected: single row stating "Not Provided"
 
 3. ASSET CATEGORIES
-   - Savings/checking balances with verification tier
-   - Down payment amount and source (personal savings, gift, etc.)
-   - If gift funds: note whether gift letter is on file
-   - Any other declared assets (retirement, investment accounts)
+   List each asset category as a row:
+   | Category | Estimated Value | Verification |
+   - Categories: Checking/Savings, Down Payment (with source), Retirement, Investment, Other
+   - Down payment source: Personal Savings / Gift / Grant / Sale of Property / Not Provided
+   - If gift funds: note gift letter status (On File / Not Provided / Pending)
+   - If no asset data collected: "Not Provided"
 
 4. CREDIT AND DEBT SIGNALS
-   - Credit score range with verification tier
-   - Monthly debt obligations with verification tier
-   - Calculated DTI ratio (if sufficient data exists)
-   - Note: "DTI is a preparatory calculation. Final determination is made during underwriting review."
+   | Item | Value | Verification |
+   - Credit score range: [range] or "Not Provided" — with verification tier
+   - Monthly debt obligations: [amount] or "Not Provided" — with verification tier
+   - DTI ratio: [calculated value] or "Insufficient Data"
+   - If DTI is calculated, include: "DTI is a preparatory calculation based on declared data. Final determination occurs during underwriting review."
 
 5. PROPERTY INTENT
-   - Target purchase price with verification tier
-   - Down payment percentage
-   - Estimated LTV ratio (if calculable)
-   - Target property type and location (if known)
+   | Field | Value | Verification |
+   - Purchase price: [amount] or "Not Provided"
+   - Down payment: [amount] ([percentage]) or "Not Provided"
+   - LTV ratio: [calculated] or "Insufficient Data"
+   - Property type: [type] or "Not Provided"
+   - Location: [city, state] or "Not Provided"
 
 6. DOCUMENT INVENTORY
-   - List each required document with status:
-     - "Uploaded and verified" — document received and data extracted successfully
-     - "Uploaded — pending review" — document received, not yet validated
-     - "Not yet received" — document still needed
-   - Note any documents with review flags (recency, legibility, consistency issues)
+   List each document with status:
+   | Document | Status | Flags |
+   - Status must be one of:
+     - "Received — Verified" — uploaded and data extracted successfully
+     - "Received — Pending Review" — uploaded, not yet validated
+     - "Not Yet Received" — expected but not uploaded
+     - "Not Required" — not applicable to this borrower profile
+   - Flags column: "None" or list specific issues (recency, legibility, consistency, completeness)
+   - Include standard document types: Pay Stubs, W-2s, Tax Returns, Bank Statements, ID, and any profile-specific docs
 
 7. READINESS STATUS
-   - Current readiness tier (exploring / building / almost_ready / ready_now)
-   - Completion percentage of required inputs
-   - Strengths identified
-   - Outstanding gaps or missing inputs
-   - Do NOT use the word "score" in a way that implies approval likelihood
-   - Frame as: "X of Y required inputs are present" not "the borrower scores X%"
+   - Readiness tier: [exploring / building / almost_ready / ready_now]
+   - Required inputs present: [X of Y]
+   - Input categories completed: [list completed categories]
+   - Outstanding gaps: [list specific missing items] or "None"
+   - Do NOT use scoring language that implies approval likelihood
+   - Frame as input completeness: "X of Y required inputs are present" — never "the borrower scores X%"
 
 8. VALIDATION NOTES
    - List any discrepancies between declared information and document-extracted data
    - List any documents flagged for recency, completeness, legibility, or consistency issues
-   - List any items requiring explanation letters
+   - List any items that may need explanation letters
    - If no issues: "No validation concerns identified at this time."
 
+COMPLIANCE FOOTER (REQUIRED — must appear at the end of every package):
+"This intake summary is prepared for informational purposes only. It does not constitute a lending decision, pre-approval, commitment to lend, or assessment of creditworthiness. All information is borrower-declared or document-extracted and has not been independently verified by a lender. Loan eligibility, terms, and approval are determined solely during formal underwriting review."
+
 COMPLIANCE RULES FOR BORROWER PACKAGE:
-- This summary is informational. It does NOT constitute a pre-approval, commitment, or credit decision.
-- Do not include language suggesting approval odds, likelihood, or predictions.
-- Do not recommend specific loan products in the package summary. Loan type evaluation occurs during underwriting.
-- Include this footer: "This intake summary is prepared for underwriting review purposes only. It does not constitute a lending decision, pre-approval, or commitment to lend."
+- NEVER include language suggesting approval odds, likelihood, or predictions
+- NEVER recommend specific loan products — loan type evaluation occurs during underwriting
+- NEVER use qualitative assessments ("strong profile," "good candidate," "well-positioned")
+- NEVER infer data that was not explicitly provided — mark missing fields, do not guess
+- NEVER frame completion percentage as a probability of approval
+- Every data point must have a verification tier label
+- Every missing field must be explicitly marked "Not Provided" or "Pending"
 
 === 7. BEHAVIORAL NUDGE ENGINE ===
 
@@ -1086,7 +1175,73 @@ Field types:
 
 The "nextRequiredInput" object should ALWAYS be included. It is the single next required input for underwriting readiness. Include "what" (the specific input or document needed), "why" (why underwriting systems require it), "effort" (estimated time or work), "unlocks" (what progress or capability this enables), and "category" (documents/credit/savings/income/debt/education). Do not present multiple options. Do not speculate on outcomes.
 
-The "borrowerPackage" should be null unless the user is "ready_now" or the user explicitly asks for their borrower summary. When generating, use a JSON object with these keys matching the Section 6 template: householdOverview (name, firstTimeBuyer, veteran, propertyIntent, propertyType), incomeSources (array of {source, amount, verificationTier}), assetCategories (array of {category, amount, verificationTier}), creditAndDebt ({creditScore, creditScoreTier, monthlyDebts, dtiRatio, allWithTier}), propertyIntent ({purchasePrice, downPayment, downPaymentPercent, ltvRatio, propertyType, location}), documentInventory (array of {docType, status, flags}), readinessStatus ({tier, completionInputs, strengths, gaps}), validationNotes (array of strings describing any discrepancies or flagged items). Include the compliance footer: "This intake summary is prepared for underwriting review purposes only. It does not constitute a lending decision, pre-approval, or commitment to lend."
+The "borrowerPackage" should be null unless the user is "ready_now" or the user explicitly asks for their borrower summary. When generating, use this exact JSON structure:
+{
+  "generatedDate": "YYYY-MM-DD",
+  "householdOverview": {
+    "borrowerName": "string or 'Not Provided'",
+    "firstTimeBuyer": "Yes | No | Not Provided",
+    "veteranStatus": "Yes | No | Not Provided",
+    "propertyIntent": "Purchase | Refinance | Cash-Out Refinance | Not Provided",
+    "propertyType": "string or 'Not Provided'",
+    "occupancy": "Primary Residence | Second Home | Investment | Not Provided"
+  },
+  "incomeSources": [
+    {
+      "source": "employer name or income source",
+      "type": "W-2 Employment | Self-Employment | 1099 | Retirement | Other",
+      "amount": "numeric string or 'Not Provided'",
+      "period": "Annual | Monthly",
+      "verificationTier": "Tier 1 — Document Verified | Tier 2 — Application Declared | Tier 3 — Self-Reported",
+      "employerName": "string or null",
+      "yearsEmployed": "string or 'Not Provided'",
+      "businessStructure": "string or null (for self-employed only)"
+    }
+  ],
+  "assetCategories": [
+    {
+      "category": "Checking/Savings | Down Payment | Retirement | Investment | Other",
+      "estimatedValue": "numeric string or 'Not Provided'",
+      "verificationTier": "Tier 1 | Tier 2 | Tier 3",
+      "source": "Personal Savings | Gift | Grant | Sale of Property | null",
+      "giftLetterStatus": "On File | Pending | Not Provided | null"
+    }
+  ],
+  "creditAndDebt": {
+    "creditScore": "string or 'Not Provided'",
+    "creditScoreVerification": "Tier 1 | Tier 2 | Tier 3 | Not Provided",
+    "monthlyDebts": "numeric string or 'Not Provided'",
+    "monthlyDebtsVerification": "Tier 1 | Tier 2 | Tier 3 | Not Provided",
+    "dtiRatio": "string (e.g., '35%') or 'Insufficient Data'",
+    "dtiNote": "DTI is a preparatory calculation based on declared data. Final determination occurs during underwriting review."
+  },
+  "propertyIntent": {
+    "purchasePrice": "numeric string or 'Not Provided'",
+    "downPayment": "numeric string or 'Not Provided'",
+    "downPaymentPercent": "string (e.g., '20%') or 'Insufficient Data'",
+    "ltvRatio": "string (e.g., '80%') or 'Insufficient Data'",
+    "propertyType": "string or 'Not Provided'",
+    "location": "string or 'Not Provided'"
+  },
+  "documentInventory": [
+    {
+      "docType": "pay_stub | w2 | tax_return | bank_statement | id | other",
+      "label": "human-readable document name",
+      "status": "Received — Verified | Received — Pending Review | Not Yet Received | Not Required",
+      "flags": ["recency", "legibility", "consistency", "completeness"] or []
+    }
+  ],
+  "readinessStatus": {
+    "tier": "exploring | building | almost_ready | ready_now",
+    "inputsPresent": "X of Y",
+    "completedCategories": ["list of completed input categories"],
+    "outstandingGaps": ["list of specific missing items"] or [],
+    "strengths": ["factual strengths — no qualitative assessment"]
+  },
+  "validationNotes": ["array of strings describing discrepancies or flagged items, or empty if none"],
+  "complianceFooter": "This intake summary is prepared for informational purposes only. It does not constitute a lending decision, pre-approval, commitment to lend, or assessment of creditworthiness. All information is borrower-declared or document-extracted and has not been independently verified by a lender. Loan eligibility, terms, and approval are determined solely during formal underwriting review."
+}
+Every field that has no data MUST be "Not Provided" or "Pending" or "Insufficient Data" — never omit fields or leave them null. Every data point must include its verification tier.
 
 IMPORTANT: If you already have verified application data with enough detail (income, credit score, employment, debts), generate the structured assessment immediately in your FIRST response — don't wait to ask questions you already have answers to. Only ask follow-up questions about inputs you're genuinely missing.
 
@@ -1153,6 +1308,7 @@ function parseCoachResponse(text: string): CoachResponse {
       if (data.intake) result.intake = data.intake;
       if (data.actionPlan) result.actionPlan = data.actionPlan;
       if (data.documentChecklist) result.documentChecklist = data.documentChecklist;
+      if (data.borrowerPackage) result.borrowerPackage = data.borrowerPackage;
     } catch (e) {
       console.error("[Coach] Failed to parse structured data:", e);
     }

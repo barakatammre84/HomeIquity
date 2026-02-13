@@ -377,7 +377,7 @@ export function registerCoachRoutes(app: Express) {
         verifiedContext,
       );
 
-      const hasStructuredData = coachResponse.profile || coachResponse.intake || coachResponse.actionPlan || coachResponse.documentChecklist;
+      const hasStructuredData = coachResponse.profile || coachResponse.intake || coachResponse.actionPlan || coachResponse.documentChecklist || coachResponse.borrowerPackage;
 
       const assistantMsg = await storage.createCoachMessage({
         conversationId: conversation.id,
@@ -389,6 +389,7 @@ export function registerCoachRoutes(app: Express) {
               intake: coachResponse.intake || null,
               actionPlan: coachResponse.actionPlan || null,
               documentChecklist: coachResponse.documentChecklist || null,
+              borrowerPackage: coachResponse.borrowerPackage || null,
             }
           : null,
       });
@@ -445,6 +446,7 @@ export function registerCoachRoutes(app: Express) {
         intake: existingIntake,
         actionPlan: coachResponse.actionPlan || conversation.actionPlan || null,
         documentChecklist: coachResponse.documentChecklist || conversation.documentChecklist || null,
+        borrowerPackage: coachResponse.borrowerPackage || null,
       });
     } catch (error) {
       console.error("Coach message error:", error);
