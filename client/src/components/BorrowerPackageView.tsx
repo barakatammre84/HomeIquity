@@ -55,13 +55,10 @@ interface BorrowerPackageData {
     dtiRatio?: string;
     dtiNote?: string;
   };
-  propertyIntent?: {
-    purchasePrice?: string;
-    downPayment?: string;
-    downPaymentPercent?: string;
-    ltvRatio?: string;
-    propertyType?: string;
-    location?: string;
+  propertyContext?: {
+    propertyAddress?: string;
+    estimatedValueOrPrice?: string;
+    occupancyIntent?: string;
   };
   documentInventory?: Array<{
     docType?: string;
@@ -219,7 +216,7 @@ export default function BorrowerPackageView({ data }: { data: BorrowerPackageDat
   const incomeSources = data.incomeSources || [];
   const assetCategories = data.assetCategories || [];
   const credit = data.creditAndDebt || {};
-  const property = data.propertyIntent || {};
+  const propertyCtx = data.propertyContext || {};
   const documents = data.documentInventory || [];
   const readiness = data.readinessStatus || {};
   const validationNotes = data.validationNotes || [];
@@ -366,23 +363,15 @@ export default function BorrowerPackageView({ data }: { data: BorrowerPackageDat
 
       <Card data-testid="section-property">
         <CardContent className="pt-4 pb-3 px-4 space-y-0">
-          <SectionHeader icon={Home} title="Property Details" number={7} />
+          <SectionHeader icon={Home} title="Property Context" number={7} />
           <div className="space-y-0.5">
-            <DataRow label="Purchase Price" testId="row-purchase-price">
-              <span className={`text-sm font-medium ${isNotProvided(property.purchasePrice) ? "opacity-60" : ""}`}>
-                {isNotProvided(property.purchasePrice) ? safe(property.purchasePrice) : formatCurrency(property.purchasePrice!)}
+            <DataRow label="Property Address" value={propertyCtx.propertyAddress} testId="row-property-address" />
+            <DataRow label="Estimated Value / Purchase Price" testId="row-estimated-value">
+              <span className={`text-sm font-medium ${isNotProvided(propertyCtx.estimatedValueOrPrice) ? "opacity-60" : ""}`}>
+                {isNotProvided(propertyCtx.estimatedValueOrPrice) ? safe(propertyCtx.estimatedValueOrPrice) : formatCurrency(propertyCtx.estimatedValueOrPrice!)}
               </span>
             </DataRow>
-            <DataRow label="Down Payment" testId="row-down-payment">
-              <span className={`text-sm font-medium ${isNotProvided(property.downPayment) ? "opacity-60" : ""}`}>
-                {isNotProvided(property.downPayment)
-                  ? safe(property.downPayment)
-                  : `${formatCurrency(property.downPayment!)}${!isNotProvided(property.downPaymentPercent) ? ` (${property.downPaymentPercent})` : ""}`}
-              </span>
-            </DataRow>
-            <DataRow label="LTV Ratio" value={safe(property.ltvRatio, "Insufficient Data")} testId="row-ltv-ratio" />
-            <DataRow label="Property Type" value={property.propertyType} testId="row-property-type" />
-            <DataRow label="Location" value={property.location} testId="row-location" />
+            <DataRow label="Occupancy Intent" value={propertyCtx.occupancyIntent} testId="row-occupancy-intent" />
           </div>
         </CardContent>
       </Card>

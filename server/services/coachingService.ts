@@ -83,13 +83,10 @@ export interface BorrowerPackage {
     dtiRatio: string;
     dtiNote: string;
   };
-  propertyIntent: {
-    purchasePrice: string;
-    downPayment: string;
-    downPaymentPercent: string;
-    ltvRatio: string;
-    propertyType: string;
-    location: string;
+  propertyContext: {
+    propertyAddress: string;
+    estimatedValueOrPrice: string;
+    occupancyIntent: string;
   };
   documentInventory: Array<{
     docType: string;
@@ -1217,13 +1214,10 @@ The "borrowerPackage" should be null unless the user is "ready_now" or the user 
     "dtiRatio": "string (e.g., '35%') or 'Insufficient Data'",
     "dtiNote": "DTI is a preparatory calculation based on declared data. Final determination occurs during underwriting review."
   },
-  "propertyIntent": {
-    "purchasePrice": "numeric string or 'Not Provided'",
-    "downPayment": "numeric string or 'Not Provided'",
-    "downPaymentPercent": "string (e.g., '20%') or 'Insufficient Data'",
-    "ltvRatio": "string (e.g., '80%') or 'Insufficient Data'",
-    "propertyType": "string or 'Not Provided'",
-    "location": "string or 'Not Provided'"
+  "propertyContext": {
+    "propertyAddress": "full or partial address if identified, or 'Not Provided' — do not fabricate",
+    "estimatedValueOrPrice": "borrower-stated purchase price or estimated value as numeric string, or 'Not Provided' — do not include valuations or market analysis",
+    "occupancyIntent": "Primary Residence | Second Home | Investment | Not Provided"
   },
   "documentInventory": [
     {
