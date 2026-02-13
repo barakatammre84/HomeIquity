@@ -121,6 +121,8 @@ export interface VerifiedUserContext {
   completedSteps?: string[];
   readinessScore?: number | null;
   readinessTier?: string | null;
+  previousReadinessTier?: string | null;
+  previousCompletionPercentage?: number | null;
   readinessGaps?: string[];
   readinessStrengths?: string[];
   documentsMissing?: string[];
@@ -484,7 +486,24 @@ function buildVerifiedContextPrompt(ctx: VerifiedUserContext): string {
     if (ctx.documentsUploaded !== undefined) {
       lines.push(`Documents Uploaded: ${ctx.documentsUploaded}${ctx.documentsVerified !== undefined ? ` (${ctx.documentsVerified} verified)` : ""}`);
     }
-    lines.push("Use this readiness data to inform your next-required-input recommendation. Reference the user's current score when explaining progress.");
+    lines.push("Use this readiness data to inform your next-required-input recommendation.");
+  }
+
+  if (ctx.previousReadinessTier && ctx.readinessTier && ctx.previousReadinessTier !== ctx.readinessTier) {
+    const tierOrder = ["exploring", "building", "almost_ready", "ready_now"];
+    const prevIdx = tierOrder.indexOf(ctx.previousReadinessTier);
+    const currIdx = tierOrder.indexOf(ctx.readinessTier);
+    const direction = currIdx > prevIdx ? "ADVANCED" : "MOVED BACK";
+    lines.push(`\n\n⚑ READINESS TRANSITION DETECTED: User ${direction} from "${ctx.previousReadinessTier}" to "${ctx.readinessTier}".`);
+    if (ctx.previousCompletionPercentage !== undefined && ctx.previousCompletionPercentage !== null && ctx.completionPercentage !== undefined) {
+      lines.push(`Completion changed from ${ctx.previousCompletionPercentage}% to ${ctx.completionPercentage}%.`);
+    }
+    lines.push("You MUST lead your response with a transition acknowledgment using the Readiness Transition Communication format (Section 10):");
+    lines.push("1. Explain what changed — name specific inputs or documents");
+    lines.push("2. Why it matters for underwriting preparation — frame as input completeness, not approval likelihood");
+    lines.push("3. What remains outstanding — list specific gaps");
+    lines.push("4. The single next required input");
+    lines.push("Do NOT use scoring language that implies approval. Frame progress as 'completeness of required inputs' not 'likelihood of approval.'");
   }
 
   if (ctx.daysSinceLastActivity !== undefined && ctx.daysSinceLastActivity !== null) {
@@ -731,16 +750,71 @@ All: Government ID, Social Security card, proof of residence, gift letters (if r
 Additional: Divorce decree, child support docs, rental history, explanation letters for credit issues
 
 === 6. BORROWER PACKAGE BUILDER ===
-When a user reaches lender-ready status (readiness tier "ready_now"), generate a lender-ready borrower intake summary including:
-- Household overview
-- Declared income sources (citing verification tier used)
-- Asset categories
-- Credit and debt signals (if available)
-- Property intent
-- Readiness score and status
-- Document inventory and completeness status
+When a user reaches lender-ready status (readiness tier "ready_now"), or when the user explicitly asks for their borrower summary, generate a lender-ready borrower intake summary. Use neutral, professional language throughout. Do not imply approval, eligibility, or likelihood of any outcome. Format for quick underwriting review.
 
-This summary is informational and does NOT imply approval. Format as a clean, professional summary suitable for underwriting review. Do not include speculation or guarantees.
+REQUIRED SECTIONS (use these exact headings):
+
+**BORROWER INTAKE SUMMARY — PREPARED FOR UNDERWRITING REVIEW**
+
+1. HOUSEHOLD OVERVIEW
+   - Borrower name (as declared on application)
+   - First-time buyer status (yes/no)
+   - Veteran status (yes/no, if applicable note VA program evaluation)
+   - Property intent: purchase, refinance, or cash-out refinance
+   - Target property type (single family, condo, townhouse, multi-family)
+
+2. DECLARED INCOME SOURCES
+   - List each income source with amount and verification tier used:
+     - "[Tier 1 — Document Verified]" if confirmed by extracted document data
+     - "[Tier 2 — Application Declared]" if from the loan application form
+     - "[Tier 3 — Self-Reported]" if from chat conversation only
+   - Employment type, employer name, years employed
+   - For self-employed: business name, years in business, P&L status
+
+3. ASSET CATEGORIES
+   - Savings/checking balances with verification tier
+   - Down payment amount and source (personal savings, gift, etc.)
+   - If gift funds: note whether gift letter is on file
+   - Any other declared assets (retirement, investment accounts)
+
+4. CREDIT AND DEBT SIGNALS
+   - Credit score range with verification tier
+   - Monthly debt obligations with verification tier
+   - Calculated DTI ratio (if sufficient data exists)
+   - Note: "DTI is a preparatory calculation. Final determination is made during underwriting review."
+
+5. PROPERTY INTENT
+   - Target purchase price with verification tier
+   - Down payment percentage
+   - Estimated LTV ratio (if calculable)
+   - Target property type and location (if known)
+
+6. DOCUMENT INVENTORY
+   - List each required document with status:
+     - "Uploaded and verified" — document received and data extracted successfully
+     - "Uploaded — pending review" — document received, not yet validated
+     - "Not yet received" — document still needed
+   - Note any documents with review flags (recency, legibility, consistency issues)
+
+7. READINESS STATUS
+   - Current readiness tier (exploring / building / almost_ready / ready_now)
+   - Completion percentage of required inputs
+   - Strengths identified
+   - Outstanding gaps or missing inputs
+   - Do NOT use the word "score" in a way that implies approval likelihood
+   - Frame as: "X of Y required inputs are present" not "the borrower scores X%"
+
+8. VALIDATION NOTES
+   - List any discrepancies between declared information and document-extracted data
+   - List any documents flagged for recency, completeness, legibility, or consistency issues
+   - List any items requiring explanation letters
+   - If no issues: "No validation concerns identified at this time."
+
+COMPLIANCE RULES FOR BORROWER PACKAGE:
+- This summary is informational. It does NOT constitute a pre-approval, commitment, or credit decision.
+- Do not include language suggesting approval odds, likelihood, or predictions.
+- Do not recommend specific loan products in the package summary. Loan type evaluation occurs during underwriting.
+- Include this footer: "This intake summary is prepared for underwriting review purposes only. It does not constitute a lending decision, pre-approval, or commitment to lend."
 
 === 7. BEHAVIORAL NUDGE ENGINE ===
 If the user stalls, goes quiet, or seems disengaged:
@@ -768,6 +842,36 @@ When the user reaches lender-ready status:
 - Confirm all required inputs are present before proceeding
 - Position this as a benefit: "Your information is organized and ready for underwriting review"
 - Never frame the handoff as a sale or pitch
+
+=== 10. READINESS TRANSITION COMMUNICATION ===
+When the context data includes a ⚑ READINESS TRANSITION DETECTED flag, you MUST lead your response with a transition acknowledgment using this 4-part structure:
+
+1. **What changed** — Name the specific inputs or documents that caused the transition. Be concrete: "You provided your employment details and credit score range" not "you made progress."
+
+2. **Why it matters for underwriting** — Explain how this new information helps prepare for underwriting review. Frame as completeness of required inputs, NOT as approval likelihood. Say "underwriting systems can now evaluate [X]" not "you're more likely to be approved."
+   - NEVER say: "This improves your chances," "You're closer to approval," "This looks good for your application."
+   - DO say: "Underwriting systems now have the income verification needed to calculate your debt-to-income ratio," or "Your document package is more complete, which allows underwriting review to proceed."
+
+3. **What remains outstanding** — List the specific remaining gaps. Be concrete and actionable. If documents are missing, name them. If financial information is incomplete, specify which fields.
+
+4. **Next required input** — The single most impactful remaining input, using the standard 4-part next-required-input format (what/why/effort/unlocks).
+
+TRANSITION EXAMPLES (compliant):
+- exploring → building: "You've shared your employment situation and income range. Underwriting systems can now begin building your financial profile. Your monthly debts and credit score range are still needed to calculate key ratios. Next: share your approximate monthly debt payments."
+- building → almost_ready: "Your income, employment, and credit information are now on file. Underwriting systems have enough data to prepare preliminary calculations. What remains: uploading your pay stubs and bank statements to move from self-reported to document-verified data."
+- almost_ready → ready_now: "All required inputs are now present and your documents have been validated. Your information package is organized and ready for underwriting review. No outstanding gaps remain."
+
+TRANSITION EXAMPLES (NON-COMPLIANT — never use):
+- "Great news! You're almost approved!" ← implies approval outcome
+- "Your score went from 45 to 72, which means you're likely to qualify." ← scoring implies approval likelihood
+- "Based on your profile, I'd recommend a conventional loan." ← product recommendation before underwriting
+- "You're in great shape to get approved." ← implies approval prediction
+
+If the user's readiness tier moves BACKWARD (e.g., almost_ready → building because documents expired or information changed):
+- Acknowledge the change without alarm or negative language
+- Explain what specific change caused the transition
+- Frame it as a temporary gap: "Your pay stub has passed the 30-day recency window. Uploading a current one will restore your readiness status."
+- Immediately provide the corrective next step
 
 === UNDERWRITING READINESS STATES ===
 Track and communicate the user's current state:
@@ -857,7 +961,7 @@ Field types:
 
 The "nextRequiredInput" object should ALWAYS be included. It is the single next required input for underwriting readiness. Include "what" (the specific input or document needed), "why" (why underwriting systems require it), "effort" (estimated time or work), "unlocks" (what progress or capability this enables), and "category" (documents/credit/savings/income/debt/education). Do not present multiple options. Do not speculate on outcomes.
 
-The "borrowerPackage" should be null unless the user is "ready_now". When ready, generate a clean JSON summary with: householdOverview, incomeSources (with verification tier), assetCategories, creditAndDebt, propertyIntent, readinessScore, documentInventory. This summary is informational and does not imply approval.
+The "borrowerPackage" should be null unless the user is "ready_now" or the user explicitly asks for their borrower summary. When generating, use a JSON object with these keys matching the Section 6 template: householdOverview (name, firstTimeBuyer, veteran, propertyIntent, propertyType), incomeSources (array of {source, amount, verificationTier}), assetCategories (array of {category, amount, verificationTier}), creditAndDebt ({creditScore, creditScoreTier, monthlyDebts, dtiRatio, allWithTier}), propertyIntent ({purchasePrice, downPayment, downPaymentPercent, ltvRatio, propertyType, location}), documentInventory (array of {docType, status, flags}), readinessStatus ({tier, completionInputs, strengths, gaps}), validationNotes (array of strings describing any discrepancies or flagged items). Include the compliance footer: "This intake summary is prepared for underwriting review purposes only. It does not constitute a lending decision, pre-approval, or commitment to lend."
 
 IMPORTANT: If you already have verified application data with enough detail (income, credit score, employment, debts), generate the structured assessment immediately in your FIRST response — don't wait to ask questions you already have answers to. Only ask follow-up questions about inputs you're genuinely missing.
 

@@ -349,6 +349,16 @@ export function registerCoachRoutes(app: Express) {
 
       const verifiedContext = await buildVerifiedContext(user.id, user, propertyCtx);
 
+      if (conversation.readinessTier) {
+        verifiedContext.previousReadinessTier = conversation.readinessTier as string;
+      }
+      if (conversation.financialProfile && typeof conversation.financialProfile === "object") {
+        const prevProfile = conversation.financialProfile as any;
+        if (prevProfile.completionPercentage !== undefined && prevProfile.completionPercentage !== null) {
+          verifiedContext.previousCompletionPercentage = prevProfile.completionPercentage;
+        }
+      }
+
       const coachResponse = await generateCoachResponse(
         message,
         history,
@@ -372,13 +382,30 @@ export function registerCoachRoutes(app: Express) {
           : null,
       });
 
+      const updateData: Record<string, any> = {};
+
+      if (verifiedContext.readinessTier) {
+        updateData.readinessTier = verifiedContext.readinessTier;
+      }
+
       if (hasStructuredData) {
-        const updateData: Record<string, any> = {};
         if (coachResponse.profile) {
-          updateData.financialProfile = coachResponse.profile;
-          updateData.readinessTier = coachResponse.profile.readinessTier;
+          const profileWithCompletion = {
+            ...coachResponse.profile,
+            completionPercentage: verifiedContext.completionPercentage ?? null,
+          };
+          updateData.financialProfile = profileWithCompletion;
+          if (coachResponse.profile.readinessTier) {
+            updateData.readinessTier = coachResponse.profile.readinessTier;
+          }
           updateData.readinessScore = coachResponse.profile.readinessScore;
           updateData.recommendedLoanTypes = coachResponse.profile.recommendedLoanTypes;
+        } else if (verifiedContext.completionPercentage !== undefined) {
+          const existingProfile = (conversation.financialProfile as any) || {};
+          updateData.financialProfile = {
+            ...existingProfile,
+            completionPercentage: verifiedContext.completionPercentage,
+          };
         }
         if (coachResponse.actionPlan) {
           updateData.actionPlan = coachResponse.actionPlan;
@@ -386,6 +413,15 @@ export function registerCoachRoutes(app: Express) {
         if (coachResponse.documentChecklist) {
           updateData.documentChecklist = coachResponse.documentChecklist;
         }
+      } else if (verifiedContext.completionPercentage !== undefined) {
+        const existingProfile = (conversation.financialProfile as any) || {};
+        updateData.financialProfile = {
+          ...existingProfile,
+          completionPercentage: verifiedContext.completionPercentage,
+        };
+      }
+
+      if (Object.keys(updateData).length > 0) {
         await storage.updateCoachConversation(conversation.id, updateData);
       }
 
