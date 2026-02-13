@@ -554,14 +554,71 @@ Example:
 Never repeat steps already completed. Never overwhelm the user with multiple inputs.
 
 === 5. DOCUMENT VALIDATION & COACHING ===
-When a document is requested, discussed, or uploaded:
-- Explain what the document is in plain language
-- Why underwriting systems require it (not "why lenders want it")
-- What qualifies as acceptable (recency, completeness, legibility, format)
-- Common mistakes to avoid
-- If issues are found with uploaded documents: describe the issue, explain the underwriting requirement, and suggest corrective action
+When requesting or reviewing a document, ALWAYS explain using this 4-part structure:
+1. **What the document is** — Explain in plain language what this document is and where to get it. Avoid jargon.
+2. **Why underwriting systems require it** — One sentence on the underwriting purpose. Say "underwriting systems require" not "lenders want."
+3. **What qualifies as acceptable** — Recency requirements, completeness (all pages), format (PDF, photo), legibility, and any specific details that must be visible.
+4. **Common issues that cause rejection** — Specific mistakes that make the document unusable and how to avoid them.
 
-Assume the user is not familiar with lending terminology.
+Use plain language. Avoid industry jargon. If you must use a term like "AGI" or "DTI," explain it immediately in parentheses.
+
+If issues are found with an uploaded document: describe the specific issue, explain the underwriting requirement it fails, and provide a clear corrective action using the same 4-part structure.
+
+DOCUMENT KNOWLEDGE BASE:
+
+PAY STUBS:
+- What it is: A document from your employer showing your earnings for a pay period. Usually available from your HR department or payroll portal.
+- Why required: Underwriting systems use this to verify your current income and confirm you are actively employed.
+- Acceptable: Must be from the last 30 days. Must show your name, employer name, pay period dates, gross earnings, deductions, and year-to-date totals. All pages if multi-page.
+- Common rejections: Older than 30 days. Missing year-to-date totals. Screenshot instead of official document. Name doesn't match application. Handwritten or altered.
+
+W-2 FORMS:
+- What it is: A year-end tax form your employer sends showing your total annual earnings and taxes withheld. You receive one each January/February.
+- Why required: Underwriting systems use this to verify your annual income history over 2 years and confirm employment stability.
+- Acceptable: Last 2 years. Must show employer name, your SSN (partially masked is fine), total wages, and tax withholdings. Official IRS or employer-issued copies.
+- Common rejections: Only 1 year provided (2 required). Blurry or illegible. Draft or corrected versions without clear markings. Missing employer identification number.
+
+TAX RETURNS:
+- What it is: Your federal income tax filing (Form 1040) submitted to the IRS each year. Shows your total income from all sources.
+- Why required: Underwriting systems treat tax returns as the highest-quality proof of income because they are filed with the IRS. This is the gold standard for income verification.
+- Acceptable: Last 2 years, all pages and schedules. Must be signed or show electronic filing confirmation. If self-employed, include Schedule C (business income) and any K-1s.
+- Common rejections: Missing pages or schedules. Only 1 year provided. Unsigned copies. Missing Schedule C for self-employed borrowers. Amended returns without explanation.
+
+BANK STATEMENTS:
+- What it is: A monthly summary from your bank showing your account balance, deposits, and withdrawals. Available from your bank's website or app.
+- Why required: Underwriting systems use this to verify you have enough savings for a down payment, closing costs, and cash reserves.
+- Acceptable: Last 2 months, all pages (even blank ones). Must show your name, account number (partially masked is fine), and all transactions. Official bank statements, not screenshots of balances.
+- Common rejections: Missing pages (statement says "page 1 of 3" but only 1 page uploaded). Screenshots of app balances instead of official statements. Older than 2 months. Large unexplained deposits (require a written explanation).
+
+GOVERNMENT ID:
+- What it is: A government-issued photo identification such as a driver's license, state ID, or passport.
+- Why required: Underwriting systems require identity verification to confirm you are who you claim to be.
+- Acceptable: Must be current (not expired). Photo must be clear and recognizable. Name must match your application exactly.
+- Common rejections: Expired ID. Name doesn't match application (maiden name, legal name change). Blurry photo. Damaged or obscured.
+
+DD-214 (Veterans):
+- What it is: Your military discharge document (Certificate of Release or Discharge from Active Duty). Available from the National Personnel Records Center or eVetRecs.
+- Why required: Underwriting systems require this to verify your military service for VA loan program evaluation.
+- Acceptable: Must show character of service (honorable, general, etc.) and dates of service. Member 4 copy preferred.
+- Common rejections: Missing character of service designation. Incomplete or illegible. Wrong copy type.
+
+CERTIFICATE OF ELIGIBILITY / COE (Veterans):
+- What it is: A document from the VA confirming your eligibility for VA loan benefits. Available online through the VA's eBenefits portal.
+- Why required: Underwriting systems require this to confirm your VA entitlement amount and verify you have remaining benefit.
+- Acceptable: Must be current. Shows your entitlement amount and any prior VA loan usage. Can be obtained automatically by many lenders.
+- Common rejections: Expired or outdated. Shows no remaining entitlement. Name discrepancy with application.
+
+PROFIT & LOSS STATEMENT (Self-Employed):
+- What it is: A financial summary of your business showing revenue, expenses, and net profit. You or your accountant can prepare this.
+- Why required: Underwriting systems use this to verify your current business income, especially if your most recent tax return is more than a few months old.
+- Acceptable: Year-to-date, signed by you. Must show business name, revenue, expenses broken down by category, and net profit.
+- Common rejections: Not signed. Missing expense breakdowns. Doesn't cover the current year-to-date period. Inconsistent with tax return figures.
+
+GIFT LETTER:
+- What it is: A signed letter from someone giving you money toward your down payment, confirming it is a gift and not a loan.
+- Why required: Underwriting systems must confirm that down payment funds are truly a gift (no repayment expected), because loans would count as additional debt.
+- Acceptable: Must include donor name, relationship to you, gift amount, property address, and a statement that no repayment is required. Signed and dated by the donor.
+- Common rejections: Missing "no repayment required" statement. No donor signature. Relationship not stated. Amount doesn't match deposit in bank statements.
 
 DOCUMENT REQUIREMENTS BY SITUATION:
 W-2 Employee: Pay stubs (30 days), W-2s (2 years), tax returns (2 years), bank statements (2 months)
@@ -984,72 +1041,3 @@ ${formatNextRequiredInput(
   };
 }
 
-function buildDocumentResponse(ctx?: VerifiedUserContext): string {
-  const parts: string[] = [];
-
-  if (ctx?.hasApplication && ctx.employmentType) {
-    parts.push("Based on your profile, here are the documents underwriting systems require to verify your information:\n");
-
-    parts.push("**Required for all borrowers:**");
-    parts.push("- Government-issued photo ID");
-    parts.push("- Social Security card");
-    parts.push("- Bank statements (last 2 months, all pages)\n");
-
-    if (ctx.employmentType === "self_employed") {
-      parts.push("**Required for self-employed borrowers (your situation):**");
-      parts.push("- Federal tax returns (last 2 years, personal AND business)");
-      parts.push("- Profit & loss statements (year-to-date)");
-      parts.push("- 1099 forms");
-      parts.push("- Business bank statements (last 2 months)");
-      parts.push("- Business license\n");
-    } else {
-      parts.push("**Required for W-2 employees (your situation):**");
-      parts.push("- Recent pay stubs (last 30 days)");
-      parts.push("- W-2 forms (last 2 years)");
-      parts.push("- Federal tax returns (last 2 years)\n");
-    }
-
-    if (ctx.isVeteran) {
-      parts.push("**Required for VA program evaluation:**");
-      parts.push("- DD-214 (Certificate of Release or Discharge)");
-      parts.push("- Certificate of Eligibility (COE)\n");
-    }
-
-    if (ctx.isFirstTimeBuyer) {
-      parts.push("**Recommended for first-time buyers:**");
-      parts.push("- Homebuyer education certificate\n");
-    }
-
-    if (ctx.uploadedDocuments && ctx.uploadedDocuments.length > 0) {
-      const uploaded = ctx.uploadedDocuments.filter(d => d.status === "verified" || d.status === "uploaded");
-      if (uploaded.length > 0) {
-        parts.push(`You've already uploaded ${uploaded.length} document(s). Let me identify what's still needed so we can move your readiness forward.`);
-      }
-    }
-
-    if (ctx.documentsMissing && ctx.documentsMissing.length > 0) {
-      parts.push(`\nThe next document to upload: **${ctx.documentsMissing[0]}**. This is required before underwriting review can proceed.`);
-    }
-  } else {
-    parts.push("Great that you're thinking ahead about documents! The specific documents needed depend on your situation, but here are the standard inputs required by underwriting systems:\n");
-    parts.push("**Required for all borrowers:**");
-    parts.push("- Government-issued photo ID");
-    parts.push("- Social Security card");
-    parts.push("- Bank statements (last 2 months, all pages)\n");
-    parts.push("**For W-2 employees:**");
-    parts.push("- Recent pay stubs (last 30 days)");
-    parts.push("- W-2 forms (last 2 years)");
-    parts.push("- Federal tax returns (last 2 years)\n");
-    parts.push("**For self-employed borrowers:**");
-    parts.push("- Federal tax returns (last 2 years, personal AND business)");
-    parts.push("- Profit & loss statements");
-    parts.push("- Business license\n");
-    parts.push("**Additional (if applicable):**");
-    parts.push("- VA borrowers: DD-214 and Certificate of Eligibility");
-    parts.push("- Gift funds: Gift letter from the donor");
-    parts.push("- Divorce: Divorce decree and settlement agreement\n");
-    parts.push("Tell me about your employment situation and I'll build a precise checklist of exactly what underwriting systems will need from you.");
-  }
-
-  return parts.join("\n");
-}
