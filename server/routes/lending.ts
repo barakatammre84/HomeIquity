@@ -377,71 +377,87 @@ export function registerLendingRoutes(
         });
 
         for (const scenario of analysisResult.scenarios) {
-          await storage.createLoanOption({
-            applicationId: application.id,
-            ...scenario,
-          });
+          try {
+            await storage.createLoanOption({
+              applicationId: application.id,
+              ...scenario,
+            });
+          } catch (optErr) {
+            console.error("[Analysis] Failed to create loan option:", optErr);
+          }
         }
 
-        await storage.createDealActivity({
-          applicationId: application.id,
-          activityType: "status_change",
-          title: analysisResult.isApproved ? "Pre-Approved!" : "Application Review Required",
-          description: analysisResult.isApproved 
-            ? `Congratulations! You've been pre-approved for up to $${parseFloat(analysisResult.preApprovalAmount).toLocaleString()}`
-            : "Your application requires additional review.",
-        });
+        try {
+          await storage.createDealActivity({
+            applicationId: application.id,
+            activityType: "status_change",
+            title: analysisResult.isApproved ? "Pre-Approved!" : "Application Review Required",
+            description: analysisResult.isApproved 
+              ? `Congratulations! You've been pre-approved for up to $${parseFloat(analysisResult.preApprovalAmount).toLocaleString()}`
+              : "Your application requires additional review.",
+          });
+        } catch (actErr) {
+          console.error("[Analysis] Failed to create deal activity:", actErr);
+        }
 
         const borrowerName = user.firstName || "Borrower";
-        if (analysisResult.isApproved) {
-          await storage.createNotification({
-            userId,
-            type: "application_pre_approved",
-            title: "You've Been Pre-Approved!",
-            body: `Congratulations! You've been pre-approved for up to $${parseFloat(analysisResult.preApprovalAmount).toLocaleString()}.`,
-            entityType: "loan_application",
-            entityId: application.id,
-            status: "unread",
-          });
-          if (user.email) {
-            sendNotificationEmail({
+        try {
+          if (analysisResult.isApproved) {
+            await storage.createNotification({
+              userId,
               type: "application_pre_approved",
-              recipientEmail: user.email,
-              data: { borrowerName, amount: parseFloat(analysisResult.preApprovalAmount).toLocaleString(), applicationId: application.id },
+              title: "You've Been Pre-Approved!",
+              body: `Congratulations! You've been pre-approved for up to $${parseFloat(analysisResult.preApprovalAmount).toLocaleString()}.`,
+              entityType: "loan_application",
+              entityId: application.id,
+              status: "unread",
             });
-          }
-        } else {
-          await storage.createNotification({
-            userId,
-            type: "application_denied",
-            title: "Application Update",
-            body: "Your application requires additional review. Please check your dashboard for details.",
-            entityType: "loan_application",
-            entityId: application.id,
-            status: "unread",
-          });
-          if (user.email) {
-            sendNotificationEmail({
+            if (user.email) {
+              sendNotificationEmail({
+                type: "application_pre_approved",
+                recipientEmail: user.email,
+                data: { borrowerName, amount: parseFloat(analysisResult.preApprovalAmount).toLocaleString(), applicationId: application.id },
+              });
+            }
+          } else {
+            await storage.createNotification({
+              userId,
               type: "application_denied",
-              recipientEmail: user.email,
-              data: { borrowerName },
+              title: "Application Update",
+              body: "Your application requires additional review. Please check your dashboard for details.",
+              entityType: "loan_application",
+              entityId: application.id,
+              status: "unread",
             });
+            if (user.email) {
+              sendNotificationEmail({
+                type: "application_denied",
+                recipientEmail: user.email,
+                data: { borrowerName },
+              });
+            }
           }
+        } catch (notifErr) {
+          console.error("[Analysis] Failed to send notifications:", notifErr);
         }
 
         if (analysisResult.isApproved) {
-          const updatedApp = await storage.getLoanApplication(application.id);
-          if (updatedApp) {
-            const { initializeLoanPipeline } = await import("../pipelineEngine");
-            await initializeLoanPipeline(updatedApp, userId);
-            
-            await storage.createDealActivity({
-              applicationId: application.id,
-              activityType: "status_change",
-              title: "Document Collection Started",
-              description: "Required documents have been identified. Please upload them to continue your application.",
-              performedBy: "system",
-            });
+          try {
+            const updatedApp = await storage.getLoanApplication(application.id);
+            if (updatedApp) {
+              const { initializeLoanPipeline } = await import("../pipelineEngine");
+              await initializeLoanPipeline(updatedApp, userId);
+              
+              await storage.createDealActivity({
+                applicationId: application.id,
+                activityType: "status_change",
+                title: "Document Collection Started",
+                description: "Required documents have been identified. Please upload them to continue your application.",
+                performedBy: "system",
+              });
+            }
+          } catch (pipelineErr) {
+            console.error("[Analysis] Pipeline initialization failed (non-fatal):", pipelineErr);
           }
         }
       } catch (analysisError) {

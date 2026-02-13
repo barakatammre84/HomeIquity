@@ -459,6 +459,23 @@ export function registerAdminRoutes(
   // MORTGAGE RATES
   // =============================================================================
 
+  app.get("/api/rates", async (req, res) => {
+    try {
+      const rates = await storage.getMortgageRatesForLocation(undefined, undefined);
+      const preview = rates.slice(0, 6).map((r: any) => ({
+        id: r.id,
+        programName: r.program?.name || "Mortgage",
+        interestRate: r.rate,
+        apr: r.apr,
+        loanType: r.program?.name || "Fixed",
+      }));
+      res.json(preview);
+    } catch (error) {
+      console.error("Get rates preview error:", error);
+      res.status(500).json({ error: "Failed to get rates" });
+    }
+  });
+
   // Get mortgage rates for a location (public)
   app.get("/api/mortgage-rates", async (req, res) => {
     try {
