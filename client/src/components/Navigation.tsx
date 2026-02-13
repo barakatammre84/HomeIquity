@@ -67,38 +67,39 @@ function NavDropdown({ label, items, testId }: NavDropdownProps) {
         <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-200", isOpen && "rotate-180")} />
       </button>
       
-      {isOpen && (
-        <div className="absolute left-0 top-full pt-2">
-          <div className="w-72 rounded-xl border bg-card p-2 shadow-xl">
-            {items.map((item) => {
-              const Icon = item.icon;
-              return (
-                <button
-                  key={item.href + item.label}
-                  onClick={() => {
-                    navigate(item.href);
-                    setIsOpen(false);
-                  }}
-                  className="flex w-full items-start gap-3 rounded-lg px-3 py-3 text-left transition-colors hover:bg-muted"
-                  data-testid={`nav-dropdown-${label.toLowerCase()}-${item.label.toLowerCase().replace(/\s+/g, '-')}`}
-                >
-                  {Icon && (
-                    <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                      <Icon className="h-4 w-4 text-primary" />
-                    </div>
-                  )}
-                  <div>
-                    <p className="text-sm font-medium text-foreground">{item.label}</p>
-                    {item.description && (
-                      <p className="text-xs text-muted-foreground">{item.description}</p>
-                    )}
+      <div className={cn(
+        "absolute left-0 top-full pt-2 transition-opacity duration-150",
+        isOpen ? "opacity-100 visible" : "opacity-0 invisible pointer-events-none"
+      )}>
+        <div className="w-72 rounded-xl border bg-card p-2 shadow-xl">
+          {items.map((item) => {
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.href + item.label}
+                onClick={() => {
+                  navigate(item.href);
+                  setIsOpen(false);
+                }}
+                className="flex w-full items-start gap-3 rounded-lg px-3 py-3 text-left transition-colors hover:bg-muted"
+                data-testid={`nav-dropdown-${label.toLowerCase()}-${item.label.toLowerCase().replace(/\s+/g, '-')}`}
+              >
+                {Icon && (
+                  <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                    <Icon className="h-4 w-4 text-primary" />
                   </div>
-                </button>
-              );
-            })}
-          </div>
+                )}
+                <div>
+                  <p className="text-sm font-medium text-foreground">{item.label}</p>
+                  {item.description && (
+                    <p className="text-xs text-muted-foreground">{item.description}</p>
+                  )}
+                </div>
+              </button>
+            );
+          })}
         </div>
-      )}
+      </div>
     </div>
   );
 }

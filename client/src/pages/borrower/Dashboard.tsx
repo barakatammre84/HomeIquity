@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
+import { usePageView, useTrackActivity } from "@/hooks/useActivityTracker";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { formatCurrency, getStatusLabel } from "@/lib/authUtils";
@@ -33,6 +34,10 @@ import {
   Users,
   Download,
   Loader2,
+  Search,
+  Calculator,
+  MessageSquare,
+  AlertTriangle,
 } from "lucide-react";
 
 interface DashboardData {
@@ -45,6 +50,9 @@ interface DashboardData {
   activities: DealActivity[];
   unreadMessages: number;
   pendingTaskCount: number;
+  loanOptionCounts?: Record<string, number>;
+  hmdaStatus?: Record<string, boolean>;
+  recentOptions?: Array<{ id: string; applicationId: string; interestRate: string; loanType: string; programName: string }>;
 }
 
 function getConfidenceLabel(status: string): { label: string; color: string } {
@@ -60,12 +68,18 @@ function getConfidenceLabel(status: string): { label: string; color: string } {
   }
 }
 
-function getExpirationDate(application: LoanApplication): string | null {
+function getExpirationInfo(application: LoanApplication): { label: string; daysLeft: number; urgency: "expired" | "urgent" | "normal" } | null {
   if (application.status !== "pre_approved") return null;
-  const createdDate = new Date(application.createdAt!);
+  if (!application.createdAt) return null;
+  const createdDate = new Date(application.createdAt);
+  if (isNaN(createdDate.getTime())) return null;
   const expirationDate = new Date(createdDate);
   expirationDate.setDate(expirationDate.getDate() + 30);
-  return expirationDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  const now = new Date();
+  const daysLeft = Math.ceil((expirationDate.getTime() - now.getTime()) / 86400000);
+  const label = expirationDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  const urgency = daysLeft <= 0 ? "expired" : daysLeft <= 7 ? "urgent" : "normal";
+  return { label, daysLeft, urgency };
 }
 
 function formatActivityTime(timestamp: string | Date): string {
@@ -83,8 +97,137 @@ function formatActivityTime(timestamp: string | Date): string {
   return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
+interface NudgeItem {
+  id: string;
+  icon: any;
+  title: string;
+  description: string;
+  action: string;
+  href: string;
+  priority: number;
+}
+
+function PersonalizedNudges({ application }: { application: LoanApplication | null }) {
+  const { data: activitySummary } = useQuery<{
+    totalPageViews: number;
+    propertySearches: number;
+    calculatorUses: number;
+    coachChats: number;
+    propertyViews: number;
+  }>({
+    queryKey: ["/api/user-activity-summary"],
+  });
+
+  if (!activitySummary) return null;
+
+  const nudges: NudgeItem[] = [];
+  const status = application?.status;
+
+  if (activitySummary.propertySearches > 0 && !application) {
+    nudges.push({
+      id: "browsed-no-app",
+      icon: Search,
+      title: "You've been browsing properties",
+      description: `You searched ${activitySummary.propertySearches} time${activitySummary.propertySearches > 1 ? "s" : ""} recently. Get pre-approved to make stronger offers.`,
+      action: "Start Application",
+      href: "/apply",
+      priority: 1,
+    });
+  }
+
+  if (activitySummary.propertySearches > 2 && application && status === "pre_approved") {
+    nudges.push({
+      id: "active-browser",
+      icon: Home,
+      title: "Found the one?",
+      description: "You've been actively searching. Lock in your rate and move forward with a full application.",
+      action: "Continue Application",
+      href: `/pipeline/${application.id}`,
+      priority: 2,
+    });
+  }
+
+  if (activitySummary.coachChats === 0 && application) {
+    nudges.push({
+      id: "try-coach",
+      icon: MessageSquare,
+      title: "Get personalized guidance",
+      description: "Our AI homebuyer coach can answer your mortgage questions and help you understand your options.",
+      action: "Chat with Coach",
+      href: "/coach",
+      priority: 5,
+    });
+  }
+
+  if (activitySummary.calculatorUses === 0 && application) {
+    nudges.push({
+      id: "try-calculator",
+      icon: Calculator,
+      title: "See what fits your budget",
+      description: "Use our mortgage calculator to explore different payment scenarios and find your comfort zone.",
+      action: "Open Calculator",
+      href: "/calculators",
+      priority: 6,
+    });
+  }
+
+  if (activitySummary.propertySearches === 0 && application && status === "pre_approved") {
+    nudges.push({
+      id: "start-searching",
+      icon: Search,
+      title: "Ready to find your home",
+      description: "You're pre-approved! Start browsing properties that match your budget.",
+      action: "Browse Properties",
+      href: "/properties",
+      priority: 3,
+    });
+  }
+
+  if (application && status === "submitted" && activitySummary.totalPageViews > 5) {
+    nudges.push({
+      id: "app-submitted",
+      icon: Clock,
+      title: "Your application is being reviewed",
+      description: "We're working on your application. You'll be notified as soon as we have an update.",
+      action: "View Status",
+      href: `/pipeline/${application.id}`,
+      priority: 4,
+    });
+  }
+
+  const sorted = nudges.sort((a, b) => a.priority - b.priority).slice(0, 2);
+  if (sorted.length === 0) return null;
+
+  return (
+    <div className="space-y-3" data-testid="section-nudges">
+      {sorted.map((nudge) => (
+        <Card key={nudge.id} className="shadow-sm border-primary/10" data-testid={`nudge-${nudge.id}`}>
+          <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3 flex-wrap">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                <nudge.icon className="h-4 w-4 text-primary" />
+              </div>
+              <div className="min-w-0">
+                <p className="font-medium text-sm" data-testid={`text-nudge-title-${nudge.id}`}>{nudge.title}</p>
+                <p className="text-xs text-muted-foreground">{nudge.description}</p>
+              </div>
+            </div>
+            <Link href={nudge.href}>
+              <Button size="sm" variant="outline" className="shrink-0 gap-1" data-testid={`button-nudge-${nudge.id}`}>
+                {nudge.action}
+                <ArrowRight className="h-3.5 w-3.5" />
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const { user, isLoading: authLoading } = useAuth();
+  usePageView("/dashboard");
   const [, navigate] = useLocation();
   const [selectedAppId, setSelectedAppId] = useState<string | null>(null);
 
@@ -138,12 +281,24 @@ export default function Dashboard() {
     : defaultApp;
 
   const isPreApproved = activeApplication?.status === "pre_approved";
-  const expirationDate = activeApplication ? getExpirationDate(activeApplication) : null;
+  const expirationInfo = activeApplication ? getExpirationInfo(activeApplication) : null;
   const confidence = activeApplication ? getConfidenceLabel(activeApplication.status) : null;
 
-  const hasOffers = isPreApproved;
-  const offerCount = hasOffers ? 3 : 0;
-  const rateRange = hasOffers ? "6.25% - 6.75%" : null;
+  const offerCount = activeApplication ? (data?.loanOptionCounts?.[activeApplication.id] || 0) : 0;
+  const hasOffers = offerCount > 0;
+  const appOptions = (data?.recentOptions || []).filter(
+    (opt: any) => activeApplication && opt.applicationId === activeApplication.id
+  );
+  const sortedRates = appOptions
+    .map((o: any) => parseFloat(o.interestRate))
+    .filter((r: number) => !isNaN(r))
+    .sort((a: number, b: number) => a - b);
+  const rateRange = hasOffers && sortedRates.length >= 2
+    ? `${sortedRates[0].toFixed(2)}% - ${sortedRates[sortedRates.length - 1].toFixed(2)}%`
+    : hasOffers && sortedRates.length === 1
+    ? `${sortedRates[0].toFixed(2)}%`
+    : null;
+  const hmdaCompleted = activeApplication ? (data?.hmdaStatus?.[activeApplication.id] || false) : false;
 
   return (
     <div className="min-h-screen bg-background">
@@ -200,10 +355,22 @@ export default function Dashboard() {
                       </Badge>
                     )}
                   </div>
-                  {expirationDate && (
-                    <p className="text-sm text-muted-foreground mt-1" data-testid="text-expiration">
-                      Valid until {expirationDate}
-                    </p>
+                  {expirationInfo && (
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
+                      <p className={`text-sm ${expirationInfo.urgency === "expired" ? "text-red-600 dark:text-red-400 font-medium" : expirationInfo.urgency === "urgent" ? "text-amber-600 dark:text-amber-400 font-medium" : "text-muted-foreground"}`} data-testid="text-expiration">
+                        {expirationInfo.urgency === "expired" 
+                          ? "Pre-approval expired" 
+                          : `Valid until ${expirationInfo.label}`}
+                      </p>
+                      {expirationInfo.urgency === "expired" && (
+                        <Badge variant="destructive" data-testid="badge-expired">Expired</Badge>
+                      )}
+                      {expirationInfo.urgency === "urgent" && (
+                        <Badge variant="outline" className="border-amber-500 text-amber-600 dark:text-amber-400" data-testid="badge-expiring-soon">
+                          {expirationInfo.daysLeft} day{expirationInfo.daysLeft !== 1 ? "s" : ""} left
+                        </Badge>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>
@@ -234,6 +401,8 @@ export default function Dashboard() {
           pendingDocuments={data?.stats?.pendingDocuments || 0}
           unreadMessages={unreadMessages}
         />
+
+        <PersonalizedNudges application={activeApplication || null} />
 
         {activeApplication && (
           <Card className="shadow-md" data-testid="card-loan-snapshot">
@@ -283,8 +452,8 @@ export default function Dashboard() {
                     <Percent className="h-3.5 w-3.5" />
                     Loan Type
                   </div>
-                  <p className="text-lg font-semibold" data-testid="text-loan-type">
-                    Conventional
+                  <p className="text-lg font-semibold capitalize" data-testid="text-loan-type">
+                    {activeApplication.preferredLoanType || "Conventional"}
                   </p>
                 </div>
               </div>
@@ -326,7 +495,7 @@ export default function Dashboard() {
           </Card>
         )}
 
-        {activeApplication && (
+        {activeApplication && !hmdaCompleted && (
           <Card className="shadow-md" data-testid="card-hmda-compliance">
             <CardContent className="p-4">
               <div className="flex items-center justify-between gap-4 flex-wrap">

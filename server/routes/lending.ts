@@ -55,9 +55,19 @@ export function registerLendingRoutes(
       ]);
 
       const recentOptions = [];
+      const loanOptionCounts: Record<string, number> = {};
+      const activitiesMap: Record<string, any[]> = {};
+      const hmdaStatus: Record<string, boolean> = {};
+
       for (const app of applications.slice(0, 3)) {
         const options = await storage.getLoanOptionsByApplication(app.id);
         recentOptions.push(...options);
+        loanOptionCounts[app.id] = options.length;
+      }
+
+      for (const app of applications.slice(0, 3)) {
+        const activities = await storage.getDealActivitiesByApplication(app.id);
+        activitiesMap[app.id] = activities.slice(0, 10);
       }
 
       let pendingTaskCount = 0;
@@ -66,6 +76,23 @@ export function registerLendingRoutes(
         pendingTaskCount += tasks.filter(t => ["pending", "in_progress", "rejected"].includes(t.status)).length;
       }
 
+      try {
+        const { hmdaDemographics } = await import("@shared/schema");
+        const { eq } = await import("drizzle-orm");
+        const { database } = await import("./utils");
+        for (const app of applications.slice(0, 3)) {
+          const [record] = await database.select({ id: hmdaDemographics.id })
+            .from(hmdaDemographics)
+            .where(eq(hmdaDemographics.applicationId, app.id))
+            .limit(1);
+          hmdaStatus[app.id] = !!record;
+        }
+      } catch {}
+
+      const allActivities = Object.values(activitiesMap).flat()
+        .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        .slice(0, 10);
+
       res.json({
         applications,
         documents,
@@ -73,6 +100,9 @@ export function registerLendingRoutes(
         stats,
         unreadMessages,
         pendingTaskCount,
+        activities: allActivities,
+        loanOptionCounts,
+        hmdaStatus,
       });
     } catch (error) {
       console.error("Dashboard error:", error);

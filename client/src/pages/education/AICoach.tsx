@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
+import { usePageView, useTrackActivity } from "@/hooks/useActivityTracker";
 import {
   Send,
   Bot,
@@ -640,6 +641,8 @@ function ConversationList({
 }
 
 export default function AICoach() {
+  usePageView("/coach");
+  const trackActivity = useTrackActivity();
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [inputValue, setInputValue] = useState("");
   const [showSidebar, setShowSidebar] = useState(true);
@@ -721,6 +724,7 @@ export default function AICoach() {
     if (!text || sendMessage.isPending || usage?.isLimited) return;
     setInputValue("");
     sendMessage.mutate(text);
+    trackActivity("coach_chat", "/coach");
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {

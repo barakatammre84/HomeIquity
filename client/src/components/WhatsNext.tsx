@@ -63,7 +63,7 @@ function getNextActions(props: WhatsNextProps): NextAction[] {
       iconColor: "text-purple-500",
       title: "Learn how mortgages work",
       description: "Browse guides and articles to prepare for your homebuying journey.",
-      href: "/learning-center",
+      href: "/learn",
       buttonLabel: "Explore",
       priority: 3,
     });
@@ -187,7 +187,7 @@ function getNextActions(props: WhatsNextProps): NextAction[] {
       iconColor: "text-purple-500",
       title: "Homebuying tips for you",
       description: "Browse expert guides about the mortgage process while you wait.",
-      href: "/learning-center",
+      href: "/learn",
       buttonLabel: "Read Guides",
       priority: 10,
     });

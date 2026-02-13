@@ -11,6 +11,8 @@ import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency } from "@/lib/authUtils";
+import { useAuth } from "@/hooks/useAuth";
+import { usePageView, useTrackActivity } from "@/hooks/useActivityTracker";
 import type { Property } from "@shared/schema";
 import {
   Search,
@@ -25,6 +27,8 @@ import {
   List,
   Home,
   Sparkles,
+  ArrowRight,
+  Shield,
 } from "lucide-react";
 import { SEOHead } from "@/components/SEOHead";
 import familyImage from "@assets/stock_images/happy_family_new_hom_d488bf67.jpg";
@@ -90,6 +94,9 @@ function useDebounce(value: string, delay: number) {
 }
 
 export default function Properties() {
+  const { isAuthenticated } = useAuth();
+  usePageView("/properties");
+  const trackActivity = useTrackActivity();
   const [searchQuery, setSearchQuery] = useState("");
   const [inputValue, setInputValue] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -160,7 +167,8 @@ export default function Properties() {
     setSelectedLocation(suggestion.id);
     setSelectedLocationLabel(suggestion.label);
     setShowSuggestions(false);
-  }, []);
+    trackActivity("property_search", "/properties", { location: suggestion.label, type: suggestion.type });
+  }, [trackActivity]);
 
   const handleInputChange = useCallback((value: string) => {
     setInputValue(value);
@@ -404,6 +412,28 @@ export default function Properties() {
             </Button>
           )}
         </div>
+
+        {!isAuthenticated && (
+          <Card className="mb-6 border-primary/20 bg-gradient-to-r from-primary/5 to-transparent" data-testid="card-engagement-cta">
+            <CardContent className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-3 flex-wrap">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                  <Shield className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <p className="font-medium" data-testid="text-cta-title">Know what you can afford before you shop</p>
+                  <p className="text-sm text-muted-foreground">Get pre-approved in as little as 3 minutes</p>
+                </div>
+              </div>
+              <Link href="/apply">
+                <Button className="gap-2" data-testid="button-cta-preapproval">
+                  Get Pre-Approved
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+        )}
 
         {currentLoading ? (
           <div className={`grid gap-6 ${viewMode === "grid" ? "md:grid-cols-2 lg:grid-cols-3" : ""}`}>

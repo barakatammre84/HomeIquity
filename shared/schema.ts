@@ -7797,3 +7797,23 @@ export const insertCoachMessageSchema = createInsertSchema(coachMessages).omit({
 });
 export type InsertCoachMessage = z.infer<typeof insertCoachMessageSchema>;
 export type CoachMessage = typeof coachMessages.$inferSelect;
+
+export const userActivities = pgTable("user_activities", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  sessionId: varchar("session_id", { length: 100 }),
+  activityType: varchar("activity_type", { length: 50 }).notNull(),
+  page: varchar("page", { length: 255 }),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_user_activities_user").on(table.userId),
+  index("idx_user_activities_type").on(table.activityType),
+]);
+
+export const insertUserActivitySchema = createInsertSchema(userActivities).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertUserActivity = z.infer<typeof insertUserActivitySchema>;
+export type UserActivity = typeof userActivities.$inferSelect;

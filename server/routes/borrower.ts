@@ -2974,4 +2974,70 @@ export function registerBorrowerRoutes(
       res.status(500).json({ error: "Failed to calculate scenario" });
     }
   });
+
+  app.post("/api/track", async (req, res) => {
+    try {
+      const { activityType, page, metadata, sessionId } = req.body;
+      if (!activityType) {
+        return res.status(400).json({ error: "activityType is required" });
+      }
+      const userId = req.user ? (req.user as User).id : null;
+      const { userActivities } = await import("@shared/schema");
+      const { db } = await import("../db");
+      await db.insert(userActivities).values({
+        userId,
+        sessionId: sessionId || null,
+        activityType,
+        page: page || null,
+        metadata: metadata || null,
+      });
+      res.json({ ok: true });
+    } catch (error) {
+      console.error("Activity tracking error:", error);
+      res.json({ ok: true });
+    }
+  });
+
+  app.get("/api/user-activity-summary", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as User).id;
+      const { userActivities } = await import("@shared/schema");
+      const { db } = await import("../db");
+      const { eq, sql, and, gte } = await import("drizzle-orm");
+
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+      const recentActivities = await db
+        .select({
+          activityType: userActivities.activityType,
+          count: sql<number>`count(*)::int`,
+          lastSeen: sql<string>`max(${userActivities.createdAt})`,
+        })
+        .from(userActivities)
+        .where(and(
+          eq(userActivities.userId, userId),
+          gte(userActivities.createdAt, sevenDaysAgo)
+        ))
+        .groupBy(userActivities.activityType);
+
+      const totalPageViews = recentActivities.find(a => a.activityType === "page_view")?.count || 0;
+      const propertySearches = recentActivities.find(a => a.activityType === "property_search")?.count || 0;
+      const calculatorUses = recentActivities.find(a => a.activityType === "calculator_use")?.count || 0;
+      const coachChats = recentActivities.find(a => a.activityType === "coach_chat")?.count || 0;
+      const propertyViews = recentActivities.find(a => a.activityType === "property_view")?.count || 0;
+
+      res.json({
+        totalPageViews,
+        propertySearches,
+        calculatorUses,
+        coachChats,
+        propertyViews,
+        activities: recentActivities,
+      });
+    } catch (error) {
+      console.error("Activity summary error:", error);
+      res.status(500).json({ error: "Failed to load activity summary" });
+    }
+  });
 }
