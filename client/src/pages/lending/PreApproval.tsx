@@ -995,7 +995,13 @@ export default function PreApproval() {
             {currentStep <= 3 ? "~2 min left" : currentStep <= 7 ? "~1 min left" : "Almost done"}
           </span>
         </div>
-        <div className="w-10" />
+        <div className="flex items-center gap-1 w-10 justify-end">
+          {currentStep > 0 && (
+            <span className="text-[10px] text-muted-foreground/50 flex items-center gap-1" data-testid="text-autosave-indicator">
+              <Check className="h-3 w-3" /> Saved
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Advisory Panel (Desktop only) */}

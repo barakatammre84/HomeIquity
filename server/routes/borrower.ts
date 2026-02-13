@@ -3008,7 +3008,7 @@ export function registerBorrowerRoutes(
 
   const emailCaptureSchema = z.object({
     email: z.string().email().max(255),
-    source: z.string().max(50).optional(),
+    source: z.string().max(100).optional(),
   });
 
   app.post("/api/email-capture", async (req, res) => {

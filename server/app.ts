@@ -64,12 +64,21 @@ const trackLimiter = rateLimit({
   message: { error: "Too many tracking requests" },
 });
 
+const emailCaptureLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many requests, please try again later" },
+});
+
 app.use("/api/login", authLimiter);
 app.use("/api/callback", authLimiter);
 app.use("/api/test-login", authLimiter);
 app.use("/api/uploads", uploadLimiter);
 app.use("/api/documents/upload", uploadLimiter);
 app.use("/api/track", trackLimiter);
+app.use("/api/email-capture", emailCaptureLimiter);
 app.use(generalLimiter);
 
 declare module 'http' {

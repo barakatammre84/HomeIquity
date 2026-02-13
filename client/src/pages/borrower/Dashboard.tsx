@@ -13,7 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { BorrowerRequests } from "@/components/BorrowerRequests";
 import { ApplicationSwitcher } from "@/components/ApplicationSwitcher";
 import { JourneyTracker } from "@/components/JourneyTracker";
-import { WhatsNext, FirstVisitWelcome } from "@/components/WhatsNext";
+import { WhatsNext, FirstVisitWelcome, getNextActions } from "@/components/WhatsNext";
 import { isStaffRole } from "@shared/schema";
 import type { LoanApplication, DealActivity } from "@shared/schema";
 import {
@@ -108,7 +108,7 @@ interface NudgeItem {
   priority: number;
 }
 
-function PersonalizedNudges({ application, expirationInfo }: { application: LoanApplication | null; expirationInfo: { label: string; daysLeft: number; urgency: "expired" | "urgent" | "normal" } | null }) {
+function PersonalizedNudges({ application, expirationInfo, whatsNextHrefs = [] }: { application: LoanApplication | null; expirationInfo: { label: string; daysLeft: number; urgency: "expired" | "urgent" | "normal" } | null; whatsNextHrefs?: string[] }) {
   const { data: activitySummary } = useQuery<{
     totalPageViews: number;
     propertySearches: number;
@@ -304,7 +304,8 @@ function PersonalizedNudges({ application, expirationInfo }: { application: Loan
     });
   }
 
-  const sorted = nudges.sort((a, b) => a.priority - b.priority).slice(0, 3);
+  const deduped = nudges.filter(n => !whatsNextHrefs.some(wh => n.href === wh || n.href.startsWith(wh)));
+  const sorted = deduped.sort((a, b) => a.priority - b.priority).slice(0, 3);
   if (sorted.length === 0) return null;
 
   return (
@@ -511,7 +512,16 @@ export default function Dashboard() {
           unreadMessages={unreadMessages}
         />
 
-        <PersonalizedNudges application={activeApplication || null} expirationInfo={expirationInfo} />
+        <PersonalizedNudges
+          application={activeApplication || null}
+          expirationInfo={expirationInfo}
+          whatsNextHrefs={getNextActions({
+            application: activeApplication || null,
+            pendingTasks: pendingTaskCount,
+            pendingDocuments: data?.stats?.pendingDocuments || 0,
+            unreadMessages,
+          }).map(a => a.href)}
+        />
 
         {activeApplication && (
           <Card className="shadow-md" data-testid="card-loan-snapshot">

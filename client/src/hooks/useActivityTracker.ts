@@ -42,3 +42,17 @@ export function usePageView(pageName?: string) {
     }
   }, [track, pageName]);
 }
+
+export function useTrackFormStep() {
+  const track = useTrackActivity();
+  return useCallback((formName: string, stepId: string, stepNumber: number, totalSteps: number) => {
+    track("form_step_complete", undefined, { form: formName, step_id: stepId, step: stepNumber, total: totalSteps });
+  }, [track]);
+}
+
+export function useTrackCta() {
+  const track = useTrackActivity();
+  return useCallback((ctaName: string, sourcePage?: string, metadata?: Record<string, any>) => {
+    track("cta_click", sourcePage, { cta: ctaName, ...metadata });
+  }, [track]);
+}

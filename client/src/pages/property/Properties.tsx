@@ -541,6 +541,28 @@ export default function Properties() {
         )}
       </div>
 
+      {!isAuthenticated && (selectedLocation || filteredProperties.length > 0) && (
+        <>
+        <div className="h-16" />
+        <div className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background/95 backdrop-blur-sm p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-lg" data-testid="banner-sticky-preapproval">
+          <div className="mx-auto max-w-7xl flex items-center justify-between gap-3 px-4">
+            <p className="text-sm font-medium hidden sm:block">
+              Get pre-approved to make stronger offers on these homes
+            </p>
+            <p className="text-sm font-medium sm:hidden">
+              Get pre-approved in 3 min
+            </p>
+            <Link href="/apply">
+              <Button size="sm" className="gap-1.5 shrink-0" data-testid="button-sticky-preapproval">
+                <Sparkles className="h-3.5 w-3.5" />
+                Get Pre-Approved
+              </Button>
+            </Link>
+          </div>
+        </div>
+        </>
+      )}
+
       <Footer />
     </div>
   );

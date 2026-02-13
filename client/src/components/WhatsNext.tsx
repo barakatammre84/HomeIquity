@@ -35,7 +35,7 @@ interface NextAction {
   priority: number;
 }
 
-function getNextActions(props: WhatsNextProps): NextAction[] {
+export function getNextActions(props: WhatsNextProps): NextAction[] {
   const { application, pendingTasks, pendingDocuments, unreadMessages } = props;
   const actions: NextAction[] = [];
 
