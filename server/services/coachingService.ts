@@ -105,6 +105,13 @@ export interface VerifiedUserContext {
   uploadedDocuments?: Array<{
     documentType: string;
     status: string;
+    uploadDate?: string | null;
+    documentDate?: string | null;
+    fileName?: string | null;
+    extractedName?: string | null;
+    extractedEmployer?: string | null;
+    extractionConfidence?: "high" | "medium" | "low" | null;
+    extractionIssues?: string[] | null;
   }>;
   documentExtractedData?: DocumentExtractedData[];
   userName?: string;
@@ -385,11 +392,70 @@ function buildVerifiedContextPrompt(ctx: VerifiedUserContext): string {
   }
 
   if (ctx.uploadedDocuments && ctx.uploadedDocuments.length > 0) {
-    lines.push("\nDocuments Already Uploaded:");
+    lines.push("\nDocuments Already Uploaded (with review signals):");
+    const today = new Date();
     for (const doc of ctx.uploadedDocuments) {
-      lines.push(`  - ${doc.documentType}: ${doc.status}`);
+      const parts = [`${doc.documentType}: ${doc.status}`];
+
+      if (doc.uploadDate) {
+        const uploadDate = new Date(doc.uploadDate);
+        const daysSinceUpload = Math.floor((today.getTime() - uploadDate.getTime()) / (1000 * 60 * 60 * 24));
+        parts.push(`uploaded ${daysSinceUpload} days ago (${doc.uploadDate})`);
+      }
+
+      const typeNorm = doc.documentType.toLowerCase().replace(/s$/, "").replace(/-/g, "_");
+      const recencyThresholds: Record<string, number> = {
+        pay_stub: 30, bank_statement: 60, profit_loss: 90,
+      };
+      const threshold = recencyThresholds[typeNorm];
+
+      if (threshold) {
+        if (doc.documentDate) {
+          const docDate = new Date(doc.documentDate);
+          const daysSinceDocDate = Math.floor((today.getTime() - docDate.getTime()) / (1000 * 60 * 60 * 24));
+          parts.push(`document date: ${doc.documentDate} (${daysSinceDocDate} days ago)`);
+          if (daysSinceDocDate > threshold) {
+            parts.push(`⚠ RECENCY: document is ${daysSinceDocDate} days old, exceeds ${threshold}-day requirement`);
+          }
+        } else {
+          parts.push(`⚠ RECENCY: unable to determine document date — ask user to confirm the document period or upload a version with a visible date`);
+        }
+      }
+
+      if (doc.extractionConfidence) {
+        parts.push(`extraction: ${doc.extractionConfidence}`);
+        if (doc.extractionConfidence === "low") {
+          parts.push("⚠ LEGIBILITY: low extraction confidence — may be blurry, cropped, or damaged");
+        }
+      }
+
+      if (doc.extractedName && ctx.userName) {
+        const extractedNorm = doc.extractedName.toLowerCase().trim();
+        const declaredNorm = ctx.userName.toLowerCase().trim();
+        if (extractedNorm !== declaredNorm) {
+          parts.push(`⚠ CONSISTENCY: name on document "${doc.extractedName}" does not match application name "${ctx.userName}"`);
+        }
+      }
+
+      if (doc.extractedEmployer && ctx.employerName) {
+        const extractedEmpNorm = doc.extractedEmployer.toLowerCase().trim();
+        const declaredEmpNorm = ctx.employerName.toLowerCase().trim();
+        if (extractedEmpNorm !== declaredEmpNorm) {
+          parts.push(`⚠ CONSISTENCY: employer on document "${doc.extractedEmployer}" does not match application employer "${ctx.employerName}"`);
+        }
+      }
+
+      if (doc.extractionIssues && doc.extractionIssues.length > 0) {
+        parts.push(`⚠ ISSUES: ${doc.extractionIssues.join("; ")}`);
+      }
+
+      if (doc.fileName) {
+        parts.push(`file: ${doc.fileName}`);
+      }
+
+      lines.push(`  - ${parts.join(" | ")}`);
     }
-    lines.push("\nWhen recommending documents, acknowledge which ones the user has already provided and focus on what's still missing.");
+    lines.push("\nWhen reviewing documents, check every uploaded document against the 4 review dimensions: recency, completeness, legibility, and consistency with declared information. Flag any ⚠ signals found above.");
   }
 
   lines.push("\n\n=== TIER 3: CHAT INPUT (LOWEST TRUST — TREAT WITH CAUTION) ===");
@@ -561,6 +627,42 @@ When requesting or reviewing a document, ALWAYS explain using this 4-part struct
 4. **Common issues that cause rejection** — Specific mistakes that make the document unusable and how to avoid them.
 
 Use plain language. Avoid industry jargon. If you must use a term like "AGI" or "DTI," explain it immediately in parentheses.
+
+DOCUMENT REVIEW FRAMEWORK:
+When a user has uploaded documents, you MUST review each one against these 4 dimensions. If the context data includes ⚠ flags, you MUST address them.
+
+1. **Recency** — Is the document within the required time window?
+   - Pay stubs: must be within 30 days of today's date.
+   - Bank statements: must be within 60 days.
+   - Profit & loss statements: must cover the current year-to-date period.
+   - W-2s and tax returns: must cover the most recent 2 filing years.
+   - Government ID: must not be expired.
+   - If a document is outside its required window, tell the user exactly how old it is, what the window is, and ask them to upload a current version.
+
+2. **Completeness** — Does the document include all required pages and fields?
+   - Bank statements: all pages (even blank ones). If the file name or metadata suggests "page 1 of 3" but only 1 file was uploaded, flag it.
+   - Tax returns: all pages and all schedules (Schedule C for self-employed, K-1s if applicable). A partial return is unusable.
+   - Pay stubs: must show year-to-date totals, not just the current pay period.
+   - If required fields are missing from extracted data, explain which fields are needed and why.
+
+3. **Legibility** — Can the document be read and processed?
+   - If extraction confidence is "low," the document may be blurry, cropped, photographed at an angle, or damaged.
+   - Ask the user to re-upload a clearer version: flat scan or well-lit photo, all edges visible, no glare or shadows.
+   - If extraction confidence is "medium," note it as acceptable but suggest a clearer version if possible.
+
+4. **Consistency with declared information** — Does the document match what the user told us?
+   - Name on document must match the name on the application. If different, ask the user to explain (maiden name, legal name change, nickname).
+   - Employer name on pay stubs/W-2s must match the employer stated in the application. If different, ask if they changed jobs or if the employer has a legal vs. trade name.
+   - Income figures extracted from documents should be cross-referenced with self-reported income. If document-verified income differs significantly from what the user declared, note the discrepancy factually. Do NOT speculate on reasons — ask the user to clarify.
+   - Do NOT treat discrepancies as negative. Frame them as "underwriting systems require consistent information across all sources, so let's make sure everything lines up."
+
+COMPLIANCE BOUNDARY FOR DOCUMENT REVIEW:
+- You may describe factual document quality issues (expired, incomplete, illegible, inconsistent names/amounts).
+- You may explain what underwriting systems require and why.
+- You may recommend corrective actions (re-upload, obtain current version, provide explanation letter).
+- You MUST NOT assess whether a document issue affects loan eligibility, approval odds, or program qualification.
+- You MUST NOT say a document issue means the user "won't qualify" or "will be denied."
+- Frame all findings as: "Underwriting systems require [X]. Your document shows [Y]. Here's how to resolve this."
 
 If issues are found with an uploaded document: describe the specific issue, explain the underwriting requirement it fails, and provide a clear corrective action using the same 4-part structure.
 

@@ -49,10 +49,41 @@ async function buildVerifiedContext(userId: string, user: User, propertyContext?
     let documentExtractedData: DocumentExtractedData[] = [];
     try {
       const docs = await storage.getDocumentsByApplication(activeApp.id);
-      uploadedDocuments = docs.map(d => ({
-        documentType: d.documentType,
-        status: d.status || "uploaded",
-      }));
+      uploadedDocuments = docs.map(d => {
+        let extractedName: string | null = null;
+        let extractedEmployer: string | null = null;
+        let extractionConfidence: "high" | "medium" | "low" | null = null;
+        let extractionIssues: string[] | null = null;
+        let documentDate: string | null = null;
+
+        if (d.notes) {
+          try {
+            const parsed = JSON.parse(d.notes as string);
+            if (parsed.employeeName) extractedName = parsed.employeeName;
+            if (parsed.employerName) extractedEmployer = parsed.employerName;
+            if (parsed.confidence) extractionConfidence = parsed.confidence;
+            if (parsed.issues && Array.isArray(parsed.issues)) extractionIssues = parsed.issues;
+            if (parsed.payPeriodEnd) documentDate = parsed.payPeriodEnd;
+            else if (parsed.statementEndDate) documentDate = parsed.statementEndDate;
+            else if (parsed.statementDate) documentDate = parsed.statementDate;
+            else if (parsed.documentYear) documentDate = `${parsed.documentYear}-12-31`;
+          } catch {
+            // notes is not valid JSON, skip
+          }
+        }
+
+        return {
+          documentType: d.documentType,
+          status: d.status || "uploaded",
+          uploadDate: d.createdAt ? new Date(d.createdAt).toISOString().split("T")[0] : null,
+          documentDate,
+          fileName: d.fileName || null,
+          extractedName,
+          extractedEmployer,
+          extractionConfidence,
+          extractionIssues,
+        };
+      });
 
       for (const doc of docs) {
         if (!doc.notes) continue;
