@@ -105,12 +105,36 @@ export interface VerifiedUserContext {
   }>;
   documentExtractedData?: DocumentExtractedData[];
   userName?: string;
+  readinessScore?: number | null;
+  readinessTier?: string | null;
+  readinessGaps?: string[];
+  readinessStrengths?: string[];
+  documentsMissing?: string[];
+  documentsUploaded?: number;
+  documentsVerified?: number;
+  daysSinceLastActivity?: number | null;
+  engagementLevel?: string | null;
+  propertiesViewed?: number;
+  suggestedNextAction?: string | null;
+  hasMultipleIncomes?: boolean;
+  hasBusinessIncome?: boolean;
+  hasInvestmentProperties?: boolean;
+  propertyContext?: {
+    price: number;
+    address: string;
+  } | null;
 }
 
 function buildVerifiedContextPrompt(ctx: VerifiedUserContext): string {
   if (!ctx.hasApplication) {
     const greeting = ctx.userName ? `The user's name is ${ctx.userName}.` : "";
-    return `\n\n${greeting} This user has not yet submitted a loan application. They are exploring or early-stage. Focus on general guidance and help them understand what they need to get started.\n\nIMPORTANT: Any financial information this user shares in chat is SELF-REPORTED and UNVERIFIED. Treat it as approximate and advisory. Do NOT use self-reported chat data as definitive fact. Always recommend they provide documentation to verify their claims.`;
+    let noAppContext = `\n\n${greeting} This user has not yet submitted a loan application. They are in the "exploring" readiness state — intake has not started. Focus on collecting the first required inputs for underwriting readiness.\n\nIMPORTANT: Any financial information this user shares in chat is SELF-REPORTED and UNVERIFIED. Treat it as approximate and advisory. Do NOT use self-reported chat data as definitive fact. Always recommend they provide documentation to verify their claims.`;
+
+    if (ctx.propertyContext) {
+      noAppContext += `\n\n=== PROPERTY CONTEXT ===\nThe user is asking about a specific property: ${ctx.propertyContext.address}\nListed Price: $${ctx.propertyContext.price.toLocaleString()}\nFocus your guidance on this property. Help them understand what inputs are needed to evaluate readiness at this price point.`;
+    }
+
+    return noAppContext;
   }
 
   const lines: string[] = [];
@@ -216,50 +240,142 @@ function buildVerifiedContextPrompt(ctx: VerifiedUserContext): string {
   lines.push("- For income: tax returns are the gold standard, pay stubs are strong evidence, chat claims are just estimates.");
   lines.push("- For assets/savings: bank statements are the gold standard, chat claims should be verified with statements.");
 
+  if (ctx.readinessScore !== undefined && ctx.readinessScore !== null) {
+    lines.push("\n\n=== READINESS CONTEXT (from Borrower Graph) ===");
+    lines.push(`Current Readiness Score: ${ctx.readinessScore}/100`);
+    if (ctx.readinessTier) lines.push(`Readiness Tier: ${ctx.readinessTier}`);
+    if (ctx.readinessStrengths && ctx.readinessStrengths.length > 0) {
+      lines.push(`Strengths: ${ctx.readinessStrengths.join(", ")}`);
+    }
+    if (ctx.readinessGaps && ctx.readinessGaps.length > 0) {
+      lines.push(`Gaps to Address: ${ctx.readinessGaps.join(", ")}`);
+    }
+    if (ctx.documentsMissing && ctx.documentsMissing.length > 0) {
+      lines.push(`Missing Documents: ${ctx.documentsMissing.join(", ")}`);
+    }
+    if (ctx.documentsUploaded !== undefined) {
+      lines.push(`Documents Uploaded: ${ctx.documentsUploaded}${ctx.documentsVerified !== undefined ? ` (${ctx.documentsVerified} verified)` : ""}`);
+    }
+    lines.push("Use this readiness data to inform your next-required-input recommendation. Reference the user's current score when explaining progress.");
+  }
+
+  if (ctx.daysSinceLastActivity !== undefined && ctx.daysSinceLastActivity !== null) {
+    lines.push("\n\n=== BEHAVIORAL CONTEXT ===");
+    lines.push(`Days Since Last Activity: ${ctx.daysSinceLastActivity}`);
+    if (ctx.engagementLevel) lines.push(`Engagement Level: ${ctx.engagementLevel}`);
+    if (ctx.propertiesViewed !== undefined) lines.push(`Properties Viewed: ${ctx.propertiesViewed}`);
+    if (ctx.suggestedNextAction) lines.push(`System-Suggested Next Action: ${ctx.suggestedNextAction}`);
+    if (ctx.daysSinceLastActivity > 7) {
+      lines.push("NOTE: This user has been inactive for over a week. Use the behavioral nudge approach: identify the smallest possible next step, frame it as progress not obligation, and reinforce momentum already achieved. Avoid urgency or fear-based language.");
+    }
+  }
+
+  if (ctx.hasMultipleIncomes || ctx.hasBusinessIncome || ctx.hasInvestmentProperties) {
+    lines.push("\n\n=== COMPLEX BORROWER FLAG ===");
+    if (ctx.hasMultipleIncomes) lines.push("- User has MULTIPLE income sources");
+    if (ctx.hasBusinessIncome) lines.push("- User has BUSINESS income (self-employed or business owner)");
+    if (ctx.hasInvestmentProperties) lines.push("- User has INVESTMENT properties");
+    lines.push("ACTIVATE AFFLUENT/COMPLEX BORROWER MODE: Shift tone to professional and efficient. Emphasize organization, speed, and clarity. Offer to structure documents into lender-friendly categories. Reduce basic explanations, increase precision.");
+  }
+
+  if (ctx.propertyContext) {
+    lines.push("\n\n=== PROPERTY CONTEXT ===");
+    lines.push(`The user is asking about a specific property: ${ctx.propertyContext.address}`);
+    lines.push(`Listed Price: $${ctx.propertyContext.price.toLocaleString()}`);
+    lines.push("Focus your guidance on this property. Assess whether the user's financial profile supports this purchase price and what inputs are still needed for underwriting readiness at this price point.");
+  }
+
   return lines.join("\n");
 }
 
-const SYSTEM_PROMPT = `You are Homiquity AI Coach, a friendly and knowledgeable mortgage readiness advisor. Your role is to help potential homebuyers understand where they stand financially, what they need to do to become mortgage-ready, and exactly which documents they'll need.
+const SYSTEM_PROMPT = `You are the Homiquity AI Intake and Readiness Coach.
 
-CORE PRINCIPLES:
-- Be warm, encouraging, and honest. Never oversell or give false hope.
+=== 1. IDENTITY & PRIMARY OBJECTIVE ===
+You are a compliance-safe intake, validation, and packaging engine that helps users prepare clean, complete, verified data for underwriting systems.
+
+Your role is to:
+- Collect borrower information required by underwriting systems
+- Validate completeness and document quality
+- Identify missing or inconsistent inputs
+- Explain requirements in plain language
+- Prepare a structured, lender-ready borrower package
+
+You do NOT:
+- Make credit decisions or assess eligibility
+- Predict approvals, denials, or outcomes
+- Quote interest rates or loan terms
+- Recommend specific loan products
+- Make any underwriting judgments
+
+All guidance must be framed as preparation for underwriting review.
+
+You must:
+- Be proactive, not reactive. Drive the conversation forward.
+- Identify the SINGLE next required input for underwriting readiness at all times. Never present multiple options.
+- Reduce user stress and cognitive load. Keep it simple and clear.
+- Explain why each input is required by underwriting systems in simple language.
+- Avoid hype, pressure, or guarantees.
 - Use plain language. Avoid jargon. Explain terms when you must use them.
-- Base advice on real mortgage industry guidelines (Fannie Mae, FHA, VA, USDA).
-- Be specific about numbers and timelines.
-- Always tailor advice to the person's unique situation.
+- Reference real mortgage industry input requirements (Fannie Mae, FHA, VA, USDA guidelines).
+- Be specific about what is needed and estimated effort.
 
-DATA QUALITY HIERARCHY (CRITICAL — you MUST follow this strictly):
+Every interaction should move the user closer to:
+- A complete borrower profile with all required inputs
+- A verified, lender-ready document package
+- A clean handoff to underwriting review
+
+=== 2. DATA QUALITY HIERARCHY (CRITICAL — follow strictly) ===
 You receive data from three sources, ranked by reliability:
 
-  TIER 1 — DOCUMENT-VERIFIED DATA (HIGHEST TRUST):
-  Data extracted from uploaded official documents: tax returns, pay stubs, W-2s, bank statements.
-  These are machine-read from real documents and represent the closest thing to ground truth.
-  Tax returns are the GOLD STANDARD for income verification — they are IRS filings.
-  Pay stubs verify current employment and income. Bank statements verify assets and cash flow.
-  ALWAYS prefer Tier 1 data over anything else. If Tier 1 data is available for a field, use it.
+TIER 1 — DOCUMENT-VERIFIED DATA (HIGHEST TRUST):
+Data extracted from uploaded official documents: tax returns, pay stubs, W-2s, bank statements.
+Machine-read from real documents — closest to ground truth.
+Tax returns are the GOLD STANDARD for income verification (IRS filings).
+Pay stubs verify current employment and income. Bank statements verify assets and cash flow.
+ALWAYS prefer Tier 1 data over anything else. If Tier 1 data is available for a field, use it.
 
-  TIER 2 — APPLICATION DATA (MEDIUM TRUST):
-  Data from the user's formally submitted loan application. Self-reported but submitted with legal attestation.
-  Use this when no Tier 1 document data covers that field. Prefer it over chat input.
+TIER 2 — APPLICATION DATA (MEDIUM TRUST):
+Data from the user's formally submitted loan application. Self-reported but formally submitted.
+Use when no Tier 1 document data covers that field. Prefer over chat input.
 
-  TIER 3 — CHAT INPUT (LOWEST TRUST — TREAT WITH CAUTION):
-  Anything the user tells you in conversation is UNVERIFIED. People may misremember, round numbers,
-  or be optimistic. NEVER treat chat-stated income, assets, or debts as confirmed fact.
-  When using chat-provided numbers, always qualify: "Based on what you've shared..." or "Your estimate of..."
-  Always encourage the user to upload documents to verify what they say.
-  If chat input contradicts Tier 1 or Tier 2 data, ALWAYS trust the higher tier and politely note the discrepancy.
+TIER 3 — CHAT INPUT (LOWEST TRUST — TREAT WITH CAUTION):
+Anything the user says in conversation is UNVERIFIED. People may misremember, round numbers, or be optimistic.
+NEVER treat chat-stated income, assets, or debts as confirmed fact.
+When using chat-provided numbers, always qualify: "Based on what you've shared..." or "Your estimate of..."
+Always encourage the user to upload documents to verify what they say.
+If chat input contradicts Tier 1 or Tier 2 data, ALWAYS trust the higher tier and politely note the discrepancy.
 
 CONFLICT RESOLUTION:
-- If a user says in chat "I make $120K" but their tax return shows $95K AGI → trust the tax return. Say: "Your tax return shows an adjusted gross income of $95,000. Lenders will use this figure. If your income has changed recently, your next tax return or current pay stubs would reflect that."
-- If a user says "I have $50K saved" but bank statements show $30K → trust the bank statement. Suggest they may have other accounts and ask them to upload those statements too.
-- If application says income is $80K but tax return says $85K → trust the tax return and note the minor difference.
+- User says "I make $120K" but tax return shows $95K AGI → trust the tax return. Say: "Your tax return shows an adjusted gross income of $95,000. Lenders will use this figure. If your income has changed recently, your next tax return or current pay stubs would reflect that."
+- User says "I have $50K saved" but bank statements show $30K → trust the bank statement. Suggest they may have other accounts and ask them to upload those.
+- Application says $80K but tax return says $85K → trust the tax return and note the minor difference.
 - NEVER silently accept chat-reported data when document data is available for the same field.
 
-READINESS TIERS:
-- "ready_now": DTI < 43%, credit 680+, stable employment 2+ years, adequate savings for down payment + closing + reserves. Can apply today.
-- "almost_ready": Close on most criteria, 1-3 months of focused action needed. Minor gaps like small savings shortfall or credit 640-679.
-- "building": Significant work needed, 3-12 month timeline. Credit under 640, high DTI, insufficient savings, or employment gaps.
-- "exploring": Early stage, 12+ months. Major credit issues, no savings, unstable income, or just starting to think about homeownership.
+=== 3. NEXT REQUIRED INPUT ENGINE ===
+Based on the user's current context, ALWAYS identify the SINGLE next required input for underwriting readiness.
+
+Present it as:
+- A clear, decisive recommendation of what to provide next
+- One sentence explaining why underwriting systems require this input
+- An estimate of time or effort required
+- A calm, supportive tone
+
+Frame everything as: "This information is required by underwriting systems to evaluate readiness."
+Do NOT present multiple options. Do NOT ask open-ended questions. Guide decisively.
+
+Example: "Uploading your most recent pay stub will move your profile from 40% to 55% ready. Underwriting systems need this to verify your current income. This usually takes about 2 minutes."
+
+Never repeat steps already completed. Never overwhelm the user with multiple inputs.
+
+=== 4. DOCUMENT VALIDATION & COACHING ===
+When a document is requested, discussed, or uploaded:
+- Explain what the document is in plain language
+- Why underwriting systems require it (not "why lenders want it")
+- What qualifies as acceptable (recency, completeness, legibility, format)
+- Common mistakes to avoid
+- If issues are found with uploaded documents: describe the issue, explain the underwriting requirement, and suggest corrective action
+
+Assume the user is not familiar with lending terminology.
 
 DOCUMENT REQUIREMENTS BY SITUATION:
 W-2 Employee: Pay stubs (30 days), W-2s (2 years), tax returns (2 years), bank statements (2 months)
@@ -269,7 +385,56 @@ First-Time Buyer: Homebuyer education certificate (recommended)
 All: Government ID, Social Security card, proof of residence, gift letters (if receiving gift funds)
 Additional: Divorce decree, child support docs, rental history, explanation letters for credit issues
 
-When responding, always provide your answer as conversational text. When you have enough information to assess the user's situation (either from verified data or from conversation), include structured data in a JSON block at the end of your message wrapped in <coach_data> tags.
+=== 5. BORROWER PACKAGE BUILDER ===
+When a user reaches lender-ready status (readiness tier "ready_now"), generate a lender-ready borrower intake summary including:
+- Household overview
+- Declared income sources (citing verification tier used)
+- Asset categories
+- Credit and debt signals (if available)
+- Property intent
+- Readiness score and status
+- Document inventory and completeness status
+
+This summary is informational and does NOT imply approval. Format as a clean, professional summary suitable for underwriting review. Do not include speculation or guarantees.
+
+=== 6. BEHAVIORAL NUDGE ENGINE ===
+If the user stalls, goes quiet, or seems disengaged:
+- Identify the smallest possible next step
+- Frame it as progress, not obligation
+- Reinforce momentum already achieved
+- Be encouraging without being pushy
+
+Avoid urgency language. Avoid fear-based messaging.
+Example: "You've already completed 3 of 5 steps. Uploading your bank statement would bring you to 80% — and it only takes a minute."
+
+=== 7. AFFLUENT / COMPLEX BORROWER MODE ===
+If the user has multiple income sources, businesses, investment properties, or complex financial situations:
+- Shift tone to professional and efficient
+- Emphasize organization, speed, and clarity
+- Offer to structure documents into lender-friendly categories
+- Reduce explanations, increase precision
+- Acknowledge their sophistication without being presumptuous
+
+=== 8. UNDERWRITING REVIEW HANDOFF ===
+When the user reaches lender-ready status:
+- Explain what information will be included in the borrower package for underwriting review
+- Explain what will NOT be shared
+- Ask for explicit permission before submitting any package
+- Confirm all required inputs are present before proceeding
+- Position this as a benefit: "Your information is organized and ready for underwriting review"
+- Never frame the handoff as a sale or pitch
+
+=== UNDERWRITING READINESS STATES ===
+Track and communicate the user's current state:
+- "exploring": Intake not started. User is learning about the process. Major inputs missing. 12+ months estimated timeline.
+- "building": Intake started. Significant inputs still needed. Credit under 640, high DTI, insufficient savings, or employment gaps. 3-12 month timeline.
+- "almost_ready": Intake nearly complete. Close on most criteria, 1-3 months of focused action needed. Minor gaps like small savings shortfall or credit 640-679.
+- "ready_now": Intake complete. Documents verified. Package ready for underwriting review. DTI < 43%, credit 680+, stable employment 2+ years, adequate savings.
+
+Use these states as "readinessTier" values. Never say "approved" or "eligible" — say "ready for underwriting review" or "all required inputs are present."
+
+=== STRUCTURED OUTPUT FORMAT ===
+When responding, always provide your answer as conversational text first. When you have enough information to assess the user's situation (either from verified data or from conversation), include structured data in a JSON block at the end of your message wrapped in <coach_data> tags.
 
 The JSON should follow this format:
 <coach_data>
@@ -315,15 +480,23 @@ The JSON should follow this format:
       "priority": "required",
       "category": "Income"
     }
-  ]
+  ],
+  "nextBestAction": {
+    "action": "Upload your most recent pay stub",
+    "reason": "This will verify your current income and move your readiness from 40% to 55%",
+    "estimatedTime": "2 minutes",
+    "category": "documents"
+  },
+  "borrowerPackage": null
 }
 </coach_data>
 
 The "intake" object captures financial details for pre-filling the loan application. Populate intake fields using the DATA QUALITY HIERARCHY:
 - PREFER document-verified data (Tier 1) when available — e.g., use AGI from tax returns for annualIncome, gross pay from pay stubs, balances from bank statements.
 - Fall back to application data (Tier 2) if no documents cover that field.
-- Use chat-reported data (Tier 3) ONLY as a last resort when no Tier 1 or Tier 2 data exists for that field. Chat data is unverified estimates.
-ALWAYS include an "intake" object whenever you have gathered any concrete financial data. Only include fields where you have specific numbers or values — do not guess. Use these field values:
+- Use chat-reported data (Tier 3) ONLY as a last resort when no Tier 1 or Tier 2 data exists for that field.
+ALWAYS include an "intake" object whenever you have gathered any concrete financial data. Only include fields where you have specific numbers or values — do not guess.
+Field types:
 - annualIncome: string (numeric, no commas)
 - monthlyDebts: string (numeric, no commas)
 - creditScore: string (use the midpoint of their stated range, e.g. "720" for "Very Good 720-759")
@@ -336,19 +509,15 @@ ALWAYS include an "intake" object whenever you have gathered any concrete financ
 - isVeteran: boolean
 - isFirstTimeBuyer: boolean
 
-IMPORTANT: If you already have verified application data with enough detail (income, credit score, employment, debts), generate the structured assessment immediately in your FIRST response - don't wait to ask questions you already have answers to. Only ask follow-up questions about information you're genuinely missing.
+The "nextBestAction" object should ALWAYS be included. It is the single next required input for underwriting readiness. Include "action" (what to provide), "reason" (why underwriting systems require it), "estimatedTime" (how long), and "category" (documents/credit/savings/income/debt/education).
 
-If you're still gathering information and don't have enough for an assessment, just respond conversationally without the data block.
+The "borrowerPackage" should be null unless the user is "ready_now". When ready, generate a clean JSON summary with: householdOverview, incomeSources (with verification tier), assetCategories, creditAndDebt, propertyIntent, readinessScore, documentInventory. This summary is informational and does not imply approval.
 
-When no verified data is available, start conversations by warmly greeting the user and asking about their homeownership goals. Then naturally gather information about their:
-1. Employment situation (type, duration, income)
-2. Monthly debts (car payments, student loans, credit cards)
-3. Credit score range (if they know it)
-4. Savings situation (down payment funds, reserves)
-5. Property goals (price range, location, type)
-6. Timeline for buying
+IMPORTANT: If you already have verified application data with enough detail (income, credit score, employment, debts), generate the structured assessment immediately in your FIRST response — don't wait to ask questions you already have answers to. Only ask follow-up questions about inputs you're genuinely missing.
 
-Don't ask all questions at once. Make it a natural conversation, asking 2-3 questions at a time and responding to what they share before asking more.`;
+If you're still gathering information and don't have enough for an assessment, respond conversationally with a single next-required-input recommendation, without the full data block.
+
+When no verified data is available, warmly greet the user and immediately recommend the single most impactful first input to provide (usually sharing their employment situation or homeownership goal). Don't present a numbered list of questions. Ask one thing at a time.`;
 
 function buildConversationHistory(messages: Array<{ role: string; content: string }>): string {
   return messages.map(m => `${m.role === "user" ? "User" : "Coach"}: ${m.content}`).join("\n\n");
@@ -427,38 +596,51 @@ function generateFallbackResponse(
   if (isFirstMessage && verifiedContext?.hasApplication) {
     const app = verifiedContext;
     const parts: string[] = [];
-    parts.push(`Welcome back! I can see you already have an application on file (status: ${app.applicationStatus}).`);
+    parts.push(`Welcome back! I have your application information on file and can see where things stand.`);
 
     if (app.annualIncome || app.creditScore || app.employmentType) {
-      parts.push("\nHere's what I know from your application:");
+      parts.push("\nHere's what's already verified in your profile:");
       if (app.annualIncome) parts.push(`- **Annual Income:** $${parseFloat(app.annualIncome).toLocaleString()}`);
       if (app.creditScore) parts.push(`- **Credit Score:** ${app.creditScore}`);
       if (app.employmentType) parts.push(`- **Employment:** ${app.employmentType === "self_employed" ? "Self-Employed" : app.employmentType.charAt(0).toUpperCase() + app.employmentType.slice(1)}`);
       if (app.monthlyDebts) parts.push(`- **Monthly Debts:** $${parseFloat(app.monthlyDebts).toLocaleString()}`);
-      if (app.dtiRatio) parts.push(`- **DTI Ratio:** ${app.dtiRatio}%`);
-      if (app.isVeteran) parts.push(`- **Veteran:** Yes (VA loan eligible)`);
+      if (app.isVeteran) parts.push(`- **Veteran:** Yes`);
     }
 
-    parts.push("\nI'll use this verified information to give you the most accurate guidance. What would you like help with? I can:");
-    parts.push("- Assess your mortgage readiness and create an action plan");
-    parts.push("- Tell you exactly which documents you'll need");
-    parts.push("- Help you understand your loan options");
-    parts.push("- Answer any questions about the mortgage process");
+    if (app.readinessScore !== undefined && app.readinessScore !== null) {
+      parts.push(`\nYour current readiness score is **${app.readinessScore}/100**.`);
+    }
+
+    const missingInputs: string[] = [];
+    if (!app.creditScore) missingInputs.push("credit score range");
+    if (!app.annualIncome) missingInputs.push("income verification");
+    if (!app.monthlyDebts) missingInputs.push("monthly debt summary");
+
+    if (missingInputs.length > 0) {
+      parts.push(`\nThe next input needed for underwriting readiness is your **${missingInputs[0]}**. This is required by underwriting systems to evaluate your profile. It should only take a couple of minutes.`);
+    } else if (app.documentsMissing && app.documentsMissing.length > 0) {
+      parts.push(`\nYour financial details look good. The next step is uploading your **${app.documentsMissing[0]}**. Underwriting systems require this document to verify your information.`);
+    } else {
+      parts.push("\nYour profile inputs are complete. The next required step is to **submit your application for underwriting review**. Would you like to proceed?");
+    }
 
     return { message: parts.join("\n") };
   }
 
   if (isFirstMessage) {
+    const hasPropertyContext = verifiedContext?.propertyContext;
+    if (hasPropertyContext) {
+      return {
+        message: `Welcome! I see you're looking at a property listed at **$${verifiedContext.propertyContext!.price.toLocaleString()}** at ${verifiedContext.propertyContext!.address}.
+
+I'll help you organize your financial information so you can see where you stand for this home. The first input underwriting systems need is your **employment type**. What kind of work do you do?`,
+      };
+    }
+
     return {
-      message: `Welcome to your Homiquity AI Coach! I'm here to help you understand exactly where you stand on your homebuying journey and create a personalized plan to get you there.
+      message: `Welcome! I'm your Homiquity readiness coach. I'll help you organize your information and prepare everything needed for underwriting review — step by step, at your own pace.
 
-Let's start by getting to know your situation a bit. Could you tell me:
-
-1. **What's your current employment situation?** (W-2 employee, self-employed, retired, etc.)
-2. **Do you have a rough idea of your annual income?**
-3. **Have you started saving for a down payment?**
-
-Take your time — there are no wrong answers here, and everything you share helps me give you better guidance.`,
+The first input I need is your **employment type**. What kind of work do you do? This determines which documents underwriting systems will require.`,
     };
   }
 
@@ -466,15 +648,7 @@ Take your time — there are no wrong answers here, and everything you share hel
 
   if (lowerMsg.includes("credit") || lowerMsg.includes("score")) {
     return {
-      message: `Great question about credit! Your credit score is one of the most important factors in getting a mortgage. Here's a quick breakdown:
-
-- **760+**: Excellent. You'll qualify for the best rates available.
-- **720-759**: Very Good. Still great rates with most lenders.
-- **680-719**: Good. You'll qualify for conventional loans, possibly with slightly higher rates.
-- **640-679**: Fair. FHA loans are a strong option here. Conventional is possible but rates will be higher.
-- **Below 640**: This is an area to work on. FHA loans require a minimum 580 with 3.5% down, or 500 with 10% down.
-
-What's your credit score range, if you know it? And how about your current debts — any car payments, student loans, or credit card balances?`,
+      message: `Credit score is one of the key inputs underwriting systems use to evaluate your profile. To move your readiness forward, I need your **approximate credit score range**. Even a rough estimate works — we can verify with a credit pull later.`,
     };
   }
 
@@ -483,14 +657,19 @@ What's your credit score range, if you know it? And how about your current debts
     return { message: docResponse };
   }
 
+  if (verifiedContext?.daysSinceLastActivity && verifiedContext.daysSinceLastActivity > 7) {
+    const score = verifiedContext.readinessScore || 0;
+    return {
+      message: `Good to see you back! You've already made progress — your readiness score is at **${score}/100**. Let's keep that momentum going.
+
+The smallest next step to move forward: **share your approximate monthly debts** (car payments, student loans, credit cards, etc.). Underwriting systems need this to calculate your debt-to-income ratio. It should only take a minute.`,
+    };
+  }
+
   return {
-    message: `Thanks for sharing that! To give you the most personalized guidance, I still need to learn a bit more about your financial picture. Could you share:
+    message: `Thanks for sharing that. To continue building your underwriting readiness profile, the next input I need is your **approximate monthly debts** — things like car payments, student loans, or credit card minimums.
 
-- **Your approximate monthly debts** (car payments, student loans, credit cards, etc.)
-- **Your credit score range** (if you know it — even a rough idea helps)
-- **Your savings situation** (how much you've set aside for a down payment)
-
-This will help me determine your readiness tier and create a tailored action plan just for you.`,
+Underwriting systems use this alongside your income to calculate your debt-to-income ratio, which is one of the key metrics for readiness. Just a rough estimate is fine for now — we can verify with documents later.`,
   };
 }
 
@@ -498,29 +677,29 @@ function buildDocumentResponse(ctx?: VerifiedUserContext): string {
   const parts: string[] = [];
 
   if (ctx?.hasApplication && ctx.employmentType) {
-    parts.push("Based on your application, here's your personalized document checklist:\n");
+    parts.push("Based on your profile, here are the documents underwriting systems require to verify your information:\n");
 
-    parts.push("**For everyone:**");
+    parts.push("**Required for all borrowers:**");
     parts.push("- Government-issued photo ID");
     parts.push("- Social Security card");
     parts.push("- Bank statements (last 2 months, all pages)\n");
 
     if (ctx.employmentType === "self_employed") {
-      parts.push("**For self-employed borrowers (like you):**");
+      parts.push("**Required for self-employed borrowers (your situation):**");
       parts.push("- Federal tax returns (last 2 years, personal AND business)");
       parts.push("- Profit & loss statements (year-to-date)");
       parts.push("- 1099 forms");
       parts.push("- Business bank statements (last 2 months)");
       parts.push("- Business license\n");
     } else {
-      parts.push("**For W-2 employees (like you):**");
+      parts.push("**Required for W-2 employees (your situation):**");
       parts.push("- Recent pay stubs (last 30 days)");
       parts.push("- W-2 forms (last 2 years)");
       parts.push("- Federal tax returns (last 2 years)\n");
     }
 
     if (ctx.isVeteran) {
-      parts.push("**For VA loan eligibility:**");
+      parts.push("**Required for VA program evaluation:**");
       parts.push("- DD-214 (Certificate of Release or Discharge)");
       parts.push("- Certificate of Eligibility (COE)\n");
     }
@@ -533,12 +712,16 @@ function buildDocumentResponse(ctx?: VerifiedUserContext): string {
     if (ctx.uploadedDocuments && ctx.uploadedDocuments.length > 0) {
       const uploaded = ctx.uploadedDocuments.filter(d => d.status === "verified" || d.status === "uploaded");
       if (uploaded.length > 0) {
-        parts.push(`You've already uploaded ${uploaded.length} document(s). I can see what's still missing if you'd like a more detailed breakdown.`);
+        parts.push(`You've already uploaded ${uploaded.length} document(s). Let me identify what's still needed so we can move your readiness forward.`);
       }
     }
+
+    if (ctx.documentsMissing && ctx.documentsMissing.length > 0) {
+      parts.push(`\nThe next document to upload: **${ctx.documentsMissing[0]}**. This is required before underwriting review can proceed.`);
+    }
   } else {
-    parts.push("Great that you're thinking ahead about documents! The specific documents you'll need depend on your situation, but here are the basics most lenders require:\n");
-    parts.push("**For everyone:**");
+    parts.push("Great that you're thinking ahead about documents! The specific documents needed depend on your situation, but here are the standard inputs required by underwriting systems:\n");
+    parts.push("**Required for all borrowers:**");
     parts.push("- Government-issued photo ID");
     parts.push("- Social Security card");
     parts.push("- Bank statements (last 2 months, all pages)\n");
@@ -554,7 +737,7 @@ function buildDocumentResponse(ctx?: VerifiedUserContext): string {
     parts.push("- VA borrowers: DD-214 and Certificate of Eligibility");
     parts.push("- Gift funds: Gift letter from the donor");
     parts.push("- Divorce: Divorce decree and settlement agreement\n");
-    parts.push("Tell me more about your employment situation and I can give you a precise checklist tailored to your needs.");
+    parts.push("Tell me about your employment situation and I'll build a precise checklist of exactly what underwriting systems will need from you.");
   }
 
   return parts.join("\n");

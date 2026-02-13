@@ -2,15 +2,18 @@ import type { Express } from "express";
 import { isAuthenticated } from "../auth";
 import { storage } from "../storage";
 import { generateCoachResponse, type VerifiedUserContext, type CoachIntakeData, type DocumentExtractedData } from "../services/coachingService";
+import { buildBorrowerGraph } from "../services/borrowerGraph";
 import type { User } from "@shared/schema";
 import { z } from "zod";
 
 const messageSchema = z.object({
   message: z.string().min(1).max(5000),
   conversationId: z.string().optional(),
+  propertyPrice: z.number().optional(),
+  propertyAddress: z.string().optional(),
 });
 
-async function buildVerifiedContext(userId: string, user: User): Promise<VerifiedUserContext> {
+async function buildVerifiedContext(userId: string, user: User, propertyContext?: { price: number; address: string } | null): Promise<VerifiedUserContext> {
   try {
     const applications = await storage.getLoanApplicationsByUser(userId);
     const activeApp = applications.find(a => a.status !== "draft" && a.status !== "denied") || applications[0];
@@ -86,7 +89,7 @@ async function buildVerifiedContext(userId: string, user: User): Promise<Verifie
       console.warn("[Coach] Could not fetch documents:", e);
     }
 
-    return {
+    const context: VerifiedUserContext = {
       hasApplication: true,
       applicationStatus: activeApp.status,
       annualIncome: activeApp.annualIncome,
@@ -112,6 +115,35 @@ async function buildVerifiedContext(userId: string, user: User): Promise<Verifie
         ? `${user.firstName} ${user.lastName}`
         : (user.email?.split("@")[0] || undefined),
     };
+
+    try {
+      const graph = await buildBorrowerGraph(userId);
+      if (graph) {
+        context.readinessScore = graph.readiness.score;
+        context.readinessTier = graph.readiness.tier;
+        context.readinessGaps = graph.readiness.gaps;
+        context.readinessStrengths = graph.readiness.strengths;
+        context.documentsMissing = graph.documentsMissing;
+        context.documentsUploaded = graph.documentsUploaded;
+        context.documentsVerified = graph.documentsVerified;
+        context.daysSinceLastActivity = graph.predictiveSignals.daysSinceLastActivity;
+        context.engagementLevel = graph.predictiveSignals.engagementLevel;
+        context.suggestedNextAction = graph.predictiveSignals.suggestedNextAction;
+
+        const selfEmployed = employmentHistory?.some(e => e.isSelfEmployed);
+        const multipleIncomes = (employmentHistory?.length || 0) > 1;
+        context.hasMultipleIncomes = multipleIncomes;
+        context.hasBusinessIncome = selfEmployed || false;
+      }
+    } catch (e) {
+      console.warn("[Coach] Could not enrich context from Borrower Graph:", e);
+    }
+
+    if (propertyContext) {
+      context.propertyContext = propertyContext;
+    }
+
+    return context;
   } catch (error) {
     console.error("[Coach] Error building verified context:", error);
     return { hasApplication: false };
@@ -227,7 +259,10 @@ export function registerCoachRoutes(app: Express) {
         return res.status(400).json({ error: "Invalid message", details: parsed.error.errors });
       }
 
-      const { message, conversationId } = parsed.data;
+      const { message, conversationId, propertyPrice, propertyAddress } = parsed.data;
+      const propertyCtx = propertyPrice && propertyAddress
+        ? { price: propertyPrice, address: propertyAddress }
+        : null;
 
       const allConvs = await storage.getCoachConversationsByUser(user.id);
       const today = new Date();
@@ -276,7 +311,7 @@ export function registerCoachRoutes(app: Express) {
         content: m.content,
       }));
 
-      const verifiedContext = await buildVerifiedContext(user.id, user);
+      const verifiedContext = await buildVerifiedContext(user.id, user, propertyCtx);
 
       const coachResponse = await generateCoachResponse(
         message,
