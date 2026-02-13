@@ -3,7 +3,7 @@
 ## Overview
 Homiquity is a mortgage platform designed to automate and streamline the mortgage process, aiming for 3-minute pre-approvals. It leverages graph-based underwriting logic and document intelligence for data extraction, ensuring all underwriting decisions are based on deterministic rules for regulatory compliance and Fair Lending risk mitigation. The platform's core purpose is to provide clear mortgage decisions and trustworthy pre-approvals, focusing on a premium, distinctive user experience. Key capabilities include a conversational pre-approval form, a properties marketplace with affordability checks, and comprehensive tools for both borrowers and staff.
 
-Homiquity is positioned as a full-stack homeownership ecosystem with product modules: Homiquity Lend (mortgage origination), Homiquity Listings (property search), and Homiquity Coach (AI guidance), with future expansion to Title, Protect (insurance), and Invest modules. The platform is backed by 15 years of commercial banking experience and prioritizes honest, transparent messaging.
+Homiquity is positioned as a full-stack homeownership ecosystem with product modules: Homiquity Lend (mortgage origination), Homiquity Listings (property search), and Homiquity Coach (AI guidance), with future expansion to Title, Protect (insurance), and Invest modules. The platform is military veteran-founded, backed by 15 years of commercial banking experience, and prioritizes honest, transparent messaging. VA loan support is a natural focus area.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.

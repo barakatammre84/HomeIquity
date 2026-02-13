@@ -64,6 +64,15 @@ const AUDIENCE_PATHS = [
     color: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
   },
   {
+    id: "veterans",
+    icon: Shield,
+    title: "Veterans & Military",
+    description: "Explore VA loan options built with the respect and understanding you deserve. Founded by a fellow veteran.",
+    cta: "Explore VA Options",
+    href: "/apply?type=va",
+    color: "bg-red-500/10 text-red-600 dark:text-red-400",
+  },
+  {
     id: "investors",
     icon: Building2,
     title: "Real Estate Investors",
@@ -150,7 +159,7 @@ export default function Landing() {
           <div className="flex flex-col items-center text-center">
             <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm text-white/90 backdrop-blur-sm">
               <Shield className="h-4 w-4 text-emerald-400" />
-              Built by 15-year banking veterans
+              Built by a military veteran with 15+ years in banking
             </div>
             
             <h1 className="text-4xl font-bold leading-tight tracking-tight text-white sm:text-5xl lg:text-6xl" data-testid="text-hero-title">
@@ -349,7 +358,7 @@ export default function Landing() {
             <Card data-testid="card-trust-experience">
               <CardContent className="p-6 text-center">
                 <p className="text-3xl font-bold text-primary" data-testid="text-trust-years">15+</p>
-                <p className="mt-2 text-sm text-muted-foreground">Years of banking & lending experience</p>
+                <p className="mt-2 text-sm text-muted-foreground">Years of banking & lending experience, military veteran-founded</p>
               </CardContent>
             </Card>
             <Card data-testid="card-trust-rules">
@@ -390,8 +399,9 @@ export default function Landing() {
                 <h3 className="text-lg font-semibold">A note from our team</h3>
                 <p className="mt-2 text-sm text-muted-foreground leading-relaxed max-w-3xl">
                   We built Homiquity because we believe the mortgage process should feel clear, not confusing. 
-                  With over 15 years in commercial banking and lending, we've seen how overwhelming the homebuying 
-                  process can be. Homiquity exists to change that — to give every person the clarity and 
+                  As a military veteran with over 15 years in commercial banking and lending, I've seen firsthand 
+                  how overwhelming the homebuying process can be — and how much harder it is without the right guidance. 
+                  Homiquity exists to change that — to give every person the clarity and 
                   confidence they deserve when making the biggest financial decision of their life. We're just getting started, 
                   and we'd love for you to be part of the journey.
                 </p>
