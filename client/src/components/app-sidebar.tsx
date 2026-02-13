@@ -285,7 +285,7 @@ export function AppSidebar() {
     <Sidebar>
       <SidebarHeader>
         <div className="px-2 py-4">
-          <p className="text-sm font-semibold tracking-tight">baranest</p>
+          <p className="text-sm font-semibold tracking-tight">homiquity</p>
           <p className="text-xs text-muted-foreground">
             {portalLabel}
           </p>

@@ -56,9 +56,9 @@ export function generatePreApprovalPDF(data: LetterData): Promise<Buffer> {
 
     doc.rect(doc.page.margins.left, doc.page.margins.top, pageWidth, 80).fill(DEEP_NAVY);
     doc.fontSize(22).fillColor("#ffffff");
-    doc.text("BARANEST", doc.page.margins.left + 20, doc.page.margins.top + 18, { width: pageWidth - 40 });
+    doc.text("HOMIQUITY", doc.page.margins.left + 20, doc.page.margins.top + 18, { width: pageWidth - 40 });
     doc.fontSize(10).fillColor("#94a3b8");
-    doc.text("Clear Answers. Confident Approvals.", doc.page.margins.left + 20, doc.page.margins.top + 48, { width: pageWidth - 40 });
+    doc.text("Clarity for Every Stage of Homeownership", doc.page.margins.left + 20, doc.page.margins.top + 48, { width: pageWidth - 40 });
     doc.fontSize(9).fillColor("#94a3b8");
     doc.text(`NMLS #${data.companyNmlsId}`, doc.page.margins.left + 20, doc.page.margins.top + 62, {
       width: pageWidth - 40,
@@ -247,9 +247,9 @@ export function generatePreQualificationPDF(data: PreQualLetterData): Promise<Bu
 
     doc.rect(doc.page.margins.left, doc.page.margins.top, pageWidth, 80).fill(DEEP_NAVY);
     doc.fontSize(22).fillColor("#ffffff");
-    doc.text("BARANEST", doc.page.margins.left + 20, doc.page.margins.top + 18, { width: pageWidth - 40 });
+    doc.text("HOMIQUITY", doc.page.margins.left + 20, doc.page.margins.top + 18, { width: pageWidth - 40 });
     doc.fontSize(10).fillColor("#94a3b8");
-    doc.text("Clear Answers. Confident Approvals.", doc.page.margins.left + 20, doc.page.margins.top + 48, { width: pageWidth - 40 });
+    doc.text("Clarity for Every Stage of Homeownership", doc.page.margins.left + 20, doc.page.margins.top + 48, { width: pageWidth - 40 });
     doc.fontSize(9).fillColor("#94a3b8");
     doc.text(`NMLS #${data.companyNmlsId}`, doc.page.margins.left + 20, doc.page.margins.top + 62, {
       width: pageWidth - 40,

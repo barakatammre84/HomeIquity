@@ -93,7 +93,7 @@ function useDebounce(value: string, delay: number) {
   return debounced;
 }
 
-const SEARCH_FILTERS_KEY = "baranest_property_filters";
+const SEARCH_FILTERS_KEY = "homiquity_property_filters";
 
 interface SavedFilters {
   locationId: string | null;
@@ -137,7 +137,7 @@ export default function Properties() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    try { localStorage.setItem("baranest_browsed_properties", "true"); } catch {}
+    try { localStorage.setItem("homiquity_browsed_properties", "true"); } catch {}
   }, []);
 
   useEffect(() => {

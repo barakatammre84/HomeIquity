@@ -19,7 +19,7 @@ const LICENSING_STATES = [
 export default function Disclosures() {
   return (
     <div className="min-h-screen bg-background">
-      <SEOHead title="Disclosures & Licensing" description="View Baranest Corporation licensing information, NMLS details, state licensing, equal housing lender disclosure, and affiliated business arrangements." />
+      <SEOHead title="Disclosures & Licensing" description="View Homiquity Corporation licensing information, NMLS details, state licensing, equal housing lender disclosure, and affiliated business arrangements." />
       <Navigation />
 
       <section className="relative overflow-hidden bg-gradient-to-br from-primary via-primary to-[hsl(213,52%,18%)] px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
@@ -51,7 +51,7 @@ export default function Disclosures() {
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <p className="text-sm font-medium">Legal Entity</p>
-                <p className="text-sm text-muted-foreground">Baranest Corporation</p>
+                <p className="text-sm text-muted-foreground">Homiquity Corporation</p>
               </div>
               <div>
                 <p className="text-sm font-medium">NMLS ID</p>
@@ -63,7 +63,7 @@ export default function Disclosures() {
               </div>
               <div>
                 <p className="text-sm font-medium">Contact</p>
-                <p className="text-sm text-muted-foreground">1-800-BARANEST | hello@baranest.com</p>
+                <p className="text-sm text-muted-foreground">1-800-HOMIQTY | hello@homiquity.com</p>
               </div>
             </div>
           </CardContent>
@@ -78,7 +78,7 @@ export default function Disclosures() {
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Baranest Corporation is registered with the Nationwide Multistate Licensing System & Registry (NMLS). 
+              Homiquity Corporation is registered with the Nationwide Multistate Licensing System & Registry (NMLS). 
               You can verify our licensing status, view public filings, and access consumer resources through the 
               NMLS Consumer Access portal.
             </p>
@@ -104,7 +104,7 @@ export default function Disclosures() {
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Baranest Corporation is licensed to originate mortgage loans in the following states. 
+              Homiquity Corporation is licensed to originate mortgage loans in the following states. 
               Licensing requirements and available products may vary by state.
             </p>
             <div className="flex flex-wrap gap-1.5">
@@ -126,7 +126,7 @@ export default function Disclosures() {
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Baranest Corporation is an Equal Housing Lender. We are committed to fair lending practices and 
+              Homiquity Corporation is an Equal Housing Lender. We are committed to fair lending practices and 
               do not discriminate on the basis of race, color, religion, national origin, sex, marital status, 
               age, disability, familial status, or any other characteristic protected by federal, state, or local law.
             </p>
@@ -150,7 +150,7 @@ export default function Disclosures() {
           </CardHeader>
           <CardContent className="space-y-3 text-sm text-muted-foreground leading-relaxed">
             <p>
-              Rates displayed on the Baranest platform are subject to change without notice and are not guaranteed 
+              Rates displayed on the Homiquity platform are subject to change without notice and are not guaranteed 
               until locked. Actual rates may vary based on your credit profile, loan amount, property type, 
               occupancy status, and other factors.
             </p>
@@ -177,7 +177,7 @@ export default function Disclosures() {
           <CardContent className="space-y-3 text-sm text-muted-foreground leading-relaxed">
             <p>
               In accordance with Section 8 of the Real Estate Settlement Procedures Act (RESPA), we disclose 
-              that Baranest Corporation may have business relationships with title companies, appraisal firms, 
+              that Homiquity Corporation may have business relationships with title companies, appraisal firms, 
               and insurance providers. These relationships are fully disclosed during the loan application process.
             </p>
             <p>
@@ -193,8 +193,8 @@ export default function Disclosures() {
           <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">
             Contact our compliance team for any questions about our licensing or disclosures.
           </p>
-          <a href="mailto:compliance@baranest.com" className="text-sm text-primary font-medium" data-testid="link-disclosures-email">
-            compliance@baranest.com
+          <a href="mailto:compliance@homiquity.com" className="text-sm text-primary font-medium" data-testid="link-disclosures-email">
+            compliance@homiquity.com
           </a>
         </section>
       </div>

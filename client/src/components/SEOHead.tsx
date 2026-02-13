@@ -10,7 +10,7 @@ interface SEOHeadProps {
 
 export function SEOHead({ title, description, ogImage, ogType = "website", canonical }: SEOHeadProps) {
   useEffect(() => {
-    const fullTitle = title.includes("Baranest") ? title : `${title} | Baranest`;
+    const fullTitle = title.includes("Homiquity") ? title : `${title} | Homiquity`;
     document.title = fullTitle;
 
     const setMeta = (name: string, content: string) => {
@@ -44,7 +44,7 @@ export function SEOHead({ title, description, ogImage, ogType = "website", canon
     }
 
     return () => {
-      document.title = "Baranest - Clear Answers. Confident Approvals.";
+      document.title = "Homiquity - Clear Answers. Confident Approvals.";
     };
   }, [title, description, ogImage, ogType, canonical]);
 

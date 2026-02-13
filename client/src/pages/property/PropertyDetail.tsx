@@ -156,7 +156,7 @@ export default function PropertyDetail() {
   const trackActivity = useTrackActivity();
 
   useEffect(() => {
-    try { localStorage.setItem("baranest_browsed_properties", "true"); } catch {}
+    try { localStorage.setItem("homiquity_browsed_properties", "true"); } catch {}
   }, []);
 
   const { data: property, isLoading: propertyLoading } = useQuery<Property>({

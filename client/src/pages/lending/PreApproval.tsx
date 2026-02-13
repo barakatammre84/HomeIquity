@@ -445,8 +445,8 @@ export default function PreApproval() {
     enabled: isAuthenticated,
   });
 
-  const AUTOSAVE_KEY = "baranest_preapproval_draft";
-  const AUTOSAVE_STEP_KEY = "baranest_preapproval_step";
+  const AUTOSAVE_KEY = "homiquity_preapproval_draft";
+  const AUTOSAVE_STEP_KEY = "homiquity_preapproval_step";
   const [autosaveRestored, setAutosaveRestored] = useState(false);
   const [showRestoreBanner, setShowRestoreBanner] = useState(false);
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);

@@ -16,7 +16,7 @@ export default function Home() {
     <div className="min-h-screen bg-background">
       <Navigation />
 
-      {/* Hero Section - Baranest Soft Canvas */}
+      {/* Hero Section - Homiquity Soft Canvas */}
       <section className="relative bg-accent px-4 py-16 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-6xl">
           <div className="flex flex-col items-center text-center">
@@ -127,7 +127,7 @@ export default function Home() {
                     </div>
                   </div>
                   <p className="text-sm leading-relaxed text-white">
-                    "I used Baranest for my primary residence and just closed on my vacation home. Very simple process. The team was calm and reassuring every step of the way."
+                    "I used Homiquity for my primary residence and just closed on my vacation home. Very simple process. The team was calm and reassuring every step of the way."
                   </p>
                   <p className="mt-3 text-xs text-gray-400">Paul, Mortgage Customer</p>
                 </div>

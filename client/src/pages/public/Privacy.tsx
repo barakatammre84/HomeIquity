@@ -80,7 +80,7 @@ const COMPLIANCE_ITEMS = [
 export default function Privacy() {
   return (
     <div className="min-h-screen bg-background">
-      <SEOHead title="Security & Privacy" description="Learn how Baranest protects your personal and financial data with enterprise-grade encryption and strict regulatory compliance." />
+      <SEOHead title="Security & Privacy" description="Learn how Homiquity protects your personal and financial data with enterprise-grade encryption and strict regulatory compliance." />
       <Navigation />
 
       <section className="relative overflow-hidden bg-gradient-to-br from-primary via-primary to-[hsl(213,52%,18%)] px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
@@ -230,8 +230,8 @@ export default function Privacy() {
           <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">
             Our team is here to help. Contact us anytime with questions about how we handle your data.
           </p>
-          <a href="mailto:privacy@baranest.com" className="text-sm text-primary font-medium" data-testid="link-privacy-email">
-            privacy@baranest.com
+          <a href="mailto:privacy@homiquity.com" className="text-sm text-primary font-medium" data-testid="link-privacy-email">
+            privacy@homiquity.com
           </a>
         </section>
       </div>

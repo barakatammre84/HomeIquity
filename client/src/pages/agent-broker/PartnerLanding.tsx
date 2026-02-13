@@ -94,7 +94,7 @@ export default function PartnerLanding() {
           <div className="flex items-center gap-3 mb-4">
             <div className="flex items-center gap-2 text-white/80 text-xs">
               <span>Powered by</span>
-              <span className="font-semibold text-white">Baranest</span>
+              <span className="font-semibold text-white">Homiquity</span>
             </div>
           </div>
           <h1 className="text-2xl font-bold md:text-4xl" data-testid="text-brand-name">{profile.brandName}</h1>
@@ -215,7 +215,7 @@ export default function PartnerLanding() {
 
         <div className="border-t pt-4 text-center">
           <p className="text-[10px] text-muted-foreground">
-            Powered by <span className="font-semibold">Baranest</span> — Clear answers. Confident approvals.
+            Powered by <span className="font-semibold">Homiquity</span> — Clear answers. Confident approvals.
           </p>
         </div>
       </div>

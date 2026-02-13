@@ -19,7 +19,7 @@ const teamMembers = [
       "Get expert guidance to fast-track your approval",
       "Find a financing solution tailored to your goals",
     ],
-    phone: "1-800-BARANEST",
+    phone: "1-800-HOMIQUITY",
     showPhone: true,
   },
   {
@@ -30,7 +30,7 @@ const teamMembers = [
   {
     role: "Real Estate Agent",
     title: "Find your dream home",
-    description: "Baranest has a network of trusted real estate agents who can help you with your home search. Start getting matched with agents in your area.",
+    description: "Homiquity has a network of trusted real estate agents who can help you with your home search. Start getting matched with agents in your area.",
   },
 ];
 

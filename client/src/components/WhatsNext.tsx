@@ -397,7 +397,7 @@ export function FirstVisitWelcome({ userName, hasApplication = false, hasDocumen
           <Sparkles className="h-7 w-7 text-primary" />
         </div>
         <h2 className="text-xl font-bold text-foreground" data-testid="text-welcome-heading">
-          {userName ? `Welcome, ${userName}!` : "Welcome to Baranest"}
+          {userName ? `Welcome, ${userName}!` : "Welcome to Homiquity"}
         </h2>
         <p className="text-sm text-muted-foreground mt-2 max-w-md mx-auto leading-relaxed">
           Your path to homeownership starts here. We'll walk you through each step — beginning with a free chat with your AI Coach.

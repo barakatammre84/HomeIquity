@@ -6,8 +6,8 @@ import { Input } from "@/components/ui/input";
 import { X, Mail, ArrowRight, Shield } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
-const STORAGE_KEY = "baranest_email_capture";
-const PAGE_VIEW_KEY = "baranest_anon_pageviews";
+const STORAGE_KEY = "homiquity_email_capture";
+const PAGE_VIEW_KEY = "homiquity_anon_pageviews";
 const TRIGGER_THRESHOLD = 3;
 
 interface EmailCaptureState {

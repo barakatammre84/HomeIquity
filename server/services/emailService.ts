@@ -5,8 +5,8 @@ const SMTP_HOST = process.env.SMTP_HOST;
 const SMTP_PORT = parseInt(process.env.SMTP_PORT || "587");
 const SMTP_USER = process.env.SMTP_USER;
 const SMTP_PASS = process.env.SMTP_PASS;
-const FROM_EMAIL = process.env.FROM_EMAIL || "noreply@baranest.com";
-const FROM_NAME = process.env.FROM_NAME || "Baranest Mortgage";
+const FROM_EMAIL = process.env.FROM_EMAIL || "noreply@homiquity.com";
+const FROM_NAME = process.env.FROM_NAME || "Homiquity Mortgage";
 
 const isSmtpConfigured = !!(SMTP_HOST && SMTP_USER && SMTP_PASS);
 
@@ -78,7 +78,7 @@ function baseTemplate(content: string, preheader?: string): string {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Baranest Mortgage</title>
+  <title>Homiquity Mortgage</title>
   ${preheader ? `<span style="display:none;max-height:0;overflow:hidden">${preheader}</span>` : ""}
 </head>
 <body style="margin:0;padding:0;background-color:#f5f7fa;font-family:'Inter',Arial,sans-serif">
@@ -88,7 +88,7 @@ function baseTemplate(content: string, preheader?: string): string {
         <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%">
           <tr>
             <td style="background:#0f1729;padding:24px 32px;border-radius:8px 8px 0 0">
-              <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;letter-spacing:-0.5px">Baranest</h1>
+              <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;letter-spacing:-0.5px">Homiquity</h1>
               <p style="margin:4px 0 0;color:#94a3b8;font-size:13px">Clear Answers. Confident Approvals.</p>
             </td>
           </tr>
@@ -100,7 +100,7 @@ function baseTemplate(content: string, preheader?: string): string {
           <tr>
             <td style="background:#f8fafc;padding:20px 32px;border:1px solid #e2e8f0;border-top:0;border-radius:0 0 8px 8px">
               <p style="margin:0;color:#94a3b8;font-size:12px;line-height:1.5">
-                This is an automated message from Baranest Mortgage. Please do not reply directly to this email.
+                This is an automated message from Homiquity Mortgage. Please do not reply directly to this email.
                 <br>NMLS #123456 | Equal Housing Lender
               </p>
             </td>
@@ -231,7 +231,7 @@ export const emailTemplates = {
           </tr>
         </table>
         <p style="color:#475569;line-height:1.6;margin:16px 0 0;font-size:14px">
-          Please log into your Baranest account and upload this document at your earliest convenience.
+          Please log into your Homiquity account and upload this document at your earliest convenience.
         </p>
       `, `Please upload: ${documentName}`),
     };
@@ -276,11 +276,11 @@ export const emailTemplates = {
   inviteCode(recipientEmail: string, role: string, code: string, inviterName: string): EmailOptions {
     return {
       to: recipientEmail,
-      subject: "You've Been Invited to Join Baranest",
+      subject: "You've Been Invited to Join Homiquity",
       html: baseTemplate(`
         <h2 style="margin:0 0 16px;color:#0f1729;font-size:20px">Team Invitation</h2>
         <p style="color:#475569;line-height:1.6;margin:0 0 16px">
-          ${inviterName} has invited you to join Baranest as a <strong>${role}</strong>.
+          ${inviterName} has invited you to join Homiquity as a <strong>${role}</strong>.
         </p>
         <table width="100%" cellpadding="0" cellspacing="0" style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;margin:16px 0">
           <tr>
@@ -291,9 +291,9 @@ export const emailTemplates = {
           </tr>
         </table>
         <p style="color:#475569;line-height:1.6;margin:16px 0 0;font-size:14px">
-          Visit Baranest and use this code to activate your account. This code expires in 7 days.
+          Visit Homiquity and use this code to activate your account. This code expires in 7 days.
         </p>
-      `, `You've been invited to join Baranest as a ${role}`),
+      `, `You've been invited to join Homiquity as a ${role}`),
     };
   },
 
@@ -351,7 +351,7 @@ export const emailTemplates = {
           </tr>
         </table>
         <p style="color:#475569;line-height:1.6;margin:16px 0 0;font-size:14px">
-          Log into your Baranest dashboard for full details and next steps.
+          Log into your Homiquity dashboard for full details and next steps.
         </p>
       `, `Your application status is now: ${statusLabel}`),
     };

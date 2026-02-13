@@ -287,7 +287,7 @@ function PersonalizedNudges({ application, expirationInfo, whatsNextHrefs = [] }
     nudges.push({
       id: "high-engagement",
       icon: Sparkles,
-      title: "You've been exploring Baranest",
+      title: "You've been exploring Homiquity",
       description: "Ready to take the next step? Our 3-minute pre-approval has no impact on your credit score.",
       action: "Get Started",
       href: "/apply",
@@ -365,7 +365,7 @@ export default function Dashboard() {
   const [browsedProperties, setBrowsedProperties] = useState(false);
   useEffect(() => {
     try {
-      setBrowsedProperties(localStorage.getItem("baranest_browsed_properties") === "true");
+      setBrowsedProperties(localStorage.getItem("homiquity_browsed_properties") === "true");
     } catch {}
   }, []);
 

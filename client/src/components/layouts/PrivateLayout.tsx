@@ -99,7 +99,7 @@ export function PrivateLayout({ children, requiredRoles }: PrivateLayoutProps) {
           <header className="flex items-center justify-between gap-2 px-3 py-2 border-b bg-background shrink-0 md:px-4">
             <div className="flex items-center gap-2">
               <SidebarTrigger data-testid="button-sidebar-toggle" className="hidden md:flex" />
-              <span className="text-sm font-semibold tracking-tight text-primary md:hidden" data-testid="text-mobile-brand">baranest</span>
+              <span className="text-sm font-semibold tracking-tight text-primary md:hidden" data-testid="text-mobile-brand">homiquity</span>
             </div>
             <div className="flex items-center gap-2">
               <NotificationsBell unreadCount={totalUnread} activities={activities} />

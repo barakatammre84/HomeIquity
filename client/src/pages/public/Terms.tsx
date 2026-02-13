@@ -7,15 +7,15 @@ import { FileText, Scale, AlertCircle, CheckCircle2 } from "lucide-react";
 const SECTIONS = [
   {
     title: "Acceptance of Terms",
-    content: "By accessing or using the Baranest platform, website, and related services (collectively, the \"Services\"), you agree to be bound by these Terms of Use. If you do not agree to these terms, do not use our Services. We may update these terms at any time, and your continued use constitutes acceptance of any changes.",
+    content: "By accessing or using the Homiquity platform, website, and related services (collectively, the \"Services\"), you agree to be bound by these Terms of Use. If you do not agree to these terms, do not use our Services. We may update these terms at any time, and your continued use constitutes acceptance of any changes.",
   },
   {
     title: "Eligibility",
-    content: "You must be at least 18 years old and a legal U.S. resident to use our Services. By using Baranest, you represent that you meet these requirements and that all information you provide is accurate, current, and complete.",
+    content: "You must be at least 18 years old and a legal U.S. resident to use our Services. By using Homiquity, you represent that you meet these requirements and that all information you provide is accurate, current, and complete.",
   },
   {
     title: "Services Description",
-    content: "Baranest provides a digital mortgage platform that facilitates pre-approvals, loan applications, document management, and related mortgage services. Our platform connects borrowers with lending products and provides tools to evaluate mortgage options. Baranest acts as a mortgage broker and/or direct lender depending on the product and state.",
+    content: "Homiquity provides a digital mortgage platform that facilitates pre-approvals, loan applications, document management, and related mortgage services. Our platform connects borrowers with lending products and provides tools to evaluate mortgage options. Homiquity acts as a mortgage broker and/or direct lender depending on the product and state.",
   },
   {
     title: "User Accounts",
@@ -27,7 +27,7 @@ const SECTIONS = [
   },
   {
     title: "Intellectual Property",
-    content: "All content, features, and functionality of the Baranest platform, including but not limited to text, graphics, logos, icons, software, and the compilation thereof, are the exclusive property of Baranest Corporation and are protected by U.S. and international copyright, trademark, and other intellectual property laws.",
+    content: "All content, features, and functionality of the Homiquity platform, including but not limited to text, graphics, logos, icons, software, and the compilation thereof, are the exclusive property of Homiquity Corporation and are protected by U.S. and international copyright, trademark, and other intellectual property laws.",
   },
   {
     title: "Prohibited Uses",
@@ -35,7 +35,7 @@ const SECTIONS = [
   },
   {
     title: "Limitation of Liability",
-    content: "Baranest Corporation, its officers, directors, employees, and agents shall not be liable for any indirect, incidental, special, consequential, or punitive damages resulting from your use of or inability to use the Services. Our total liability shall not exceed the fees paid by you, if any, for accessing the Services during the twelve months preceding the claim.",
+    content: "Homiquity Corporation, its officers, directors, employees, and agents shall not be liable for any indirect, incidental, special, consequential, or punitive damages resulting from your use of or inability to use the Services. Our total liability shall not exceed the fees paid by you, if any, for accessing the Services during the twelve months preceding the claim.",
   },
   {
     title: "Dispute Resolution",
@@ -50,7 +50,7 @@ const SECTIONS = [
 export default function Terms() {
   return (
     <div className="min-h-screen bg-background">
-      <SEOHead title="Terms of Use" description="Read the terms and conditions for using the Baranest mortgage platform and related services." />
+      <SEOHead title="Terms of Use" description="Read the terms and conditions for using the Homiquity mortgage platform and related services." />
       <Navigation />
 
       <section className="relative overflow-hidden bg-gradient-to-br from-primary via-primary to-[hsl(213,52%,18%)] px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
@@ -65,7 +65,7 @@ export default function Terms() {
             Terms of Use
           </h1>
           <p className="mx-auto mt-4 max-w-2xl text-lg text-white/80">
-            Please read these terms carefully before using the Baranest platform.
+            Please read these terms carefully before using the Homiquity platform.
           </p>
           <p className="mt-2 text-sm text-white/60">Last updated: January 15, 2026</p>
         </div>
@@ -77,7 +77,7 @@ export default function Terms() {
             <div className="flex items-start gap-3">
               <AlertCircle className="h-5 w-5 shrink-0 mt-0.5 text-amber-500" />
               <p className="text-sm text-muted-foreground leading-relaxed">
-                These Terms of Use constitute a legally binding agreement between you and Baranest Corporation. 
+                These Terms of Use constitute a legally binding agreement between you and Homiquity Corporation. 
                 By using our services, you acknowledge that you have read, understood, and agree to be bound by these terms.
               </p>
             </div>
@@ -103,8 +103,8 @@ export default function Terms() {
           <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">
             Contact our legal team for clarification on any of these terms.
           </p>
-          <a href="mailto:legal@baranest.com" className="text-sm text-primary font-medium" data-testid="link-terms-email">
-            legal@baranest.com
+          <a href="mailto:legal@homiquity.com" className="text-sm text-primary font-medium" data-testid="link-terms-email">
+            legal@homiquity.com
           </a>
         </section>
       </div>

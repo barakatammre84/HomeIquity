@@ -52,7 +52,7 @@ export default function NotFound() {
         <div className="mt-8">
           <Link href="/">
             <Button variant="outline" className="gap-2" data-testid="button-404-home">
-              Back to Baranest
+              Back to Homiquity
               <ArrowRight className="h-4 w-4" />
             </Button>
           </Link>

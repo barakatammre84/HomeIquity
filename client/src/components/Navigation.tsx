@@ -170,7 +170,7 @@ export function Navigation() {
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
           <Link href="/" className="flex items-center">
-            <span className="text-2xl font-bold tracking-tight text-primary">baranest</span>
+            <span className="text-2xl font-bold tracking-tight text-primary">homiquity</span>
           </Link>
 
           {/* Desktop Navigation */}
@@ -193,7 +193,7 @@ export function Navigation() {
           {/* Right side actions */}
           <div className="flex items-center gap-2">
             {/* Phone - hidden on mobile */}
-            <a href="tel:1-800-BARANEST" className="hidden sm:block">
+            <a href="tel:1-800-HOMIQTY" className="hidden sm:block">
               <Button
                 variant="ghost"
                 size="sm"
@@ -201,7 +201,7 @@ export function Navigation() {
                 data-testid="button-phone"
               >
                 <Phone className="h-4 w-4" />
-                <span className="hidden md:inline">1-800-BARANEST</span>
+                <span className="hidden md:inline">1-800-HOMIQTY</span>
               </Button>
             </a>
 

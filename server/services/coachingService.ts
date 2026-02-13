@@ -219,7 +219,7 @@ function buildVerifiedContextPrompt(ctx: VerifiedUserContext): string {
   return lines.join("\n");
 }
 
-const SYSTEM_PROMPT = `You are Baranest AI Coach, a friendly and knowledgeable mortgage readiness advisor. Your role is to help potential homebuyers understand where they stand financially, what they need to do to become mortgage-ready, and exactly which documents they'll need.
+const SYSTEM_PROMPT = `You are Homiquity AI Coach, a friendly and knowledgeable mortgage readiness advisor. Your role is to help potential homebuyers understand where they stand financially, what they need to do to become mortgage-ready, and exactly which documents they'll need.
 
 CORE PRINCIPLES:
 - Be warm, encouraging, and honest. Never oversell or give false hope.
@@ -450,7 +450,7 @@ function generateFallbackResponse(
 
   if (isFirstMessage) {
     return {
-      message: `Welcome to your Baranest AI Coach! I'm here to help you understand exactly where you stand on your homebuying journey and create a personalized plan to get you there.
+      message: `Welcome to your Homiquity AI Coach! I'm here to help you understand exactly where you stand on your homebuying journey and create a personalized plan to get you there.
 
 Let's start by getting to know your situation a bit. Could you tell me:
 
