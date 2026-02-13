@@ -170,14 +170,28 @@ app.use((req, res, next) => {
 export default async function runApp(
   setup: (app: Express, server: Server) => Promise<void>,
 ) {
+  process.on("uncaughtException", (err) => {
+    log(`Uncaught Exception: ${err.message}`, "error");
+    console.error(err.stack);
+  });
+
+  process.on("unhandledRejection", (reason) => {
+    log(`Unhandled Rejection: ${reason}`, "error");
+    if (reason instanceof Error) {
+      console.error(reason.stack);
+    }
+  });
+
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
 
-    res.status(status).json({ message });
-    throw err;
+    log(`Express error: ${status} ${message}`, "error");
+    if (!res.headersSent) {
+      res.status(status).json({ message });
+    }
   });
 
   // importantly run the final setup after setting up all the other routes so
