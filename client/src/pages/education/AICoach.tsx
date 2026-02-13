@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
 import { usePageView, useTrackActivity, useTrackCoachSession } from "@/hooks/useActivityTracker";
 import {
@@ -29,6 +30,10 @@ import {
   Lightbulb,
   Zap,
   AlertCircle,
+  ListChecks,
+  CreditCard,
+  DollarSign,
+  Home,
 } from "lucide-react";
 
 interface CoachMessage {
@@ -414,24 +419,105 @@ function ChatMessage({ message }: { message: CoachMessage }) {
   );
 }
 
+function renderInlineMarkdown(text: string): (string | JSX.Element)[] {
+  const result: (string | JSX.Element)[] = [];
+  const parts = text.split(/(\*\*.*?\*\*)/g);
+  parts.forEach((part, i) => {
+    if (part.startsWith("**") && part.endsWith("**")) {
+      result.push(<strong key={`b-${i}`}>{part.slice(2, -2)}</strong>);
+    } else {
+      result.push(part);
+    }
+  });
+  return result;
+}
+
 function MessageContent({ content }: { content: string }) {
-  const parts = content.split(/(\*\*.*?\*\*)/g);
-  return (
-    <>
-      {parts.map((part, i) => {
-        if (part.startsWith("**") && part.endsWith("**")) {
-          return <strong key={i}>{part.slice(2, -2)}</strong>;
-        }
-        const lines = part.split("\n");
-        return lines.map((line, j) => (
-          <span key={`${i}-${j}`}>
-            {j > 0 && <br />}
-            {line}
-          </span>
-        ));
-      })}
-    </>
-  );
+  const lines = content.split("\n");
+  const elements: JSX.Element[] = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+    const trimmed = line.trim();
+
+    if (trimmed === "") {
+      elements.push(<div key={`sp-${i}`} className="h-2" />);
+      i++;
+      continue;
+    }
+
+    if (trimmed.startsWith("### ")) {
+      elements.push(
+        <p key={`h3-${i}`} className="font-semibold text-sm mt-2 mb-1">
+          {renderInlineMarkdown(trimmed.slice(4))}
+        </p>
+      );
+      i++;
+      continue;
+    }
+
+    if (trimmed.startsWith("## ")) {
+      elements.push(
+        <p key={`h2-${i}`} className="font-semibold mt-2 mb-1">
+          {renderInlineMarkdown(trimmed.slice(3))}
+        </p>
+      );
+      i++;
+      continue;
+    }
+
+    const bulletMatch = trimmed.match(/^[-*]\s+(.+)/);
+    if (bulletMatch) {
+      const items: { text: string; idx: number }[] = [];
+      while (i < lines.length) {
+        const bm = lines[i].trim().match(/^[-*]\s+(.+)/);
+        if (!bm) break;
+        items.push({ text: bm[1], idx: i });
+        i++;
+      }
+      elements.push(
+        <ul key={`ul-${items[0].idx}`} className="space-y-1 my-1">
+          {items.map((item) => (
+            <li key={`li-${item.idx}`} className="flex gap-2 items-start">
+              <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-current shrink-0 opacity-40" />
+              <span>{renderInlineMarkdown(item.text)}</span>
+            </li>
+          ))}
+        </ul>
+      );
+      continue;
+    }
+
+    const numberedMatch = trimmed.match(/^(\d+)[.)]\s+(.+)/);
+    if (numberedMatch) {
+      const items: { num: string; text: string; idx: number }[] = [];
+      while (i < lines.length) {
+        const nm = lines[i].trim().match(/^(\d+)[.)]\s+(.+)/);
+        if (!nm) break;
+        items.push({ num: nm[1], text: nm[2], idx: i });
+        i++;
+      }
+      elements.push(
+        <ol key={`ol-${items[0].idx}`} className="space-y-1 my-1">
+          {items.map((item) => (
+            <li key={`oli-${item.idx}`} className="flex gap-2 items-start">
+              <span className="font-medium text-muted-foreground shrink-0 min-w-[1.25rem]">{item.num}.</span>
+              <span>{renderInlineMarkdown(item.text)}</span>
+            </li>
+          ))}
+        </ol>
+      );
+      continue;
+    }
+
+    elements.push(
+      <p key={`p-${i}`}>{renderInlineMarkdown(trimmed)}</p>
+    );
+    i++;
+  }
+
+  return <div className="space-y-0.5">{elements}</div>;
 }
 
 function SuggestedPrompts({
@@ -524,31 +610,73 @@ function UsageMeter({ usage }: { usage: CoachUsage }) {
 }
 
 function WelcomeState({ onStart, insights }: { onStart: (msg: string) => void; insights: CoachInsight[] }) {
-  const starters = [
-    { label: "I want to buy my first home", icon: Target },
-    { label: "Am I ready for a mortgage?", icon: TrendingUp },
-    { label: "What documents do I need?", icon: FileText },
-    { label: "How can I improve my credit for a mortgage?", icon: Shield },
+  const STARTER_CATEGORIES = [
+    {
+      heading: "Getting Started",
+      items: [
+        { label: "I want to buy my first home — where do I begin?", icon: Home, testId: "first-home" },
+        { label: "Am I financially ready for a mortgage?", icon: TrendingUp, testId: "readiness-check" },
+      ],
+    },
+    {
+      heading: "Financial Planning",
+      items: [
+        { label: "How much home can I afford?", icon: DollarSign, testId: "affordability" },
+        { label: "How can I improve my credit score before applying?", icon: CreditCard, testId: "credit-improve" },
+      ],
+    },
+    {
+      heading: "Preparation",
+      items: [
+        { label: "What documents will I need for my application?", icon: FileText, testId: "documents-needed" },
+        { label: "Create a personalized action plan for me", icon: ListChecks, testId: "action-plan" },
+      ],
+    },
+  ];
+
+  const VALUE_PROPS = [
+    { icon: Target, text: "Personalized readiness assessment" },
+    { icon: ListChecks, text: "Step-by-step action plan" },
+    { icon: FileText, text: "Custom document checklist" },
+    { icon: Shield, text: "Based on real lending guidelines" },
   ];
 
   return (
-    <div className="flex-1 flex items-center justify-center p-6">
-      <div className="max-w-md text-center space-y-6">
-        <div className="mx-auto w-14 h-14 rounded-2xl bg-emerald-500/10 flex items-center justify-center">
-          <Sparkles className="h-7 w-7 text-emerald-500" />
+    <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+      <div className="mx-auto max-w-2xl space-y-8 py-4">
+        <div className="text-center space-y-4">
+          <div className="mx-auto w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 flex items-center justify-center">
+            <Bot className="h-8 w-8 text-emerald-500" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold text-foreground sm:text-3xl" data-testid="text-coach-welcome">
+              Your AI Homebuyer Coach
+            </h2>
+            <p className="text-muted-foreground mt-3 leading-relaxed max-w-lg mx-auto">
+              Think of me as your personal mortgage advisor. I'll learn about your situation,
+              assess your readiness, and build a clear plan to get you into your home.
+            </p>
+          </div>
         </div>
-        <div>
-          <h2 className="text-xl font-bold text-foreground" data-testid="text-coach-welcome">
-            AI Homebuyer Coach
-          </h2>
-          <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
-            I'll help you understand where you stand financially, create a personalized action plan,
-            and tell you exactly which documents you'll need for your mortgage application.
-          </p>
+
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {VALUE_PROPS.map((vp) => (
+            <div
+              key={vp.text}
+              className="flex flex-col items-center gap-2 rounded-xl border bg-card p-3 text-center"
+              data-testid={`value-prop-${vp.text.substring(0, 12).replace(/\s/g, '-').toLowerCase()}`}
+            >
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-500/10">
+                <vp.icon className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <span className="text-xs font-medium text-muted-foreground leading-tight">{vp.text}</span>
+            </div>
+          ))}
         </div>
 
         {insights.length > 0 && (
-          <div className="space-y-2 text-left">
+          <div className="space-y-2">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-1">Personalized for you</p>
             {insights.slice(0, 2).map((insight, i) => (
               <div
                 key={i}
@@ -577,20 +705,37 @@ function WelcomeState({ onStart, insights }: { onStart: (msg: string) => void; i
           </div>
         )}
 
-        <div className="grid grid-cols-1 gap-2">
-          {starters.map((s) => (
-            <Button
-              key={s.label}
-              variant="outline"
-              className="justify-start gap-2 text-left h-auto py-3"
-              onClick={() => onStart(s.label)}
-              data-testid={`button-starter-${s.label.substring(0, 15).replace(/\s/g, '-').toLowerCase()}`}
-            >
-              <s.icon className="h-4 w-4 shrink-0 text-muted-foreground" />
-              <span className="text-sm">{s.label}</span>
-              <ArrowRight className="h-3 w-3 ml-auto text-muted-foreground" />
-            </Button>
+        <div className="space-y-5">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-1">
+            {insights.length > 0 ? "Or start a conversation" : "Start a conversation"}
+          </p>
+          {STARTER_CATEGORIES.map((cat) => (
+            <div key={cat.heading} className="space-y-2">
+              <p className="text-sm font-medium text-foreground px-1">{cat.heading}</p>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {cat.items.map((s) => (
+                  <Button
+                    key={s.testId}
+                    variant="outline"
+                    className="justify-start gap-2.5 text-left h-auto py-3 px-4"
+                    onClick={() => onStart(s.label)}
+                    data-testid={`button-starter-${s.testId}`}
+                  >
+                    <s.icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    <span className="text-sm leading-snug">{s.label}</span>
+                    <ArrowRight className="h-3 w-3 ml-auto shrink-0 text-muted-foreground" />
+                  </Button>
+                ))}
+              </div>
+            </div>
           ))}
+        </div>
+
+        <div className="rounded-xl border bg-muted/30 p-4 text-center">
+          <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+            <Shield className="h-3.5 w-3.5" />
+            <span>Your conversations are private. No hard credit check. Free to use.</span>
+          </div>
         </div>
       </div>
     </div>
@@ -654,12 +799,46 @@ function ConversationList({
   );
 }
 
+function getSourceContext(): { banner: string; autoMessage: string } | null {
+  const params = new URLSearchParams(window.location.search);
+  const source = params.get("source");
+  const context = params.get("context");
+  const type = params.get("type");
+
+  if (source === "va" || type === "va" || context === "va") {
+    return {
+      banner: "VA Loan Guidance",
+      autoMessage: "I'm a veteran and I'd like to explore VA loan options. Can you help me understand my eligibility and benefits?",
+    };
+  }
+  if (source === "first-time" || context === "first-time") {
+    return {
+      banner: "First-Time Buyer",
+      autoMessage: "I'm a first-time homebuyer and I want to understand what I need to get started. Can you assess my readiness?",
+    };
+  }
+  if (source === "refinance" || type === "refinance") {
+    return {
+      banner: "Refinance Guidance",
+      autoMessage: "I'm interested in refinancing my current mortgage. Can you help me understand my options?",
+    };
+  }
+  if (source === "investor" || context === "investor") {
+    return {
+      banner: "Investment Property",
+      autoMessage: "I'm looking at investment properties. Can you help me understand mortgage requirements for rental properties?",
+    };
+  }
+  return null;
+}
+
 export default function AICoach() {
   usePageView("/coach");
   const trackActivity = useTrackActivity();
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [inputValue, setInputValue] = useState("");
   const [showSidebar, setShowSidebar] = useState(true);
+  const [sourceHandled, setSourceHandled] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { toast } = useToast();
@@ -723,11 +902,22 @@ export default function AICoach() {
       const res = await apiRequest("PATCH", `/api/coach/conversations/${activeConversationId}/action-plan/${itemId}`);
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/coach/conversations", activeConversationId] });
       queryClient.invalidateQueries({ queryKey: ["/api/coach/conversations"] });
+      if (data?.toggled) {
+        toast({
+          title: data.toggled.completed ? "Nice work!" : "Unmarked",
+          description: data.toggled.completed
+            ? `"${data.toggled.title}" marked as complete.`
+            : `"${data.toggled.title}" marked as incomplete.`,
+        });
+      }
     },
   });
+
+  const [mobileConvOpen, setMobileConvOpen] = useState(false);
+  const [mobilePanelOpen, setMobilePanelOpen] = useState(false);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -744,6 +934,14 @@ export default function AICoach() {
     sendMessage.mutate(text);
     trackActivity("coach_chat", "/coach");
   };
+
+  const sourceContext = getSourceContext();
+  useEffect(() => {
+    if (sourceContext && !sourceHandled && !activeConversationId && conversations.length === 0 && !loadingConvs) {
+      setSourceHandled(true);
+      handleSend(sourceContext.autoMessage);
+    }
+  }, [sourceContext, sourceHandled, activeConversationId, conversations.length, loadingConvs]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -765,31 +963,98 @@ export default function AICoach() {
 
   const insights = insightsData?.insights || [];
 
+  const sidePanelContent = (
+    <div className="space-y-3" data-testid="coach-side-panel">
+      {profile && <ReadinessPanel profile={profile} />}
+      {actionPlan && actionPlan.length > 0 && (
+        <ActionPlanPanel
+          plan={actionPlan}
+          conversationId={activeConversationId}
+          onToggle={(itemId) => toggleActionItem.mutate(itemId)}
+        />
+      )}
+      {documentChecklist && documentChecklist.length > 0 && <DocumentChecklistPanel docs={documentChecklist} />}
+    </div>
+  );
+
+  const conversationListContent = (
+    <>
+      <div className="flex items-center gap-2 mb-4 px-1">
+        <Bot className="h-5 w-5 text-emerald-500" />
+        <h2 className="font-semibold text-foreground text-sm">AI Coach</h2>
+      </div>
+      {loadingConvs ? (
+        <div className="flex justify-center py-8">
+          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        </div>
+      ) : (
+        <ConversationList
+          conversations={conversations}
+          activeId={activeConversationId}
+          onSelect={(id) => { setActiveConversationId(id); setMobileConvOpen(false); }}
+          onNew={() => { setActiveConversationId(null); setMobileConvOpen(false); }}
+        />
+      )}
+    </>
+  );
+
+  const hasActiveChat = activeConversationId || messages.length > 0;
+
   return (
     <div className="flex h-[calc(100vh-4rem)]" data-testid="page-ai-coach">
       {showSidebar && (
         <div className="w-64 border-r p-3 overflow-y-auto hidden lg:block">
-          <div className="flex items-center gap-2 mb-4 px-1">
-            <Bot className="h-5 w-5 text-emerald-500" />
-            <h2 className="font-semibold text-foreground text-sm">AI Coach</h2>
-          </div>
-          {loadingConvs ? (
-            <div className="flex justify-center py-8">
-              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-            </div>
-          ) : (
-            <ConversationList
-              conversations={conversations}
-              activeId={activeConversationId}
-              onSelect={setActiveConversationId}
-              onNew={() => setActiveConversationId(null)}
-            />
-          )}
+          {conversationListContent}
         </div>
       )}
 
       <div className="flex-1 flex flex-col min-w-0">
-        {!activeConversationId && messages.length === 0 ? (
+        {hasActiveChat && (
+          <div className="flex items-center gap-2 border-b px-3 py-2">
+            <Sheet open={mobileConvOpen} onOpenChange={setMobileConvOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="lg:hidden" data-testid="button-mobile-conversations">
+                  <MessageSquare className="h-4 w-4" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-72 p-3">
+                <SheetHeader className="pb-2">
+                  <SheetTitle className="text-sm">Conversations</SheetTitle>
+                </SheetHeader>
+                {conversationListContent}
+              </SheetContent>
+            </Sheet>
+
+            <div className="flex-1 min-w-0 flex items-center gap-2 flex-wrap">
+              <p className="text-sm font-medium truncate" data-testid="text-active-conversation-title">
+                {activeConv?.title || "New Conversation"}
+              </p>
+              {sourceContext && !activeConversationId && (
+                <Badge variant="secondary" className="text-xs" data-testid="badge-source-context">
+                  {sourceContext.banner}
+                </Badge>
+              )}
+            </div>
+
+            {hasSidePanel && (
+              <Sheet open={mobilePanelOpen} onOpenChange={setMobilePanelOpen}>
+                <SheetTrigger asChild>
+                  <Button variant="ghost" size="icon" className="xl:hidden" data-testid="button-mobile-panel">
+                    <Sparkles className="h-4 w-4" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="right" className="w-80 p-3 overflow-y-auto">
+                  <SheetHeader className="pb-2">
+                    <SheetTitle className="text-sm">Your Assessment</SheetTitle>
+                  </SheetHeader>
+                  {sidePanelContent}
+                </SheetContent>
+              </Sheet>
+            )}
+          </div>
+        )}
+
+        {!hasActiveChat ? (
           <WelcomeState
             onStart={(msg) => handleSend(msg)}
             insights={insights}
@@ -799,72 +1064,68 @@ export default function AICoach() {
             {insights.length > 0 && messages.length === 0 && (
               <InsightsBanner insights={insights} onAction={(msg) => handleSend(msg)} />
             )}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4" data-testid="chat-messages-container">
-              {messages.map((msg) => (
-                <ChatMessage key={msg.id} message={msg} />
-              ))}
-              {sendMessage.isPending && (
-                <div className="flex gap-3">
-                  <div className="shrink-0 h-8 w-8 rounded-full flex items-center justify-center bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                    <Bot className="h-4 w-4" />
+            <div className="flex-1 overflow-y-auto p-4" data-testid="chat-messages-container">
+              <div className="mx-auto max-w-3xl space-y-4">
+                {messages.map((msg) => (
+                  <ChatMessage key={msg.id} message={msg} />
+                ))}
+                {sendMessage.isPending && (
+                  <div className="flex gap-3">
+                    <div className="shrink-0 h-8 w-8 rounded-full flex items-center justify-center bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                      <Bot className="h-4 w-4" />
+                    </div>
+                    <div className="bg-muted rounded-xl px-4 py-3 flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span className="text-sm text-muted-foreground">Thinking...</span>
+                    </div>
                   </div>
-                  <div className="bg-muted rounded-xl px-4 py-3 flex items-center gap-2">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span className="text-sm text-muted-foreground">Thinking...</span>
-                  </div>
-                </div>
-              )}
-              <div ref={messagesEndRef} />
+                )}
+                <div ref={messagesEndRef} />
+              </div>
             </div>
           </>
         )}
 
-        <div className="border-t p-3">
-          <div className="max-w-3xl mx-auto space-y-2">
-            {showSuggestions && (
-              <SuggestedPrompts
-                suggestions={suggestions}
-                onSelect={(msg) => handleSend(msg)}
-                disabled={sendMessage.isPending || !!usage?.isLimited}
-              />
-            )}
-            {usage && <UsageMeter usage={usage} />}
-            <div className="flex gap-2">
-              <Textarea
-                ref={textareaRef}
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder={usage?.isLimited ? "Daily limit reached. Try again tomorrow." : "Ask about your mortgage readiness, documents, credit..."}
-                className="resize-none min-h-[44px] max-h-[120px] text-sm"
-                rows={1}
-                disabled={sendMessage.isPending || !!usage?.isLimited}
-                data-testid="input-coach-message"
-              />
-              <Button
-                size="icon"
-                onClick={() => handleSend()}
-                disabled={!inputValue.trim() || sendMessage.isPending || !!usage?.isLimited}
-                data-testid="button-send-message"
-              >
-                <Send className="h-4 w-4" />
-              </Button>
+        {hasActiveChat && (
+          <div className="border-t p-3">
+            <div className="max-w-3xl mx-auto space-y-2">
+              {showSuggestions && (
+                <SuggestedPrompts
+                  suggestions={suggestions}
+                  onSelect={(msg) => handleSend(msg)}
+                  disabled={sendMessage.isPending || !!usage?.isLimited}
+                />
+              )}
+              {usage && <UsageMeter usage={usage} />}
+              <div className="flex gap-2">
+                <Textarea
+                  ref={textareaRef}
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder={usage?.isLimited ? "Daily limit reached. Try again tomorrow." : "Ask about your mortgage readiness, documents, credit..."}
+                  className="resize-none min-h-[44px] max-h-[120px] text-sm"
+                  rows={1}
+                  disabled={sendMessage.isPending || !!usage?.isLimited}
+                  data-testid="input-coach-message"
+                />
+                <Button
+                  size="icon"
+                  onClick={() => handleSend()}
+                  disabled={!inputValue.trim() || sendMessage.isPending || !!usage?.isLimited}
+                  data-testid="button-send-message"
+                >
+                  <Send className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
 
       {hasSidePanel && (
-        <div className="w-80 border-l overflow-y-auto p-3 space-y-3 hidden xl:block" data-testid="coach-side-panel">
-          {profile && <ReadinessPanel profile={profile} />}
-          {actionPlan && actionPlan.length > 0 && (
-            <ActionPlanPanel
-              plan={actionPlan}
-              conversationId={activeConversationId}
-              onToggle={(itemId) => toggleActionItem.mutate(itemId)}
-            />
-          )}
-          {documentChecklist && documentChecklist.length > 0 && <DocumentChecklistPanel docs={documentChecklist} />}
+        <div className="w-80 border-l overflow-y-auto p-3 hidden xl:block">
+          {sidePanelContent}
         </div>
       )}
     </div>
