@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
-import { usePageView, useTrackActivity } from "@/hooks/useActivityTracker";
+import { usePageView, useTrackActivity, useTrackFormStart, useTrackFormAbandon } from "@/hooks/useActivityTracker";
 import { 
   ArrowRight, 
   ChevronLeft, 
@@ -408,10 +408,15 @@ export default function PreApproval() {
 
   usePageView("/apply");
   const track = useTrackActivity();
+  const trackFormStart = useTrackFormStart();
+  useTrackFormAbandon("preapproval", currentStep > 0 && currentStep < QUESTIONS.length - 1);
   const prevStepRef = useRef(0);
 
   const urlParams = new URLSearchParams(window.location.search);
   const urlType = urlParams.get("type");
+  const urlPrice = urlParams.get("price");
+  const urlState = urlParams.get("state");
+  const urlPropertyType = urlParams.get("propertyType");
   const defaultLoanPurpose = urlType === "refinance" ? "refinance" : urlType === "heloc" ? "cash_out" : "purchase";
 
   const form = useForm<PreApprovalFormData>({
@@ -424,12 +429,12 @@ export default function PreApproval() {
       monthlyDebts: "",
       creditScore: "",
       loanPurpose: defaultLoanPurpose,
-      propertyType: "single_family",
-      purchasePrice: "",
+      propertyType: (urlPropertyType as any) || "single_family",
+      purchasePrice: urlPrice || "",
       downPayment: "",
       isVeteran: false,
       isFirstTimeBuyer: false,
-      propertyState: "",
+      propertyState: urlState || "",
     },
   });
 
@@ -665,6 +670,7 @@ export default function PreApproval() {
 
   const handleNext = async () => {
     if (currentQ.type === "intro") {
+      trackFormStart("preapproval");
       setDirection(1);
       setCurrentStep((prev) => prev + 1);
       return;

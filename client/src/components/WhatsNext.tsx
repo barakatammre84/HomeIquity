@@ -15,6 +15,11 @@ import {
   Clock,
   Bot,
   CheckCircle2,
+  CreditCard,
+  Fingerprint,
+  Landmark,
+  Lock,
+  TrendingDown,
 } from "lucide-react";
 import type { LoanApplication } from "@shared/schema";
 
@@ -23,6 +28,10 @@ interface WhatsNextProps {
   pendingTasks: number;
   pendingDocuments: number;
   unreadMessages: number;
+  hasCreditConsent?: boolean;
+  hasIdVerification?: boolean;
+  hasBankConnected?: boolean;
+  hasRateLocked?: boolean;
 }
 
 interface NextAction {
@@ -36,7 +45,7 @@ interface NextAction {
 }
 
 export function getNextActions(props: WhatsNextProps): NextAction[] {
-  const { application, pendingTasks, pendingDocuments, unreadMessages } = props;
+  const { application, pendingTasks, pendingDocuments, unreadMessages, hasCreditConsent = true, hasIdVerification = true, hasBankConnected = true, hasRateLocked = true } = props;
   const actions: NextAction[] = [];
 
   if (!application) {
@@ -105,6 +114,54 @@ export function getNextActions(props: WhatsNextProps): NextAction[] {
       href: "/documents",
       buttonLabel: "Upload Documents",
       priority: 3,
+    });
+  }
+
+  if (!hasCreditConsent) {
+    actions.push({
+      icon: CreditCard,
+      iconColor: "text-rose-500",
+      title: "Authorize your credit check",
+      description: "We need your consent to pull your credit report. This is a soft pull and won't affect your score.",
+      href: "/dashboard?action=credit-consent",
+      buttonLabel: "Authorize",
+      priority: 2,
+    });
+  }
+
+  if (!hasIdVerification) {
+    actions.push({
+      icon: Fingerprint,
+      iconColor: "text-indigo-500",
+      title: "Verify your identity",
+      description: "A quick ID verification helps us protect you and speeds up your approval.",
+      href: "/dashboard?action=verify-id",
+      buttonLabel: "Verify Now",
+      priority: 3,
+    });
+  }
+
+  if (!hasBankConnected) {
+    actions.push({
+      icon: Landmark,
+      iconColor: "text-teal-500",
+      title: "Connect your bank account",
+      description: "Securely link your bank to instantly verify your income and assets.",
+      href: "/dashboard?action=connect-bank",
+      buttonLabel: "Connect Bank",
+      priority: 3,
+    });
+  }
+
+  if (!hasRateLocked && (status === "pre_approved" || status === "underwriting" || status === "conditional")) {
+    actions.push({
+      icon: Lock,
+      iconColor: "text-amber-500",
+      title: "Lock in your rate",
+      description: "Rates can change daily. Lock your rate now to protect against increases.",
+      href: "/dashboard?action=rate-lock",
+      buttonLabel: "Lock Rate",
+      priority: 2,
     });
   }
 
@@ -178,6 +235,39 @@ export function getNextActions(props: WhatsNextProps): NextAction[] {
       href: "/messages",
       buttonLabel: "Contact Team",
       priority: 1,
+    });
+  }
+
+  if (status === "denied" || status === "declined") {
+    actions.push({
+      icon: TrendingDown,
+      iconColor: "text-rose-500",
+      title: "Let's explore your options",
+      description: "Your current application wasn't approved, but there may be other paths. Chat with our AI Coach to learn what you can do next.",
+      href: "/ai-coach",
+      buttonLabel: "Talk to Coach",
+      priority: 1,
+    });
+    actions.push({
+      icon: BookOpen,
+      iconColor: "text-purple-500",
+      title: "Improve your mortgage readiness",
+      description: "Read our guides on credit improvement, saving for a down payment, and more.",
+      href: "/learn",
+      buttonLabel: "Read Guides",
+      priority: 2,
+    });
+  }
+
+  if (status === "submitted" || status === "analyzing") {
+    actions.push({
+      icon: Bot,
+      iconColor: "text-purple-500",
+      title: "Chat with your AI Coach",
+      description: "While you wait, get personalized homebuying tips and answers to your mortgage questions.",
+      href: "/ai-coach",
+      buttonLabel: "Start Chat",
+      priority: 8,
     });
   }
 

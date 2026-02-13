@@ -625,7 +625,7 @@ function PropertyCard({ property, viewMode }: { property: Property; viewMode: "g
                   View Details
                 </Button>
               </Link>
-              <Link href={`/apply?propertyId=${property.id}`} className="flex-1">
+              <Link href={`/apply?propertyId=${property.id}&price=${property.price}&state=${property.state || ""}&propertyType=${property.propertyType || "single_family"}`} className="flex-1">
                 <Button className="w-full gap-2">
                   <DollarSign className="h-4 w-4" />
                   See Loan Options
@@ -690,7 +690,7 @@ function PropertyCard({ property, viewMode }: { property: Property; viewMode: "g
               Details
             </Button>
           </Link>
-          <Link href={`/apply?propertyId=${property.id}`} className="flex-1">
+          <Link href={`/apply?propertyId=${property.id}&price=${property.price}&state=${property.state || ""}&propertyType=${property.propertyType || "single_family"}`} className="flex-1">
             <Button className="w-full gap-2">
               <DollarSign className="h-4 w-4" />
               Loan Options

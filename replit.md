@@ -46,3 +46,10 @@ The project utilizes a domain-based modular structure for both server routes and
 -   **vaul:** Drawer component.
 -   **lucide-react:** Icon library.
 -   **framer-motion:** Animation library.
+
+### Conversion & Engagement Optimization
+- **ConversionCTA Component**: Reusable `client/src/components/ConversionCTA.tsx` providing context-aware dual-action CTAs (Get Pre-Approved + Talk to Coach). Accepts `context`, `purchasePrice`, `state`, `propertyType` props. Used in calculator pages.
+- **Property→Apply Bridge**: Property card CTAs pass `price`, `state`, `propertyType` as URL params to `/apply`. PreApproval form reads these params to pre-fill form fields.
+- **WhatsNext Expanded Nudges**: `WhatsNext.tsx` supports `hasCreditConsent`, `hasIdVerification`, `hasBankConnected`, `hasRateLocked` boolean props for additional nudge states including credit consent, ID verification, bank connect, rate lock, denied re-engagement, and AI Coach while waiting.
+- **AI Coach→Apply Bridge**: Coach readiness panel passes `source=coach` and `readiness` tier as URL params. Non-ready users see "Explore Pre-Approval Anyway" CTA.
+- **Enhanced Activity Tracking**: `useTrackFormStart`, `useTrackFormAbandon`, `useTrackCoachSession` hooks integrated into PreApproval form and AI Coach.

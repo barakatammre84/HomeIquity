@@ -13,6 +13,7 @@ import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
+import { ConversionCTA } from "@/components/ConversionCTA";
 import {
   Home,
   DollarSign,
@@ -497,6 +498,8 @@ export default function AffordabilityCalculator() {
                 Save Results to My Profile
               </Button>
             )}
+
+            <ConversionCTA context="calculator" purchasePrice={String(results.maxHomePrice)} />
           </div>
         </div>
       </div>

@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
-import { usePageView, useTrackActivity } from "@/hooks/useActivityTracker";
+import { usePageView, useTrackActivity, useTrackCoachSession } from "@/hooks/useActivityTracker";
 import {
   Send,
   Bot,
@@ -225,8 +225,8 @@ function ReadinessPanel({ profile }: { profile: CoachProfile }) {
         )}
 
         {(profile.readinessTier === "ready_now" || profile.readinessTier === "almost_ready") && (
-          <div className="pt-2 border-t">
-            <Link href="/apply" data-testid="link-ready-to-apply">
+          <div className="pt-2 border-t space-y-2">
+            <Link href={`/apply?source=coach&readiness=${profile.readinessTier}`} data-testid="link-ready-to-apply">
               <Button className="w-full gap-2" data-testid="button-ready-to-apply">
                 <FileText className="h-4 w-4" />
                 {profile.readinessTier === "ready_now"
@@ -235,8 +235,22 @@ function ReadinessPanel({ profile }: { profile: CoachProfile }) {
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>
-            <p className="text-xs text-muted-foreground text-center mt-2">
+            <p className="text-xs text-muted-foreground text-center">
               Your coach data will be used to pre-fill the application
+            </p>
+          </div>
+        )}
+        {profile.readinessTier !== "ready_now" && profile.readinessTier !== "almost_ready" && (
+          <div className="pt-2 border-t">
+            <Link href="/apply?source=coach" data-testid="link-explore-apply">
+              <Button variant="outline" className="w-full gap-2" data-testid="button-explore-apply">
+                <FileText className="h-4 w-4" />
+                Explore Pre-Approval Anyway
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </Link>
+            <p className="text-xs text-muted-foreground text-center mt-2">
+              See where you stand with a no-impact pre-approval check
             </p>
           </div>
         )}
@@ -719,9 +733,13 @@ export default function AICoach() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [activeData?.messages]);
 
+  const trackCoachSession = useTrackCoachSession();
   const handleSend = (msg?: string) => {
     const text = (msg || inputValue).trim();
     if (!text || sendMessage.isPending || usage?.isLimited) return;
+    if (!activeConversationId) {
+      trackCoachSession("coach_session_start");
+    }
     setInputValue("");
     sendMessage.mutate(text);
     trackActivity("coach_chat", "/coach");
