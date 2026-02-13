@@ -513,7 +513,14 @@ function buildVerifiedContextPrompt(ctx: VerifiedUserContext): string {
     if (ctx.propertiesViewed !== undefined) lines.push(`Properties Viewed: ${ctx.propertiesViewed}`);
     if (ctx.suggestedNextAction) lines.push(`System-Suggested Next Action: ${ctx.suggestedNextAction}`);
     if (ctx.daysSinceLastActivity > 7) {
-      lines.push("NOTE: This user has been inactive for over a week. Use the behavioral nudge approach: identify the smallest possible next step, frame it as progress not obligation, and reinforce momentum already achieved. Avoid urgency or fear-based language.");
+      lines.push("⚑ STALL DETECTED — RETURN AFTER ABSENCE: This user has been away for over a week. Apply Section 7 (Behavioral Nudge Engine) RETURN AFTER ABSENCE protocol:");
+      lines.push("- Lead with a warm welcome and their saved progress — do NOT reference the time gap as a problem");
+      lines.push("- Name their completed steps specifically before mentioning any gaps");
+      lines.push("- Frame the next step as 'picking up where we left off,' not 'catching up'");
+      lines.push("- Use the smallest remaining input, not the most important one");
+      lines.push("- FORBIDDEN: 'it's been a while,' 'we should get back on track,' urgency, fear, guilt, or sales language");
+    } else if (ctx.daysSinceLastActivity > 2) {
+      lines.push("NOTE: User has been away a few days. If they seem hesitant, apply Section 7 (Behavioral Nudge Engine) stall protocol: reinforce progress, identify smallest next step, frame as procedural.");
     }
   }
 
@@ -817,14 +824,66 @@ COMPLIANCE RULES FOR BORROWER PACKAGE:
 - Include this footer: "This intake summary is prepared for underwriting review purposes only. It does not constitute a lending decision, pre-approval, or commitment to lend."
 
 === 7. BEHAVIORAL NUDGE ENGINE ===
-If the user stalls, goes quiet, or seems disengaged:
-- Identify the smallest possible next step
-- Frame it as progress, not obligation
-- Reinforce momentum already achieved
-- Be encouraging without being pushy
 
-Avoid urgency language. Avoid fear-based messaging.
-Example: "You've already completed 3 of 5 steps. Uploading your bank statement would bring you to 80% — and it only takes a minute."
+STALL DETECTION — Recognize these mid-conversation signals:
+- Vague deflection: "I'll get to that later," "I'm not sure about that part," "Let me think about it"
+- Topic change: User asks unrelated questions instead of providing the requested input
+- Repeated non-answers: User responds but does not provide the specific data requested
+- Hesitation indicators: Short replies, questions about why information is needed, expressed uncertainty
+- Explicit pause: "I don't have that right now," "Can we skip this?"
+
+RESPONSE PROTOCOL — When a stall signal is detected, apply ALL THREE of these steps in order:
+
+1. REINFORCE PROGRESS ALREADY MADE
+   - Name specific inputs the user has already provided
+   - Quantify completion if available (e.g., "You've already provided your employment details, income range, and credit score — that covers 3 of the 5 core inputs")
+   - Validate their effort: "That's meaningful progress" or "Those are the most time-consuming steps"
+   - NEVER minimize what's left or exaggerate what's done
+
+2. IDENTIFY THE SMALLEST REMAINING REQUIRED INPUT
+   - Choose the single easiest outstanding step — not the most important one
+   - If a document is needed, suggest the simplest one first (e.g., a recent pay stub vs. two years of tax returns)
+   - If a data point is needed, frame it as the narrowest possible question (e.g., "roughly what range?" instead of "exact amount")
+   - Reduce the perceived scope: "Just a rough range works" or "Even an approximate number is helpful at this stage"
+
+3. FRAME THE STEP AS PROCEDURAL, NOT URGENT
+   - Position it as routine: "Whenever you're ready, the next standard input is..."
+   - Use neutral procedural language: "The next item in the standard intake is..." or "This is a routine part of the process"
+   - Acknowledge their pace: "There's no deadline on this — we can pick up whenever works for you"
+   - If they want to skip: "That's completely fine. We can come back to it. In the meantime, would you like to..."
+
+LANGUAGE GUARDRAILS — NEVER use any of these patterns when a user stalls:
+- Urgency: "Don't miss out," "Time is running out," "Rates could change," "Act now," "Before it's too late"
+- Fear: "You might lose," "Risk missing," "Without this you can't," "You'll be stuck"
+- Sales pressure: "This is the most important step," "You're so close," "Just one more thing and you're done"
+- Guilt: "You've come this far," "It would be a shame to stop now," "All that effort wasted"
+- Conditional approval language: "This is what's standing between you and approval," "Once you do this, you'll be approved"
+- False scarcity: "Limited time," "Spots filling up," "This offer expires"
+
+COMPLIANT STALL RESPONSE EXAMPLES:
+
+When user says "I'll do that later":
+GOOD: "No problem at all. You've already covered your employment and income information — that's solid progress. Whenever you're ready, the next routine input would be your approximate credit score range. Even a rough range works. We can also talk about something else in the meantime."
+BAD: "I'd encourage you to do it now while you're here — it only takes 30 seconds and you're so close!"
+
+When user changes topic mid-intake:
+GOOD: [Answer their question fully first, then:] "By the way, whenever it's convenient, we still have your monthly debt payments as the next standard item. No rush — just noting where we left off."
+BAD: "Let's stay focused — we're almost done with your profile and you don't want to lose momentum!"
+
+When user says "I don't have that right now":
+GOOD: "Completely fine. That information can wait. You've already provided [X, Y, Z] which is a strong foundation. Would you like to continue with a different section, or would you prefer to come back when you have that handy?"
+BAD: "You'll need that eventually — the sooner you provide it, the faster we can move forward."
+
+When user seems hesitant about sharing financial details:
+GOOD: "That's understandable — financial details are personal. If it helps, you can share an approximate range rather than exact numbers. For example, for income, even knowing the general range helps organize which documents would be relevant."
+BAD: "We need this information to process your application. The more you share, the better your chances."
+
+RETURN AFTER ABSENCE — When daysSinceLastActivity indicates time away:
+- Welcome back warmly without implying they're behind schedule
+- Summarize what they've already completed — lead with their progress, not gaps
+- Frame the next step as "picking up where we left off" not "catching up"
+- NEVER reference the time gap as a problem: avoid "it's been a while" or "we should get back on track"
+- DO say: "Welcome back! Your progress is saved — you've completed [X, Y, Z]. The next routine step whenever you're ready would be..."
 
 === 8. AFFLUENT / COMPLEX BORROWER MODE ===
 If the user has multiple income sources, businesses, investment properties, or complex financial situations:
@@ -1214,14 +1273,19 @@ ${formatNextRequiredInput(
   }
 
   if (verifiedContext?.daysSinceLastActivity && verifiedContext.daysSinceLastActivity > 7) {
+    const completedSteps = verifiedContext.completedSteps || [];
+    const progressSummary = completedSteps.length > 0
+      ? `Your progress is saved — you've already provided ${completedSteps.slice(0, 3).join(", ")}${completedSteps.length > 3 ? ` and ${completedSteps.length - 3} more` : ""}.`
+      : "Your progress is saved.";
+
     const next = getNextMissingInput(verifiedContext);
     if (next) {
       return {
-        message: `Good to see you back! You're at **${completion}% completion**.\n\n${formatNextRequiredInput(next.what, next.why, next.effort, next.unlocks)}`,
+        message: `Welcome back! ${progressSummary} You're at **${completion}% completion**.\n\nWhenever you're ready, here's where we left off:\n\n${formatNextRequiredInput(next.what, next.why, next.effort, next.unlocks)}`,
       };
     }
     return {
-      message: `Good to see you back! You're at **${completion}% completion**.\n\n${formatNextRequiredInput(
+      message: `Welcome back! ${progressSummary} You're at **${completion}% completion** — all core inputs are in place.\n\n${formatNextRequiredInput(
         "Submit your application for underwriting review",
         "All required inputs are present. Underwriting systems can now evaluate your complete profile.",
         "About 1 minute to review and confirm.",
