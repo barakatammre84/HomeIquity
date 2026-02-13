@@ -67,12 +67,8 @@ export interface BorrowerPackage {
   incomeSources: Array<{
     source: string;
     type: string;
-    amount: string;
-    period: string;
-    verificationTier: string;
-    employerName?: string | null;
-    yearsEmployed?: string;
-    businessStructure?: string | null;
+    frequency: string;
+    documentationStatus: string;
   }>;
   assetCategories: Array<{
     category: string;
@@ -1202,14 +1198,10 @@ The "borrowerPackage" should be null unless the user is "ready_now" or the user 
   },
   "incomeSources": [
     {
-      "source": "employer name or income source",
-      "type": "W-2 Employment | Self-Employment | 1099 | Retirement | Other",
-      "amount": "numeric string or 'Not Provided'",
-      "period": "Annual | Monthly",
-      "verificationTier": "Tier 1 — Document Verified | Tier 2 — Application Declared | Tier 3 — Self-Reported",
-      "employerName": "string or null",
-      "yearsEmployed": "string or 'Not Provided'",
-      "businessStructure": "string or null (for self-employed only)"
+      "source": "employer name, business name, or income category",
+      "type": "W-2 | Self-Employed | Rental | 1099 | Retirement | Other",
+      "frequency": "Monthly | Bi-Weekly | Annual | Not Provided",
+      "documentationStatus": "Uploaded | Pending | Not Provided"
     }
   ],
   "assetCategories": [

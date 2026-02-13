@@ -39,12 +39,8 @@ interface BorrowerPackageData {
   incomeSources?: Array<{
     source?: string;
     type?: string;
-    amount?: string;
-    period?: string;
-    verificationTier?: string;
-    employerName?: string | null;
-    yearsEmployed?: string;
-    businessStructure?: string | null;
+    frequency?: string;
+    documentationStatus?: string;
   }>;
   assetCategories?: Array<{
     category?: string;
@@ -280,7 +276,7 @@ export default function BorrowerPackageView({ data }: { data: BorrowerPackageDat
 
       <Card data-testid="section-income">
         <CardContent className="pt-4 pb-3 px-4">
-          <SectionHeader icon={Briefcase} title="Declared Income Sources" number={4} />
+          <SectionHeader icon={Briefcase} title="Declared Income Summary" number={4} />
           {incomeSources.length === 0 ? (
             <p className="text-sm text-muted-foreground opacity-60" data-testid="text-income-empty">Not Provided</p>
           ) : (
@@ -289,35 +285,18 @@ export default function BorrowerPackageView({ data }: { data: BorrowerPackageDat
                 <thead>
                   <tr className="border-b" data-testid="row-income-header">
                     <th className="text-left py-1.5 pr-3 text-muted-foreground font-medium text-xs">Source</th>
-                    <th className="text-left py-1.5 pr-3 text-muted-foreground font-medium text-xs">Type</th>
-                    <th className="text-right py-1.5 pr-3 text-muted-foreground font-medium text-xs">Amount</th>
-                    <th className="text-left py-1.5 pr-3 text-muted-foreground font-medium text-xs">Period</th>
-                    <th className="text-right py-1.5 text-muted-foreground font-medium text-xs">Verification</th>
+                    <th className="text-left py-1.5 pr-3 text-muted-foreground font-medium text-xs">Income Type</th>
+                    <th className="text-left py-1.5 pr-3 text-muted-foreground font-medium text-xs">Frequency</th>
+                    <th className="text-left py-1.5 text-muted-foreground font-medium text-xs">Documentation</th>
                   </tr>
                 </thead>
                 <tbody>
                   {incomeSources.map((inc, i) => (
                     <tr key={i} className="border-b last:border-0" data-testid={`row-income-${i}`}>
-                      <td className="py-1.5 pr-3">
-                        <div data-testid={`text-income-source-${i}`}>{safe(inc.source)}</div>
-                        {inc.employerName && <div className="text-xs text-muted-foreground">{inc.employerName}</div>}
-                        {inc.yearsEmployed && !isNotProvided(inc.yearsEmployed) && (
-                          <div className="text-xs text-muted-foreground">{inc.yearsEmployed} yrs</div>
-                        )}
-                        {inc.businessStructure && (
-                          <div className="text-xs text-muted-foreground">{inc.businessStructure}</div>
-                        )}
-                      </td>
+                      <td className="py-1.5 pr-3" data-testid={`text-income-source-${i}`}>{safe(inc.source)}</td>
                       <td className="py-1.5 pr-3" data-testid={`text-income-type-${i}`}>{safe(inc.type)}</td>
-                      <td className="py-1.5 pr-3 text-right font-medium" data-testid={`text-income-amount-${i}`}>
-                        {isNotProvided(inc.amount) ? (
-                          <span className="opacity-60">Not Provided</span>
-                        ) : (
-                          formatCurrency(inc.amount!)
-                        )}
-                      </td>
-                      <td className="py-1.5 pr-3" data-testid={`text-income-period-${i}`}>{safe(inc.period)}</td>
-                      <td className="py-1.5 text-right"><VerificationBadge tier={safe(inc.verificationTier)} /></td>
+                      <td className="py-1.5 pr-3" data-testid={`text-income-frequency-${i}`}>{safe(inc.frequency)}</td>
+                      <td className="py-1.5"><DocStatusBadge status={safe(inc.documentationStatus)} /></td>
                     </tr>
                   ))}
                 </tbody>
