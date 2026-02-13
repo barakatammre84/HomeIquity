@@ -533,18 +533,23 @@ Use this context to:
 - Reference completion percentage when showing progress ("You're at 65% — one more document brings you to 80%").
 
 === 4. NEXT REQUIRED INPUT ENGINE ===
-Based on the user's current context, ALWAYS identify the SINGLE next required input for underwriting readiness.
+Based on the current readiness state, identify the single next required input needed for underwriting review.
 
-Present it as:
-- A clear, decisive recommendation of what to provide next
-- One sentence explaining why underwriting systems require this input
-- An estimate of time or effort required
-- A calm, supportive tone
+Present it using this EXACT 4-part structure every time:
+1. **What is required** — Name the specific input or document needed.
+2. **Why underwriting systems require it** — One sentence explaining the underwriting purpose.
+3. **Estimated time or effort** — How long it takes or how much work is involved.
+4. **What will be unlocked once completed** — What progress or capability this enables (e.g., completion % increase, next phase, specific assessment).
 
-Frame everything as: "This information is required by underwriting systems to evaluate readiness."
-Do NOT present multiple options. Do NOT ask open-ended questions. Guide decisively.
+Do not present multiple options.
+Do not speculate on outcomes.
+Do not ask open-ended questions. Guide decisively.
 
-Example: "Uploading your most recent pay stub will move your profile from 40% to 55% ready. Underwriting systems need this to verify your current income. This usually takes about 2 minutes."
+Example:
+"**What's needed:** Your most recent pay stub (last 30 days).
+**Why:** Underwriting systems use this to verify your current income and employment status.
+**Effort:** About 2 minutes to upload a photo or PDF.
+**What it unlocks:** Your income will be verified, moving your completion from 40% to 55% and enabling debt-to-income calculation."
 
 Never repeat steps already completed. Never overwhelm the user with multiple inputs.
 
@@ -662,10 +667,11 @@ The JSON should follow this format:
       "category": "Income"
     }
   ],
-  "nextBestAction": {
-    "action": "Upload your most recent pay stub",
-    "reason": "This will verify your current income and move your readiness from 40% to 55%",
-    "estimatedTime": "2 minutes",
+  "nextRequiredInput": {
+    "what": "Upload your most recent pay stub (last 30 days)",
+    "why": "Underwriting systems use this to verify your current income and employment status",
+    "effort": "About 2 minutes to upload a photo or PDF",
+    "unlocks": "Income verification complete, moving completion from 40% to 55% and enabling DTI calculation",
     "category": "documents"
   },
   "borrowerPackage": null
@@ -690,7 +696,7 @@ Field types:
 - isVeteran: boolean
 - isFirstTimeBuyer: boolean
 
-The "nextBestAction" object should ALWAYS be included. It is the single next required input for underwriting readiness. Include "action" (what to provide), "reason" (why underwriting systems require it), "estimatedTime" (how long), and "category" (documents/credit/savings/income/debt/education).
+The "nextRequiredInput" object should ALWAYS be included. It is the single next required input for underwriting readiness. Include "what" (the specific input or document needed), "why" (why underwriting systems require it), "effort" (estimated time or work), "unlocks" (what progress or capability this enables), and "category" (documents/credit/savings/income/debt/education). Do not present multiple options. Do not speculate on outcomes.
 
 The "borrowerPackage" should be null unless the user is "ready_now". When ready, generate a clean JSON summary with: householdOverview, incomeSources (with verification tier), assetCategories, creditAndDebt, propertyIntent, readinessScore, documentInventory. This summary is informational and does not imply approval.
 
@@ -767,12 +773,80 @@ function parseCoachResponse(text: string): CoachResponse {
   return result;
 }
 
+function formatNextRequiredInput(what: string, why: string, effort: string, unlocks: string): string {
+  return `**What's needed:** ${what}\n**Why:** ${why}\n**Effort:** ${effort}\n**What it unlocks:** ${unlocks}`;
+}
+
+function getNextMissingInput(ctx?: VerifiedUserContext): { what: string; why: string; effort: string; unlocks: string } | null {
+  if (!ctx) return null;
+
+  if (!ctx.employmentType) {
+    return {
+      what: "Your employment type",
+      why: "Underwriting systems use this to determine which income documents are required and how income is calculated.",
+      effort: "About 30 seconds — just tell me what kind of work you do.",
+      unlocks: `Employment-specific document checklist and income verification path. Moves your completion to ${Math.min(100, (ctx.completionPercentage || 0) + 8)}%.`,
+    };
+  }
+  if (!ctx.annualIncome) {
+    return {
+      what: "Your approximate annual income",
+      why: "Underwriting systems use income to calculate your debt-to-income ratio and determine borrowing capacity.",
+      effort: "About 30 seconds — a rough estimate is fine for now, documents will verify later.",
+      unlocks: `Enables DTI calculation and affordability assessment. Moves your completion to ${Math.min(100, (ctx.completionPercentage || 0) + 8)}%.`,
+    };
+  }
+  if (!ctx.creditScore) {
+    return {
+      what: "Your approximate credit score range",
+      why: "Underwriting systems use credit scores to determine which loan programs your profile can be evaluated against.",
+      effort: "About 30 seconds — even a rough range works. You can check for free through your bank.",
+      unlocks: `Enables program matching and rate tier assessment. Moves your completion to ${Math.min(100, (ctx.completionPercentage || 0) + 8)}%.`,
+    };
+  }
+  if (!ctx.monthlyDebts) {
+    return {
+      what: "Your approximate total monthly debts (car payments, student loans, credit card minimums, etc.)",
+      why: "Underwriting systems use this alongside your income to calculate your debt-to-income ratio.",
+      effort: "About 1 minute — add up your monthly minimums. A rough estimate is fine.",
+      unlocks: `Completes your DTI calculation, one of the key metrics for readiness. Moves your completion to ${Math.min(100, (ctx.completionPercentage || 0) + 8)}%.`,
+    };
+  }
+  if (!ctx.purchasePrice) {
+    return {
+      what: "Your target purchase price or price range",
+      why: "Underwriting systems need this to calculate loan-to-value ratio and assess down payment adequacy.",
+      effort: "About 30 seconds — a range is fine if you're still exploring.",
+      unlocks: `Enables LTV calculation and down payment assessment. Moves your completion to ${Math.min(100, (ctx.completionPercentage || 0) + 8)}%.`,
+    };
+  }
+  if (!ctx.downPayment) {
+    return {
+      what: "Your estimated down payment amount",
+      why: "Underwriting systems use this to calculate your loan-to-value ratio and determine PMI requirements.",
+      effort: "About 30 seconds — approximate amount you have available.",
+      unlocks: `Enables LTV and PMI assessment. Moves your completion to ${Math.min(100, (ctx.completionPercentage || 0) + 8)}%.`,
+    };
+  }
+  if (ctx.documentsMissing && ctx.documentsMissing.length > 0) {
+    const doc = ctx.documentsMissing[0];
+    return {
+      what: `Upload your ${doc}`,
+      why: `Underwriting systems require this document to verify your self-reported information.`,
+      effort: "About 2 minutes — upload a photo or PDF.",
+      unlocks: `Document verification for your profile. Moves your completion to ${Math.min(100, (ctx.completionPercentage || 0) + 5)}%.`,
+    };
+  }
+  return null;
+}
+
 function generateFallbackResponse(
   userMessage: string,
   history: Array<{ role: string; content: string }>,
   verifiedContext?: VerifiedUserContext,
 ): CoachResponse {
   const isFirstMessage = history.length <= 1;
+  const completion = verifiedContext?.completionPercentage || 0;
 
   if (isFirstMessage && verifiedContext?.hasApplication) {
     const app = verifiedContext;
@@ -788,21 +862,18 @@ function generateFallbackResponse(
       if (app.isVeteran) parts.push(`- **Veteran:** Yes`);
     }
 
-    if (app.readinessScore !== undefined && app.readinessScore !== null) {
-      parts.push(`\nYour current readiness score is **${app.readinessScore}/100**.`);
-    }
+    parts.push(`\nYou're at **${completion}% completion**.`);
 
-    const missingInputs: string[] = [];
-    if (!app.creditScore) missingInputs.push("credit score range");
-    if (!app.annualIncome) missingInputs.push("income verification");
-    if (!app.monthlyDebts) missingInputs.push("monthly debt summary");
-
-    if (missingInputs.length > 0) {
-      parts.push(`\nThe next input needed for underwriting readiness is your **${missingInputs[0]}**. This is required by underwriting systems to evaluate your profile. It should only take a couple of minutes.`);
-    } else if (app.documentsMissing && app.documentsMissing.length > 0) {
-      parts.push(`\nYour financial details look good. The next step is uploading your **${app.documentsMissing[0]}**. Underwriting systems require this document to verify your information.`);
+    const next = getNextMissingInput(app);
+    if (next) {
+      parts.push(`\n${formatNextRequiredInput(next.what, next.why, next.effort, next.unlocks)}`);
     } else {
-      parts.push("\nYour profile inputs are complete. The next required step is to **submit your application for underwriting review**. Would you like to proceed?");
+      parts.push(`\n${formatNextRequiredInput(
+        "Submit your application for underwriting review",
+        "All required inputs are present. Underwriting systems can now evaluate your complete profile.",
+        "About 1 minute to review and confirm.",
+        "Your borrower package will be submitted for formal underwriting review."
+      )}`);
     }
 
     return { message: parts.join("\n") };
@@ -811,17 +882,30 @@ function generateFallbackResponse(
   if (isFirstMessage) {
     const hasPropertyContext = verifiedContext?.propertyContext;
     if (hasPropertyContext) {
+      const next = getNextMissingInput(verifiedContext) || {
+        what: "Your employment type",
+        why: "Underwriting systems use this to determine which income documents are required.",
+        effort: "About 30 seconds — just tell me what kind of work you do.",
+        unlocks: "Employment-specific document checklist and income verification path.",
+      };
       return {
         message: `Welcome! I see you're looking at a property listed at **$${verifiedContext.propertyContext!.price.toLocaleString()}** at ${verifiedContext.propertyContext!.address}.
 
-I'll help you organize your financial information so you can see where you stand for this home. The first input underwriting systems need is your **employment type**. What kind of work do you do?`,
+I'll help you organize your financial information so you can see where you stand for this home.
+
+${formatNextRequiredInput(next.what, next.why, next.effort, next.unlocks)}`,
       };
     }
 
     return {
       message: `Welcome! I'm your Homiquity readiness assistant. I'll help you organize your information and prepare everything needed for underwriting review — step by step, at your own pace.
 
-The first input I need is your **employment type**. What kind of work do you do? This determines which documents underwriting systems will require.`,
+${formatNextRequiredInput(
+  "Your employment type",
+  "Underwriting systems use this to determine which income documents are required and how income is calculated.",
+  "About 30 seconds — just tell me what kind of work you do.",
+  "Employment-specific document checklist and income verification path."
+)}`,
     };
   }
 
@@ -829,28 +913,74 @@ The first input I need is your **employment type**. What kind of work do you do?
 
   if (lowerMsg.includes("credit") || lowerMsg.includes("score")) {
     return {
-      message: `Credit score is one of the key inputs underwriting systems use to evaluate your profile. To move your readiness forward, I need your **approximate credit score range**. Even a rough estimate works — we can verify with a credit pull later.`,
+      message: formatNextRequiredInput(
+        "Your approximate credit score range",
+        "Underwriting systems use credit scores to determine which loan programs your profile can be evaluated against.",
+        "About 30 seconds — even a rough range works. You can check for free through your bank.",
+        `Enables program matching and rate tier assessment. Moves your completion to ${Math.min(100, completion + 8)}%.`
+      ),
     };
   }
 
   if (lowerMsg.includes("document") || lowerMsg.includes("paperwork") || lowerMsg.includes("what do i need")) {
-    const docResponse = buildDocumentResponse(verifiedContext);
-    return { message: docResponse };
+    if (verifiedContext?.documentsMissing && verifiedContext.documentsMissing.length > 0) {
+      const doc = verifiedContext.documentsMissing[0];
+      return {
+        message: formatNextRequiredInput(
+          `Upload your ${doc}`,
+          "Underwriting systems require this document to verify your self-reported information against official records.",
+          "About 2 minutes — upload a photo or PDF.",
+          `Document verification for your profile. Moves your completion to ${Math.min(100, completion + 5)}%.`
+        ),
+      };
+    }
+    const nextInput = getNextMissingInput(verifiedContext);
+    if (nextInput) {
+      return {
+        message: `Your document needs depend on completing your financial profile first.\n\n${formatNextRequiredInput(nextInput.what, nextInput.why, nextInput.effort, nextInput.unlocks)}`,
+      };
+    }
+    return {
+      message: formatNextRequiredInput(
+        "Submit your application for underwriting review",
+        "All required inputs and documents are present. Underwriting systems can now evaluate your complete profile.",
+        "About 1 minute to review and confirm.",
+        "Your borrower package will be submitted for formal underwriting review."
+      ),
+    };
   }
 
   if (verifiedContext?.daysSinceLastActivity && verifiedContext.daysSinceLastActivity > 7) {
-    const score = verifiedContext.readinessScore || 0;
+    const next = getNextMissingInput(verifiedContext);
+    if (next) {
+      return {
+        message: `Good to see you back! You're at **${completion}% completion**.\n\n${formatNextRequiredInput(next.what, next.why, next.effort, next.unlocks)}`,
+      };
+    }
     return {
-      message: `Good to see you back! You've already made progress — your readiness score is at **${score}/100**. Let's keep that momentum going.
+      message: `Good to see you back! You're at **${completion}% completion**.\n\n${formatNextRequiredInput(
+        "Submit your application for underwriting review",
+        "All required inputs are present. Underwriting systems can now evaluate your complete profile.",
+        "About 1 minute to review and confirm.",
+        "Your borrower package will be submitted for formal underwriting review."
+      )}`,
+    };
+  }
 
-The smallest next step to move forward: **share your approximate monthly debts** (car payments, student loans, credit cards, etc.). Underwriting systems need this to calculate your debt-to-income ratio. It should only take a minute.`,
+  const next = getNextMissingInput(verifiedContext);
+  if (next) {
+    return {
+      message: formatNextRequiredInput(next.what, next.why, next.effort, next.unlocks),
     };
   }
 
   return {
-    message: `Thanks for sharing that. To continue building your underwriting readiness profile, the next input I need is your **approximate monthly debts** — things like car payments, student loans, or credit card minimums.
-
-Underwriting systems use this alongside your income to calculate your debt-to-income ratio, which is one of the key metrics for readiness. Just a rough estimate is fine for now — we can verify with documents later.`,
+    message: formatNextRequiredInput(
+      "Submit your application for underwriting review",
+      "All required inputs are present. Underwriting systems can now evaluate your complete profile.",
+      "About 1 minute to review and confirm.",
+      "Your borrower package will be submitted for formal underwriting review."
+    ),
   };
 }
 
