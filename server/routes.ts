@@ -38,6 +38,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerStaffInviteRoutes(app, storage, isAuthenticated, isAdmin);
   registerCoachRoutes(app);
 
+  app.all("/api/*", (_req, res) => {
+    res.status(404).json({ error: "Not found" });
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;

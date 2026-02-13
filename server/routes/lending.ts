@@ -18,7 +18,7 @@ const declarationsValidationSchema = insertBorrowerDeclarationsSchema.partial().
 });
 
 const loanApplicationInputSchema = z.object({
-  annualIncome: z.string().or(z.number()).transform(v => String(v).replace(/[,$]/g, "")),
+  annualIncome: z.string().or(z.number()).transform(v => String(v).replace(/[,$]/g, "")).refine(v => parseFloat(v) > 0, { message: "Annual income is required" }),
   monthlyDebts: z.string().or(z.number()).transform(v => String(v).replace(/[,$]/g, "")),
   creditScore: z.string().or(z.number()).transform(v => {
     const n = parseInt(String(v));
@@ -30,8 +30,8 @@ const loanApplicationInputSchema = z.object({
     return isNaN(n) ? 0 : Math.max(0, Math.min(80, n));
   }).optional(),
   propertyType: z.string().max(50).optional(),
-  purchasePrice: z.string().or(z.number()).transform(v => String(v).replace(/[,$]/g, "")),
-  downPayment: z.string().or(z.number()).transform(v => String(v).replace(/[,$]/g, "")),
+  purchasePrice: z.string().or(z.number()).transform(v => String(v).replace(/[,$]/g, "")).refine(v => parseFloat(v) > 0, { message: "Purchase price is required" }),
+  downPayment: z.string().or(z.number()).transform(v => String(v).replace(/[,$]/g, "")).refine(v => parseFloat(v) >= 0, { message: "Down payment is required" }),
   loanPurpose: z.string().max(50).optional(),
   isVeteran: z.boolean().optional().default(false),
   isFirstTimeBuyer: z.boolean().optional().default(false),
