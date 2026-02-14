@@ -70,10 +70,14 @@ export interface BorrowerPackage {
     frequency: string;
     documentationStatus: string;
   }>;
-  assetCategories: Array<{
+  assetSummary: Array<{
     assetType: string;
-    declaredPresence: string;
+    accountCategory: string;
+    ownershipType: string;
     documentationStatus: string;
+    lastStatementDate: string;
+    validationNotes: string;
+    accessLink: string;
   }>;
   creditAndDebt: {
     creditScore: string;
@@ -1210,11 +1214,15 @@ The "borrowerPackage" should be null unless the user is "ready_now" or the user 
       "documentationStatus": "Uploaded | Pending | Not Provided"
     }
   ],
-  "assetCategories": [
+  "assetSummary": [
     {
-      "assetType": "Checking | Savings | Investment | Retirement | Other",
-      "declaredPresence": "Yes | No",
-      "documentationStatus": "Uploaded | Pending | Not Provided"
+      "assetType": "Checking Account | Savings Account | Money Market | Certificate of Deposit | Brokerage Account | Retirement (401k/IRA) | Trust Account | Gift Funds | Other",
+      "accountCategory": "Liquid | Non-Liquid | Retirement | Gift | Other",
+      "ownershipType": "Individual | Joint | Trust | Custodial | Not Specified",
+      "documentationStatus": "Uploaded | Pending | Not Provided",
+      "lastStatementDate": "YYYY-MM-DD or 'Not Provided' — date of most recent statement on file",
+      "validationNotes": "factual procedural note if applicable, e.g. 'Statement older than 60 days' or 'All pages included' — or empty string if none — do not assess sufficiency or eligibility",
+      "accessLink": "direct read-only document access path, e.g. '/api/documents/{id}/download' — or empty string if no document uploaded"
     }
   ],
   "creditAndDebt": {

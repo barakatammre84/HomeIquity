@@ -18,6 +18,7 @@ import {
   XCircle,
   MinusCircle,
   ClipboardList,
+  ExternalLink,
 } from "lucide-react";
 
 interface BorrowerPackageData {
@@ -43,10 +44,14 @@ interface BorrowerPackageData {
     frequency?: string;
     documentationStatus?: string;
   }>;
-  assetCategories?: Array<{
+  assetSummary?: Array<{
     assetType?: string;
-    declaredPresence?: string;
+    accountCategory?: string;
+    ownershipType?: string;
     documentationStatus?: string;
+    lastStatementDate?: string;
+    validationNotes?: string;
+    accessLink?: string;
   }>;
   creditAndDebt?: {
     creditScore?: string;
@@ -228,7 +233,7 @@ export default function BorrowerPackageView({ data }: { data: BorrowerPackageDat
   const household = data.householdOverview || {};
   const transaction = data.transactionIntent || {};
   const incomeSources = data.incomeSources || [];
-  const assetCategories = data.assetCategories || [];
+  const assetSummary = data.assetSummary || [];
   const credit = data.creditAndDebt || {};
   const propertyCtx = data.propertyContext || {};
   const documents = data.documentInventory || [];
@@ -321,25 +326,41 @@ export default function BorrowerPackageView({ data }: { data: BorrowerPackageDat
 
       <Card data-testid="section-assets">
         <CardContent className="pt-4 pb-3 px-4">
-          <SectionHeader icon={PiggyBank} title="Asset Overview" number={5} />
-          {assetCategories.length === 0 ? (
-            <p className="text-sm text-muted-foreground opacity-60" data-testid="text-assets-empty">Not Provided</p>
+          <SectionHeader icon={PiggyBank} title="Asset Summary" number={5} />
+          {assetSummary.length === 0 ? (
+            <p className="text-sm text-muted-foreground opacity-60" data-testid="text-assets-empty">No assets declared</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm" data-testid="table-assets">
                 <thead>
                   <tr className="border-b" data-testid="row-assets-header">
                     <th className="text-left py-1.5 pr-3 text-muted-foreground font-medium text-xs">Asset Type</th>
-                    <th className="text-left py-1.5 pr-3 text-muted-foreground font-medium text-xs">Declared</th>
-                    <th className="text-left py-1.5 text-muted-foreground font-medium text-xs">Documentation</th>
+                    <th className="text-left py-1.5 pr-3 text-muted-foreground font-medium text-xs">Category</th>
+                    <th className="text-left py-1.5 pr-3 text-muted-foreground font-medium text-xs">Ownership</th>
+                    <th className="text-left py-1.5 pr-3 text-muted-foreground font-medium text-xs">Documentation</th>
+                    <th className="text-left py-1.5 pr-3 text-muted-foreground font-medium text-xs">Last Statement</th>
+                    <th className="text-left py-1.5 pr-3 text-muted-foreground font-medium text-xs">Notes</th>
+                    <th className="text-left py-1.5 text-muted-foreground font-medium text-xs">Access</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {assetCategories.map((asset, i) => (
+                  {assetSummary.map((asset, i) => (
                     <tr key={i} className="border-b last:border-0" data-testid={`row-asset-${i}`}>
-                      <td className="py-1.5 pr-3" data-testid={`text-asset-type-${i}`}>{safe(asset.assetType)}</td>
-                      <td className="py-1.5 pr-3" data-testid={`text-asset-declared-${i}`}>{safe(asset.declaredPresence)}</td>
-                      <td className="py-1.5"><DocStatusBadge status={safe(asset.documentationStatus)} /></td>
+                      <td className="py-1.5 pr-3 whitespace-nowrap" data-testid={`text-asset-type-${i}`}>{safe(asset.assetType)}</td>
+                      <td className="py-1.5 pr-3 whitespace-nowrap" data-testid={`text-asset-category-${i}`}>{safe(asset.accountCategory)}</td>
+                      <td className="py-1.5 pr-3 whitespace-nowrap" data-testid={`text-asset-ownership-${i}`}>{safe(asset.ownershipType)}</td>
+                      <td className="py-1.5 pr-3" data-testid={`text-asset-doc-status-${i}`}><DocStatusBadge status={safe(asset.documentationStatus)} /></td>
+                      <td className="py-1.5 pr-3 whitespace-nowrap text-muted-foreground tabular-nums" data-testid={`text-asset-statement-date-${i}`}>{safe(asset.lastStatementDate)}</td>
+                      <td className="py-1.5 pr-3 text-muted-foreground text-xs" data-testid={`text-asset-notes-${i}`}>{asset.validationNotes || "—"}</td>
+                      <td className="py-1.5" data-testid={`link-asset-access-${i}`}>
+                        {asset.accessLink ? (
+                          <a href={asset.accessLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:underline">
+                            View <ExternalLink className="w-3 h-3" />
+                          </a>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
