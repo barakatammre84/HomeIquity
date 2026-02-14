@@ -14,6 +14,8 @@ import { registerBorrowerRoutes } from "./routes/borrower";
 import { registerNotificationRoutes } from "./routes/notifications";
 import { registerStaffInviteRoutes } from "./routes/staff-invites";
 import { registerCoachRoutes } from "./routes/coach";
+import { registerUnderwritingRulesRoutes } from "./routes/underwriting-rules";
+import { registerPolicyOpsRoutes } from "./routes/policy-ops";
 import { seedDatabase } from "./seed";
 
 
@@ -37,6 +39,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerNotificationRoutes(app, storage, isAuthenticated);
   registerStaffInviteRoutes(app, storage, isAuthenticated, isAdmin);
   registerCoachRoutes(app);
+  registerUnderwritingRulesRoutes(app, storage, isAuthenticated, isAdmin);
+  registerPolicyOpsRoutes(app, storage, isAuthenticated, isAdmin);
 
   app.all("/api/*", (_req, res) => {
     res.status(404).json({ error: "Not found" });

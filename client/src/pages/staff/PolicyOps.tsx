@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -61,10 +62,62 @@ interface PolicyProfile {
   version: string;
   status: PolicyStatus;
   effectiveDate: string;
-  loansCount: number;
-  lastUpdatedBy: string;
-  lastChangeSummary: string;
+  expirationDate: string | null;
+  description: string | null;
+  bulletinReference: string | null;
+  sourceUrl: string | null;
+  parentProfileId: string | null;
+  createdBy: string | null;
+  approvedBy: string | null;
+  approvedAt: string | null;
+  activatedBy: string | null;
+  activatedAt: string | null;
+  retiredBy: string | null;
+  retiredAt: string | null;
+  createdAt: string;
   updatedAt: string;
+}
+
+interface PolicyThresholdItem {
+  id: string;
+  policyProfileId: string;
+  category: string;
+  thresholdKey: string;
+  valueNumeric: string | null;
+  valuePercent: string | null;
+  valueBool: boolean | null;
+  valueEnum: string | null;
+  minBound: string | null;
+  maxBound: string | null;
+  materialityAction: string | null;
+  displayName: string | null;
+  description: string | null;
+  guidelineReference: string | null;
+  displayOrder: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface PolicyProfileDetail extends PolicyProfile {
+  thresholds: PolicyThresholdItem[];
+  approvals: PolicyApprovalRecord[];
+  overlays: unknown[];
+}
+
+interface PolicyApprovalRecord {
+  id: string;
+  policyProfileId: string;
+  fromStatus: string;
+  toStatus: string;
+  action: string;
+  actionBy: string;
+  actionAt: string | null;
+  justification: string | null;
+  bulletinReference: string | null;
+  rejectionReason: string | null;
+  impactedApplicationsCount: number | null;
+  impactAssessment: unknown;
+  createdAt: string;
 }
 
 interface AlertItem {
@@ -98,74 +151,6 @@ const RULE_CATEGORIES: { id: RuleCategory; label: string; icon: typeof CreditCar
   { id: "BROKER_OVERLAY", label: "Broker Risk Overlay", icon: Shield },
 ];
 
-const mockPolicies: PolicyProfile[] = [
-  {
-    id: "1",
-    profileId: "FNMA_CONV_2026_Q1",
-    authority: "FANNIE",
-    productType: "CONVENTIONAL",
-    version: "v2026-01",
-    status: "ACTIVE",
-    effectiveDate: "2026-01-01",
-    loansCount: 47,
-    lastUpdatedBy: "compliance@mortgage.ai",
-    lastChangeSummary: "Updated DTI thresholds per SEL-2025-12",
-    updatedAt: "2025-12-15",
-  },
-  {
-    id: "2",
-    profileId: "FHLMC_CONV_2026_Q1",
-    authority: "FREDDIE",
-    productType: "CONVENTIONAL",
-    version: "v2026-01",
-    status: "ACTIVE",
-    effectiveDate: "2026-01-01",
-    loansCount: 32,
-    lastUpdatedBy: "ops@mortgage.ai",
-    lastChangeSummary: "Credit score thresholds aligned",
-    updatedAt: "2025-12-10",
-  },
-  {
-    id: "3",
-    profileId: "FHA_2024_Q4",
-    authority: "FHA",
-    productType: "FHA",
-    version: "v2024-12",
-    status: "ACTIVE",
-    effectiveDate: "2024-12-01",
-    loansCount: 18,
-    lastUpdatedBy: "admin@mortgage.ai",
-    lastChangeSummary: "Initial FHA policy setup",
-    updatedAt: "2024-11-20",
-  },
-  {
-    id: "4",
-    profileId: "VA_2024_Q4",
-    authority: "VA",
-    productType: "VA",
-    version: "v2024-12",
-    status: "ACTIVE",
-    effectiveDate: "2024-12-01",
-    loansCount: 8,
-    lastUpdatedBy: "admin@mortgage.ai",
-    lastChangeSummary: "Initial VA policy setup",
-    updatedAt: "2024-11-20",
-  },
-  {
-    id: "5",
-    profileId: "BROKER_OVERLAY_2026",
-    authority: "BROKER",
-    productType: "OVERLAY",
-    version: "v1.0",
-    status: "DRAFT",
-    effectiveDate: "2026-02-01",
-    loansCount: 0,
-    lastUpdatedBy: "ops@mortgage.ai",
-    lastChangeSummary: "Internal risk overlay draft",
-    updatedAt: "2026-01-20",
-  },
-];
-
 const mockAlerts: AlertItem[] = [
   {
     id: "1",
@@ -187,36 +172,6 @@ const mockAlerts: AlertItem[] = [
     message: "12 pre-approvals expiring under old FHA policy",
     severity: "warning",
     timestamp: "2026-01-26",
-  },
-];
-
-const mockAuditLog: AuditEntry[] = [
-  {
-    id: "1",
-    action: "THRESHOLD_UPDATE",
-    changedBy: "compliance@mortgage.ai",
-    changedAt: "2026-01-15 14:32:00",
-    changes: "Max Back-End DTI: 45% → 43%",
-    reason: "Aligning with updated Fannie Mae guidance",
-    policyReference: "SEL-2025-12",
-  },
-  {
-    id: "2",
-    action: "COC_RULE_UPDATE",
-    changedBy: "ops@mortgage.ai",
-    changedAt: "2026-01-10 09:15:00",
-    changes: "Credit score drop threshold: 25pts → 20pts",
-    reason: "Stricter monitoring per risk committee",
-    policyReference: "Internal Policy 2026-001",
-  },
-  {
-    id: "3",
-    action: "POLICY_PUBLISH",
-    changedBy: "admin@mortgage.ai",
-    changedAt: "2026-01-01 00:00:00",
-    changes: "Published FNMA_CONV_2026_Q1",
-    reason: "Q1 2026 policy activation",
-    policyReference: "Quarterly Review",
   },
 ];
 
@@ -248,6 +203,13 @@ function PolicyOpsDashboard() {
   const [selectedCategory, setSelectedCategory] = useState<RuleCategory>("DTI");
   const [activeTab, setActiveTab] = useState("dashboard");
   const { toast } = useToast();
+
+  const { data: policies = [], isLoading: policiesLoading } = useQuery<PolicyProfile[]>({
+    queryKey: ['/api/policy-profiles'],
+  });
+
+  const activePolicies = policies.filter((p) => p.status === "ACTIVE");
+  const draftPolicies = policies.filter((p) => p.status === "DRAFT");
 
   return (
     <div className="flex flex-col gap-6 p-6">
@@ -291,8 +253,13 @@ function PolicyOpsDashboard() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
+                {policiesLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  </div>
+                ) : (
                 <div className="space-y-4">
-                  {mockPolicies.map((policy) => (
+                  {policies.map((policy) => (
                     <div
                       key={policy.id}
                       className="flex items-center justify-between p-4 border rounded-lg hover-elevate cursor-pointer"
@@ -313,7 +280,7 @@ function PolicyOpsDashboard() {
                         <div>
                           <p className="font-medium">{policy.authority} ({policy.version})</p>
                           <p className="text-sm text-muted-foreground">
-                            {policy.loansCount} active loans • Effective {policy.effectiveDate}
+                            {policy.productType} • Effective {policy.effectiveDate}
                           </p>
                         </div>
                       </div>
@@ -324,6 +291,7 @@ function PolicyOpsDashboard() {
                     </div>
                   ))}
                 </div>
+                )}
               </CardContent>
             </Card>
 
@@ -363,7 +331,7 @@ function PolicyOpsDashboard() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-muted-foreground">Active Policies</p>
-                    <p className="text-2xl font-bold">4</p>
+                    <p className="text-2xl font-bold">{policiesLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : activePolicies.length}</p>
                   </div>
                   <Shield className="h-8 w-8 text-primary/20" />
                 </div>
@@ -374,7 +342,7 @@ function PolicyOpsDashboard() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-muted-foreground">Draft Policies</p>
-                    <p className="text-2xl font-bold">1</p>
+                    <p className="text-2xl font-bold">{policiesLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : draftPolicies.length}</p>
                   </div>
                   <Edit className="h-8 w-8 text-primary/20" />
                 </div>
@@ -384,8 +352,8 @@ function PolicyOpsDashboard() {
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">Loans Under Policy</p>
-                    <p className="text-2xl font-bold">105</p>
+                    <p className="text-sm text-muted-foreground">Total Policies</p>
+                    <p className="text-2xl font-bold">{policiesLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : policies.length}</p>
                   </div>
                   <FileText className="h-8 w-8 text-primary/20" />
                 </div>
@@ -395,8 +363,8 @@ function PolicyOpsDashboard() {
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">COC Rules Active</p>
-                    <p className="text-2xl font-bold">42</p>
+                    <p className="text-sm text-muted-foreground">Pending Approval</p>
+                    <p className="text-2xl font-bold">{policiesLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : policies.filter((p) => p.status === "PENDING_APPROVAL").length}</p>
                   </div>
                   <RefreshCw className="h-8 w-8 text-primary/20" />
                 </div>
@@ -458,7 +426,7 @@ function PolicyOpsDashboard() {
         </TabsContent>
 
         <TabsContent value="audit" className="space-y-6">
-          <AuditTrail entries={mockAuditLog} />
+          <AuditTrail selectedPolicyId={selectedPolicy?.id || null} />
         </TabsContent>
       </Tabs>
     </div>
@@ -478,6 +446,33 @@ function PolicyProfileView({
   const [publishReason, setPublishReason] = useState("");
   const { toast } = useToast();
 
+  const { data: policyDetail, isLoading: detailLoading } = useQuery<PolicyProfileDetail>({
+    queryKey: ['/api/policy-profiles', policy?.id],
+    enabled: !!policy?.id,
+  });
+
+  const submitMutation = useMutation({
+    mutationFn: async ({ id, justification }: { id: string; justification: string }) => {
+      await apiRequest("POST", `/api/policy-profiles/${id}/submit`, { justification });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/policy-profiles'] });
+      toast({
+        title: "Policy Submitted",
+        description: `${policy?.profileId} has been submitted for approval.`,
+      });
+      setPublishDialogOpen(false);
+      setPublishReason("");
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Submission Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   if (!policy) {
     return (
       <Card>
@@ -490,11 +485,7 @@ function PolicyProfileView({
   }
 
   const handlePublish = () => {
-    toast({
-      title: "Policy Published",
-      description: `${policy.profileId} has been activated. Old versions remain for existing loans.`,
-    });
-    setPublishDialogOpen(false);
+    submitMutation.mutate({ id: policy.id, justification: publishReason });
   };
 
   return (
@@ -543,9 +534,10 @@ function PolicyProfileView({
                 </Button>
                 <Button
                   onClick={handlePublish}
-                  disabled={!publishReason}
+                  disabled={!publishReason || submitMutation.isPending}
                   data-testid="button-confirm-publish"
                 >
+                  {submitMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
                   Confirm & Publish
                 </Button>
               </DialogFooter>
@@ -577,16 +569,16 @@ function PolicyProfileView({
               <p className="font-medium">{policy.effectiveDate}</p>
             </div>
             <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Locked Loans</p>
-              <p className="font-medium">{policy.loansCount}</p>
+              <p className="text-sm text-muted-foreground">Created By</p>
+              <p className="font-medium">{policy.createdBy || "—"}</p>
             </div>
             <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Last Updated By</p>
-              <p className="font-medium">{policy.lastUpdatedBy}</p>
+              <p className="text-sm text-muted-foreground">Approved By</p>
+              <p className="font-medium">{policy.approvedBy || "—"}</p>
             </div>
             <div className="space-y-1 md:col-span-2">
-              <p className="text-sm text-muted-foreground">Last Change Summary</p>
-              <p className="font-medium">{policy.lastChangeSummary}</p>
+              <p className="text-sm text-muted-foreground">Description</p>
+              <p className="font-medium">{policy.description || "—"}</p>
             </div>
           </div>
         </CardContent>
@@ -608,26 +600,35 @@ function PolicyProfileView({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                <TableRow>
-                  <TableCell>Max Back-End DTI</TableCell>
-                  <TableCell>43%</TableCell>
-                  <TableCell><Badge variant="outline">DTI</Badge></TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell>Min Credit Score</TableCell>
-                  <TableCell>620</TableCell>
-                  <TableCell><Badge variant="outline">CREDIT</Badge></TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell>Max LTV</TableCell>
-                  <TableCell>97%</TableCell>
-                  <TableCell><Badge variant="outline">PROPERTY</Badge></TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell>Min Reserves (months)</TableCell>
-                  <TableCell>2</TableCell>
-                  <TableCell><Badge variant="outline">ASSETS</Badge></TableCell>
-                </TableRow>
+                {detailLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={3} className="text-center py-8">
+                      <Loader2 className="h-4 w-4 animate-spin mx-auto" />
+                    </TableCell>
+                  </TableRow>
+                ) : policyDetail?.thresholds && policyDetail.thresholds.length > 0 ? (
+                  policyDetail.thresholds.map((threshold) => (
+                    <TableRow key={threshold.id}>
+                      <TableCell>{threshold.displayName || threshold.thresholdKey}</TableCell>
+                      <TableCell>
+                        {threshold.valuePercent != null
+                          ? `${(parseFloat(threshold.valuePercent) * 100).toFixed(0)}%`
+                          : threshold.valueNumeric != null
+                          ? threshold.valueNumeric
+                          : threshold.valueBool != null
+                          ? (threshold.valueBool ? "Yes" : "No")
+                          : threshold.valueEnum || "—"}
+                      </TableCell>
+                      <TableCell><Badge variant="outline">{threshold.category}</Badge></TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={3} className="text-center text-muted-foreground py-4">
+                      No thresholds defined
+                    </TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </CardContent>
@@ -1361,7 +1362,22 @@ function MaterialityMatrix() {
   );
 }
 
-function AuditTrail({ entries }: { entries: AuditEntry[] }) {
+function AuditTrail({ selectedPolicyId }: { selectedPolicyId: string | null }) {
+  const { data: approvals = [], isLoading } = useQuery<PolicyApprovalRecord[]>({
+    queryKey: ['/api/policy-approvals', selectedPolicyId],
+    enabled: !!selectedPolicyId,
+  });
+
+  const entries: AuditEntry[] = approvals.map((a) => ({
+    id: a.id,
+    action: a.action,
+    changedBy: a.actionBy,
+    changedAt: a.createdAt || a.actionAt || "",
+    changes: `${a.fromStatus} → ${a.toStatus}`,
+    reason: a.justification || a.rejectionReason || "",
+    policyReference: a.bulletinReference || undefined,
+  }));
+
   return (
     <Card>
       <CardHeader>
@@ -1375,6 +1391,19 @@ function AuditTrail({ entries }: { entries: AuditEntry[] }) {
       </CardHeader>
       <CardContent>
         <ScrollArea className="h-[500px]">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-4 w-4 animate-spin" />
+            </div>
+          ) : !selectedPolicyId ? (
+            <div className="text-center text-muted-foreground py-8">
+              Select a policy from the dashboard to view its audit trail
+            </div>
+          ) : entries.length === 0 ? (
+            <div className="text-center text-muted-foreground py-8">
+              No approval history found for this policy
+            </div>
+          ) : (
           <div className="space-y-4">
             {entries.map((entry) => (
               <div
@@ -1406,6 +1435,7 @@ function AuditTrail({ entries }: { entries: AuditEntry[] }) {
               </div>
             ))}
           </div>
+          )}
         </ScrollArea>
       </CardContent>
     </Card>

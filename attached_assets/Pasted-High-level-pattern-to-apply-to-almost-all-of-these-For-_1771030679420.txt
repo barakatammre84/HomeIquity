@@ -1,0 +1,261 @@
+High-level pattern to apply to almost all of these
+For almost every “table exists but no routes” item, the fix is the same 4-step pattern:
+
+Define service contract
+
+Label: Domain model
+
+Define TypeScript types/interfaces that mirror the table (e.g. DpaProgram, MaterialityRuleSet, RateSheetProduct).
+
+Expose minimal REST API
+
+Label: Routes
+
+Start with:
+
+GET /:entity (list)
+
+GET /:entity/:id (detail)
+
+POST /:entity (create)
+
+PATCH /:entity/:id (update)
+
+Gate with isStaffRole/isAdmin as appropriate.
+
+Wire to existing UI (if present)
+
+Label: UI integration
+
+Replace mock/hardcoded data in React pages (e.g. PolicyOps.tsx, AgentCoBranding.tsx) with calls to the new endpoints.
+
+Add audit + ownership
+
+Label: Governance
+
+Ensure createdBy, updatedBy, and updatedAt are populated.
+
+Log changes to a generic changeEvents or domain-specific log where it exists.
+
+Now let’s group your list into “must wire now” vs “can be staged”.
+
+Tier 1 – Wire these for real product value
+1. rateService.ts (empty)
+
+Problem: Rates are hardcoded; file is a stub.
+
+Fix:
+
+Implement getCurrentRates(params) that reads from mortgageRates / ratePrograms tables.
+
+Make admin UI write to those tables; public pages read via rateService.
+
+This becomes your single source of truth for pricing displays (not underwriting pricing).
+
+2. Plaid integration (missing secrets)
+
+Fix:
+
+Add startup config check: if PLAID_CLIENT_ID or PLAID_SECRET missing → mark Plaid as “disabled” and hide/disable UI entry points.
+
+Once secrets are present, wire /link-token/create and /item/public_token/exchange to persist verification records.
+
+3. Property search API (RapidAPI, no caching/fallback)
+
+Fix:
+
+Add a caching layer (Redis or DB table) keyed by (location, filters, page).
+
+On RapidAPI failure or rate limit, serve cached results or a graceful “temporarily unavailable” message.
+
+Add a lastFetchedAt to avoid stale data.
+
+4. Underwriting Rules DSL
+
+Fix:
+
+Implement /api/underwriting-rules CRUD for underwriting_rules_dsl.
+
+Implement a runRules(applicationId) service that:
+
+Loads active rules
+
+Evaluates them against a normalized underwriting context
+
+Writes to rule_execution_log.
+
+Initially run in “advisory mode” only—no blocking decisions.
+
+5. Policy operations
+
+Fix:
+
+Implement routes for policyProfiles, policyThresholds, policyApprovalWorkflow, policyLenderOverlays.
+
+Wire PolicyOps.tsx to these endpoints.
+
+Use these policies as configuration inputs to underwriting/pricing, not hardcoded constants.
+
+6. Wholesale lender / rate sheet system
+
+Fix (Phase 1):
+
+Implement read-only ingestion: /api/rate-sheets, /api/wholesale-lenders.
+
+Use rateSheetProducts + lenderPricingAdjustments to generate offer candidates via a pricing adapter.
+
+Fix (Phase 2):
+
+Implement lenderOffers, lockRequests, offerSelectionEvents, offerComparisonSessions for full broker workflow.
+
+Tier 2 – Compliance, explanation, and decision quality
+7. DPA programs
+
+Fix:
+
+CRUD routes for dpaPrograms.
+
+Expose read-only to borrowers as “You may be able to explore these programs” (not eligibility).
+
+Allow staff to tag applications with candidate DPA programs.
+
+8. Materiality rules
+
+Fix:
+
+CRUD for materialityRuleSets and materialityRules.
+
+changeEvents + materialityEvaluations used when key fields change (rate, fees, loan amount).
+
+Integrate with LE/CD change logic to flag when redisclosure is required.
+
+9. Credit refresh decisions
+
+Fix:
+
+CRUD for creditRefreshDecisions.
+
+Attach to pipeline stages where refresh is allowed/required.
+
+Log who decided, why, and outcome.
+
+10. Expiration policies
+
+Fix:
+
+CRUD for expirationPolicies.
+
+Apply to: pre-approvals, rate locks, document staleness.
+
+Use a scheduled job to mark items as expired and emit tasks/notifications.
+
+11. Lender pre-approval formats
+
+Fix:
+
+CRUD for lenderPreApprovalFormats.
+
+Map lender → template → merge fields.
+
+Pre-approval generation chooses format based on lender profile.
+
+12. Underwriting explanations
+
+Fix:
+
+CRUD for underwritingExplanations.
+
+Link explanations to underwriting_results or anomalies.
+
+Surface to staff as “Explain this decision” snippets.
+
+Tier 3 – Insight, quality, and coaching
+13. What-if scenarios
+
+Fix:
+
+CRUD for whatIfScenarios.
+
+Allow staff to save scenario variants (different DTI, LTV, rate, product).
+
+Attach to applications and show in scenario desk / deal rescue.
+
+14. Confidence breakdowns
+
+Fix:
+
+CRUD for confidenceBreakdowns.
+
+Use to explain model/heuristic confidence in signals (income stability, documentation completeness, etc.).
+
+Surface to staff, not borrowers.
+
+15. Portfolio stress tests
+
+Fix:
+
+CRUD for portfolioStressTests.
+
+Allow admin to run stress scenarios (rate shocks, default rates) on pipeline/portfolio.
+
+This is more lender/investor‑facing than borrower‑facing.
+
+16. Product rules, seasoning rules, cash flow adjustments
+
+Fix:
+
+CRUD for each ruleset.
+
+Use as configuration inputs to underwriting/pricing engine.
+
+Keep them versioned and auditable.
+
+17. Agent confidence views
+
+Fix:
+
+CRUD for agentConfidenceViews.
+
+Use to show agents a non-eligibility view of “file completeness / clarity” for their pipeline.
+
+Avoid language that implies credit or underwriting decisions.
+
+18. Lender data packages
+
+Fix:
+
+CRUD for lenderDataPackages.
+
+Use as a snapshot of what’s sent to each lender (MISMO + overlays + policy context).
+
+Attach to audit logs and lock/offer events.
+
+19. Co-brand profiles
+
+Fix:
+
+CRUD for coBrandProfiles.
+
+Wire AgentCoBranding.tsx to these endpoints.
+
+Use to drive co-branded emails, landing pages, and PDFs.
+
+20. Deal desk threads/messages
+
+Fix:
+
+CRUD for dealDeskThreads and dealDeskMessages.
+
+Attach threads to applications and/or agents.
+
+Use for escalations, exceptions, and strategy sessions.
+
+21. Anomalies
+
+Fix:
+
+CRUD for anomalies.
+
+Automatically create anomalies when data conflicts (income mismatch, doc vs app, etc.).
+
+Link anomalies to tasks and underwriting explanations.

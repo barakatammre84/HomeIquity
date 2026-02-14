@@ -213,6 +213,24 @@ import {
   type InsertCoachConversation,
   type CoachMessage,
   type InsertCoachMessage,
+  underwritingRulesDsl,
+  ruleExecutionLog,
+  policyProfiles,
+  policyThresholds,
+  policyApprovalWorkflow,
+  policyLenderOverlays,
+  type UnderwritingRuleDsl,
+  type InsertUnderwritingRuleDsl,
+  type RuleExecutionLog,
+  type InsertRuleExecutionLog,
+  type PolicyProfile,
+  type InsertPolicyProfile,
+  type PolicyThreshold,
+  type InsertPolicyThreshold,
+  type PolicyApprovalWorkflow,
+  type InsertPolicyApprovalWorkflow,
+  type PolicyLenderOverlay,
+  type InsertPolicyLenderOverlay,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -739,6 +757,39 @@ export interface IStorage {
   updateCoachConversation(id: string, data: Partial<CoachConversation>): Promise<CoachConversation | undefined>;
   createCoachMessage(data: InsertCoachMessage): Promise<CoachMessage>;
   getCoachMessages(conversationId: string): Promise<CoachMessage[]>;
+
+  // Underwriting Rules DSL
+  getUnderwritingRules(filters?: { category?: string; triggerType?: string; isActive?: boolean }): Promise<UnderwritingRuleDsl[]>;
+  getUnderwritingRule(id: string): Promise<UnderwritingRuleDsl | undefined>;
+  getUnderwritingRuleByCode(code: string): Promise<UnderwritingRuleDsl | undefined>;
+  createUnderwritingRule(data: InsertUnderwritingRuleDsl): Promise<UnderwritingRuleDsl>;
+  updateUnderwritingRule(id: string, data: Partial<UnderwritingRuleDsl>): Promise<UnderwritingRuleDsl | undefined>;
+  createRuleExecutionLog(data: InsertRuleExecutionLog): Promise<RuleExecutionLog>;
+  getRuleExecutionLogs(snapshotId: string): Promise<RuleExecutionLog[]>;
+
+  // Policy Profiles
+  getPolicyProfiles(filters?: { authority?: string; productType?: string; status?: string }): Promise<PolicyProfile[]>;
+  getPolicyProfile(id: string): Promise<PolicyProfile | undefined>;
+  createPolicyProfile(data: InsertPolicyProfile): Promise<PolicyProfile>;
+  updatePolicyProfile(id: string, data: Partial<PolicyProfile>): Promise<PolicyProfile | undefined>;
+
+  // Policy Thresholds
+  getPolicyThresholds(policyProfileId: string): Promise<PolicyThreshold[]>;
+  getPolicyThreshold(id: string): Promise<PolicyThreshold | undefined>;
+  createPolicyThreshold(data: InsertPolicyThreshold): Promise<PolicyThreshold>;
+  updatePolicyThreshold(id: string, data: Partial<PolicyThreshold>): Promise<PolicyThreshold | undefined>;
+  deletePolicyThreshold(id: string): Promise<boolean>;
+
+  // Policy Approval Workflow
+  createPolicyApproval(data: InsertPolicyApprovalWorkflow): Promise<PolicyApprovalWorkflow>;
+  getPolicyApprovals(policyProfileId: string): Promise<PolicyApprovalWorkflow[]>;
+
+  // Policy Lender Overlays
+  getPolicyLenderOverlays(basePolicyProfileId: string): Promise<PolicyLenderOverlay[]>;
+  getPolicyLenderOverlay(id: string): Promise<PolicyLenderOverlay | undefined>;
+  createPolicyLenderOverlay(data: InsertPolicyLenderOverlay): Promise<PolicyLenderOverlay>;
+  updatePolicyLenderOverlay(id: string, data: Partial<PolicyLenderOverlay>): Promise<PolicyLenderOverlay | undefined>;
+  deletePolicyLenderOverlay(id: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -3863,6 +3914,158 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(coachMessages)
       .where(eq(coachMessages.conversationId, conversationId))
       .orderBy(asc(coachMessages.createdAt));
+  }
+
+  // Underwriting Rules DSL
+  async getUnderwritingRules(filters?: { category?: string; triggerType?: string; isActive?: boolean }): Promise<UnderwritingRuleDsl[]> {
+    const conditions = [];
+    if (filters?.category) conditions.push(eq(underwritingRulesDsl.category, filters.category));
+    if (filters?.triggerType) conditions.push(eq(underwritingRulesDsl.triggerType, filters.triggerType));
+    if (filters?.isActive !== undefined) conditions.push(eq(underwritingRulesDsl.isActive, filters.isActive));
+
+    const query = conditions.length > 0
+      ? db.select().from(underwritingRulesDsl).where(and(...conditions))
+      : db.select().from(underwritingRulesDsl);
+
+    return query.orderBy(asc(underwritingRulesDsl.priority), asc(underwritingRulesDsl.ruleCode));
+  }
+
+  async getUnderwritingRule(id: string): Promise<UnderwritingRuleDsl | undefined> {
+    const [rule] = await db.select().from(underwritingRulesDsl).where(eq(underwritingRulesDsl.id, id)).limit(1);
+    return rule;
+  }
+
+  async getUnderwritingRuleByCode(code: string): Promise<UnderwritingRuleDsl | undefined> {
+    const [rule] = await db.select().from(underwritingRulesDsl).where(eq(underwritingRulesDsl.ruleCode, code)).limit(1);
+    return rule;
+  }
+
+  async createUnderwritingRule(data: InsertUnderwritingRuleDsl): Promise<UnderwritingRuleDsl> {
+    const [rule] = await db.insert(underwritingRulesDsl).values(data).returning();
+    return rule;
+  }
+
+  async updateUnderwritingRule(id: string, data: Partial<UnderwritingRuleDsl>): Promise<UnderwritingRuleDsl | undefined> {
+    const [rule] = await db.update(underwritingRulesDsl)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(underwritingRulesDsl.id, id))
+      .returning();
+    return rule;
+  }
+
+  async createRuleExecutionLog(data: InsertRuleExecutionLog): Promise<RuleExecutionLog> {
+    const [log] = await db.insert(ruleExecutionLog).values(data).returning();
+    return log;
+  }
+
+  async getRuleExecutionLogs(snapshotId: string): Promise<RuleExecutionLog[]> {
+    return db.select().from(ruleExecutionLog)
+      .where(eq(ruleExecutionLog.snapshotId, snapshotId))
+      .orderBy(asc(ruleExecutionLog.executedAt));
+  }
+
+  // Policy Profiles
+  async getPolicyProfiles(filters?: { authority?: string; productType?: string; status?: string }): Promise<PolicyProfile[]> {
+    const conditions = [];
+    if (filters?.authority) conditions.push(eq(policyProfiles.authority, filters.authority));
+    if (filters?.productType) conditions.push(eq(policyProfiles.productType, filters.productType));
+    if (filters?.status) conditions.push(eq(policyProfiles.status, filters.status));
+
+    const query = conditions.length > 0
+      ? db.select().from(policyProfiles).where(and(...conditions))
+      : db.select().from(policyProfiles);
+
+    return query.orderBy(desc(policyProfiles.createdAt));
+  }
+
+  async getPolicyProfile(id: string): Promise<PolicyProfile | undefined> {
+    const [profile] = await db.select().from(policyProfiles).where(eq(policyProfiles.id, id)).limit(1);
+    return profile;
+  }
+
+  async createPolicyProfile(data: InsertPolicyProfile): Promise<PolicyProfile> {
+    const [profile] = await db.insert(policyProfiles).values(data).returning();
+    return profile;
+  }
+
+  async updatePolicyProfile(id: string, data: Partial<PolicyProfile>): Promise<PolicyProfile | undefined> {
+    const [profile] = await db.update(policyProfiles)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(policyProfiles.id, id))
+      .returning();
+    return profile;
+  }
+
+  // Policy Thresholds
+  async getPolicyThresholds(policyProfileId: string): Promise<PolicyThreshold[]> {
+    return db.select().from(policyThresholds)
+      .where(eq(policyThresholds.policyProfileId, policyProfileId))
+      .orderBy(asc(policyThresholds.displayOrder), asc(policyThresholds.category));
+  }
+
+  async getPolicyThreshold(id: string): Promise<PolicyThreshold | undefined> {
+    const [threshold] = await db.select().from(policyThresholds).where(eq(policyThresholds.id, id)).limit(1);
+    return threshold;
+  }
+
+  async createPolicyThreshold(data: InsertPolicyThreshold): Promise<PolicyThreshold> {
+    const [threshold] = await db.insert(policyThresholds).values(data).returning();
+    return threshold;
+  }
+
+  async updatePolicyThreshold(id: string, data: Partial<PolicyThreshold>): Promise<PolicyThreshold | undefined> {
+    const [threshold] = await db.update(policyThresholds)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(policyThresholds.id, id))
+      .returning();
+    return threshold;
+  }
+
+  async deletePolicyThreshold(id: string): Promise<boolean> {
+    const result = await db.delete(policyThresholds).where(eq(policyThresholds.id, id)).returning();
+    return result.length > 0;
+  }
+
+  // Policy Approval Workflow
+  async createPolicyApproval(data: InsertPolicyApprovalWorkflow): Promise<PolicyApprovalWorkflow> {
+    const [approval] = await db.insert(policyApprovalWorkflow).values(data).returning();
+    return approval;
+  }
+
+  async getPolicyApprovals(policyProfileId: string): Promise<PolicyApprovalWorkflow[]> {
+    return db.select().from(policyApprovalWorkflow)
+      .where(eq(policyApprovalWorkflow.policyProfileId, policyProfileId))
+      .orderBy(desc(policyApprovalWorkflow.createdAt));
+  }
+
+  // Policy Lender Overlays
+  async getPolicyLenderOverlays(basePolicyProfileId: string): Promise<PolicyLenderOverlay[]> {
+    return db.select().from(policyLenderOverlays)
+      .where(eq(policyLenderOverlays.basePolicyProfileId, basePolicyProfileId))
+      .orderBy(desc(policyLenderOverlays.createdAt));
+  }
+
+  async getPolicyLenderOverlay(id: string): Promise<PolicyLenderOverlay | undefined> {
+    const [overlay] = await db.select().from(policyLenderOverlays).where(eq(policyLenderOverlays.id, id)).limit(1);
+    return overlay;
+  }
+
+  async createPolicyLenderOverlay(data: InsertPolicyLenderOverlay): Promise<PolicyLenderOverlay> {
+    const [overlay] = await db.insert(policyLenderOverlays).values(data).returning();
+    return overlay;
+  }
+
+  async updatePolicyLenderOverlay(id: string, data: Partial<PolicyLenderOverlay>): Promise<PolicyLenderOverlay | undefined> {
+    const [overlay] = await db.update(policyLenderOverlays)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(policyLenderOverlays.id, id))
+      .returning();
+    return overlay;
+  }
+
+  async deletePolicyLenderOverlay(id: string): Promise<boolean> {
+    const result = await db.delete(policyLenderOverlays).where(eq(policyLenderOverlays.id, id)).returning();
+    return result.length > 0;
   }
 }
 
