@@ -31,6 +31,19 @@ The platform's core features include a **Deterministic Underwriting Engine** tha
 ### System Design Choices
 The project utilizes a domain-based modular structure for both server routes and client pages, enhancing maintainability and team ownership. Server routes are organized into modules like `lending`, `borrower`, `documents`, and `property`. Client pages are similarly grouped into domains such as `lending`, `borrower`, `staff`, and `agent-broker`. This approach ensures clear separation of concerns and facilitates scalable development.
 
+### Schema Modularization
+The database schema (`shared/schema.ts`) is split into 8 domain modules in `shared/schema/`:
+- **core.ts** — users, sessions, role system (STAFF_ROLES, CLIENT_ROLES, helpers)
+- **lending.ts** — loan applications, deal team, URLA forms, loan options, documents, deal activities, mortgage rates, rate locks, milestones, pre-approval/pre-qual letters, expiration policies, wholesale lenders, rate sheets, lender offers, lock requests, team messages, verifications, plaid
+- **underwriting.ts** — task engine (SLA, triggers, task types), MISMO canonical (income streams, assets, liabilities), underwriting events, DTI/DSCR snapshots, fraud/anomaly detection, audit events, seasoning rules, cash flow adjustments, product rules, explanations, confidence breakdowns, what-if scenarios, decisions, rules DSL, materiality, policy profiles, loan conditions
+- **documents.ts** — document intelligence engine (uploads, pages, classifications, logical documents, extracted fields, completeness checks, document packages)
+- **compliance.ts** — credit consents, credit pulls, adverse actions, credit audit log, homeownership goals, credit actions, savings transactions, journey milestones, eConsent, HMDA demographics
+- **coach.ts** — coaching sessions, coach conversations, coach messages
+- **property.ts** — agent profiles, properties, saved properties, homeowner profiles, refi alerts, equity snapshots
+- **admin.ts** — learning center, partner providers, KBA/KYC, onboarding, co-branding, deal desk, DPA programs, agent pipeline, deal rescue, strategy sessions, accelerator, closing guarantees, notifications, staff invites, audit logs, user activities, email captures, broker commissions, calculator results, document requirement rules
+
+`shared/schema.ts` is a barrel re-export file. All consumer imports use `@shared/schema` unchanged. Drizzle `relations()` declarations were removed (unused — codebase uses `db.select()` not `db.query`). Circular import between lending↔underwriting is safe via ES module live bindings (drizzle `.references(() => ...)` callbacks are lazy).
+
 ## External Dependencies
 
 ### Third-Party Services
