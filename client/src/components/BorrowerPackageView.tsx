@@ -17,6 +17,7 @@ import {
   Clock,
   XCircle,
   MinusCircle,
+  ClipboardList,
 } from "lucide-react";
 
 interface BorrowerPackageData {
@@ -71,6 +72,14 @@ interface BorrowerPackageData {
     documentStatus?: string;
     packageStatus?: string;
     pendingItems?: string[];
+  };
+  auditTrail?: {
+    intakeStartDate?: string;
+    lastUpdateDate?: string;
+    events?: Array<{
+      date?: string;
+      activity?: string;
+    }>;
   };
   validationNotes?: {
     recencyChecks?: string[];
@@ -458,9 +467,41 @@ export default function BorrowerPackageView({ data }: { data: BorrowerPackageDat
         </CardContent>
       </Card>
 
+      <Card data-testid="section-audit-trail">
+        <CardContent className="pt-4 pb-3 px-4">
+          <SectionHeader icon={ClipboardList} title="Audit Trail" number={10} />
+          {(() => {
+            const audit = data.auditTrail || {};
+            const events = audit.events || [];
+            return (
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <DataRow label="Intake Start Date" value={safe(audit.intakeStartDate)} testId="row-intake-start-date" />
+                  <DataRow label="Last Update Date" value={safe(audit.lastUpdateDate)} testId="row-last-update-date" />
+                </div>
+                {events.length > 0 && (
+                  <div data-testid="list-audit-events">
+                    <span className="text-xs text-muted-foreground">Activity Log</span>
+                    <ul className="mt-1.5 space-y-1">
+                      {events.map((evt, i) => (
+                        <li key={i} className="text-sm flex items-start gap-2" data-testid={`row-audit-event-${i}`}>
+                          <Calendar className="w-3.5 h-3.5 mt-0.5 text-muted-foreground flex-shrink-0" />
+                          <span className="text-muted-foreground tabular-nums flex-shrink-0">{safe(evt.date)}</span>
+                          <span>{safe(evt.activity)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+        </CardContent>
+      </Card>
+
       <Card data-testid="section-validation">
         <CardContent className="pt-4 pb-3 px-4">
-          <SectionHeader icon={Shield} title="Validation Notes" number={10} />
+          <SectionHeader icon={Shield} title="Validation Notes" number={11} />
           {hasValidationNotes ? (
             <div className="space-y-3">
               {recencyChecks.length > 0 && (

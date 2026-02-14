@@ -100,6 +100,14 @@ export interface BorrowerPackage {
     packageStatus: string;
     pendingItems: string[];
   };
+  auditTrail: {
+    intakeStartDate: string;
+    lastUpdateDate: string;
+    events: Array<{
+      date: string;
+      activity: string;
+    }>;
+  };
   validationNotes: {
     recencyChecks: string[];
     completenessChecks: string[];
@@ -1235,6 +1243,16 @@ The "borrowerPackage" should be null unless the user is "ready_now" or the user 
     "documentStatus": "Complete | Partial | Not Started",
     "packageStatus": "Ready for Underwriting Review | Pending Items",
     "pendingItems": ["list of specific remaining items if packageStatus is 'Pending Items', or empty array if ready — frame as procedural readiness only, do not assess eligibility or risk"]
+  },
+  "auditTrail": {
+    "intakeStartDate": "YYYY-MM-DD or 'Not Provided'",
+    "lastUpdateDate": "YYYY-MM-DD or 'Not Provided'",
+    "events": [
+      {
+        "date": "YYYY-MM-DD",
+        "activity": "factual description of activity, e.g. 'Income documentation uploaded', 'Application form submitted', 'Identity verification completed' — record document uploads, form submissions, and validation events only"
+      }
+    ]
   },
   "validationNotes": {
     "recencyChecks": ["neutral observations about document age or staleness, e.g. 'Pay stub dated more than 30 days prior to intake' — empty array if none"],
