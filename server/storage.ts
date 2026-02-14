@@ -231,6 +231,21 @@ import {
   type InsertPolicyApprovalWorkflow,
   type PolicyLenderOverlay,
   type InsertPolicyLenderOverlay,
+  wholesaleLenders,
+  rateSheets,
+  rateSheetProducts,
+  lenderPricingAdjustments,
+  lenderOffers,
+  type WholesaleLender,
+  type InsertWholesaleLender,
+  type RateSheet,
+  type InsertRateSheet,
+  type RateSheetProduct,
+  type InsertRateSheetProduct,
+  type LenderPricingAdjustment,
+  type InsertLenderPricingAdjustment,
+  type LenderOffer,
+  type InsertLenderOffer,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -790,6 +805,36 @@ export interface IStorage {
   createPolicyLenderOverlay(data: InsertPolicyLenderOverlay): Promise<PolicyLenderOverlay>;
   updatePolicyLenderOverlay(id: string, data: Partial<PolicyLenderOverlay>): Promise<PolicyLenderOverlay | undefined>;
   deletePolicyLenderOverlay(id: string): Promise<boolean>;
+
+  // Wholesale Lenders
+  getWholesaleLenders(filters?: { status?: string; integrationTier?: string }): Promise<WholesaleLender[]>;
+  getWholesaleLender(id: string): Promise<WholesaleLender | undefined>;
+  createWholesaleLender(data: InsertWholesaleLender): Promise<WholesaleLender>;
+  updateWholesaleLender(id: string, data: Partial<WholesaleLender>): Promise<WholesaleLender | undefined>;
+
+  // Rate Sheets
+  getRateSheets(filters?: { lenderId?: string; status?: string }): Promise<RateSheet[]>;
+  getActiveRateSheets(): Promise<RateSheet[]>;
+  getRateSheet(id: string): Promise<RateSheet | undefined>;
+  createRateSheet(data: InsertRateSheet): Promise<RateSheet>;
+  updateRateSheet(id: string, data: Partial<RateSheet>): Promise<RateSheet | undefined>;
+
+  // Rate Sheet Products
+  getRateSheetProducts(rateSheetId: string): Promise<RateSheetProduct[]>;
+  getRateSheetProduct(id: string): Promise<RateSheetProduct | undefined>;
+  createRateSheetProduct(data: InsertRateSheetProduct): Promise<RateSheetProduct>;
+  updateRateSheetProduct(id: string, data: Partial<RateSheetProduct>): Promise<RateSheetProduct | undefined>;
+
+  // Lender Pricing Adjustments
+  getLenderPricingAdjustments(filters?: { lenderId?: string; adjustmentType?: string }): Promise<LenderPricingAdjustment[]>;
+  createLenderPricingAdjustment(data: InsertLenderPricingAdjustment): Promise<LenderPricingAdjustment>;
+  updateLenderPricingAdjustment(id: string, data: Partial<LenderPricingAdjustment>): Promise<LenderPricingAdjustment | undefined>;
+
+  // Lender Offers
+  getLenderOffers(filters?: { applicationId?: string; lenderId?: string; status?: string }): Promise<LenderOffer[]>;
+  getLenderOffer(id: string): Promise<LenderOffer | undefined>;
+  createLenderOffer(data: InsertLenderOffer): Promise<LenderOffer>;
+  updateLenderOffer(id: string, data: Partial<LenderOffer>): Promise<LenderOffer | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -4066,6 +4111,156 @@ export class DatabaseStorage implements IStorage {
   async deletePolicyLenderOverlay(id: string): Promise<boolean> {
     const result = await db.delete(policyLenderOverlays).where(eq(policyLenderOverlays.id, id)).returning();
     return result.length > 0;
+  }
+
+  // Wholesale Lenders
+  async getWholesaleLenders(filters?: { status?: string; integrationTier?: string }): Promise<WholesaleLender[]> {
+    const conditions = [];
+    if (filters?.status) conditions.push(eq(wholesaleLenders.status, filters.status));
+    if (filters?.integrationTier) conditions.push(eq(wholesaleLenders.integrationTier, filters.integrationTier));
+    return db.select().from(wholesaleLenders)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(asc(wholesaleLenders.lenderName));
+  }
+
+  async getWholesaleLender(id: string): Promise<WholesaleLender | undefined> {
+    const [lender] = await db.select().from(wholesaleLenders).where(eq(wholesaleLenders.id, id)).limit(1);
+    return lender;
+  }
+
+  async createWholesaleLender(data: InsertWholesaleLender): Promise<WholesaleLender> {
+    const [lender] = await db.insert(wholesaleLenders).values(data).returning();
+    return lender;
+  }
+
+  async updateWholesaleLender(id: string, data: Partial<WholesaleLender>): Promise<WholesaleLender | undefined> {
+    const [lender] = await db.update(wholesaleLenders)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(wholesaleLenders.id, id))
+      .returning();
+    return lender;
+  }
+
+  // Rate Sheets
+  async getRateSheets(filters?: { lenderId?: string; status?: string }): Promise<RateSheet[]> {
+    const conditions = [];
+    if (filters?.lenderId) conditions.push(eq(rateSheets.lenderId, filters.lenderId));
+    if (filters?.status) conditions.push(eq(rateSheets.status, filters.status));
+    return db.select().from(rateSheets)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(desc(rateSheets.effectiveDate));
+  }
+
+  async getActiveRateSheets(): Promise<RateSheet[]> {
+    const today = new Date().toISOString().split("T")[0];
+    return db.select().from(rateSheets)
+      .where(and(
+        eq(rateSheets.status, "ACTIVE"),
+        lte(rateSheets.effectiveDate, today),
+        gte(rateSheets.expirationDate, today)
+      ))
+      .orderBy(desc(rateSheets.effectiveDate));
+  }
+
+  async getRateSheet(id: string): Promise<RateSheet | undefined> {
+    const [sheet] = await db.select().from(rateSheets).where(eq(rateSheets.id, id)).limit(1);
+    return sheet;
+  }
+
+  async createRateSheet(data: InsertRateSheet): Promise<RateSheet> {
+    const [sheet] = await db.insert(rateSheets).values(data).returning();
+    return sheet;
+  }
+
+  async updateRateSheet(id: string, data: Partial<RateSheet>): Promise<RateSheet | undefined> {
+    const [sheet] = await db.update(rateSheets)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(rateSheets.id, id))
+      .returning();
+    return sheet;
+  }
+
+  // Rate Sheet Products
+  async getRateSheetProducts(rateSheetId: string): Promise<RateSheetProduct[]> {
+    return db.select().from(rateSheetProducts)
+      .where(eq(rateSheetProducts.rateSheetId, rateSheetId))
+      .orderBy(asc(rateSheetProducts.productCode));
+  }
+
+  async getRateSheetProduct(id: string): Promise<RateSheetProduct | undefined> {
+    const [product] = await db.select().from(rateSheetProducts).where(eq(rateSheetProducts.id, id)).limit(1);
+    return product;
+  }
+
+  async createRateSheetProduct(data: InsertRateSheetProduct): Promise<RateSheetProduct> {
+    const [product] = await db.insert(rateSheetProducts).values(data).returning();
+    return product;
+  }
+
+  async updateRateSheetProduct(id: string, data: Partial<RateSheetProduct>): Promise<RateSheetProduct | undefined> {
+    const [product] = await db.update(rateSheetProducts)
+      .set(data)
+      .where(eq(rateSheetProducts.id, id))
+      .returning();
+    return product;
+  }
+
+  // Lender Pricing Adjustments
+  async getLenderPricingAdjustments(filters?: { lenderId?: string; adjustmentType?: string }): Promise<LenderPricingAdjustment[]> {
+    const conditions = [];
+    if (filters?.lenderId) conditions.push(eq(lenderPricingAdjustments.lenderId, filters.lenderId));
+    if (filters?.adjustmentType) conditions.push(eq(lenderPricingAdjustments.adjustmentType, filters.adjustmentType));
+    const today = new Date().toISOString().split("T")[0];
+    conditions.push(lte(lenderPricingAdjustments.effectiveDate, today));
+    conditions.push(or(
+      sql`${lenderPricingAdjustments.expirationDate} IS NULL`,
+      gte(lenderPricingAdjustments.expirationDate, today)
+    )!);
+    return db.select().from(lenderPricingAdjustments)
+      .where(and(...conditions))
+      .orderBy(asc(lenderPricingAdjustments.adjustmentType));
+  }
+
+  async createLenderPricingAdjustment(data: InsertLenderPricingAdjustment): Promise<LenderPricingAdjustment> {
+    const [adj] = await db.insert(lenderPricingAdjustments).values(data).returning();
+    return adj;
+  }
+
+  async updateLenderPricingAdjustment(id: string, data: Partial<LenderPricingAdjustment>): Promise<LenderPricingAdjustment | undefined> {
+    const [adj] = await db.update(lenderPricingAdjustments)
+      .set(data)
+      .where(eq(lenderPricingAdjustments.id, id))
+      .returning();
+    return adj;
+  }
+
+  // Lender Offers
+  async getLenderOffers(filters?: { applicationId?: string; lenderId?: string; status?: string }): Promise<LenderOffer[]> {
+    const conditions = [];
+    if (filters?.applicationId) conditions.push(eq(lenderOffers.applicationId, filters.applicationId));
+    if (filters?.lenderId) conditions.push(eq(lenderOffers.lenderId, filters.lenderId));
+    if (filters?.status) conditions.push(eq(lenderOffers.status, filters.status));
+    return db.select().from(lenderOffers)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(desc(lenderOffers.createdAt));
+  }
+
+  async getLenderOffer(id: string): Promise<LenderOffer | undefined> {
+    const [offer] = await db.select().from(lenderOffers).where(eq(lenderOffers.id, id)).limit(1);
+    return offer;
+  }
+
+  async createLenderOffer(data: InsertLenderOffer): Promise<LenderOffer> {
+    const [offer] = await db.insert(lenderOffers).values(data).returning();
+    return offer;
+  }
+
+  async updateLenderOffer(id: string, data: Partial<LenderOffer>): Promise<LenderOffer | undefined> {
+    const [offer] = await db.update(lenderOffers)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(lenderOffers.id, id))
+      .returning();
+    return offer;
   }
 }
 
