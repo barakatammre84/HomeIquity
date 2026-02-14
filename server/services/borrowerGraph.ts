@@ -67,11 +67,11 @@ export interface BehaviorSignals {
 }
 
 export interface ReadinessSnapshot {
-  score: number;
+  completionPercentage: number;
   tier: "ready_now" | "almost_ready" | "building" | "exploring" | "unknown";
   source: "coach" | "calculated";
   completedInputs: string[];
-  gaps: string[];
+  outstandingInputs: string[];
   estimatedTimeline: string | null;
   lastAssessedAt: string | null;
 }
@@ -515,11 +515,11 @@ export async function buildBorrowerGraph(userId: string): Promise<BorrowerGraph>
   const documentsMissing = requiredDocs.filter(t => !uploadedTypes.has(t));
 
   const readiness: ReadinessSnapshot = {
-    score: 0,
+    completionPercentage: 0,
     tier: "unknown",
     source: "calculated",
     completedInputs: [],
-    gaps: [],
+    outstandingInputs: [],
     estimatedTimeline: null,
     lastAssessedAt: null,
   };
@@ -527,10 +527,10 @@ export async function buildBorrowerGraph(userId: string): Promise<BorrowerGraph>
   if (coachConvWithProfile) {
     const fp = coachConvWithProfile.financialProfile as any;
     readiness.source = "coach";
-    readiness.score = coachConvWithProfile.readinessScore || fp?.readinessScore || 0;
+    readiness.completionPercentage = coachConvWithProfile.completionPercentage || fp?.completionPercentage || fp?.readinessScore || 0;
     readiness.tier = (coachConvWithProfile.readinessTier || fp?.readinessTier || "unknown") as any;
     readiness.completedInputs = fp?.completedInputs || fp?.strengths || [];
-    readiness.gaps = fp?.gaps || [];
+    readiness.outstandingInputs = fp?.outstandingInputs || fp?.gaps || [];
     readiness.estimatedTimeline = fp?.estimatedTimeline || null;
     readiness.lastAssessedAt = coachConvWithProfile.updatedAt?.toISOString() || null;
   } else {
@@ -548,12 +548,12 @@ export async function buildBorrowerGraph(userId: string): Promise<BorrowerGraph>
     if (hasAdequateSavings) { calcScore += 5; readiness.completedInputs.push("Savings documented"); }
     if (estimatedDTI && estimatedDTI <= 43) { calcScore += 5; readiness.completedInputs.push("DTI calculated"); }
 
-    if (creditScore && creditScore < 640) readiness.gaps.push("Credit score below 640");
-    if (estimatedDTI && estimatedDTI > 43) readiness.gaps.push("DTI ratio above 43%");
-    if (documentsMissing.length > 2) readiness.gaps.push("Missing key documents");
-    if (!employmentStable && employmentYears !== null) readiness.gaps.push("Less than 2 years employment");
+    if (creditScore && creditScore < 640) readiness.outstandingInputs.push("Credit score below 640");
+    if (estimatedDTI && estimatedDTI > 43) readiness.outstandingInputs.push("DTI ratio above 43%");
+    if (documentsMissing.length > 2) readiness.outstandingInputs.push("Missing key documents");
+    if (!employmentStable && employmentYears !== null) readiness.outstandingInputs.push("Less than 2 years employment");
 
-    readiness.score = Math.min(calcScore, 100);
+    readiness.completionPercentage = Math.min(calcScore, 100);
     readiness.tier = calcScore >= 80 ? "ready_now" : calcScore >= 60 ? "almost_ready" : calcScore >= 35 ? "building" : "exploring";
   }
 

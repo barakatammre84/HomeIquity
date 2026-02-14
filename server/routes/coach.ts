@@ -150,10 +150,10 @@ async function buildVerifiedContext(userId: string, user: User, propertyContext?
     try {
       const graph = await buildBorrowerGraph(userId);
       if (graph) {
-        context.readinessScore = graph.readiness.score;
+        context.completionPercentage = graph.readiness.completionPercentage;
         context.readinessTier = graph.readiness.tier;
-        context.readinessGaps = graph.readiness.gaps;
-        context.readinessStrengths = graph.readiness.completedInputs;
+        context.outstandingInputs = graph.readiness.outstandingInputs;
+        context.completedInputs = graph.readiness.completedInputs;
         context.documentsMissing = graph.documentsMissing;
         context.documentsUploaded = graph.documentsUploaded;
         context.documentsVerified = graph.documentsVerified;
@@ -269,7 +269,7 @@ export function registerCoachRoutes(app: Express) {
       const latestConv = sorted[0];
       const rawProfile = latestConv.financialProfile as any;
       const readinessTier = latestConv.readinessTier;
-      const readinessScore = latestConv.readinessScore;
+      const completionPercentage = latestConv.completionPercentage;
 
       const validatedIntake = Object.keys(intake).length > 0
         ? coachIntakeSchema.safeParse(intake)
@@ -287,7 +287,7 @@ export function registerCoachRoutes(app: Express) {
       res.json({
         intake: validatedIntake?.success ? validatedIntake.data : null,
         readinessTier,
-        readinessScore,
+        completionPercentage,
         profile: validatedProfile?.success ? validatedProfile.data : null,
         actionPlan: validatedActionPlan?.success ? validatedActionPlan.data : null,
         documentChecklist: validatedChecklist?.success ? validatedChecklist.data : null,
@@ -419,7 +419,7 @@ export function registerCoachRoutes(app: Express) {
           if (coachResponse.profile.readinessTier) {
             updateData.readinessTier = coachResponse.profile.readinessTier;
           }
-          updateData.readinessScore = coachResponse.profile.completionPercentage;
+          updateData.completionPercentage = coachResponse.profile.completionPercentage;
         } else if (verifiedContext.completionPercentage !== undefined) {
           const existingProfile = (conversation.financialProfile as any) || {};
           updateData.financialProfile = {
@@ -581,7 +581,7 @@ export function registerCoachRoutes(app: Express) {
         actionPlan: activeConv.actionPlan,
         documentChecklist: activeConv.documentChecklist,
         readinessTier: activeConv.readinessTier,
-        readinessScore: activeConv.readinessScore,
+        completionPercentage: activeConv.completionPercentage,
         conversationId: activeConv.id,
       });
     } catch (error) {

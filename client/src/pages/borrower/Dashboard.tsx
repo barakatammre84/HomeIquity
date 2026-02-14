@@ -363,10 +363,10 @@ interface BorrowerGraphData {
   documentsVerified: number;
   documentsMissing: string[];
   readiness: {
-    score: number;
+    completionPercentage: number;
     tier: string;
-    strengths: string[];
-    gaps: string[];
+    completedInputs: string[];
+    outstandingInputs: string[];
   };
   eligibility: {
     estimatedDTI: number | null;
@@ -516,10 +516,10 @@ function FinancialSnapshot({ graph }: { graph: BorrowerGraphData }) {
               </div>
             ))}
           </div>
-          {graph.readiness.gaps.length > 0 && expanded && (
+          {graph.readiness.outstandingInputs.length > 0 && expanded && (
             <div className="mt-3 pt-3 border-t space-y-1.5">
               <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Areas to Strengthen</p>
-              {graph.readiness.gaps.slice(0, 3).map((gap, i) => (
+              {graph.readiness.outstandingInputs.slice(0, 3).map((gap, i) => (
                 <div key={i} className="flex items-center gap-2" data-testid={`text-gap-${i}`}>
                   <AlertCircle className="h-3 w-3 text-amber-500 shrink-0" />
                   <span className="text-xs text-muted-foreground">{gap}</span>

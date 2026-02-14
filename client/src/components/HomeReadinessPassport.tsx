@@ -31,10 +31,10 @@ interface BorrowerGraphData {
   documentsVerified: number;
   documentsMissing: string[];
   readiness: {
-    score: number;
+    completionPercentage: number;
     tier: string;
     completedInputs: string[];
-    gaps: string[];
+    outstandingInputs: string[];
   };
   eligibility: {
     estimatedDTI: number | null;
@@ -160,7 +160,7 @@ export function HomeReadinessPassport({ compact = false }: { compact?: boolean }
       <Card className="hover-elevate" data-testid="card-readiness-passport-compact">
         <CardContent className="p-4">
           <div className="flex items-center gap-4">
-            <ReadinessRing score={graph.readiness.score} />
+            <ReadinessRing score={graph.readiness.completionPercentage} />
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <p className="font-semibold text-sm">Home Readiness</p>
@@ -204,7 +204,7 @@ export function HomeReadinessPassport({ compact = false }: { compact?: boolean }
       <Card data-testid="card-readiness-passport">
         <CardContent className="p-5">
           <div className="flex items-start gap-5">
-            <ReadinessRing score={graph.readiness.score} />
+            <ReadinessRing score={graph.readiness.completionPercentage} />
             <div className="flex-1 min-w-0 space-y-2">
               <div className="flex items-center gap-2 flex-wrap">
                 <p className="font-semibold">Home Readiness</p>
@@ -272,10 +272,10 @@ export function HomeReadinessPassport({ compact = false }: { compact?: boolean }
                 </div>
               )}
 
-              {graph.readiness.gaps.length > 0 && (
+              {graph.readiness.outstandingInputs.length > 0 && (
                 <div className="pt-2 border-t">
                   <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Areas to Strengthen</p>
-                  {graph.readiness.gaps.slice(0, 3).map((gap, i) => (
+                  {graph.readiness.outstandingInputs.slice(0, 3).map((gap, i) => (
                     <div key={i} className="flex items-center gap-2 mt-1.5" data-testid={`text-passport-gap-${i}`}>
                       <AlertCircle className="h-3 w-3 text-amber-500 shrink-0" />
                       <span className="text-xs text-muted-foreground">{gap}</span>

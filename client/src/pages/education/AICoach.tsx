@@ -49,7 +49,7 @@ interface CoachConversation {
   id: string;
   title: string;
   readinessTier: string | null;
-  readinessScore: number | null;
+  completionPercentage: number | null;
   financialProfile: any;
   actionPlan: any;
   documentChecklist: any;

@@ -44,7 +44,7 @@ export const coachConversations = pgTable("coach_conversations", {
   userId: varchar("user_id").references(() => users.id).notNull(),
   title: varchar("title", { length: 200 }).default("New Conversation"),
   readinessTier: varchar("readiness_tier", { length: 30 }),
-  readinessScore: integer("readiness_score"),
+  completionPercentage: integer("completion_percentage"),
   financialProfile: jsonb("financial_profile"),
   actionPlan: jsonb("action_plan"),
   recommendedLoanTypes: jsonb("recommended_loan_types"),

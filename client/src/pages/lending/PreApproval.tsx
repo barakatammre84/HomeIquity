@@ -602,7 +602,7 @@ export default function PreApproval() {
       isFirstTimeBuyer?: boolean;
     } | null;
     readinessTier?: string;
-    readinessScore?: number;
+    completionPercentage?: number;
   } | null>({
     queryKey: ["/api/coach/intake/latest"],
     enabled: isAuthenticated,

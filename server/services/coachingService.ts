@@ -193,12 +193,11 @@ export interface VerifiedUserContext {
   readinessState?: ReadinessState;
   completionPercentage?: number;
   completedSteps?: string[];
-  readinessScore?: number | null;
   readinessTier?: string | null;
   previousReadinessTier?: string | null;
   previousCompletionPercentage?: number | null;
-  readinessGaps?: string[];
-  readinessStrengths?: string[];
+  outstandingInputs?: string[];
+  completedInputs?: string[];
   documentsMissing?: string[];
   documentsUploaded?: number;
   documentsVerified?: number;
@@ -291,7 +290,7 @@ export function deriveCompletionPercentage(ctx: VerifiedUserContext): number {
     : 0;
 
   const readyWeight = 10;
-  const readyPercent = (ctx.readinessScore || 0) >= 80 ? readyWeight : ((ctx.readinessScore || 0) / 80) * readyWeight;
+  const readyPercent = (ctx.completionPercentage || 0) >= 80 ? readyWeight : ((ctx.completionPercentage || 0) / 80) * readyWeight;
 
   return Math.min(100, Math.round(corePercent + docPercent + readyPercent));
 }
@@ -544,15 +543,15 @@ function buildVerifiedContextPrompt(ctx: VerifiedUserContext): string {
   lines.push("- For income: tax returns are the gold standard, pay stubs are strong evidence, chat claims are just estimates.");
   lines.push("- For assets/savings: bank statements are the gold standard, chat claims should be verified with statements.");
 
-  if (ctx.readinessScore !== undefined && ctx.readinessScore !== null) {
+  if (ctx.completionPercentage !== undefined && ctx.completionPercentage !== null) {
     lines.push("\n\n=== READINESS CONTEXT (from Borrower Graph) ===");
-    lines.push(`Current Completion Percentage: ${ctx.readinessScore}/100`);
+    lines.push(`Current Completion Percentage: ${ctx.completionPercentage}/100`);
     if (ctx.readinessTier) lines.push(`Readiness Tier: ${ctx.readinessTier}`);
-    if (ctx.readinessStrengths && ctx.readinessStrengths.length > 0) {
-      lines.push(`Completed Inputs: ${ctx.readinessStrengths.join(", ")}`);
+    if (ctx.completedInputs && ctx.completedInputs.length > 0) {
+      lines.push(`Completed Inputs: ${ctx.completedInputs.join(", ")}`);
     }
-    if (ctx.readinessGaps && ctx.readinessGaps.length > 0) {
-      lines.push(`Outstanding Inputs: ${ctx.readinessGaps.join(", ")}`);
+    if (ctx.outstandingInputs && ctx.outstandingInputs.length > 0) {
+      lines.push(`Outstanding Inputs: ${ctx.outstandingInputs.join(", ")}`);
     }
     if (ctx.documentsMissing && ctx.documentsMissing.length > 0) {
       lines.push(`Missing Documents: ${ctx.documentsMissing.join(", ")}`);
