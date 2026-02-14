@@ -117,3 +117,21 @@ All underwriting decisions are deterministic, rules-based, and auditable.
 A borrower can: talk to Coach, upload documents, get a structured package, receive a pre-approval letter — all in one session.
 
 A lender can: open the package, see every document organized, click to view each one, know exactly what's missing, make a decision fast.
+
+---
+
+## Development Rule (Active)
+
+**Nothing new ships unless it improves correctness, compliance, or reliability.**
+
+Feature development is frozen. All work must pass this gate:
+
+| Allowed | Not Allowed |
+|---|---|
+| Fixing incorrect data or behavior | New features |
+| Compliance and regulatory alignment | Refactors for style or preference |
+| Reliability improvements (error handling, edge cases) | UI polish or cosmetic changes |
+| Closing gaps flagged by validation notes | Adding modules or sections |
+| Test coverage for existing functionality | Exploratory or speculative work |
+
+If it doesn't make the platform more correct, more compliant, or more reliable — it waits.
