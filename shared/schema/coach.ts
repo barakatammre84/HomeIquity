@@ -74,6 +74,7 @@ export const coachMessages = pgTable("coach_messages", {
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => [
   index("idx_coach_messages_conversation").on(table.conversationId),
+  index("idx_coach_messages_conv_role_created").on(table.conversationId, table.role, table.createdAt),
 ]);
 
 export const insertCoachMessageSchema = createInsertSchema(coachMessages).omit({

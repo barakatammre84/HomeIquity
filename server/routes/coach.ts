@@ -327,18 +327,11 @@ export function registerCoachRoutes(app: Express) {
         ? { price: propertyPrice, address: propertyAddress }
         : null;
 
-      const allConvs = await storage.getCoachConversationsByUser(user.id);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      let todayCount = 0;
       const dailyLimit = 30;
-      for (const c of allConvs) {
-        const msgs = await storage.getCoachMessages(c.id);
-        todayCount += msgs.filter(m =>
-          m.role === "user" && m.createdAt && new Date(m.createdAt) >= today
-        ).length;
-      }
+      const todayCount = await storage.countUserCoachMessagesToday(user.id);
       if (todayCount >= dailyLimit) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
         return res.status(429).json({
           error: "Daily message limit reached",
           remaining: 0,
@@ -496,19 +489,8 @@ export function registerCoachRoutes(app: Express) {
   app.get("/api/coach/usage", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      const conversations = await storage.getCoachConversationsByUser(user.id);
-
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      let todayCount = 0;
       const dailyLimit = 30;
-
-      for (const conv of conversations) {
-        const msgs = await storage.getCoachMessages(conv.id);
-        todayCount += msgs.filter(m =>
-          m.role === "user" && m.createdAt && new Date(m.createdAt) >= today
-        ).length;
-      }
+      const todayCount = await storage.countUserCoachMessagesToday(user.id);
 
       res.json({
         todayCount,

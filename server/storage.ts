@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { eq, desc, and, gte, lte, sql, or, ilike, asc } from "drizzle-orm";
+import { eq, desc, and, gte, lte, sql, or, ilike, asc, count, inArray } from "drizzle-orm";
 import {
   users,
   loanApplications,
@@ -772,6 +772,7 @@ export interface IStorage {
   updateCoachConversation(id: string, data: Partial<CoachConversation>): Promise<CoachConversation | undefined>;
   createCoachMessage(data: InsertCoachMessage): Promise<CoachMessage>;
   getCoachMessages(conversationId: string): Promise<CoachMessage[]>;
+  countUserCoachMessagesToday(userId: string): Promise<number>;
 
   // Underwriting Rules DSL
   getUnderwritingRules(filters?: { category?: string; triggerType?: string; isActive?: boolean }): Promise<UnderwritingRuleDsl[]>;
@@ -3959,6 +3960,27 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(coachMessages)
       .where(eq(coachMessages.conversationId, conversationId))
       .orderBy(asc(coachMessages.createdAt));
+  }
+
+  async countUserCoachMessagesToday(userId: string): Promise<number> {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const convIds = await db.select({ id: coachConversations.id })
+      .from(coachConversations)
+      .where(eq(coachConversations.userId, userId));
+
+    if (convIds.length === 0) return 0;
+
+    const [result] = await db.select({ value: count() })
+      .from(coachMessages)
+      .where(and(
+        inArray(coachMessages.conversationId, convIds.map(c => c.id)),
+        eq(coachMessages.role, "user"),
+        gte(coachMessages.createdAt, today),
+      ));
+
+    return result?.value ?? 0;
   }
 
   // Underwriting Rules DSL
