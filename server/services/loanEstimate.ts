@@ -168,7 +168,10 @@ export async function generateLoanEstimate(applicationId: string): Promise<LoanE
   const purchasePrice = Number(application.purchasePrice) || 400000;
   const downPayment = Number(application.downPayment) || 80000;
   const loanAmount = purchasePrice - downPayment;
-  const creditScore = application.creditScore || 700;
+  const creditScore = application.creditScore;
+  if (!creditScore) {
+    throw new Error("Credit score is required to generate a loan estimate");
+  }
   const propertyState = application.propertyState || "CA";
   
   const ltv = (loanAmount / purchasePrice) * 100;

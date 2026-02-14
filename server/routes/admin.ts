@@ -65,11 +65,16 @@ export function registerAdminRoutes(
       if (!ALL_ROLES.includes(role)) {
         return res.status(400).json({ error: "Invalid role" });
       }
-      const user = await storage.updateUserRole(req.params.id, role);
-      if (!user) {
+      const existingUser = await storage.getUser(req.params.id);
+      if (!existingUser) {
         return res.status(404).json({ error: "User not found" });
       }
-      logAudit(req, "user.role_change", "user", req.params.id, { newRole: role, previousRole: user.role });
+      const previousRole = existingUser.role;
+      const user = await storage.updateUserRole(req.params.id, role);
+      if (!user) {
+        return res.status(500).json({ error: "Failed to update role" });
+      }
+      logAudit(req, "user.role_change", "user", req.params.id, { newRole: role, previousRole });
       res.json(user);
     } catch (error) {
       console.error("Update user role error:", error);

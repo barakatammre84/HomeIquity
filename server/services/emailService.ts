@@ -1,5 +1,6 @@
 import nodemailer from "nodemailer";
 import type { Transporter } from "nodemailer";
+import { COMPANY_CONFIG } from "../config/company";
 
 const SMTP_HOST = process.env.SMTP_HOST;
 const SMTP_PORT = parseInt(process.env.SMTP_PORT || "587");
@@ -101,7 +102,7 @@ function baseTemplate(content: string, preheader?: string): string {
             <td style="background:#f8fafc;padding:20px 32px;border:1px solid #e2e8f0;border-top:0;border-radius:0 0 8px 8px">
               <p style="margin:0;color:#94a3b8;font-size:12px;line-height:1.5">
                 This is an automated message from Homiquity Mortgage. Please do not reply directly to this email.
-                <br>NMLS #123456 | Equal Housing Lender
+                <br>NMLS #${COMPANY_CONFIG.nmlsId} | Equal Housing Lender
               </p>
             </td>
           </tr>

@@ -2478,7 +2478,9 @@ export function registerBorrowerRoutes(
       console.error("KYC simulation error:", error);
       try {
         await storage.updateKycScreening(screeningId, { overallStatus: "failed" });
-      } catch {}
+      } catch (updateErr) {
+        console.error("[KYC] Failed to update screening status to failed:", updateErr);
+      }
     }
   }
 

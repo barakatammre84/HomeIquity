@@ -60,10 +60,9 @@ function calculateQualification(
   preApprovalAmount: number,
   monthlyIncome: number,
   monthlyDebts: number,
-  creditScore: number = 720,
+  creditScore?: number,
   downPaymentPercent: number = 5
 ): QualificationBreakdown | null {
-  // Require valid income for accurate calculation
   if (monthlyIncome <= 0) {
     return null;
   }
@@ -72,13 +71,11 @@ function calculateQualification(
   const reasons: string[] = [];
   const tips: string[] = [];
   
-  // Calculate loan details
   const downPayment = price * (downPaymentPercent / 100);
   const loanAmount = price - downPayment;
   const ltvRatio = (loanAmount / price) * 100;
   
-  // Monthly payment calculation (30-year fixed at credit-adjusted rates)
-  const annualRate = creditScore >= 760 ? 0.0625 : creditScore >= 720 ? 0.065 : creditScore >= 680 ? 0.07 : 0.075;
+  const annualRate = creditScore && creditScore >= 760 ? 0.0625 : creditScore && creditScore >= 720 ? 0.065 : creditScore && creditScore >= 680 ? 0.07 : 0.075;
   const monthlyRate = annualRate / 12;
   const numPayments = 360;
   
@@ -124,7 +121,7 @@ function calculateQualification(
     tips.push(`With ${downPaymentPercent}% down, PMI of ${formatCurrency(pmi)}/mo until 20% equity`);
   }
   
-  if (creditScore < 680) {
+  if (creditScore !== undefined && creditScore < 680) {
     tips.push("Improving your credit score could lower your interest rate");
   }
   
@@ -197,7 +194,7 @@ export default function PropertyDetail() {
   const monthlyDebts = preApproval?.monthlyDebts 
     ? parseFloat(String(preApproval.monthlyDebts))
     : 0;
-  const creditScore = preApproval?.creditScore || 720;
+  const creditScore = preApproval?.creditScore || undefined;
 
   // Calculate qualification
   const qualification = useMemo(() => {

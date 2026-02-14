@@ -360,7 +360,7 @@ export function checkPropertyEligibility(
   propertyPrice: number,
   propertyType: string = "single_family",
   propertyTaxAnnual?: number,
-  hoaMontly?: number,
+  hoaMonthly?: number,
   homeInsuranceEstimate: number = 150,
   maxLtvPercent: number = 95
 ): PropertyEligibilityResult {
@@ -383,7 +383,7 @@ export function checkPropertyEligibility(
     (Math.pow(1 + principalAndInterestRate / 12, 360) - 1);
 
   const taxMonthly = (propertyTaxAnnual || propertyPrice * 0.0125) / 12;
-  const hoaFees = hoaMontly || 0;
+  const hoaFees = hoaMonthly || 0;
   const pmi = maxLtvPercent > 80 ? (maxLoanAmount * 0.01 / 12) : 0;
 
   const estimatedPITI = monthlyPI + taxMonthly + homeInsuranceEstimate + hoaFees + pmi;

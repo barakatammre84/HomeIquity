@@ -12,6 +12,7 @@ import crypto from "crypto";
 import { upload } from "./utils";
 import { logAudit } from "../auditLog";
 import { sendNotificationEmail } from "../services/emailService";
+import { COMPANY_CONFIG } from "../config/company";
 
 const declarationsValidationSchema = insertBorrowerDeclarationsSchema.partial().extend({
   applicationId: z.string().optional(),
@@ -22,8 +23,9 @@ const loanApplicationInputSchema = z.object({
   monthlyDebts: z.string().or(z.number()).transform(v => String(v).replace(/[,$]/g, "")),
   creditScore: z.string().or(z.number()).transform(v => {
     const n = parseInt(String(v));
-    return isNaN(n) ? 700 : Math.max(300, Math.min(850, n));
-  }),
+    if (isNaN(n)) throw new Error("Credit score must be a valid number");
+    return Math.max(300, Math.min(850, n));
+  }).refine(v => v >= 300 && v <= 850, { message: "Credit score must be between 300 and 850" }),
   employmentType: z.string().min(1).max(50).optional(),
   employmentYears: z.string().or(z.number()).transform(v => {
     const n = parseInt(String(v));
@@ -87,7 +89,9 @@ export function registerLendingRoutes(
             .limit(1);
           hmdaStatus[app.id] = !!record;
         }
-      } catch {}
+      } catch (hmdaErr) {
+        console.warn("[Dashboard] HMDA status lookup failed:", hmdaErr);
+      }
 
       const verificationStatus: Record<string, { hasCreditConsent: boolean; hasIdVerification: boolean; hasBankConnected: boolean; hasRateLocked: boolean }> = {};
       try {
@@ -106,7 +110,9 @@ export function registerLendingRoutes(
               .where(and(eq(verifications.applicationId, app.id), eq(verifications.verificationType, "identity")))
               .limit(1);
             hasIdVer = !!ver?.identityVerified;
-          } catch {}
+          } catch (idErr) {
+            console.warn(`[Dashboard] ID verification check failed for app ${app.id}:`, idErr);
+          }
           let hasBankConn = false;
           try {
             const [ver] = await db.select({ id: verifications.id })
@@ -114,7 +120,9 @@ export function registerLendingRoutes(
               .where(and(eq(verifications.applicationId, app.id), eq(verifications.verificationType, "income")))
               .limit(1);
             hasBankConn = !!ver;
-          } catch {}
+          } catch (bankErr) {
+            console.warn(`[Dashboard] Bank connection check failed for app ${app.id}:`, bankErr);
+          }
           const lockedOption = recentOptions.find((o: any) => o.applicationId === app.id && o.rateLockedAt);
           verificationStatus[app.id] = {
             hasCreditConsent: !!consent,
@@ -123,7 +131,9 @@ export function registerLendingRoutes(
             hasRateLocked: !!lockedOption,
           };
         }
-      } catch {}
+      } catch (verErr) {
+        console.warn("[Dashboard] Verification status lookup failed:", verErr);
+      }
 
       const allActivities = Object.values(activitiesMap).flat()
         .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
@@ -749,6 +759,13 @@ export function registerLendingRoutes(
       const { documentType, applicationId } = req.body;
       const userId = req.user!.id;
 
+      if (applicationId) {
+        const application = await storage.getLoanApplication(applicationId);
+        if (!application || (application.userId !== userId && !isStaffRole((req.user as User).role))) {
+          return res.status(403).json({ error: "You do not have access to this application" });
+        }
+      }
+
       const document = await storage.createDocument({
         userId,
         applicationId: applicationId || null,
@@ -802,8 +819,9 @@ export function registerLendingRoutes(
     monthlyDebts: z.string().or(z.number()).transform(v => String(v).replace(/[,$]/g, "")).optional(),
     creditScore: z.string().or(z.number()).transform(v => {
       const n = parseInt(String(v));
-      return isNaN(n) ? 700 : Math.max(300, Math.min(850, n));
-    }).optional(),
+      if (isNaN(n)) throw new Error("Credit score must be a valid number");
+      return Math.max(300, Math.min(850, n));
+    }).refine(v => v >= 300 && v <= 850, { message: "Credit score must be between 300 and 850" }).optional(),
     employmentType: z.string().min(1).max(50).optional(),
     employmentYears: z.string().or(z.number()).transform(v => {
       const n = parseInt(String(v));
@@ -1024,12 +1042,12 @@ export function registerLendingRoutes(
         letterNumber,
         borrowerName,
         loanAmount,
-        productType: application.propertyType === "condo" ? "CONV" : (application.isVeteran ? "VA" : "CONV"),
+        productType: application.isVeteran ? "VA" : "CONV",
         occupancy: "Primary",
         loanPurpose: application.loanPurpose || "Purchase",
-        companyLegalName: "Homiquity Mortgage Corporation",
-        companyNmlsId: "123456",
-        companyContactInfo: "support@homiquity.com | (555) 123-4567",
+        companyLegalName: COMPANY_CONFIG.legalName,
+        companyNmlsId: COMPANY_CONFIG.nmlsId,
+        companyContactInfo: COMPANY_CONFIG.contactInfo,
         expirationDate,
         generatedAt: new Date(),
         conditions,
@@ -1067,13 +1085,17 @@ export function registerLendingRoutes(
           .orderBy(desc(underwritingDecisions.decidedAt))
           .limit(1);
         snapshotId = snapshot?.id || null;
-      } catch {}
+      } catch (snapErr) {
+        console.warn("[Letter] Underwriting snapshot lookup failed:", snapErr);
+      }
 
       let disclaimerId: string | null = null;
       try {
         const [disc] = await database.select().from(disclaimerVersions).limit(1);
         disclaimerId = disc?.id || null;
-      } catch {}
+      } catch (discErr) {
+        console.warn("[Letter] Disclaimer lookup failed:", discErr);
+      }
 
       if (!disclaimerId) {
         try {
@@ -1100,9 +1122,9 @@ export function registerLendingRoutes(
           occupancy: "Primary",
           loanPurpose: application.loanPurpose || "Purchase",
           expirationDate,
-          companyLegalName: "Homiquity Mortgage Corporation",
-          companyNmlsId: "123456",
-          companyContactInfo: "support@homiquity.com | (555) 123-4567",
+          companyLegalName: COMPANY_CONFIG.legalName,
+          companyNmlsId: COMPANY_CONFIG.nmlsId,
+          companyContactInfo: COMPANY_CONFIG.contactInfo,
           loanOfficerId: isStaffRole(user.role) ? user.id : undefined,
           pdfStorageKey: pdfStored ? storageKey : undefined,
           pdfGeneratedAt: new Date(),
@@ -1218,9 +1240,9 @@ export function registerLendingRoutes(
         productType: application.isVeteran ? "VA" : "CONV",
         occupancy: "Primary",
         loanPurpose: application.loanPurpose || "Purchase",
-        companyLegalName: "Homiquity Mortgage Corporation",
-        companyNmlsId: "123456",
-        companyContactInfo: "support@homiquity.com | (555) 123-4567",
+        companyLegalName: COMPANY_CONFIG.legalName,
+        companyNmlsId: COMPANY_CONFIG.nmlsId,
+        companyContactInfo: COMPANY_CONFIG.contactInfo,
         expirationDate: letter?.expirationDate || new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
         generatedAt: letter?.generatedAt || new Date(),
         conditions: [
@@ -1339,8 +1361,8 @@ export function registerLendingRoutes(
         employmentType: application.employmentType || undefined,
         estimatedDti: application.dtiRatio?.toString(),
         downPaymentPercent,
-        companyLegalName: "Homiquity Mortgage Corp.",
-        companyNmlsId: "1234567",
+        companyLegalName: COMPANY_CONFIG.legalName,
+        companyNmlsId: COMPANY_CONFIG.nmlsId,
         expirationDate,
         generatedAt: new Date(),
       });
@@ -1382,8 +1404,8 @@ export function registerLendingRoutes(
         downPaymentPercent,
         expirationDate,
         status: "issued",
-        companyLegalName: "Homiquity Mortgage Corp.",
-        companyNmlsId: "1234567",
+        companyLegalName: COMPANY_CONFIG.legalName,
+        companyNmlsId: COMPANY_CONFIG.nmlsId,
         pdfStorageKey,
         pdfGeneratedAt: new Date(),
       }).returning();

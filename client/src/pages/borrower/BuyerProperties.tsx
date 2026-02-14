@@ -53,12 +53,11 @@ function calculateAffordability(
   preApprovalAmount: number,
   monthlyIncome: number,
   monthlyDebts: number,
-  creditScore: number
+  creditScore?: number
 ): AffordabilityCheck {
   const price = parseFloat(property.price);
   const reasons: string[] = [];
   
-  // Require valid income data for accurate calculations
   if (monthlyIncome <= 0) {
     return {
       canAfford: false,
@@ -69,8 +68,7 @@ function calculateAffordability(
     };
   }
   
-  // Use credit score to determine rate (GSE-aligned)
-  const baseRate = creditScore >= 760 ? 0.0625 : creditScore >= 720 ? 0.065 : creditScore >= 680 ? 0.07 : 0.075;
+  const baseRate = creditScore && creditScore >= 760 ? 0.0625 : creditScore && creditScore >= 720 ? 0.065 : creditScore && creditScore >= 680 ? 0.07 : 0.075;
   
   // Estimate monthly payment (P&I at rate-adjusted for 30 years + taxes + insurance)
   const downPaymentPercent = 5; // Standard minimum
@@ -188,7 +186,7 @@ export default function BuyerProperties() {
     ? parseFloat(String(preApproval.monthlyDebts))
     : 0;
     
-  const creditScore = preApproval?.creditScore || 720;
+  const creditScore = preApproval?.creditScore || undefined;
 
   // Calculate affordability for each property (only if pre-approved)
   const propertiesWithAffordability = useMemo(() => {

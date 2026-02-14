@@ -289,10 +289,16 @@ export function deriveCompletionPercentage(ctx: VerifiedUserContext): number {
     ? ((verified * 1.0 + (uploaded - verified) * 0.7) / totalDocs) * docWeight
     : 0;
 
-  const readyWeight = 10;
-  const readyPercent = (ctx.completionPercentage || 0) >= 80 ? readyWeight : ((ctx.completionPercentage || 0) / 80) * readyWeight;
+  const verificationWeight = 10;
+  const hasVerifiedDocs = (ctx.documentsVerified || 0) > 0;
+  const noMissingDocs = !ctx.documentsMissing || ctx.documentsMissing.length === 0;
+  const hasFinancials = !!(ctx.annualIncome && ctx.creditScore && ctx.monthlyDebts && ctx.employmentType);
+  let verificationPercent = 0;
+  if (hasFinancials && hasVerifiedDocs && noMissingDocs) verificationPercent = verificationWeight;
+  else if (hasVerifiedDocs) verificationPercent = verificationWeight * 0.7;
+  else if (hasFinancials) verificationPercent = verificationWeight * 0.3;
 
-  return Math.min(100, Math.round(corePercent + docPercent + readyPercent));
+  return Math.min(100, Math.round(corePercent + docPercent + verificationPercent));
 }
 
 function buildUserProfileHeader(ctx: VerifiedUserContext): string {

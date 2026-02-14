@@ -312,6 +312,17 @@ export function registerComplianceRoutes(
       if (!borrowerFullName || consentGiven === undefined) {
         return res.status(400).json({ error: "Missing required fields" });
       }
+
+      if (consentGiven !== true) {
+        return res.status(400).json({ error: "Affirmative consent is required to proceed with a credit check" });
+      }
+
+      if (borrowerSSNLast4 !== undefined && borrowerSSNLast4 !== null) {
+        const ssnLast4Str = String(borrowerSSNLast4);
+        if (!/^\d{4}$/.test(ssnLast4Str)) {
+          return res.status(400).json({ error: "SSN last 4 digits must be exactly 4 numeric digits" });
+        }
+      }
       
       const consent = await creditService.createCreditConsent({
         applicationId: req.params.id,

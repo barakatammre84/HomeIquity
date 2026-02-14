@@ -93,11 +93,14 @@ export function registerUnderwritingRoutes(
         return res.status(400).json({ error: "Missing required parameters" });
       }
 
-      const result = calculateDTI(
-        parseFloat(qualifyingIncome),
-        parseFloat(housingExpense),
-        parseFloat(nonHousingDebts)
-      );
+      const parsedIncome = parseFloat(qualifyingIncome);
+      const parsedHousing = parseFloat(housingExpense);
+      const parsedDebts = parseFloat(nonHousingDebts);
+      if (isNaN(parsedIncome) || isNaN(parsedHousing) || isNaN(parsedDebts)) {
+        return res.status(400).json({ error: "qualifyingIncome, housingExpense, and nonHousingDebts must be valid numbers" });
+      }
+
+      const result = calculateDTI(parsedIncome, parsedHousing, parsedDebts);
 
       res.json(result);
     } catch (error) {
@@ -121,7 +124,7 @@ export function registerUnderwritingRoutes(
         propertyPrice,
         propertyType = "single_family",
         propertyTaxAnnual,
-        hoaMontly = 0,
+        hoaMonthly = 0,
         homeInsuranceEstimate = 150,
       } = req.body;
 
@@ -129,15 +132,25 @@ export function registerUnderwritingRoutes(
         return res.status(400).json({ error: "Missing required parameters" });
       }
 
+      const pAssets = parseFloat(borrowerAssets);
+      const pIncome = parseFloat(borrowerIncome);
+      const pDebts = parseFloat(borrowerDebts);
+      const pPrice = parseFloat(propertyPrice);
+      const pHoa = parseFloat(hoaMonthly);
+      const pInsurance = parseFloat(homeInsuranceEstimate);
+      if ([pAssets, pIncome, pDebts, pPrice, pHoa, pInsurance].some(isNaN)) {
+        return res.status(400).json({ error: "All numeric parameters must be valid numbers" });
+      }
+
       const result = checkPropertyEligibility(
-        parseFloat(borrowerAssets),
-        parseFloat(borrowerIncome),
-        parseFloat(borrowerDebts),
-        parseFloat(propertyPrice),
+        pAssets,
+        pIncome,
+        pDebts,
+        pPrice,
         propertyType,
         propertyTaxAnnual ? parseFloat(propertyTaxAnnual) : undefined,
-        parseFloat(hoaMontly),
-        parseFloat(homeInsuranceEstimate)
+        pHoa,
+        pInsurance
       );
 
       res.json(result);
@@ -166,6 +179,9 @@ export function registerUnderwritingRoutes(
 
       if (!loanAmount || !creditScore || !ltv) {
         return res.status(400).json({ error: "Missing required parameters" });
+      }
+      if (isNaN(parseFloat(loanAmount)) || isNaN(parseFloat(creditScore)) || isNaN(parseFloat(ltv))) {
+        return res.status(400).json({ error: "loanAmount, creditScore, and ltv must be valid numbers" });
       }
 
       // Get AMI for FTHB waiver
