@@ -70,9 +70,8 @@ export interface ReadinessSnapshot {
   score: number;
   tier: "ready_now" | "almost_ready" | "building" | "exploring" | "unknown";
   source: "coach" | "calculated";
-  strengths: string[];
+  completedInputs: string[];
   gaps: string[];
-  recommendedLoanTypes: string[];
   estimatedTimeline: string | null;
   lastAssessedAt: string | null;
 }
@@ -519,9 +518,8 @@ export async function buildBorrowerGraph(userId: string): Promise<BorrowerGraph>
     score: 0,
     tier: "unknown",
     source: "calculated",
-    strengths: [],
+    completedInputs: [],
     gaps: [],
-    recommendedLoanTypes: eligibleLoanTypes,
     estimatedTimeline: null,
     lastAssessedAt: null,
   };
@@ -531,9 +529,8 @@ export async function buildBorrowerGraph(userId: string): Promise<BorrowerGraph>
     readiness.source = "coach";
     readiness.score = coachConvWithProfile.readinessScore || fp?.readinessScore || 0;
     readiness.tier = (coachConvWithProfile.readinessTier || fp?.readinessTier || "unknown") as any;
-    readiness.strengths = fp?.strengths || [];
+    readiness.completedInputs = fp?.completedInputs || fp?.strengths || [];
     readiness.gaps = fp?.gaps || [];
-    readiness.recommendedLoanTypes = fp?.recommendedLoanTypes || eligibleLoanTypes;
     readiness.estimatedTimeline = fp?.estimatedTimeline || null;
     readiness.lastAssessedAt = coachConvWithProfile.updatedAt?.toISOString() || null;
   } else {
@@ -546,10 +543,10 @@ export async function buildBorrowerGraph(userId: string): Promise<BorrowerGraph>
       };
       calcScore = statusScores[activeApp.status] || 30;
     }
-    if (creditScore && creditScore >= 680) { calcScore += 5; readiness.strengths.push("Good credit score"); }
-    if (employmentStable) { calcScore += 5; readiness.strengths.push("Stable employment"); }
-    if (hasAdequateSavings) { calcScore += 5; readiness.strengths.push("Adequate savings"); }
-    if (estimatedDTI && estimatedDTI <= 43) { calcScore += 5; readiness.strengths.push("Healthy DTI ratio"); }
+    if (creditScore && creditScore >= 680) { calcScore += 5; readiness.completedInputs.push("Credit score provided"); }
+    if (employmentStable) { calcScore += 5; readiness.completedInputs.push("Employment verified (2+ years)"); }
+    if (hasAdequateSavings) { calcScore += 5; readiness.completedInputs.push("Savings documented"); }
+    if (estimatedDTI && estimatedDTI <= 43) { calcScore += 5; readiness.completedInputs.push("DTI calculated"); }
 
     if (creditScore && creditScore < 640) readiness.gaps.push("Credit score below 640");
     if (estimatedDTI && estimatedDTI > 43) readiness.gaps.push("DTI ratio above 43%");

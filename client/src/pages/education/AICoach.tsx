@@ -60,11 +60,10 @@ interface CoachConversation {
 
 interface CoachProfile {
   readinessTier: string;
-  readinessScore: number;
-  summary: string;
-  strengths: string[];
-  gaps: string[];
-  recommendedLoanTypes: string[];
+  completionPercentage: number;
+  statusNote: string;
+  completedInputs: string[];
+  outstandingInputs: string[];
   estimatedTimeline: string;
 }
 
@@ -182,20 +181,20 @@ function ReadinessPanel({ profile }: { profile: CoachProfile }) {
             <div className="flex items-center gap-2 flex-wrap">
               <span className="font-semibold text-foreground" data-testid="text-readiness-tier">{tier.label}</span>
               <Badge variant="secondary" className="text-xs" data-testid="badge-readiness-score">
-                {profile.readinessScore}/100
+                {profile.completionPercentage}% Complete
               </Badge>
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">{profile.estimatedTimeline}</p>
           </div>
         </div>
-        <Progress value={profile.readinessScore} className="h-2" data-testid="progress-readiness" />
-        <p className="text-sm text-muted-foreground" data-testid="text-readiness-summary">{profile.summary}</p>
+        <Progress value={profile.completionPercentage} className="h-2" data-testid="progress-readiness" />
+        <p className="text-sm text-muted-foreground" data-testid="text-readiness-summary">{profile.statusNote}</p>
 
-        {profile.strengths.length > 0 && (
+        {profile.completedInputs.length > 0 && (
           <div>
-            <p className="text-xs font-medium text-muted-foreground mb-1.5">STRENGTHS</p>
+            <p className="text-xs font-medium text-muted-foreground mb-1.5">COMPLETED INPUTS</p>
             <div className="flex flex-wrap gap-1.5">
-              {profile.strengths.map((s, i) => (
+              {profile.completedInputs.map((s, i) => (
                 <Badge key={i} variant="secondary" className="text-xs font-normal">
                   {s}
                 </Badge>
@@ -204,26 +203,13 @@ function ReadinessPanel({ profile }: { profile: CoachProfile }) {
           </div>
         )}
 
-        {profile.gaps.length > 0 && (
+        {profile.outstandingInputs.length > 0 && (
           <div>
-            <p className="text-xs font-medium text-muted-foreground mb-1.5">AREAS TO IMPROVE</p>
+            <p className="text-xs font-medium text-muted-foreground mb-1.5">OUTSTANDING INPUTS</p>
             <div className="flex flex-wrap gap-1.5">
-              {profile.gaps.map((g, i) => (
+              {profile.outstandingInputs.map((g, i) => (
                 <Badge key={i} variant="outline" className="text-xs font-normal">
                   {g}
-                </Badge>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {profile.recommendedLoanTypes.length > 0 && (
-          <div>
-            <p className="text-xs font-medium text-muted-foreground mb-1.5">RECOMMENDED LOAN TYPES</p>
-            <div className="flex flex-wrap gap-1.5">
-              {profile.recommendedLoanTypes.map((lt, i) => (
-                <Badge key={i} variant="default" className="text-xs">
-                  {lt.toUpperCase()}
                 </Badge>
               ))}
             </div>

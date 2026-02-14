@@ -33,9 +33,8 @@ interface BorrowerGraphData {
   readiness: {
     score: number;
     tier: string;
-    strengths: string[];
+    completedInputs: string[];
     gaps: string[];
-    recommendedLoanTypes: string[];
   };
   eligibility: {
     estimatedDTI: number | null;

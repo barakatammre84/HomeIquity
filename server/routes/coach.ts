@@ -153,7 +153,7 @@ async function buildVerifiedContext(userId: string, user: User, propertyContext?
         context.readinessScore = graph.readiness.score;
         context.readinessTier = graph.readiness.tier;
         context.readinessGaps = graph.readiness.gaps;
-        context.readinessStrengths = graph.readiness.strengths;
+        context.readinessStrengths = graph.readiness.completedInputs;
         context.documentsMissing = graph.documentsMissing;
         context.documentsUploaded = graph.documentsUploaded;
         context.documentsVerified = graph.documentsVerified;
@@ -410,8 +410,7 @@ export function registerCoachRoutes(app: Express) {
           if (coachResponse.profile.readinessTier) {
             updateData.readinessTier = coachResponse.profile.readinessTier;
           }
-          updateData.readinessScore = coachResponse.profile.readinessScore;
-          updateData.recommendedLoanTypes = coachResponse.profile.recommendedLoanTypes;
+          updateData.readinessScore = coachResponse.profile.completionPercentage;
         } else if (verifiedContext.completionPercentage !== undefined) {
           const existingProfile = (conversation.financialProfile as any) || {};
           updateData.financialProfile = {

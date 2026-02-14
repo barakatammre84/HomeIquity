@@ -1,3 +1,4 @@
+import { Component, type ReactNode, type ErrorInfo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -20,6 +21,37 @@ import {
   ClipboardList,
   ExternalLink,
 } from "lucide-react";
+
+class PackageErrorBoundary extends Component<
+  { children: ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error("[BorrowerPackageView] Render error:", error, info);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <AlertTriangle className="w-4 h-4" />
+              <p className="text-sm">Unable to display borrower package. The data format may be incomplete.</p>
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 interface BorrowerPackageData {
   generatedDate?: string;
@@ -108,7 +140,9 @@ function isNotProvided(val: string | null | undefined): boolean {
 }
 
 function formatCurrency(val: string): string {
-  const num = Number(val.replace(/[^0-9.-]/g, ""));
+  const stripped = val.replace(/[^0-9.-]/g, "");
+  if (stripped === "" || stripped === "." || stripped === "-") return val;
+  const num = Number(stripped);
   if (isNaN(num)) return val;
   return `$${num.toLocaleString()}`;
 }
@@ -226,7 +260,7 @@ function DataRow({ label, value, testId, children }: { label: string; value?: st
   );
 }
 
-export default function BorrowerPackageView({ data }: { data: BorrowerPackageData }) {
+function BorrowerPackageViewInner({ data }: { data: BorrowerPackageData }) {
   if (!data) return null;
 
   const overview = data.borrowerOverview || {};
@@ -575,5 +609,13 @@ export default function BorrowerPackageView({ data }: { data: BorrowerPackageDat
         {footer}
       </div>
     </div>
+  );
+}
+
+export default function BorrowerPackageView({ data }: { data: BorrowerPackageData }) {
+  return (
+    <PackageErrorBoundary>
+      <BorrowerPackageViewInner data={data} />
+    </PackageErrorBoundary>
   );
 }

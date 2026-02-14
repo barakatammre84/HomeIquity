@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { z } from "zod";
 
 const openai = new OpenAI({
   apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
@@ -7,11 +8,10 @@ const openai = new OpenAI({
 
 export interface CoachingProfile {
   readinessTier: "ready_now" | "almost_ready" | "building" | "exploring";
-  readinessScore: number;
-  summary: string;
-  strengths: string[];
-  gaps: string[];
-  recommendedLoanTypes: string[];
+  completionPercentage: number;
+  statusNote: string;
+  completedInputs: string[];
+  outstandingInputs: string[];
   estimatedTimeline: string;
 }
 
@@ -443,7 +443,7 @@ function buildVerifiedContextPrompt(ctx: VerifiedUserContext): string {
   if (ctx.employmentType) lines.push(`Employment Type: ${ctx.employmentType}`);
   if (ctx.employmentYears) lines.push(`Years Employed: ${ctx.employmentYears}`);
   if (ctx.employerName) lines.push(`Employer: ${ctx.employerName}`);
-  if (ctx.isVeteran) lines.push(`Veteran Status: Yes (VA loan eligible)`);
+  if (ctx.isVeteran) lines.push(`Veteran Status: Yes`);
   if (ctx.isFirstTimeBuyer) lines.push(`First-Time Buyer: Yes`);
   if (ctx.dtiRatio) lines.push(`DTI Ratio: ${ctx.dtiRatio}%`);
   if (ctx.ltvRatio) lines.push(`LTV Ratio: ${ctx.ltvRatio}%`);
@@ -546,13 +546,13 @@ function buildVerifiedContextPrompt(ctx: VerifiedUserContext): string {
 
   if (ctx.readinessScore !== undefined && ctx.readinessScore !== null) {
     lines.push("\n\n=== READINESS CONTEXT (from Borrower Graph) ===");
-    lines.push(`Current Readiness Score: ${ctx.readinessScore}/100`);
+    lines.push(`Current Completion Percentage: ${ctx.readinessScore}/100`);
     if (ctx.readinessTier) lines.push(`Readiness Tier: ${ctx.readinessTier}`);
     if (ctx.readinessStrengths && ctx.readinessStrengths.length > 0) {
-      lines.push(`Strengths: ${ctx.readinessStrengths.join(", ")}`);
+      lines.push(`Completed Inputs: ${ctx.readinessStrengths.join(", ")}`);
     }
     if (ctx.readinessGaps && ctx.readinessGaps.length > 0) {
-      lines.push(`Gaps to Address: ${ctx.readinessGaps.join(", ")}`);
+      lines.push(`Outstanding Inputs: ${ctx.readinessGaps.join(", ")}`);
     }
     if (ctx.documentsMissing && ctx.documentsMissing.length > 0) {
       lines.push(`Missing Documents: ${ctx.documentsMissing.join(", ")}`);
@@ -618,7 +618,7 @@ function buildVerifiedContextPrompt(ctx: VerifiedUserContext): string {
     lines.push("\n\n=== PROPERTY CONTEXT ===");
     lines.push(`The user is asking about a specific property: ${ctx.propertyContext.address}`);
     lines.push(`Listed Price: $${ctx.propertyContext.price.toLocaleString()}`);
-    lines.push("Focus your guidance on this property. Assess whether the user's financial profile supports this purchase price and what inputs are still needed for underwriting readiness at this price point.");
+    lines.push("Focus your guidance on what inputs are still needed for underwriting readiness. Do not assess whether the user's financial profile supports this purchase price — that determination occurs during underwriting review.");
   }
 
   return lines.join("\n");
@@ -841,88 +841,15 @@ Additional: Divorce decree, child support docs, rental history, explanation lett
 === 6. BORROWER PACKAGE BUILDER ===
 When a user reaches lender-ready status (readiness tier "ready_now"), or when the user explicitly asks for their borrower summary, generate a lender-ready borrower intake summary in BOTH the conversational message AND the structured borrowerPackage JSON.
 
-FORMATTING RULES:
+The exact JSON structure for borrowerPackage is defined later in the STRUCTURED OUTPUT FORMAT section. Follow that JSON schema exactly — do not invent additional sections or fields.
+
+FORMATTING RULES FOR CONVERSATIONAL MESSAGE:
 - Use neutral, factual language throughout — no adjectives implying quality ("strong," "solid," "excellent," "concerning")
 - Do not imply approval, eligibility, or likelihood of any outcome
 - Do not include recommendations, predictions, or product suggestions
 - Include ONLY verified or user-declared information — never infer, estimate, or assume missing data
 - If information is missing, mark the field as "Not Provided" (never collected) or "Pending" (expected but not yet received)
 - Format for fast underwriting review: clear section headers, structured lists, consistent labeling
-
-REQUIRED SECTIONS (use these exact headings):
-
-**BORROWER INTAKE SUMMARY**
-Generated: [current date]
-
-1. HOUSEHOLD OVERVIEW
-   - Borrower name: [as declared] or "Not Provided"
-   - First-time buyer: Yes / No / Not Provided
-   - Veteran status: Yes / No / Not Provided
-   - Property intent: Purchase / Refinance / Cash-Out Refinance / Not Provided
-   - Target property type: [type] or "Not Provided"
-   - Occupancy: Primary Residence / Second Home / Investment / Not Provided
-
-2. DECLARED INCOME SOURCES
-   List each income source as a row with these columns:
-   | Source | Type | Amount | Period | Verification |
-   - Verification must be one of:
-     - "Tier 1 — Document Verified" — confirmed by extracted document data
-     - "Tier 2 — Application Declared" — from the loan application form
-     - "Tier 3 — Self-Reported" — from chat conversation only
-   - Include: employer name, employment type, years employed
-   - For self-employed: business name, structure (LLC/S-Corp/etc.), years in business
-   - If no income data collected: single row stating "Not Provided"
-
-3. ASSET CATEGORIES
-   List each asset category as a row:
-   | Category | Estimated Value | Verification |
-   - Categories: Checking/Savings, Down Payment (with source), Retirement, Investment, Other
-   - Down payment source: Personal Savings / Gift / Grant / Sale of Property / Not Provided
-   - If gift funds: note gift letter status (On File / Not Provided / Pending)
-   - If no asset data collected: "Not Provided"
-
-4. CREDIT AND DEBT SIGNALS
-   | Item | Value | Verification |
-   - Credit score range: [range] or "Not Provided" — with verification tier
-   - Monthly debt obligations: [amount] or "Not Provided" — with verification tier
-   - DTI ratio: [calculated value] or "Insufficient Data"
-   - If DTI is calculated, include: "DTI is a preparatory calculation based on declared data. Final determination occurs during underwriting review."
-
-5. PROPERTY INTENT
-   | Field | Value | Verification |
-   - Purchase price: [amount] or "Not Provided"
-   - Down payment: [amount] ([percentage]) or "Not Provided"
-   - LTV ratio: [calculated] or "Insufficient Data"
-   - Property type: [type] or "Not Provided"
-   - Location: [city, state] or "Not Provided"
-
-6. DOCUMENT INVENTORY
-   List each document with status:
-   | Document | Status | Flags |
-   - Status must be one of:
-     - "Received — Verified" — uploaded and data extracted successfully
-     - "Received — Pending Review" — uploaded, not yet validated
-     - "Not Yet Received" — expected but not uploaded
-     - "Not Required" — not applicable to this borrower profile
-   - Flags column: "None" or list specific issues (recency, legibility, consistency, completeness)
-   - Include standard document types: Pay Stubs, W-2s, Tax Returns, Bank Statements, ID, and any profile-specific docs
-
-7. READINESS STATUS
-   - Readiness tier: [exploring / building / almost_ready / ready_now]
-   - Required inputs present: [X of Y]
-   - Input categories completed: [list completed categories]
-   - Outstanding gaps: [list specific missing items] or "None"
-   - Do NOT use scoring language that implies approval likelihood
-   - Frame as input completeness: "X of Y required inputs are present" — never "the borrower scores X%"
-
-8. VALIDATION NOTES
-   - List any discrepancies between declared information and document-extracted data
-   - List any documents flagged for recency, completeness, legibility, or consistency issues
-   - List any items that may need explanation letters
-   - If no issues: "No validation concerns identified at this time."
-
-COMPLIANCE FOOTER (REQUIRED — must appear at the end of every package):
-"This intake summary is prepared for informational purposes only. It does not constitute a lending decision, pre-approval, commitment to lend, or assessment of creditworthiness. All information is borrower-declared or document-extracted and has not been independently verified by a lender. Loan eligibility, terms, and approval are determined solely during formal underwriting review."
 
 COMPLIANCE RULES FOR BORROWER PACKAGE:
 - NEVER include language suggesting approval odds, likelihood, or predictions
@@ -973,7 +900,7 @@ LANGUAGE GUARDRAILS — NEVER use any of these patterns when a user stalls:
 COMPLIANT STALL RESPONSE EXAMPLES:
 
 When user says "I'll do that later":
-GOOD: "No problem at all. You've already covered your employment and income information — that's solid progress. Whenever you're ready, the next routine input would be your approximate credit score range. Even a rough range works. We can also talk about something else in the meantime."
+GOOD: "No problem at all. You've already covered your employment and income information — those are two of the core required inputs. Whenever you're ready, the next routine input would be your approximate credit score range. Even a rough range works. We can also talk about something else in the meantime."
 BAD: "I'd encourage you to do it now while you're here — it only takes 30 seconds and you're so close!"
 
 When user changes topic mid-intake:
@@ -981,7 +908,7 @@ GOOD: [Answer their question fully first, then:] "By the way, whenever it's conv
 BAD: "Let's stay focused — we're almost done with your profile and you don't want to lose momentum!"
 
 When user says "I don't have that right now":
-GOOD: "Completely fine. That information can wait. You've already provided [X, Y, Z] which is a strong foundation. Would you like to continue with a different section, or would you prefer to come back when you have that handy?"
+GOOD: "Completely fine. That information can wait. You've already provided [X, Y, Z] — those inputs are on file. Would you like to continue with a different section, or would you prefer to come back when you have that handy?"
 BAD: "You'll need that eventually — the sooner you provide it, the faster we can move forward."
 
 When user seems hesitant about sharing financial details:
@@ -1103,9 +1030,9 @@ If the user's readiness tier moves BACKWARD (e.g., almost_ready → building bec
 === UNDERWRITING READINESS STATES ===
 Track and communicate the user's current state:
 - "exploring": Intake not started. User is learning about the process. Major inputs missing. 12+ months estimated timeline.
-- "building": Intake started. Significant inputs still needed. Credit under 640, high DTI, insufficient savings, or employment gaps. 3-12 month timeline.
-- "almost_ready": Intake nearly complete. Close on most criteria, 1-3 months of focused action needed. Minor gaps like small savings shortfall or credit 640-679.
-- "ready_now": Intake complete. Documents verified. Package ready for underwriting review. DTI < 43%, credit 680+, stable employment 2+ years, adequate savings.
+- "building": Intake started. Significant inputs still needed. Core financial data or documents not yet provided. 3-12 month timeline.
+- "almost_ready": Intake nearly complete. Most required inputs collected. 1-3 outstanding items remain. 1-3 month timeline.
+- "ready_now": All required inputs collected. Documents uploaded and validated. Package organized for underwriting review.
 
 Use these states as "readinessTier" values. Never say "approved" or "eligible" — say "ready for underwriting review" or "all required inputs are present."
 
@@ -1117,11 +1044,10 @@ The JSON should follow this format:
 {
   "profile": {
     "readinessTier": "almost_ready",
-    "readinessScore": 72,
-    "summary": "Brief assessment summary",
-    "strengths": ["list of financial strengths"],
-    "gaps": ["list of areas to improve"],
-    "recommendedLoanTypes": ["conventional", "fha"],
+    "completionPercentage": 72,
+    "statusNote": "factual procedural status only — e.g. 'Core financial inputs collected. Document verification pending.' — do not use qualitative language like 'strong', 'solid', 'excellent', or 'concerning'",
+    "completedInputs": ["list of specific inputs already collected — e.g. 'Employment type', 'Annual income declared', 'Credit score range provided'"],
+    "outstandingInputs": ["list of specific inputs still required — e.g. 'Bank statements (last 2 months)', 'Pay stubs (last 30 days)'"],
     "estimatedTimeline": "2-3 months"
   },
   "intake": {
@@ -1222,7 +1148,7 @@ The "borrowerPackage" should be null unless the user is "ready_now" or the user 
       "documentationStatus": "Uploaded | Pending | Not Provided",
       "lastStatementDate": "YYYY-MM-DD or 'Not Provided' — date of most recent statement on file",
       "validationNotes": "factual procedural note if applicable, e.g. 'Statement older than 60 days' or 'All pages included' — or empty string if none — do not assess sufficiency or eligibility",
-      "accessLink": "direct read-only document access path, e.g. '/api/documents/{id}/download' — or empty string if no document uploaded"
+      "accessLink": "leave as empty string — document access links are generated server-side and cannot be populated here"
     }
   ],
   "creditAndDebt": {
@@ -1323,6 +1249,47 @@ export async function generateCoachResponse(
   }
 }
 
+const coachProfileSchema = z.object({
+  readinessTier: z.enum(["ready_now", "almost_ready", "building", "exploring"]).catch("exploring"),
+  completionPercentage: z.number().min(0).max(100).catch(0),
+  statusNote: z.string().catch(""),
+  completedInputs: z.array(z.string()).catch([]),
+  outstandingInputs: z.array(z.string()).catch([]),
+  estimatedTimeline: z.string().catch(""),
+}).passthrough();
+
+const FALLBACK_PROFILE: CoachingProfile = {
+  readinessTier: "exploring",
+  completionPercentage: 0,
+  statusNote: "",
+  completedInputs: [],
+  outstandingInputs: [],
+  estimatedTimeline: "",
+};
+
+function migrateProfileFields(raw: any): any {
+  if (!raw || typeof raw !== "object") return raw;
+  const migrated = { ...raw };
+  if ("readinessScore" in migrated && !("completionPercentage" in migrated)) {
+    migrated.completionPercentage = migrated.readinessScore;
+  }
+  if ("summary" in migrated && !("statusNote" in migrated)) {
+    migrated.statusNote = migrated.summary;
+  }
+  if ("strengths" in migrated && !("completedInputs" in migrated)) {
+    migrated.completedInputs = migrated.strengths;
+  }
+  if ("gaps" in migrated && !("outstandingInputs" in migrated)) {
+    migrated.outstandingInputs = migrated.gaps;
+  }
+  delete migrated.readinessScore;
+  delete migrated.summary;
+  delete migrated.strengths;
+  delete migrated.gaps;
+  delete migrated.recommendedLoanTypes;
+  return migrated;
+}
+
 function parseCoachResponse(text: string): CoachResponse {
   const dataMatch = text.match(/<coach_data>\s*([\s\S]*?)\s*<\/coach_data>/);
   let message = text.replace(/<coach_data>[\s\S]*?<\/coach_data>/g, "").trim();
@@ -1332,11 +1299,36 @@ function parseCoachResponse(text: string): CoachResponse {
   if (dataMatch) {
     try {
       const data = JSON.parse(dataMatch[1]);
-      if (data.profile) result.profile = data.profile;
+      if (data.profile) {
+        const migrated = migrateProfileFields(data.profile);
+        const parsed = coachProfileSchema.safeParse(migrated);
+        if (parsed.success) {
+          result.profile = {
+            readinessTier: parsed.data.readinessTier,
+            completionPercentage: parsed.data.completionPercentage,
+            statusNote: parsed.data.statusNote,
+            completedInputs: parsed.data.completedInputs,
+            outstandingInputs: parsed.data.outstandingInputs,
+            estimatedTimeline: parsed.data.estimatedTimeline,
+          };
+        } else {
+          console.warn("[Coach] Profile validation failed, using fallback:", parsed.error.issues);
+          result.profile = { ...FALLBACK_PROFILE };
+        }
+      }
       if (data.intake) result.intake = data.intake;
       if (data.actionPlan) result.actionPlan = data.actionPlan;
       if (data.documentChecklist) result.documentChecklist = data.documentChecklist;
-      if (data.borrowerPackage) result.borrowerPackage = data.borrowerPackage;
+      if (data.borrowerPackage) {
+        const pkg = data.borrowerPackage;
+        if (pkg.assetSummary && Array.isArray(pkg.assetSummary)) {
+          pkg.assetSummary = pkg.assetSummary.map((a: any) => ({
+            ...a,
+            accessLink: "",
+          }));
+        }
+        result.borrowerPackage = pkg;
+      }
     } catch (e) {
       console.error("[Coach] Failed to parse structured data:", e);
     }
