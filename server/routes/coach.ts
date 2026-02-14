@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { isAuthenticated } from "../auth";
 import { storage } from "../storage";
-import { generateCoachResponse, type VerifiedUserContext, type CoachIntakeData, type DocumentExtractedData, deriveUserType, deriveReadinessState, deriveCompletionPercentage, deriveCompletedSteps } from "../services/coachingService";
+import { generateCoachResponse, type VerifiedUserContext, type CoachIntakeData, type DocumentExtractedData, deriveUserType, deriveReadinessState, deriveCompletionPercentage, deriveCompletedSteps, coachIntakeSchema, coachActionPlanSchema, coachDocumentChecklistSchema, coachProfileSchema, borrowerPackageSchema } from "../services/coachingService";
 import { buildBorrowerGraph } from "../services/borrowerGraph";
 import type { User } from "@shared/schema";
 import { z } from "zod";
@@ -254,9 +254,12 @@ export function registerCoachRoutes(app: Express) {
         for (const msg of messagesWithData) {
           const sd = msg.structuredData as any;
           if (sd?.intake) {
-            for (const [key, val] of Object.entries(sd.intake)) {
-              if (val !== null && val !== undefined && val !== "" && !(key in intake)) {
-                (intake as any)[key] = val;
+            const msgIntakeParsed = coachIntakeSchema.safeParse(sd.intake);
+            if (msgIntakeParsed.success) {
+              for (const [key, val] of Object.entries(msgIntakeParsed.data)) {
+                if (val !== null && val !== undefined && val !== "" && !(key in intake)) {
+                  (intake as any)[key] = val;
+                }
               }
             }
           }
@@ -264,17 +267,30 @@ export function registerCoachRoutes(app: Express) {
       }
 
       const latestConv = sorted[0];
-      const profile = latestConv.financialProfile as any;
+      const rawProfile = latestConv.financialProfile as any;
       const readinessTier = latestConv.readinessTier;
       const readinessScore = latestConv.readinessScore;
 
+      const validatedIntake = Object.keys(intake).length > 0
+        ? coachIntakeSchema.safeParse(intake)
+        : null;
+      const validatedProfile = rawProfile
+        ? coachProfileSchema.safeParse(rawProfile)
+        : null;
+      const validatedActionPlan = latestConv.actionPlan
+        ? coachActionPlanSchema.safeParse(latestConv.actionPlan)
+        : null;
+      const validatedChecklist = latestConv.documentChecklist
+        ? coachDocumentChecklistSchema.safeParse(latestConv.documentChecklist)
+        : null;
+
       res.json({
-        intake: Object.keys(intake).length > 0 ? intake : null,
+        intake: validatedIntake?.success ? validatedIntake.data : null,
         readinessTier,
         readinessScore,
-        profile: profile || null,
-        actionPlan: latestConv.actionPlan || null,
-        documentChecklist: latestConv.documentChecklist || null,
+        profile: validatedProfile?.success ? validatedProfile.data : null,
+        actionPlan: validatedActionPlan?.success ? validatedActionPlan.data : null,
+        documentChecklist: validatedChecklist?.success ? validatedChecklist.data : null,
         updatedAt: latestConv.updatedAt,
       });
     } catch (error) {

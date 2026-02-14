@@ -1258,6 +1258,121 @@ const coachProfileSchema = z.object({
   estimatedTimeline: z.string().catch(""),
 }).passthrough();
 
+const coachIntakeSchema = z.object({
+  annualIncome: z.string().optional(),
+  monthlyDebts: z.string().optional(),
+  creditScore: z.string().optional(),
+  employmentType: z.string().optional(),
+  employmentYears: z.string().optional(),
+  downPayment: z.string().optional(),
+  purchasePrice: z.string().optional(),
+  propertyType: z.string().optional(),
+  loanPurpose: z.string().optional(),
+  isVeteran: z.boolean().optional(),
+  isFirstTimeBuyer: z.boolean().optional(),
+}).strict();
+
+const actionPlanItemSchema = z.object({
+  id: z.string().min(1),
+  phase: z.number().int().min(1),
+  title: z.string().min(1),
+  description: z.string(),
+  priority: z.enum(["high", "medium", "low"]),
+  category: z.enum(["credit", "savings", "income", "debt", "documents", "education"]),
+  completed: z.boolean(),
+});
+const coachActionPlanSchema = z.array(actionPlanItemSchema);
+
+const documentRequirementSchema = z.object({
+  docType: z.string().min(1),
+  label: z.string().min(1),
+  reason: z.string(),
+  priority: z.enum(["required", "recommended", "optional"]),
+  category: z.string().min(1),
+});
+const coachDocumentChecklistSchema = z.array(documentRequirementSchema);
+
+const borrowerPackageSchema = z.object({
+  generatedDate: z.string().min(1),
+  borrowerOverview: z.object({
+    borrowerNames: z.string().min(1),
+    householdComposition: z.string().min(1),
+    primaryResidenceState: z.string().min(1),
+    incomeProfileType: z.string().min(1),
+  }),
+  householdOverview: z.object({
+    firstTimeBuyer: z.string().min(1),
+    veteranStatus: z.string().min(1),
+  }),
+  transactionIntent: z.object({
+    transactionType: z.string().min(1),
+    propertyIntent: z.string().min(1),
+    targetTimeframe: z.string().min(1),
+  }),
+  incomeSources: z.array(z.object({
+    source: z.string(),
+    type: z.string(),
+    frequency: z.string(),
+    documentationStatus: z.string(),
+  })),
+  assetSummary: z.array(z.object({
+    assetType: z.string(),
+    accountCategory: z.string(),
+    ownershipType: z.string(),
+    documentationStatus: z.string(),
+    lastStatementDate: z.string(),
+    validationNotes: z.string(),
+    accessLink: z.string(),
+  })),
+  creditAndDebt: z.object({
+    creditScore: z.string(),
+    creditScoreVerification: z.string(),
+    monthlyDebts: z.string(),
+    monthlyDebtsVerification: z.string(),
+    dtiRatio: z.string(),
+    dtiNote: z.string(),
+  }),
+  propertyContext: z.object({
+    propertyAddress: z.string(),
+    estimatedValueOrPrice: z.string(),
+    occupancyIntent: z.string(),
+  }),
+  documentInventory: z.array(z.object({
+    docType: z.string(),
+    label: z.string(),
+    status: z.string(),
+    flags: z.array(z.string()),
+  })),
+  readinessStatus: z.object({
+    intakeStatus: z.string(),
+    documentStatus: z.string(),
+    packageStatus: z.string(),
+    pendingItems: z.array(z.string()),
+  }),
+  auditTrail: z.object({
+    intakeStartDate: z.string(),
+    lastUpdateDate: z.string(),
+    events: z.array(z.object({
+      date: z.string(),
+      activity: z.string(),
+    })),
+  }),
+  validationNotes: z.object({
+    recencyChecks: z.array(z.string()),
+    completenessChecks: z.array(z.string()),
+    consistencyObservations: z.array(z.string()),
+  }),
+  complianceFooter: z.string().min(1),
+});
+
+export {
+  coachProfileSchema,
+  coachIntakeSchema,
+  coachActionPlanSchema,
+  coachDocumentChecklistSchema,
+  borrowerPackageSchema,
+};
+
 const FALLBACK_PROFILE: CoachingProfile = {
   readinessTier: "exploring",
   completionPercentage: 0,
@@ -1316,9 +1431,30 @@ function parseCoachResponse(text: string): CoachResponse {
           result.profile = { ...FALLBACK_PROFILE };
         }
       }
-      if (data.intake) result.intake = data.intake;
-      if (data.actionPlan) result.actionPlan = data.actionPlan;
-      if (data.documentChecklist) result.documentChecklist = data.documentChecklist;
+      if (data.intake) {
+        const intakeParsed = coachIntakeSchema.safeParse(data.intake);
+        if (intakeParsed.success) {
+          result.intake = intakeParsed.data;
+        } else {
+          console.warn("[Coach] Intake validation failed, rejecting malformed intake:", intakeParsed.error.issues);
+        }
+      }
+      if (data.actionPlan) {
+        const planParsed = coachActionPlanSchema.safeParse(data.actionPlan);
+        if (planParsed.success) {
+          result.actionPlan = planParsed.data;
+        } else {
+          console.warn("[Coach] ActionPlan validation failed, rejecting malformed plan:", planParsed.error.issues);
+        }
+      }
+      if (data.documentChecklist) {
+        const checklistParsed = coachDocumentChecklistSchema.safeParse(data.documentChecklist);
+        if (checklistParsed.success) {
+          result.documentChecklist = checklistParsed.data;
+        } else {
+          console.warn("[Coach] DocumentChecklist validation failed, rejecting malformed checklist:", checklistParsed.error.issues);
+        }
+      }
       if (data.borrowerPackage) {
         const pkg = data.borrowerPackage;
         if (pkg.assetSummary && Array.isArray(pkg.assetSummary)) {
@@ -1327,7 +1463,12 @@ function parseCoachResponse(text: string): CoachResponse {
             accessLink: "",
           }));
         }
-        result.borrowerPackage = pkg;
+        const pkgParsed = borrowerPackageSchema.safeParse(pkg);
+        if (pkgParsed.success) {
+          result.borrowerPackage = pkgParsed.data;
+        } else {
+          console.warn("[Coach] BorrowerPackage validation failed, rejecting malformed package:", pkgParsed.error.issues);
+        }
       }
     } catch (e) {
       console.error("[Coach] Failed to parse structured data:", e);
