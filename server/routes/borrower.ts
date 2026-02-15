@@ -2212,8 +2212,8 @@ export function registerBorrowerRoutes(
 
       const allowedFields = [
         "journeyStatus", "currentStep", "completedSteps", "progressPercent",
-        "identityVerified", "kycCleared", "documentsUploaded",
-        "personalizedTips", "educationCompleted",
+        "identityVerified", "kycCleared", "documentsComplete",
+        "personalInfoComplete",
       ];
       const safeUpdate: Record<string, any> = {};
       for (const key of allowedFields) {
