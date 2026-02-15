@@ -77,7 +77,6 @@ export interface BorrowerPackage {
     documentationStatus: string;
     lastStatementDate: string;
     validationNotes: string;
-    accessLink: string;
   }>;
   creditAndDebt: {
     creditScore: string;
@@ -442,8 +441,8 @@ function buildVerifiedContextPrompt(ctx: VerifiedUserContext): string {
   lines.push(`Application Status: ${ctx.applicationStatus}`);
 
   if (ctx.userName) lines.push(`Borrower Name: ${ctx.userName}`);
-  if (ctx.annualIncome) lines.push(`Annual Income: $${parseFloat(ctx.annualIncome).toLocaleString()}`);
-  if (ctx.monthlyDebts) lines.push(`Monthly Debts: $${parseFloat(ctx.monthlyDebts).toLocaleString()}`);
+  if (ctx.annualIncome) lines.push(`Annual Income: $${(parseFloat(ctx.annualIncome) || 0).toLocaleString()}`);
+  if (ctx.monthlyDebts) lines.push(`Monthly Debts: $${(parseFloat(ctx.monthlyDebts) || 0).toLocaleString()}`);
   if (ctx.creditScore) lines.push(`Credit Score: ${ctx.creditScore}`);
   if (ctx.employmentType) lines.push(`Employment Type: ${ctx.employmentType}`);
   if (ctx.employmentYears) lines.push(`Years Employed: ${ctx.employmentYears}`);
@@ -452,9 +451,9 @@ function buildVerifiedContextPrompt(ctx: VerifiedUserContext): string {
   if (ctx.isFirstTimeBuyer) lines.push(`First-Time Buyer: Yes`);
   if (ctx.dtiRatio) lines.push(`DTI Ratio: ${ctx.dtiRatio}%`);
   if (ctx.ltvRatio) lines.push(`LTV Ratio: ${ctx.ltvRatio}%`);
-  if (ctx.preApprovalAmount) lines.push(`Pre-Approval Amount: $${parseFloat(ctx.preApprovalAmount).toLocaleString()}`);
-  if (ctx.purchasePrice) lines.push(`Target Purchase Price: $${parseFloat(ctx.purchasePrice).toLocaleString()}`);
-  if (ctx.downPayment) lines.push(`Down Payment: $${parseFloat(ctx.downPayment).toLocaleString()}`);
+  if (ctx.preApprovalAmount) lines.push(`Pre-Approval Amount: $${(parseFloat(ctx.preApprovalAmount) || 0).toLocaleString()}`);
+  if (ctx.purchasePrice) lines.push(`Target Purchase Price: $${(parseFloat(ctx.purchasePrice) || 0).toLocaleString()}`);
+  if (ctx.downPayment) lines.push(`Down Payment: $${(parseFloat(ctx.downPayment) || 0).toLocaleString()}`);
   if (ctx.preferredLoanType) lines.push(`Preferred Loan Type: ${ctx.preferredLoanType}`);
   if (ctx.propertyType) lines.push(`Property Type: ${ctx.propertyType}`);
   if (ctx.loanPurpose) lines.push(`Loan Purpose: ${ctx.loanPurpose}`);
@@ -467,7 +466,7 @@ function buildVerifiedContextPrompt(ctx: VerifiedUserContext): string {
       if (emp.positionTitle) parts.push(emp.positionTitle);
       if (emp.isSelfEmployed) parts.push("(Self-Employed)");
       if (emp.startDate) parts.push(`since ${emp.startDate}`);
-      if (emp.totalMonthlyIncome) parts.push(`$${parseFloat(emp.totalMonthlyIncome).toLocaleString()}/month`);
+      if (emp.totalMonthlyIncome) parts.push(`$${(parseFloat(emp.totalMonthlyIncome) || 0).toLocaleString()}/month`);
       lines.push(`  - ${parts.join(" | ")}`);
     }
   }
@@ -1070,7 +1069,6 @@ The JSON should follow this format:
   },
   "actionPlan": [
     {
-      "id": "action-1",
       "phase": 1,
       "title": "Action title",
       "description": "Detailed action description",
@@ -1088,13 +1086,6 @@ The JSON should follow this format:
       "category": "Income"
     }
   ],
-  "nextRequiredInput": {
-    "what": "Upload your most recent pay stub (last 30 days)",
-    "why": "Underwriting systems use this to verify your current income and employment status",
-    "effort": "About 2 minutes to upload a photo or PDF",
-    "unlocks": "Income verification complete, moving completion from 40% to 55% and enabling DTI calculation",
-    "category": "documents"
-  },
   "borrowerPackage": null
 }
 </coach_data>
@@ -1117,7 +1108,7 @@ Field types:
 - isVeteran: boolean
 - isFirstTimeBuyer: boolean
 
-The "nextRequiredInput" object should ALWAYS be included. It is the single next required input for underwriting readiness. Include "what" (the specific input or document needed), "why" (why underwriting systems require it), "effort" (estimated time or work), "unlocks" (what progress or capability this enables), and "category" (documents/credit/savings/income/debt/education). Do not present multiple options. Do not speculate on outcomes.
+Do NOT include a "nextRequiredInput" field in the JSON — the server computes the next required input deterministically. Focus on providing the next-required-input recommendation in your conversational text using the 4-part format (what/why/effort/unlocks).
 
 The "borrowerPackage" should be null unless the user is "ready_now" or the user explicitly asks for their borrower summary. When generating, use this exact JSON structure:
 {
@@ -1152,8 +1143,7 @@ The "borrowerPackage" should be null unless the user is "ready_now" or the user 
       "ownershipType": "Individual | Joint | Trust | Custodial | Not Specified",
       "documentationStatus": "Uploaded | Pending | Not Provided",
       "lastStatementDate": "YYYY-MM-DD or 'Not Provided' — date of most recent statement on file",
-      "validationNotes": "factual procedural note if applicable, e.g. 'Statement older than 60 days' or 'All pages included' — or empty string if none — do not assess sufficiency or eligibility",
-      "accessLink": "leave as empty string — document access links are generated server-side and cannot be populated here"
+      "validationNotes": "factual procedural note if applicable, e.g. 'Statement older than 60 days' or 'All pages included' — or empty string if none — do not assess sufficiency or eligibility"
     }
   ],
   "creditAndDebt": {
@@ -1261,24 +1251,23 @@ const coachProfileSchema = z.object({
   completedInputs: z.array(z.string()).catch([]),
   outstandingInputs: z.array(z.string()).catch([]),
   estimatedTimeline: z.string().catch(""),
-}).passthrough();
+}).strip();
 
 const coachIntakeSchema = z.object({
   annualIncome: z.string().optional(),
   monthlyDebts: z.string().optional(),
   creditScore: z.string().optional(),
-  employmentType: z.string().optional(),
+  employmentType: z.enum(["employed", "self_employed", "retired", "other"]).optional(),
   employmentYears: z.string().optional(),
   downPayment: z.string().optional(),
   purchasePrice: z.string().optional(),
-  propertyType: z.string().optional(),
-  loanPurpose: z.string().optional(),
+  propertyType: z.enum(["single_family", "condo", "townhouse", "multi_family"]).optional(),
+  loanPurpose: z.enum(["purchase", "refinance", "cash_out"]).optional(),
   isVeteran: z.boolean().optional(),
   isFirstTimeBuyer: z.boolean().optional(),
 }).strip();
 
 const actionPlanItemSchema = z.object({
-  id: z.string().min(1),
   phase: z.number().int().min(1),
   title: z.string().min(1),
   description: z.string(),
@@ -1327,7 +1316,6 @@ const borrowerPackageSchema = z.object({
     documentationStatus: z.string(),
     lastStatementDate: z.string(),
     validationNotes: z.string(),
-    accessLink: z.string(),
   })),
   creditAndDebt: z.object({
     creditScore: z.string(),
@@ -1447,7 +1435,10 @@ function parseCoachResponse(text: string): CoachResponse {
       if (data.actionPlan) {
         const planParsed = coachActionPlanSchema.safeParse(data.actionPlan);
         if (planParsed.success) {
-          result.actionPlan = planParsed.data;
+          result.actionPlan = planParsed.data.map((item, index) => ({
+            ...item,
+            id: `action-${index + 1}`,
+          }));
         } else {
           console.warn("[Coach] ActionPlan validation failed, rejecting malformed plan:", planParsed.error.issues);
         }
@@ -1462,12 +1453,6 @@ function parseCoachResponse(text: string): CoachResponse {
       }
       if (data.borrowerPackage) {
         const pkg = data.borrowerPackage;
-        if (pkg.assetSummary && Array.isArray(pkg.assetSummary)) {
-          pkg.assetSummary = pkg.assetSummary.map((a: any) => ({
-            ...a,
-            accessLink: "",
-          }));
-        }
         const pkgParsed = borrowerPackageSchema.safeParse(pkg);
         if (pkgParsed.success) {
           result.borrowerPackage = pkgParsed.data;
@@ -1565,10 +1550,10 @@ function generateFallbackResponse(
 
     if (app.annualIncome || app.creditScore || app.employmentType) {
       parts.push("\nHere's what's already verified in your profile:");
-      if (app.annualIncome) parts.push(`- **Annual Income:** $${parseFloat(app.annualIncome).toLocaleString()}`);
+      if (app.annualIncome) parts.push(`- **Annual Income:** $${(parseFloat(app.annualIncome) || 0).toLocaleString()}`);
       if (app.creditScore) parts.push(`- **Credit Score:** ${app.creditScore}`);
       if (app.employmentType) parts.push(`- **Employment:** ${app.employmentType === "self_employed" ? "Self-Employed" : app.employmentType.charAt(0).toUpperCase() + app.employmentType.slice(1)}`);
-      if (app.monthlyDebts) parts.push(`- **Monthly Debts:** $${parseFloat(app.monthlyDebts).toLocaleString()}`);
+      if (app.monthlyDebts) parts.push(`- **Monthly Debts:** $${(parseFloat(app.monthlyDebts) || 0).toLocaleString()}`);
       if (app.isVeteran) parts.push(`- **Veteran:** Yes`);
     }
 

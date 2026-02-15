@@ -59,3 +59,13 @@ The `BorrowerGraph` service (`server/services/borrowerGraph.ts`) aggregates all 
 - **Pre-Approval Letter**: Product type logic simplified to `isVeteran ? "VA" : "CONV"`.
 - **Broker Commission Security**: PATCH `/api/broker/commissions/:id` validates field whitelist.
 - **Admin Audit Accuracy**: Role change audit log captures correct `previousRole`.
+
+### Schema/Prompt Consistency Audit (Feb 2026)
+- **nextRequiredInput removed from AI JSON schema**: Server computes next input deterministically via `getNextMissingInput()`; AI provides this in conversational text only.
+- **Profile schema .passthrough() → .strip()**: Prevents arbitrary extra fields from leaking through AI-generated profiles.
+- **Intake enum tightening**: `employmentType`, `propertyType`, `loanPurpose` Zod schemas now use `z.enum()` matching the prompt's documented values.
+- **ActionPlan IDs server-generated**: AI no longer generates `id` fields; `parseCoachResponse` assigns deterministic `action-N` IDs server-side.
+- **accessLink removed**: Removed from BorrowerPackage `assetSummary` interface, Zod schema, and prompt — AI cannot generate URLs.
+- **Gemini prompt compliance**: Changed "mortgage underwriting AI" to "mortgage calculation engine"; replaced qualitative fallback language ("Strong credit score", "Solid financial standing") with factual statements.
+- **NaN guards in prompt builder**: All `parseFloat` calls in `buildVerifiedContextPrompt` and fallback responses now guarded with `|| 0`.
+- **creditScore type note**: `CoachIntakeData.creditScore` is `string` (AI-generated text), `VerifiedUserContext.creditScore` is `number | null` (DB-stored); intentional divergence documented.

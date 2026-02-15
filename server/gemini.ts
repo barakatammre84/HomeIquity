@@ -63,7 +63,7 @@ export async function analyzeLoanApplication(input: LoanAnalysisInput): Promise<
   const ltvRatio = (loanAmount / purchasePrice) * 100;
   const downPaymentPercent = (downPayment / purchasePrice) * 100;
 
-  const prompt = `You are a mortgage underwriting AI. Analyze this loan application and provide loan options.
+  const prompt = `You are a mortgage calculation engine. Analyze this loan application data and compute loan scenarios based on standard underwriting guidelines.
 
 Borrower Profile:
 - Annual Income: $${income.toLocaleString()}
@@ -299,16 +299,16 @@ function generateFallbackAnalysis(
     ltvRatio: ltvRatio.toFixed(2),
     analysis: {
       strengths: creditScore >= 740 
-        ? ["Excellent credit score", "Strong borrower profile"] 
+        ? ["Credit score above 740", "Stable employment history documented"] 
         : creditScore >= 700 
-        ? ["Good credit score", "Solid financial standing"]
-        : ["Meets minimum credit requirements"],
+        ? ["Credit score above 700", "Employment verified"]
+        : ["Credit score meets minimum threshold"],
       concerns: dtiRatio > 36 
-        ? ["DTI ratio is on the higher side"] 
+        ? [`DTI ratio is ${dtiRatio.toFixed(1)}%, above the 36% guideline threshold`] 
         : [],
       recommendations: ltvRatio > 80 
-        ? ["Consider a larger down payment to avoid PMI"]
-        : ["Lock in your rate soon in the current market"],
+        ? ["LTV exceeds 80% — PMI will apply until sufficient equity is reached"]
+        : [],
     },
     scenarios,
   };
