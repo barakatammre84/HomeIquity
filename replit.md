@@ -77,3 +77,7 @@ The `BorrowerGraph` service (`server/services/borrowerGraph.ts`) aggregates all 
 - **Notification language neutralized**: "You've Been Pre-Approved!" → "Pre-Approval Issued"; "Congratulations!" removed; all notifications include "subject to underwriting review" qualifier.
 - **Coach URL/ID restriction**: System prompt explicitly prohibits AI from generating URLs, links, IDs, or system-internal values.
 - **Coach language cleanup**: "strong evidence" → "direct evidence"; "affordability assessment" → "DTI ratio computation"; "assessment" → "profile" in output format instructions; "borrowing capacity" removed from intake prompts.
+- **Coach tone directives neutralized**: `buildToneDirective()` rewritten — "Celebrate progress" → "Acknowledge completed steps factually"; "Confident and reassuring" → "Clear and procedural"; "thorough preparation" removed.
+- **Stall engine language**: "Validate their effort" → "State factually what has been collected"; stall examples rewritten to remove qualitative framing; "encourage" → "recommend" throughout.
+- **Handoff & transition language**: "Position this as a benefit" → "State factually"; transition examples use factual inventory language ("are on file", "remaining items"); "eligibility assessment" removed from compliance notes.
+- **Return-after-absence protocol**: "Welcome back warmly" → "Welcome back"; "lead with their progress" → "State which inputs are already on file".
