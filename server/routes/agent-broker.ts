@@ -195,13 +195,11 @@ export function registerAgentBrokerRoutes(
       
       const { id } = req.params;
 
-      const allowedFields = ["status", "notes", "paidAt", "paidBy"] as const;
       const updateData: Record<string, any> = {};
-      for (const field of allowedFields) {
-        if (req.body[field] !== undefined) {
-          updateData[field] = req.body[field];
-        }
-      }
+      if (req.body.status !== undefined) updateData.status = req.body.status;
+      if (req.body.notes !== undefined) updateData.notes = req.body.notes;
+      if (req.body.paidAt !== undefined) updateData.paidAt = req.body.paidAt;
+      if (req.body.paidBy !== undefined) updateData.paidBy = req.body.paidBy;
 
       if (!updateData.status && Object.keys(updateData).length === 0) {
         return res.status(400).json({ error: "No valid fields to update" });
