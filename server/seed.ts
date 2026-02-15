@@ -113,17 +113,17 @@ Choose a fixed-rate mortgage if you plan to stay in your home long-term and want
         {
           title: "How to Improve Your Credit Score for a Better Mortgage Rate",
           slug: "improve-credit-score-mortgage",
-          excerpt: "Practical tips to boost your credit score and qualify for the best mortgage rates.",
+          excerpt: "Practical steps to improve your credit score before applying for a mortgage.",
           content: `Your credit score is one of the most important factors in determining your mortgage rate. Here's how to improve it.
 
 ## Understanding Credit Scores
 
-Credit scores range from 300 to 850. For the best mortgage rates, aim for 740 or higher.
+Credit scores range from 300 to 850. Higher scores generally correspond to more favorable lending terms.
 
-- Excellent: 750+
-- Good: 700-749
-- Fair: 650-699
-- Poor: Below 650
+- 750+
+- 700-749
+- 650-699
+- Below 650
 
 ## Quick Wins to Boost Your Score
 
@@ -172,7 +172,7 @@ Most improvements take 30-60 days to show on your credit report. Start working o
         },
         {
           question: "What credit score do I need to buy a house?",
-          answer: "While you can get a conventional loan with a credit score as low as 620, you'll get the best rates with a score of 740 or higher. FHA loans are available with scores as low as 580. The higher your score, the lower your interest rate will be.",
+          answer: "Credit score requirements vary by loan program and are evaluated during underwriting review. Conventional loans generally have different minimum requirements than government-backed programs. Your specific terms will be determined during the formal underwriting process.",
           categoryId: "cat-credit-finance",
           searchKeywords: ["credit score", "credit", "minimum", "requirement"],
           displayOrder: 2,

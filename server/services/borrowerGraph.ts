@@ -79,7 +79,7 @@ export interface ReadinessSnapshot {
 export interface EligibilitySignals {
   estimatedDTI: number | null;
   estimatedLTV: number | null;
-  creditTier: "excellent" | "very_good" | "good" | "fair" | "poor" | "unknown";
+  creditTier: "760_plus" | "720_759" | "680_719" | "640_679" | "below_640" | "unknown";
   creditScore: number | null;
   creditScoreSource: "document" | "application" | "goal" | "coach" | null;
   employmentStable: boolean | null;
@@ -159,11 +159,11 @@ export interface BorrowerGraph {
 
 function getCreditTier(score: number | null): EligibilitySignals["creditTier"] {
   if (!score) return "unknown";
-  if (score >= 760) return "excellent";
-  if (score >= 720) return "very_good";
-  if (score >= 680) return "good";
-  if (score >= 640) return "fair";
-  return "poor";
+  if (score >= 760) return "760_plus";
+  if (score >= 720) return "720_759";
+  if (score >= 680) return "680_719";
+  if (score >= 640) return "640_679";
+  return "below_640";
 }
 
 function parseNum(val: string | number | null | undefined): number | null {
@@ -540,15 +540,14 @@ export async function buildBorrowerGraph(userId: string): Promise<BorrowerGraph>
       };
       calcScore = statusScores[activeApp.status] || 30;
     }
-    if (creditScore && creditScore >= 680) { calcScore += 5; readiness.completedInputs.push("Credit score provided"); }
-    if (employmentStable) { calcScore += 5; readiness.completedInputs.push("Employment verified (2+ years)"); }
+    if (creditScore) { calcScore += 5; readiness.completedInputs.push("Credit score provided"); }
+    if (employmentYears !== null) { calcScore += 5; readiness.completedInputs.push("Employment duration provided"); }
     if (hasAdequateSavings) { calcScore += 5; readiness.completedInputs.push("Savings documented"); }
-    if (estimatedDTI && estimatedDTI <= 43) { calcScore += 5; readiness.completedInputs.push("DTI calculated"); }
+    if (estimatedDTI) { calcScore += 5; readiness.completedInputs.push("DTI calculated"); }
 
-    if (creditScore && creditScore < 640) readiness.outstandingInputs.push("Credit score below 640");
-    if (estimatedDTI && estimatedDTI > 43) readiness.outstandingInputs.push("DTI ratio above 43%");
-    if (documentsMissing.length > 2) readiness.outstandingInputs.push("Missing key documents");
-    if (!employmentStable && employmentYears !== null) readiness.outstandingInputs.push("Less than 2 years employment");
+    if (documentsMissing.length > 2) readiness.outstandingInputs.push("Missing required documents");
+    if (!creditScore) readiness.outstandingInputs.push("Credit score not provided");
+    if (employmentYears === null) readiness.outstandingInputs.push("Employment duration not provided");
 
     readiness.completionPercentage = Math.min(calcScore, 100);
     readiness.tier = calcScore >= 80 ? "ready_now" : calcScore >= 60 ? "almost_ready" : calcScore >= 35 ? "building" : "exploring";
@@ -762,7 +761,7 @@ export async function getPropertyAffordability(
   userId: string,
   propertyPrice: number,
 ): Promise<{
-  canAfford: boolean;
+  meetsGuidelines: boolean;
   estimatedDTI: number | null;
   estimatedMonthlyPayment: number | null;
   additionalSavingsNeeded: number | null;
@@ -772,7 +771,7 @@ export async function getPropertyAffordability(
 }> {
   const graph = await buildBorrowerGraph(userId);
 
-  const downPaymentPercent = graph.eligibility.creditScore && graph.eligibility.creditScore >= 620 ? 0.05 : 0.035;
+  const downPaymentPercent = 0.05;
   const estimatedDownPayment = Math.round(propertyPrice * downPaymentPercent);
   const loanAmount = propertyPrice - estimatedDownPayment;
 
@@ -790,7 +789,7 @@ export async function getPropertyAffordability(
   const available = graph.totalVerifiedAssets || (graph.assets.length > 0 ? graph.assets[0].balance : 0);
   const additionalSavingsNeeded = available < totalNeeded ? Math.round(totalNeeded - available) : null;
 
-  const canAfford = (estimatedDTI !== null && estimatedDTI <= 50) && !additionalSavingsNeeded;
+  const meetsGuidelines = (estimatedDTI !== null && estimatedDTI <= 50) && !additionalSavingsNeeded;
 
   let message: string;
   if (estimatedDTI !== null && additionalSavingsNeeded === null) {
@@ -802,7 +801,7 @@ export async function getPropertyAffordability(
   }
 
   return {
-    canAfford,
+    meetsGuidelines,
     estimatedDTI,
     estimatedMonthlyPayment,
     additionalSavingsNeeded,

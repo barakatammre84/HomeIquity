@@ -36,8 +36,8 @@ import {
 } from "lucide-react";
 
 interface QualificationBreakdown {
-  canAfford: boolean;
-  status: "qualified" | "stretch" | "not_qualified";
+  meetsGuidelines: boolean;
+  status: "within_guidelines" | "requires_review" | "exceeds_guidelines";
   estimatedPayment: number;
   paymentBreakdown: {
     principal: number;
@@ -95,26 +95,26 @@ function calculateQualification(
   const dtiWithProperty = ((estimatedPayment + monthlyDebts) / monthlyIncome) * 100;
   
   // Determine qualification status using deterministic GSE rules
-  let status: "qualified" | "stretch" | "not_qualified" = "qualified";
+  let status: "within_guidelines" | "requires_review" | "exceeds_guidelines" = "within_guidelines";
   
   if (price > preApprovalAmount) {
     reasons.push(`Property price of ${formatCurrency(price)} exceeds your pre-approval of ${formatCurrency(preApprovalAmount)}`);
     tips.push("Consider properties within your pre-approval amount");
-    status = "not_qualified";
+    status = "exceeds_guidelines";
   }
   
   if (dtiWithProperty > 50) {
     reasons.push(`Your DTI would be ${dtiWithProperty.toFixed(1)}% (maximum allowed is 50%)`);
     tips.push("Pay down existing debts to improve your DTI ratio");
-    status = "not_qualified";
+    status = "exceeds_guidelines";
   } else if (dtiWithProperty > 43) {
     reasons.push(`DTI of ${dtiWithProperty.toFixed(1)}% requires compensating factors`);
-    tips.push("Strong credit, reserves, or stable income history can help");
-    if (status !== "not_qualified") status = "stretch";
+    tips.push("Additional documentation of reserves or income history may be needed");
+    if (status !== "exceeds_guidelines") status = "requires_review";
   } else if (dtiWithProperty <= 36) {
-    reasons.push("Excellent DTI - comfortable room in your budget");
+    reasons.push(`DTI of ${dtiWithProperty.toFixed(1)}% is within guidelines`);
   } else {
-    reasons.push("Good DTI - within standard lending guidelines");
+    reasons.push(`DTI of ${dtiWithProperty.toFixed(1)}% is within guidelines`);
   }
   
   if (downPaymentPercent < 20 && pmi > 0) {
@@ -126,7 +126,7 @@ function calculateQualification(
   }
   
   return {
-    canAfford: status !== "not_qualified",
+    meetsGuidelines: status !== "exceeds_guidelines",
     status,
     estimatedPayment,
     paymentBreakdown: {
@@ -284,15 +284,15 @@ export default function PropertyDetail() {
                 {qualification && (
                   <Badge 
                     className={`gap-1 px-3 py-1.5 text-base ${
-                      qualification.status === "qualified" ? "bg-green-500" :
-                      qualification.status === "stretch" ? "bg-yellow-500" : "bg-red-500"
+                      qualification.status === "within_guidelines" ? "bg-green-500" :
+                      qualification.status === "requires_review" ? "bg-yellow-500" : "bg-red-500"
                     }`}
                   >
-                    {qualification.status === "qualified" && <CheckCircle className="h-4 w-4" />}
-                    {qualification.status === "stretch" && <AlertTriangle className="h-4 w-4" />}
-                    {qualification.status === "not_qualified" && <XCircle className="h-4 w-4" />}
-                    {qualification.status === "qualified" ? "You Qualify!" :
-                     qualification.status === "stretch" ? "Stretch Budget" : "Over Budget"}
+                    {qualification.status === "within_guidelines" && <CheckCircle className="h-4 w-4" />}
+                    {qualification.status === "requires_review" && <AlertTriangle className="h-4 w-4" />}
+                    {qualification.status === "exceeds_guidelines" && <XCircle className="h-4 w-4" />}
+                    {qualification.status === "within_guidelines" ? "Within Guidelines" :
+                     qualification.status === "requires_review" ? "Requires Review" : "Exceeds Guidelines"}
                   </Badge>
                 )}
               </div>
@@ -460,17 +460,17 @@ export default function PropertyDetail() {
             {/* Qualification Status */}
             {qualification && (
               <Card className={
-                qualification.status === "qualified" ? "border-green-200 bg-green-50/50" :
-                qualification.status === "stretch" ? "border-yellow-200 bg-yellow-50/50" : 
+                qualification.status === "within_guidelines" ? "border-green-200 bg-green-50/50" :
+                qualification.status === "requires_review" ? "border-yellow-200 bg-yellow-50/50" : 
                 "border-red-200 bg-red-50/50"
               }>
                 <CardHeader className="pb-2">
                   <CardTitle className="flex items-center gap-2 text-base">
-                    {qualification.status === "qualified" && <CheckCircle className="h-5 w-5 text-green-600" />}
-                    {qualification.status === "stretch" && <AlertTriangle className="h-5 w-5 text-yellow-600" />}
-                    {qualification.status === "not_qualified" && <XCircle className="h-5 w-5 text-red-600" />}
-                    {qualification.status === "qualified" ? "Great Match!" :
-                     qualification.status === "stretch" ? "Stretch Purchase" : "Over Your Budget"}
+                    {qualification.status === "within_guidelines" && <CheckCircle className="h-5 w-5 text-green-600" />}
+                    {qualification.status === "requires_review" && <AlertTriangle className="h-5 w-5 text-yellow-600" />}
+                    {qualification.status === "exceeds_guidelines" && <XCircle className="h-5 w-5 text-red-600" />}
+                    {qualification.status === "within_guidelines" ? "Within Guidelines" :
+                     qualification.status === "requires_review" ? "Requires Review" : "Exceeds Guidelines"}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>

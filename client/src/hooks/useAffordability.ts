@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 
 export interface AffordabilityResult {
-  canAfford: boolean;
+  meetsGuidelines: boolean;
   estimatedDTI: number | null;
   estimatedMonthlyPayment: number | null;
   additionalSavingsNeeded: number | null;

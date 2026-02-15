@@ -49,14 +49,14 @@ interface AffordabilityResults {
   stretchPrice: number;
   requiredDownPayment: number;
   monthlyPITI: number;
-  isAffordable: boolean;
+  withinGuidelines: boolean;
 }
 
 const defaultInputs: AffordabilityInputs = {
   annualIncome: 100000,
   monthlyDebts: 500,
   downPaymentSaved: 50000,
-  creditScore: 720,
+  creditScore: 680,
   interestRate: 6.5,
   propertyTaxRate: 1.2,
   insuranceRate: 0.5,
@@ -126,7 +126,7 @@ function calculateAffordability(inputs: AffordabilityInputs): AffordabilityResul
   const frontEndDTI = (monthlyPITI / monthlyIncome) * 100;
   const backEndDTI = ((monthlyPITI + monthlyDebts) / monthlyIncome) * 100;
 
-  const isAffordable = frontEndDTI <= 28 && backEndDTI <= maxBackEndDTI * 100;
+  const withinGuidelines = frontEndDTI <= 28 && backEndDTI <= maxBackEndDTI * 100;
 
   return {
     maxHomePrice: Math.max(0, maxHomePrice),
@@ -137,7 +137,7 @@ function calculateAffordability(inputs: AffordabilityInputs): AffordabilityResul
     stretchPrice: Math.max(0, stretchPrice),
     requiredDownPayment: Math.max(0, requiredDownPayment),
     monthlyPITI: Math.max(0, monthlyPITI),
-    isAffordable,
+    withinGuidelines,
   };
 }
 
@@ -203,10 +203,10 @@ export default function AffordabilityCalculator() {
   };
 
   const getDTILabel = (dti: number) => {
-    if (dti <= 28) return "Excellent";
-    if (dti <= 36) return "Good";
-    if (dti <= 43) return "Acceptable";
-    return "High Risk";
+    if (dti <= 28) return "Under 28%";
+    if (dti <= 36) return "28-36%";
+    if (dti <= 43) return "36-43%";
+    return "Above 43%";
   };
 
   return (
@@ -288,9 +288,9 @@ export default function AffordabilityCalculator() {
                     data-testid="slider-credit-score"
                   />
                   <div className="mt-1 flex justify-between text-xs text-muted-foreground">
-                    <span>Fair</span>
-                    <span>Good</span>
-                    <span>Excellent</span>
+                    <span>580</span>
+                    <span>700</span>
+                    <span>850</span>
                   </div>
                 </div>
               </CardContent>
@@ -483,7 +483,7 @@ export default function AffordabilityCalculator() {
               onClick={handleStartPreApproval}
               data-testid="button-start-preapproval"
             >
-              Get Pre-Approved for {formatCurrency(results.maxHomePrice)}
+              Start Pre-Approval Application
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
 

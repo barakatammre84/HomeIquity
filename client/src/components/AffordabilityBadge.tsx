@@ -22,12 +22,12 @@ export function AffordabilityBadge({ price, compact = false }: AffordabilityBadg
 
   if (isError || !data) return null;
 
-  if (data.canAfford && data.estimatedDTI && data.estimatedDTI <= 43) {
+  if (data.meetsGuidelines && data.estimatedDTI && data.estimatedDTI <= 43) {
     return (
       <div className="flex flex-wrap gap-1" data-testid="badge-affordability-fits">
         <Badge variant="secondary" className="text-[10px] gap-1 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 no-default-hover-elevate no-default-active-elevate">
           <CheckCircle2 className="h-2.5 w-2.5" />
-          Fits Your Budget
+          Within Guidelines
         </Badge>
         {!compact && data.estimatedDTI && (
           <Badge variant="secondary" className="text-[10px] no-default-hover-elevate no-default-active-elevate">
@@ -38,12 +38,12 @@ export function AffordabilityBadge({ price, compact = false }: AffordabilityBadg
     );
   }
 
-  if (data.canAfford) {
+  if (data.meetsGuidelines) {
     return (
       <div className="flex flex-wrap gap-1" data-testid="badge-affordability-stretch">
         <Badge variant="secondary" className="text-[10px] gap-1 bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 no-default-hover-elevate no-default-active-elevate">
           <TrendingUp className="h-2.5 w-2.5" />
-          Possible Stretch
+          Requires Review
         </Badge>
         {!compact && data.estimatedDTI && (
           <Badge variant="secondary" className="text-[10px] no-default-hover-elevate no-default-active-elevate">
@@ -67,7 +67,7 @@ export function AffordabilityBadge({ price, compact = false }: AffordabilityBadg
     return (
       <Badge variant="secondary" className="text-[10px] gap-1 no-default-hover-elevate no-default-active-elevate" data-testid="badge-affordability-over">
         <AlertTriangle className="h-2.5 w-2.5" />
-        {compact ? "Over Budget" : `DTI ${data.estimatedDTI}% — Over Budget`}
+        {compact ? "Exceeds Guidelines" : `DTI ${data.estimatedDTI}% — Exceeds Guidelines`}
       </Badge>
     );
   }
@@ -106,7 +106,7 @@ export function AffordabilityDetail({ price }: { price: number }) {
       )}
       {data.eligibleLoanTypes.length > 0 && (
         <div className="flex justify-between">
-          <span className="text-muted-foreground">Eligible Programs</span>
+          <span className="text-muted-foreground">Loan Type</span>
           <span className="font-medium">{data.eligibleLoanTypes.map(t => t.toUpperCase()).join(", ")}</span>
         </div>
       )}

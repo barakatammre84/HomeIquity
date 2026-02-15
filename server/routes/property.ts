@@ -470,7 +470,7 @@ export function registerPropertyRoutes(
     }
   });
 
-  // Affordability check API - Uses underwriting engine to determine if buyer qualifies
+  // Property DTI computation API - Uses underwriting engine to compute DTI with property
   app.post("/api/properties/:id/affordability", isAuthenticated, async (req, res) => {
     try {
       const userId = req.user!.id;
@@ -509,7 +509,13 @@ export function registerPropertyRoutes(
       const monthlyDebts = preApproval.monthlyDebts 
         ? parseFloat(String(preApproval.monthlyDebts))
         : 0;
-      const creditScore = preApproval.creditScore || 720;
+      const creditScore = preApproval.creditScore;
+      if (!creditScore) {
+        return res.status(400).json({ 
+          error: "Incomplete application",
+          message: "Your loan application is missing credit score information"
+        });
+      }
 
       const price = parseFloat(property.price);
       const downPaymentPercent = req.body.downPaymentPercent || 5;
@@ -527,23 +533,20 @@ export function registerPropertyRoutes(
         100 - downPaymentPercent // max LTV
       );
 
-      // Determine status using GSE-aligned thresholds
-      let status: "qualified" | "stretch" | "not_qualified" = "qualified";
+      let status: "within_guidelines" | "exceeds_standard" | "exceeds_maximum" = "within_guidelines";
       
-      // Check price vs pre-approval
       if (price > preApprovalAmount) {
-        status = "not_qualified";
+        status = "exceeds_maximum";
       }
       
-      // Check DTI
       if (!eligibility.canBuyProperty || eligibility.finalDTI > 50) {
-        status = "not_qualified";
+        status = "exceeds_maximum";
       } else if (eligibility.finalDTI > 43) {
-        if (status !== "not_qualified") status = "stretch";
+        if (status !== "exceeds_maximum") status = "exceeds_standard";
       }
 
       res.json({
-        canAfford: status !== "not_qualified",
+        withinGuidelines: status !== "exceeds_maximum",
         status,
         estimatedPayment: eligibility.estimatedPITI,
         dtiWithProperty: eligibility.finalDTI,

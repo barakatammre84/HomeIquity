@@ -392,12 +392,12 @@ function FinancialSnapshot({ graph }: { graph: BorrowerGraphData }) {
   if (!hasData) return null;
 
   const creditColor = {
-    excellent: "text-emerald-600 dark:text-emerald-400",
-    very_good: "text-emerald-600 dark:text-emerald-400",
-    good: "text-sky-600 dark:text-sky-400",
-    fair: "text-amber-600 dark:text-amber-400",
-    poor: "text-red-600 dark:text-red-400",
-    unknown: "text-muted-foreground",
+    "760_plus": "text-emerald-600 dark:text-emerald-400",
+    "720_759": "text-emerald-600 dark:text-emerald-400",
+    "680_719": "text-sky-600 dark:text-sky-400",
+    "640_679": "text-amber-600 dark:text-amber-400",
+    "below_640": "text-red-600 dark:text-red-400",
+    "unknown": "text-muted-foreground",
   }[eligibility.creditTier] || "text-muted-foreground";
 
   const dtiColor = eligibility.estimatedDTI
@@ -414,7 +414,7 @@ function FinancialSnapshot({ graph }: { graph: BorrowerGraphData }) {
     signals.push({
       icon: Shield,
       label: "Credit Score",
-      value: `${eligibility.creditScore} (${eligibility.creditTier.replace("_", " ")})`,
+      value: `${eligibility.creditScore} (${eligibility.creditTier === "unknown" ? "Not provided" : eligibility.creditTier.replace(/_/g, "-")})`,
       color: creditColor,
       testId: "signal-credit",
     });

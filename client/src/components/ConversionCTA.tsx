@@ -28,28 +28,28 @@ export function ConversionCTA({ context, purchasePrice, state, propertyType }: C
 
   const contextMessages: Record<string, { heading: string; subtext: string; coachPrompt: string }> = {
     calculator: {
-      heading: "Ready to see what you qualify for?",
-      subtext: "Your numbers look promising. Get a verified pre-approval letter in about 3 minutes.",
+      heading: "Start your pre-approval",
+      subtext: "Get a verified pre-approval letter in about 3 minutes.",
       coachPrompt: "Have questions about your results? Chat with our AI Coach first.",
     },
     rates: {
       heading: "Like what you see?",
-      subtext: "Lock in today's rates with a quick pre-approval. No credit score impact.",
-      coachPrompt: "Not sure which rate is right for you? Our AI Coach can help.",
+      subtext: "Start a pre-approval to lock in today's rates. Takes about 3 minutes.",
+      coachPrompt: "Have questions about rates? Our AI Coach can help.",
     },
     article: {
       heading: "Put your knowledge into action",
-      subtext: "Now that you know the basics, see what you can afford with a free pre-approval.",
-      coachPrompt: "Still have questions? Our AI Coach gives personalized guidance.",
+      subtext: "Start a pre-approval application. Takes about 3 minutes.",
+      coachPrompt: "Still have questions? Our AI Coach can help.",
     },
     property: {
-      heading: "Make a stronger offer",
-      subtext: "Sellers prefer pre-approved buyers. Get yours in about 3 minutes.",
-      coachPrompt: "Wondering if this home is right for you? Ask our AI Coach.",
+      heading: "Interested in this property?",
+      subtext: "Get a pre-approval letter in about 3 minutes.",
+      coachPrompt: "Have questions about this property? Ask our AI Coach.",
     },
     coach: {
-      heading: "You're ready for the next step",
-      subtext: "Based on your conversation, it's time to get pre-approved.",
+      heading: "Next step: Pre-approval",
+      subtext: "Start your pre-approval application.",
       coachPrompt: "",
     },
   };

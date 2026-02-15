@@ -32,22 +32,22 @@ const JOURNEY_STEPS = [
     action: "Use Gap Calculator",
     href: "/gap-calculator",
     tips: [
-      "Aim for a credit score of 620+ for conventional loans (580+ for FHA)",
-      "Most lenders want a debt-to-income ratio below 43%",
+      "Review your credit report for accuracy before applying",
+      "Know your current debt-to-income ratio — it's a key underwriting input",
       "Track your credit report for free at AnnualCreditReport.com",
     ],
   },
   {
     step: 2,
     title: "Understand Your Budget",
-    description: "Calculate how much home you can realistically afford based on your income and debts.",
+    description: "Estimate your monthly payment and see how different scenarios affect your budget.",
     icon: Calculator,
     action: "Affordability Calculator",
     href: "/calculators/affordability",
     tips: [
       "The 28/36 rule: housing costs shouldn't exceed 28% of gross income",
       "Remember to factor in property taxes, insurance, and HOA fees",
-      "Your comfortable price is usually lower than your maximum approved amount",
+      "Consider your comfort level with monthly payments, not just the maximum loan amount",
     ],
   },
   {
@@ -79,12 +79,12 @@ const JOURNEY_STEPS = [
   {
     step: 5,
     title: "Get Pre-Approved",
-    description: "Lock in your pre-approval to show sellers you're a serious, qualified buyer.",
+    description: "Start the pre-approval process to strengthen your position with sellers.",
     icon: Shield,
     action: "Start Pre-Approval",
     href: "/apply",
     tips: [
-      "Pre-approval is not a commitment — it shows sellers what you can afford",
+      "Pre-approval is not a commitment — it shows sellers you have lender backing",
       "A pre-approval letter typically lasts 60-90 days",
       "We use a soft credit pull that won't affect your score",
     ],
@@ -92,13 +92,13 @@ const JOURNEY_STEPS = [
   {
     step: 6,
     title: "Start House Hunting",
-    description: "Browse qualified properties and instantly see which ones fit your pre-approval.",
+    description: "Browse available properties and compare them against your pre-approval parameters.",
     icon: Home,
     action: "Browse Properties",
     href: "/properties",
     tips: [
       "Look for homes within your comfortable price range, not your maximum",
-      "Use our 'Can I Buy?' feature to instantly check affordability",
+      "Use the property comparison tool to review listing details",
       "Consider the neighborhood, schools, and commute — not just the house",
     ],
   },
@@ -110,7 +110,7 @@ const LOAN_PROGRAMS = [
     minDown: "3%",
     minCredit: "620",
     pmi: "Required if < 20% down",
-    description: "Standard mortgage backed by Fannie Mae or Freddie Mac. Best for borrowers with good credit and moderate savings.",
+    description: "Standard mortgage backed by Fannie Mae or Freddie Mac. Minimum requirements determined during underwriting.",
     color: "bg-blue-500/10 text-blue-700 dark:text-blue-300",
   },
   {
@@ -140,7 +140,7 @@ const LOAN_PROGRAMS = [
 ];
 
 const COMMON_MISTAKES = [
-  { title: "Making large purchases before closing", description: "Buying a car or furniture on credit can change your DTI and kill your approval." },
+  { title: "Making large purchases before closing", description: "Buying a car or furniture on credit can change your DTI and delay the closing process." },
   { title: "Switching jobs during the process", description: "Lenders want to see stable employment. Changing jobs creates uncertainty." },
   { title: "Skipping the home inspection", description: "An inspection protects you from costly surprises after you move in." },
   { title: "Emptying your savings for the down payment", description: "Lenders want to see reserves. Keep 3-6 months of expenses in the bank." },

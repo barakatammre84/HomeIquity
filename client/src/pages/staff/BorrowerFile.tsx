@@ -442,9 +442,9 @@ export default function BorrowerFile() {
                       {application.creditScore || "---"}
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      {application.creditScore && application.creditScore >= 740 ? "Excellent" :
-                       application.creditScore && application.creditScore >= 680 ? "Good" :
-                       application.creditScore && application.creditScore >= 620 ? "Fair" : "Pending"}
+                      {application.creditScore && application.creditScore >= 740 ? "740+" :
+                       application.creditScore && application.creditScore >= 680 ? "680-739" :
+                       application.creditScore && application.creditScore >= 620 ? "620-679" : "Pending"}
                     </p>
                   </CardContent>
                 </Card>

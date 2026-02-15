@@ -181,11 +181,11 @@ const QUESTIONS: Question[] = [
     question: "Roughly, what is your credit score?",
     icon: CreditCard,
     options: [
-      { value: "760", label: "Excellent (760+)", icon: Check },
-      { value: "720", label: "Very Good (720-759)", icon: Check },
-      { value: "680", label: "Good (680-719)", icon: Check },
-      { value: "640", label: "Fair (640-679)", icon: Check },
-      { value: "600", label: "Below Average (Below 640)", icon: Check }
+      { value: "760", label: "760+", icon: Check },
+      { value: "720", label: "720-759", icon: Check },
+      { value: "680", label: "680-719", icon: Check },
+      { value: "640", label: "640-679", icon: Check },
+      { value: "600", label: "Below 640", icon: Check }
     ]
   },
   {

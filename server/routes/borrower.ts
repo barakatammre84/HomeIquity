@@ -658,7 +658,7 @@ export function registerBorrowerRoutes(
       const monthlyDebts = parseFloat(goal.monthlyDebts?.toString() || "0");
       const currentDTI = monthlyIncome > 0 ? (monthlyDebts / monthlyIncome) * 100 : 0;
       
-      // Calculate affordable payment based on 43% DTI limit
+      // Calculate maximum housing payment at 43% DTI guideline
       const maxDTI = 43;
       const availableForPayment = monthlyIncome * (maxDTI / 100) - monthlyDebts;
       
@@ -696,13 +696,13 @@ export function registerBorrowerRoutes(
             current: currentDTI,
             maxAllowed: maxDTI,
             availableForPayment,
-            status: currentDTI <= maxDTI ? "healthy" : "high",
+            status: currentDTI <= maxDTI ? "within_guideline" : "above_guideline",
           },
           overall: {
             progress: overallProgress,
             phase: goal.currentPhase,
             journeyDay: goal.journeyDay,
-            readyToBuy: creditGap === 0 && savingsGap === 0 && currentDTI <= maxDTI,
+            goalsComplete: creditGap === 0 && savingsGap === 0 && currentDTI <= maxDTI,
           },
         },
       });

@@ -768,7 +768,7 @@ function RuleEditor({ category }: { category: RuleCategory }) {
             </div>
             <div className="flex items-center justify-between p-3 border rounded-lg">
               <div>
-                <p className="font-medium">Strong Credit (720+)</p>
+                <p className="font-medium">Credit Score 720+</p>
                 <p className="text-sm text-muted-foreground">
                   Allows DTI up to {dtiMax[0] + 2}% if enabled
                 </p>

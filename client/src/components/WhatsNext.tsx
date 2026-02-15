@@ -61,8 +61,8 @@ export function getNextActions(props: WhatsNextProps): NextAction[] {
     actions.push({
       icon: Calculator,
       iconColor: "text-blue-500",
-      title: "See what you can afford",
-      description: "Use our calculator to estimate your monthly payment and buying power.",
+      title: "Estimate your monthly payment",
+      description: "Use our calculator to estimate your monthly payment based on different scenarios.",
       href: "/calculators/affordability",
       buttonLabel: "Calculate",
       priority: 2,
@@ -182,8 +182,8 @@ export function getNextActions(props: WhatsNextProps): NextAction[] {
       actions.push({
         icon: Home,
         iconColor: "text-emerald-500",
-        title: "Browse homes in your budget",
-        description: "You're pre-approved. Start exploring properties that fit your budget.",
+        title: "Browse available properties",
+        description: "You have a pre-approval on file. Start exploring available properties.",
         href: "/properties",
         buttonLabel: "Browse Properties",
         priority: 4,

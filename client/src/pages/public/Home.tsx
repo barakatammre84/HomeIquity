@@ -24,11 +24,11 @@ export default function Home() {
               Clear answers.
             </h1>
             <h2 className="mt-1 text-[34px] font-semibold leading-tight tracking-tight sm:text-5xl">
-              <span className="text-primary">Confident approvals.</span>
+              <span className="text-primary">Trusted process.</span>
             </h2>
 
             <p className="mx-auto mt-6 max-w-2xl text-[15px] leading-relaxed text-muted-foreground sm:text-base">
-              Mortgage decisions, made clear. Get pre-approved in minutes
+              Mortgage clarity from start to close. Get pre-approved in minutes
               <br className="hidden sm:block" />
               with a process built for certainty, not guesswork.
             </p>
@@ -73,7 +73,7 @@ export default function Home() {
                       <p className="text-xs text-muted-foreground">Just one more step</p>
                     </div>
                     <div className="border-t pt-3">
-                      <p className="text-xs font-medium text-primary">Congrats, you're pre-approved!</p>
+                      <p className="text-xs font-medium text-primary">Pre-approval issued</p>
                       <p className="text-xs text-muted-foreground">for a loan up to</p>
                       <p className="text-2xl font-bold text-foreground">$450,000</p>
                     </div>

@@ -91,13 +91,13 @@ interface GapAnalysis {
       current: number;
       maxAllowed: number;
       availableForPayment: number;
-      status: "healthy" | "high";
+      status: "within_guideline" | "above_guideline";
     };
     overall: {
       progress: number;
       phase: string;
       journeyDay: number;
-      readyToBuy: boolean;
+      goalsComplete: boolean;
     };
   };
 }
@@ -511,11 +511,11 @@ export default function GapCalculator() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Badge variant={analysis?.overall.readyToBuy ? "default" : "secondary"}>
+          <Badge variant={analysis?.overall.goalsComplete ? "default" : "secondary"}>
             {analysis?.overall.phase === "discovery" && "Discovery Phase"}
             {analysis?.overall.phase === "credit_cleanup" && "Credit Cleanup"}
             {analysis?.overall.phase === "saving" && "Saving Phase"}
-            {analysis?.overall.phase === "ready" && "Ready to Buy!"}
+            {analysis?.overall.phase === "ready" && "Goals Complete"}
           </Badge>
           <Button 
             variant="outline" 
@@ -528,7 +528,7 @@ export default function GapCalculator() {
         </div>
       </div>
 
-      {analysis?.overall.readyToBuy && (
+      {analysis?.overall.goalsComplete && (
         <Card className="border-green-500 bg-green-50 dark:bg-green-950/20">
           <CardContent className="pt-6">
             <div className="flex items-center gap-4">
@@ -537,10 +537,10 @@ export default function GapCalculator() {
               </div>
               <div>
                 <h3 className="font-semibold text-lg text-green-800 dark:text-green-200">
-                  You're Ready to Buy!
+                  Goals Complete
                 </h3>
                 <p className="text-green-700 dark:text-green-300">
-                  Congratulations! You've met your credit and savings goals. Time to start your mortgage application.
+                  Your credit and savings goals have been met. You can now proceed with your mortgage application.
                 </p>
               </div>
               <Button className="ml-auto" data-testid="button-apply-now">
@@ -604,10 +604,10 @@ export default function GapCalculator() {
               {(analysis?.dti.current || 0).toFixed(1)}%
             </div>
             <Badge 
-              variant={analysis?.dti.status === "healthy" ? "default" : "destructive"}
+              variant={analysis?.dti.status === "within_guideline" ? "default" : "destructive"}
               className="mt-1"
             >
-              {analysis?.dti.status === "healthy" ? "Healthy" : "Needs Work"}
+              {analysis?.dti.status === "within_guideline" ? "Within Guideline" : "Above Guideline"}
             </Badge>
             <p className="text-xs text-muted-foreground mt-1">
               Max allowed: {analysis?.dti.maxAllowed || 43}%

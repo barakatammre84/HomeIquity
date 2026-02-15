@@ -41,11 +41,11 @@ const PROPERTY_TYPES = [
 ];
 
 interface AffordabilityCheck {
-  canAfford: boolean;
+  meetsGuidelines: boolean;
   estimatedPayment: number;
   dtiWithProperty: number;
   reasons: string[];
-  status: "qualified" | "stretch" | "not_qualified";
+  status: "within_guidelines" | "requires_review" | "exceeds_guidelines";
 }
 
 function calculateAffordability(
@@ -60,11 +60,11 @@ function calculateAffordability(
   
   if (monthlyIncome <= 0) {
     return {
-      canAfford: false,
+      meetsGuidelines: false,
       estimatedPayment: 0,
       dtiWithProperty: 0,
       reasons: ["Income data required for affordability check"],
-      status: "not_qualified",
+      status: "exceeds_guidelines",
     };
   }
   
@@ -86,34 +86,29 @@ function calculateAffordability(
   const dtiWithProperty = ((estimatedPayment + monthlyDebts) / monthlyIncome) * 100;
   
   // Check qualification using deterministic rules
-  let status: "qualified" | "stretch" | "not_qualified" = "qualified";
+  let status: "within_guidelines" | "requires_review" | "exceeds_guidelines" = "within_guidelines";
   
   // Price vs pre-approval check
   if (price > preApprovalAmount) {
     reasons.push(`Price exceeds pre-approval of ${formatCurrency(preApprovalAmount)}`);
-    status = "not_qualified";
+    status = "exceeds_guidelines";
   }
   
   // DTI checks (aligned with GSE guidelines)
   if (dtiWithProperty > 50) {
     reasons.push(`DTI would be ${dtiWithProperty.toFixed(1)}% (max allowed is 50%)`);
-    status = "not_qualified";
+    status = "exceeds_guidelines";
   } else if (dtiWithProperty > 43) {
     reasons.push(`DTI of ${dtiWithProperty.toFixed(1)}% may require compensating factors`);
-    if (status !== "not_qualified") status = "stretch";
+    if (status !== "exceeds_guidelines") status = "requires_review";
   } else if (dtiWithProperty <= 36) {
-    reasons.push("Excellent debt-to-income ratio");
+    reasons.push(`DTI of ${dtiWithProperty.toFixed(1)}% is within guidelines`);
   } else {
-    reasons.push("Good debt-to-income ratio");
-  }
-  
-  // Additional qualifying factors
-  if (price <= preApprovalAmount * 0.9 && dtiWithProperty <= 36) {
-    reasons.unshift("Strong match for your finances");
+    reasons.push(`DTI of ${dtiWithProperty.toFixed(1)}% is within guidelines`);
   }
   
   return {
-    canAfford: status !== "not_qualified",
+    meetsGuidelines: status !== "exceeds_guidelines",
     estimatedPayment,
     dtiWithProperty,
     reasons,
@@ -121,27 +116,27 @@ function calculateAffordability(
   };
 }
 
-function AffordabilityBadge({ status }: { status: "qualified" | "stretch" | "not_qualified" }) {
-  if (status === "qualified") {
+function AffordabilityBadge({ status }: { status: "within_guidelines" | "requires_review" | "exceeds_guidelines" }) {
+  if (status === "within_guidelines") {
     return (
       <Badge className="gap-1 bg-green-500/90 text-white hover:bg-green-500">
         <CheckCircle className="h-3 w-3" />
-        You Qualify
+        Within Guidelines
       </Badge>
     );
   }
-  if (status === "stretch") {
+  if (status === "requires_review") {
     return (
       <Badge className="gap-1 bg-yellow-500/90 text-white hover:bg-yellow-500">
         <AlertTriangle className="h-3 w-3" />
-        Stretch
+        Requires Review
       </Badge>
     );
   }
   return (
     <Badge className="gap-1 bg-red-500/90 text-white hover:bg-red-500" variant="destructive">
       <XCircle className="h-3 w-3" />
-      Over Budget
+      Exceeds Guidelines
     </Badge>
   );
 }
@@ -197,11 +192,11 @@ export default function BuyerProperties() {
       return properties.map((property) => ({
         ...property,
         affordability: {
-          canAfford: false,
+          meetsGuidelines: false,
           estimatedPayment: 0,
           dtiWithProperty: 0,
           reasons: [],
-          status: "not_qualified" as const,
+          status: "exceeds_guidelines" as const,
         },
       }));
     }
@@ -224,7 +219,7 @@ export default function BuyerProperties() {
       const price = parseFloat(property.price);
       
       // Only filter by affordability if user has pre-approval AND toggle is on
-      if (hasPreApproval && showOnlyAffordable && !property.affordability.canAfford) return false;
+      if (hasPreApproval && showOnlyAffordable && !property.affordability.meetsGuidelines) return false;
       
       // Standard filters always apply
       if (propertyType !== "all" && property.propertyType !== propertyType) return false;
@@ -245,12 +240,12 @@ export default function BuyerProperties() {
   // Stats - only calculate when user has pre-approval
   const stats = useMemo(() => {
     if (!hasPreApproval) {
-      return { qualified: 0, stretch: 0, notQualified: 0, total: 0 };
+      return { withinGuidelines: 0, requiresReview: 0, exceedsGuidelines: 0, total: 0 };
     }
-    const qualified = propertiesWithAffordability.filter(p => p.affordability.status === "qualified").length;
-    const stretch = propertiesWithAffordability.filter(p => p.affordability.status === "stretch").length;
-    const notQualified = propertiesWithAffordability.filter(p => p.affordability.status === "not_qualified").length;
-    return { qualified, stretch, notQualified, total: propertiesWithAffordability.length };
+    const withinGuidelines = propertiesWithAffordability.filter(p => p.affordability.status === "within_guidelines").length;
+    const requiresReview = propertiesWithAffordability.filter(p => p.affordability.status === "requires_review").length;
+    const exceedsGuidelines = propertiesWithAffordability.filter(p => p.affordability.status === "exceeds_guidelines").length;
+    return { withinGuidelines, requiresReview, exceedsGuidelines, total: propertiesWithAffordability.length };
   }, [propertiesWithAffordability, hasPreApproval]);
 
   return (
@@ -316,8 +311,8 @@ export default function BuyerProperties() {
                 <CardContent className="flex items-center gap-3 p-4">
                   <CheckCircle className="h-8 w-8 text-green-300" />
                   <div>
-                    <p className="text-2xl font-bold text-white">{stats.qualified}</p>
-                    <p className="text-sm text-white/70">You Qualify</p>
+                    <p className="text-2xl font-bold text-white">{stats.withinGuidelines}</p>
+                    <p className="text-sm text-white/70">Within Guidelines</p>
                   </div>
                 </CardContent>
               </Card>
@@ -325,8 +320,8 @@ export default function BuyerProperties() {
                 <CardContent className="flex items-center gap-3 p-4">
                   <AlertTriangle className="h-8 w-8 text-yellow-300" />
                   <div>
-                    <p className="text-2xl font-bold text-white">{stats.stretch}</p>
-                    <p className="text-sm text-white/70">Stretch Budget</p>
+                    <p className="text-2xl font-bold text-white">{stats.requiresReview}</p>
+                    <p className="text-sm text-white/70">Requires Review</p>
                   </div>
                 </CardContent>
               </Card>
@@ -334,8 +329,8 @@ export default function BuyerProperties() {
                 <CardContent className="flex items-center gap-3 p-4">
                   <XCircle className="h-8 w-8 text-red-300" />
                   <div>
-                    <p className="text-2xl font-bold text-white">{stats.notQualified}</p>
-                    <p className="text-sm text-white/70">Over Budget</p>
+                    <p className="text-2xl font-bold text-white">{stats.exceedsGuidelines}</p>
+                    <p className="text-sm text-white/70">Exceeds Guidelines</p>
                   </div>
                 </CardContent>
               </Card>
@@ -485,10 +480,10 @@ export default function BuyerProperties() {
                       <p className="text-2xl font-bold text-primary">
                         {formatCurrency(parseFloat(property.price))}
                       </p>
-                      {hasPreApproval && property.affordability.status === "qualified" && (
+                      {hasPreApproval && property.affordability.status === "within_guidelines" && (
                         <Badge variant="outline" className="text-green-600">
                           <TrendingUp className="mr-1 h-3 w-3" />
-                          Great Match
+                          Within Guidelines
                         </Badge>
                       )}
                     </div>

@@ -49,7 +49,7 @@ const AUDIENCE_PATHS = [
     id: "move-up",
     icon: TrendingUp,
     title: "Move-Up Buyers",
-    description: "Ready for your next chapter? See what you qualify for and browse homes that fit.",
+    description: "Ready for your next chapter? Start your pre-approval and browse available homes.",
     cta: "Get Pre-Approved",
     href: "/apply",
     color: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
