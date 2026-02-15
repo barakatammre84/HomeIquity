@@ -81,3 +81,18 @@ The `BorrowerGraph` service (`server/services/borrowerGraph.ts`) aggregates all 
 - **Stall engine language**: "Validate their effort" → "State factually what has been collected"; stall examples rewritten to remove qualitative framing; "encourage" → "recommend" throughout.
 - **Handoff & transition language**: "Position this as a benefit" → "State factually"; transition examples use factual inventory language ("are on file", "remaining items"); "eligibility assessment" removed from compliance notes.
 - **Return-after-absence protocol**: "Welcome back warmly" → "Welcome back"; "lead with their progress" → "State which inputs are already on file".
+
+### Terminology & Status Value Compliance (Feb 2026)
+- **Credit tier labels**: Replaced qualitative descriptors (excellent, very_good, good, fair, poor) with numeric ranges (760_plus, 720_759, 680_719, 640_679, below_640) in Dashboard and BorrowerFile.
+- **Property status values**: Replaced `qualified/stretch/not_qualified` with `within_guidelines/requires_review/exceeds_guidelines` in BuyerProperties and PropertyDetail.
+- **DTI status values**: Replaced `healthy/high` with `within_guideline/above_guideline` in borrower routes and GapCalculator.
+- **`readyToBuy` → `goalsComplete`**: Renamed field and updated all display text ("Ready to Buy" → "Goals Complete").
+- **`canAfford` → `meetsGuidelines`**: Renamed across server borrowerGraph affordability API, useAffordability hook, and AffordabilityBadge component.
+- **`isAffordable` → `withinGuidelines`**: Renamed in AffordabilityCalculator.
+- **Readiness scoring**: Removed eligibility-based bonuses (credit >= 680, DTI <= 43); now based solely on data presence.
+- **Down payment logic**: Removed credit-score-dependent down payment percentage; fixed at 5%.
+- **Fabricated credit defaults removed**: Property route no longer falls back to 720; returns validation error.
+- **UI copy neutralized**: "Confident approvals" → "Trusted process"; "You Qualify!" → "Within Guidelines"; "Fits Your Budget" → "Within Guidelines"; "Over Budget" → "Exceeds Guidelines"; "Excellent DTI" → factual DTI percentage; removed "what you qualify for" / "what you can afford" from CTAs.
+- **Credit score labels in PreApproval form**: Changed from "Excellent (760+)" to "760+" numeric labels.
+- **Seed data**: Removed qualitative credit tier labels and eligibility-specific FAQ answers.
+- **Education content**: Removed prescriptive threshold language ("Aim for 620+") from FirstTimeBuyerHub.
