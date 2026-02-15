@@ -63,9 +63,9 @@ export async function analyzeLoanApplication(input: LoanAnalysisInput): Promise<
   const ltvRatio = (loanAmount / purchasePrice) * 100;
   const downPaymentPercent = (downPayment / purchasePrice) * 100;
 
-  const prompt = `You are a mortgage calculation engine. Analyze this loan application data and compute loan scenarios based on standard underwriting guidelines.
+  const prompt = `You are a mortgage calculation engine. Compute loan scenarios from the inputs below using standard underwriting formulas. Do not make approval decisions, eligibility predictions, or qualitative assessments.
 
-Borrower Profile:
+Inputs:
 - Annual Income: $${income.toLocaleString()}
 - Monthly Income: $${monthlyIncome.toFixed(2)}
 - Monthly Debts: $${monthlyDebts}
@@ -73,39 +73,43 @@ Borrower Profile:
 - Employment: ${input.employmentType}, ${input.employmentYears} years
 - Veteran Status: ${input.isVeteran ? "Yes" : "No"}
 - First-time Buyer: ${input.isFirstTimeBuyer ? "Yes" : "No"}
-
-Property Details:
 - Purchase Price: $${purchasePrice.toLocaleString()}
 - Down Payment: $${downPayment.toLocaleString()} (${downPaymentPercent.toFixed(1)}%)
 - Loan Amount: $${loanAmount.toLocaleString()}
 - Property Type: ${input.propertyType}
 - Loan Purpose: ${input.loanPurpose}
 
-Calculate and return a JSON response with:
-1. Pre-approval status and amount
-2. DTI ratio (including estimated mortgage payment)
-3. Analysis with strengths, concerns, and recommendations
-4. Multiple loan scenarios (conventional with/without points, FHA if applicable, VA if veteran)
+Compute and return a JSON response with:
+1. Maximum loan amount the borrower could carry (based on DTI ≤ 43%)
+2. Computed DTI ratio (including estimated mortgage payment)
+3. Computed LTV ratio
+4. Factual observations about the numeric inputs (no qualitative judgments)
+5. Multiple loan scenarios (conventional with/without points, FHA if applicable, VA if veteran)
 
-For each scenario, calculate realistic values for:
-- Interest rate based on current market (around 6.5-7.5% for conventional)
-- Monthly P&I payment
+For each scenario, compute:
+- Interest rate (current market: approximately 6.5-7.5% for conventional)
+- Monthly P&I payment using standard amortization formula
 - Property tax estimate (1.2% of purchase price annually / 12)
 - Home insurance estimate ($1,200-2,400 annually / 12)
 - PMI if LTV > 80% (0.5-1% of loan annually / 12)
 - Closing costs (2-5% of loan amount)
 - Cash to close (down payment + closing costs)
 
+RULES:
+- "strengths" must contain only factual numeric observations (e.g., "Credit score: 740", "Down payment: 20%"). No adjectives like "strong", "solid", "excellent".
+- "concerns" must contain only factual threshold observations (e.g., "Computed DTI: 42.3%, above 36% guideline"). No words like "high", "risky", "concerning".
+- "recommendations" must contain only procedural notes (e.g., "PMI applies at LTV above 80%"). No advice like "consider", "should", "we recommend".
+- Do NOT include "isApproved" — approval is determined server-side.
+
 Return ONLY valid JSON in this exact format:
 {
-  "isApproved": true,
   "preApprovalAmount": "500000",
   "dtiRatio": "35.5",
   "ltvRatio": "80.0",
   "analysis": {
-    "strengths": ["Strong credit score", "Stable employment"],
-    "concerns": ["High DTI ratio"],
-    "recommendations": ["Consider larger down payment"]
+    "strengths": ["Credit score: 740", "Employment duration: 5 years"],
+    "concerns": ["Computed DTI: 38.2%, above 36% guideline threshold"],
+    "recommendations": ["PMI applies at current LTV of 85%"]
   },
   "scenarios": [
     {
@@ -146,7 +150,12 @@ Return ONLY valid JSON in this exact format:
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     
     if (jsonMatch) {
-      const result = JSON.parse(jsonMatch[0]) as LoanAnalysisResult;
+      const parsed = JSON.parse(jsonMatch[0]);
+      const computedDti = parseFloat(parsed.dtiRatio) || 0;
+      const result: LoanAnalysisResult = {
+        ...parsed,
+        isApproved: computedDti <= 43 && creditScore >= 620,
+      };
       return result;
     }
   } catch (error) {
@@ -298,16 +307,16 @@ function generateFallbackAnalysis(
     dtiRatio: dtiRatio.toFixed(2),
     ltvRatio: ltvRatio.toFixed(2),
     analysis: {
-      strengths: creditScore >= 740 
-        ? ["Credit score above 740", "Stable employment history documented"] 
-        : creditScore >= 700 
-        ? ["Credit score above 700", "Employment verified"]
-        : ["Credit score meets minimum threshold"],
+      strengths: [
+        `Credit score: ${creditScore}`,
+        `Employment duration: ${input.employmentYears} years`,
+        `Down payment: ${downPaymentPercent.toFixed(1)}%`,
+      ],
       concerns: dtiRatio > 36 
-        ? [`DTI ratio is ${dtiRatio.toFixed(1)}%, above the 36% guideline threshold`] 
+        ? [`Computed DTI: ${dtiRatio.toFixed(1)}%, above 36% guideline threshold`] 
         : [],
       recommendations: ltvRatio > 80 
-        ? ["LTV exceeds 80% — PMI will apply until sufficient equity is reached"]
+        ? [`PMI applies at current LTV of ${ltvRatio.toFixed(1)}%`]
         : [],
     },
     scenarios,

@@ -468,10 +468,10 @@ export function registerLendingRoutes(
           await storage.createDealActivity({
             applicationId: application.id,
             activityType: "status_change",
-            title: analysisResult.isApproved ? "Pre-Approved!" : "Application Review Required",
+            title: analysisResult.isApproved ? "Pre-Approval Issued" : "Application Under Review",
             description: analysisResult.isApproved 
-              ? `Congratulations! You've been pre-approved for up to $${(parseFloat(analysisResult.preApprovalAmount) || 0).toLocaleString()}`
-              : "Your application requires additional review.",
+              ? `Pre-approval issued for up to $${(parseFloat(analysisResult.preApprovalAmount) || 0).toLocaleString()}. Final terms subject to underwriting review.`
+              : "Your application requires additional review by the underwriting team.",
           });
         } catch (actErr) {
           console.error("[Analysis] Failed to create deal activity:", actErr);
@@ -483,8 +483,8 @@ export function registerLendingRoutes(
             await storage.createNotification({
               userId,
               type: "application_pre_approved",
-              title: "You've Been Pre-Approved!",
-              body: `Congratulations! You've been pre-approved for up to $${(parseFloat(analysisResult.preApprovalAmount) || 0).toLocaleString()}.`,
+              title: "Pre-Approval Issued",
+              body: `Your pre-approval has been issued for up to $${(parseFloat(analysisResult.preApprovalAmount) || 0).toLocaleString()}. Final terms are subject to underwriting review.`,
               entityType: "loan_application",
               entityId: application.id,
               status: "unread",
@@ -500,8 +500,8 @@ export function registerLendingRoutes(
             await storage.createNotification({
               userId,
               type: "application_denied",
-              title: "Application Update",
-              body: "Your application requires additional review. Please check your dashboard for details.",
+              title: "Application Under Review",
+              body: "Your application requires additional review by the underwriting team. Please check your dashboard for details.",
               entityType: "loan_application",
               entityId: application.id,
               status: "unread",

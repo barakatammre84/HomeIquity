@@ -69,3 +69,11 @@ The `BorrowerGraph` service (`server/services/borrowerGraph.ts`) aggregates all 
 - **Gemini prompt compliance**: Changed "mortgage underwriting AI" to "mortgage calculation engine"; replaced qualitative fallback language ("Strong credit score", "Solid financial standing") with factual statements.
 - **NaN guards in prompt builder**: All `parseFloat` calls in `buildVerifiedContextPrompt` and fallback responses now guarded with `|| 0`.
 - **creditScore type note**: `CoachIntakeData.creditScore` is `string` (AI-generated text), `VerifiedUserContext.creditScore` is `number | null` (DB-stored); intentional divergence documented.
+
+### Prompt & Compliance Language Audit (Feb 2026)
+- **isApproved computed server-side**: Gemini prompt no longer includes `isApproved` field; server computes it deterministically from DTI ≤ 43% and credit score ≥ 620 after parsing AI response.
+- **Gemini prompt factual-only rules**: Added explicit RULES section requiring `strengths` to contain only numeric observations, `concerns` to contain only threshold observations, and `recommendations` to contain only procedural notes — no qualitative adjectives.
+- **Gemini fallback factual language**: Replaced "Credit score above 740 / Stable employment history" with factual observations ("Credit score: N", "Employment duration: N years", "Down payment: N%").
+- **Notification language neutralized**: "You've Been Pre-Approved!" → "Pre-Approval Issued"; "Congratulations!" removed; all notifications include "subject to underwriting review" qualifier.
+- **Coach URL/ID restriction**: System prompt explicitly prohibits AI from generating URLs, links, IDs, or system-internal values.
+- **Coach language cleanup**: "strong evidence" → "direct evidence"; "affordability assessment" → "DTI ratio computation"; "assessment" → "profile" in output format instructions; "borrowing capacity" removed from intake prompts.

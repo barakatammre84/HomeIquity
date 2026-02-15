@@ -545,7 +545,7 @@ function buildVerifiedContextPrompt(ctx: VerifiedUserContext): string {
   lines.push("- If chat input CONFLICTS with document-verified data (Tier 1), ALWAYS trust the documents. Politely inform the user of the discrepancy and ask them to explain or update their documents.");
   lines.push("- If chat input CONFLICTS with application data (Tier 2), note the discrepancy and suggest they update their application if their situation has changed.");
   lines.push("- When capturing intake data from chat, mark it as approximate in your assessment. Encourage the user to upload supporting documents to verify.");
-  lines.push("- For income: tax returns are the gold standard, pay stubs are strong evidence, chat claims are just estimates.");
+  lines.push("- For income: tax returns are the gold standard, pay stubs are direct evidence, chat claims are just estimates.");
   lines.push("- For assets/savings: bank statements are the gold standard, chat claims should be verified with statements.");
 
   if (ctx.completionPercentage !== undefined && ctx.completionPercentage !== null) {
@@ -645,6 +645,7 @@ You do NOT:
 - Predict approvals or rates
 - Recommend loan products
 - Provide financial advice
+- Generate URLs, links, IDs, or system-internal values — these are server-generated only
 
 All guidance must be framed as preparation for underwriting review.
 Your tone must be calm, neutral, and supportive.
@@ -717,7 +718,7 @@ Present it using this EXACT 4-part structure every time:
 1. **What is required** — Name the specific input or document needed.
 2. **Why underwriting systems require it** — One sentence explaining the underwriting purpose.
 3. **Estimated time or effort** — How long it takes or how much work is involved.
-4. **What will be unlocked once completed** — What progress or capability this enables (e.g., completion % increase, next phase, specific assessment).
+4. **What will be unlocked once completed** — What progress or capability this enables (e.g., completion % increase, next phase, specific computation).
 
 Do not present multiple options.
 Do not speculate on outcomes.
@@ -1041,7 +1042,7 @@ Track and communicate the user's current state:
 Use these states as "readinessTier" values. Never say "approved" or "eligible" — say "ready for underwriting review" or "all required inputs are present."
 
 === STRUCTURED OUTPUT FORMAT ===
-When responding, always provide your answer as conversational text first. When you have enough information to assess the user's situation (either from verified data or from conversation), include structured data in a JSON block at the end of your message wrapped in <coach_data> tags.
+When responding, always provide your answer as conversational text first. When you have enough information to build a structured profile (either from verified data or from conversation), include structured data in a JSON block at the end of your message wrapped in <coach_data> tags.
 
 The JSON should follow this format:
 <coach_data>
@@ -1192,9 +1193,9 @@ The "borrowerPackage" should be null unless the user is "ready_now" or the user 
 }
 Every field that has no data MUST be "Not Provided" or "Pending" or "Insufficient Data" — never omit fields or leave them null. Every data point must include its verification tier.
 
-IMPORTANT: If you already have verified application data with enough detail (income, credit score, employment, debts), generate the structured assessment immediately in your FIRST response — don't wait to ask questions you already have answers to. Only ask follow-up questions about inputs you're genuinely missing.
+IMPORTANT: If you already have verified application data with enough detail (income, credit score, employment, debts), generate the structured profile immediately in your FIRST response — don't wait to ask questions you already have answers to. Only ask follow-up questions about inputs you're genuinely missing.
 
-If you're still gathering information and don't have enough for an assessment, respond conversationally with a single next-required-input recommendation, without the full data block.
+If you're still gathering information and don't have enough for a structured profile, respond conversationally with a single next-required-input recommendation, without the full data block.
 
 When no verified data is available, warmly greet the user and immediately recommend the single most impactful first input to provide (usually sharing their employment situation or homeownership goal). Don't present a numbered list of questions. Ask one thing at a time.`;
 
@@ -1209,7 +1210,7 @@ export async function generateCoachResponse(
   verifiedContext?: VerifiedUserContext,
 ): Promise<CoachResponse> {
   const contextNote = existingProfile
-    ? `\n\nExisting financial profile from previous assessment:\n${JSON.stringify(existingProfile, null, 2)}\n\nUse this as context but update if the user provides new information.`
+    ? `\n\nExisting financial profile from previous session:\n${JSON.stringify(existingProfile, null, 2)}\n\nUse this as context but update if the user provides new information.`
     : "";
 
   const verifiedNote = verifiedContext ? buildVerifiedContextPrompt(verifiedContext) : "";
@@ -1486,9 +1487,9 @@ function getNextMissingInput(ctx?: VerifiedUserContext): { what: string; why: st
   if (!ctx.annualIncome) {
     return {
       what: "Your approximate annual income",
-      why: "Underwriting systems use income to calculate your debt-to-income ratio and determine borrowing capacity.",
+      why: "Underwriting systems use income to calculate your debt-to-income ratio.",
       effort: "About 30 seconds — a rough estimate is fine for now, documents will verify later.",
-      unlocks: `Enables DTI calculation and affordability assessment. Moves your completion to ${Math.min(100, (ctx.completionPercentage || 0) + 8)}%.`,
+      unlocks: `Enables DTI ratio computation. Moves your completion to ${Math.min(100, (ctx.completionPercentage || 0) + 8)}%.`,
     };
   }
   if (!ctx.creditScore) {
@@ -1510,9 +1511,9 @@ function getNextMissingInput(ctx?: VerifiedUserContext): { what: string; why: st
   if (!ctx.purchasePrice) {
     return {
       what: "Your target purchase price or price range",
-      why: "Underwriting systems need this to calculate loan-to-value ratio and assess down payment adequacy.",
+      why: "Underwriting systems need this to calculate loan-to-value ratio.",
       effort: "About 30 seconds — a range is fine if you're still exploring.",
-      unlocks: `Enables LTV calculation and down payment assessment. Moves your completion to ${Math.min(100, (ctx.completionPercentage || 0) + 8)}%.`,
+      unlocks: `Enables LTV ratio computation. Moves your completion to ${Math.min(100, (ctx.completionPercentage || 0) + 8)}%.`,
     };
   }
   if (!ctx.downPayment) {
@@ -1520,7 +1521,7 @@ function getNextMissingInput(ctx?: VerifiedUserContext): { what: string; why: st
       what: "Your estimated down payment amount",
       why: "Underwriting systems use this to calculate your loan-to-value ratio and determine PMI requirements.",
       effort: "About 30 seconds — approximate amount you have available.",
-      unlocks: `Enables LTV and PMI assessment. Moves your completion to ${Math.min(100, (ctx.completionPercentage || 0) + 8)}%.`,
+      unlocks: `Completes LTV computation and determines PMI applicability. Moves your completion to ${Math.min(100, (ctx.completionPercentage || 0) + 8)}%.`,
     };
   }
   if (ctx.documentsMissing && ctx.documentsMissing.length > 0) {
