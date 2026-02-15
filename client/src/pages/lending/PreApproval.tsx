@@ -29,7 +29,8 @@ import {
   Check,
   AlertCircle,
   ThumbsUp,
-  Info
+  Info,
+  Plus
 } from "lucide-react";
 
 const US_STATES = [
@@ -52,7 +53,7 @@ const US_STATES = [
   { value: "WI", label: "Wisconsin" }, { value: "WY", label: "Wyoming" }
 ];
 
-type QuestionType = "intro" | "choice" | "currency" | "number" | "state" | "boolean_pair" | "final";
+type QuestionType = "intro" | "choice" | "currency" | "number" | "state" | "boolean_pair" | "income_sources" | "final";
 
 interface QuestionOption {
   value: string;
@@ -166,6 +167,23 @@ const QUESTIONS: Question[] = [
     icon: Clock
   },
   {
+    id: "hasAdditionalIncome",
+    field: "hasAdditionalIncome",
+    type: "choice",
+    question: "Do you have additional sources of income?",
+    icon: TrendingUp,
+    options: [
+      { value: "yes", label: "Yes, I have other income", icon: TrendingUp },
+      { value: "no", label: "No, this is my only income", icon: Check }
+    ]
+  },
+  {
+    id: "incomeSources",
+    type: "income_sources",
+    question: "What other income do you receive?",
+    subtext: "Select all that apply, then provide details for each."
+  },
+  {
     id: "monthlyDebts",
     field: "monthlyDebts",
     type: "currency",
@@ -213,7 +231,12 @@ interface AdvisoryPanelProps {
 
 function AdvisoryPanel({ formValues, currentStepId }: AdvisoryPanelProps) {
   const stats = useMemo(() => {
-    const income = parseFloat(String(formValues.annualIncome || "").replace(/[^0-9.]/g, "")) || 0;
+    let income = parseFloat(String(formValues.annualIncome || "").replace(/[^0-9.]/g, "")) || 0;
+    if (formValues.incomeSources && formValues.incomeSources.length > 0) {
+      for (const src of formValues.incomeSources) {
+        income += parseFloat(String(src.annualAmount || "").replace(/[^0-9.]/g, "")) || 0;
+      }
+    }
     const debts = parseFloat(String(formValues.monthlyDebts || "").replace(/[^0-9.]/g, "")) || 0;
     const price = parseFloat(String(formValues.purchasePrice || "").replace(/[^0-9.]/g, "")) || 0;
     const down = parseFloat(String(formValues.downPayment || "").replace(/[^0-9.]/g, "")) || 0;
@@ -272,6 +295,10 @@ function AdvisoryPanel({ formValues, currentStepId }: AdvisoryPanelProps) {
         return "Employment type helps us determine which documents we'll need to verify your income.";
       case "employmentYears":
         return "Most lenders prefer 2+ years of stable employment history.";
+      case "hasAdditionalIncome":
+        return "Including all income sources gives a more complete picture for underwriting.";
+      case "incomeSources":
+        return "Each income source may require different documentation. We'll let you know what's needed.";
       case "monthlyDebts":
         return "Include car payments, student loans, credit cards, and other monthly obligations.";
       case "creditScore":
@@ -402,6 +429,8 @@ export default function PreApproval() {
   const [currentStep, setCurrentStep] = useState(0);
   const [direction, setDirection] = useState(1);
   const [applicationId, setApplicationId] = useState<string | null>(null);
+  const [selectedIncomeTypes, setSelectedIncomeTypes] = useState<string[]>([]);
+  const [incomeDetails, setIncomeDetails] = useState<Record<string, { annualAmount: string; employerName: string; yearsInRole: string }>>({});
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const { user, isAuthenticated } = useAuth();
@@ -437,6 +466,8 @@ export default function PreApproval() {
       isVeteran: false,
       isFirstTimeBuyer: false,
       propertyState: urlState || "",
+      hasAdditionalIncome: false,
+      incomeSources: [],
     },
   });
 
@@ -537,7 +568,23 @@ export default function PreApproval() {
         isVeteran: !!draft.isVeteran,
         isFirstTimeBuyer: !!draft.isFirstTimeBuyer,
         propertyState: draft.propertyState || "",
+        hasAdditionalIncome: Array.isArray(draft.incomeSources) && draft.incomeSources.length > 0,
+        incomeSources: Array.isArray(draft.incomeSources) ? draft.incomeSources : [],
       });
+      if (Array.isArray(draft.incomeSources) && draft.incomeSources.length > 0) {
+        const types: string[] = [];
+        const details: Record<string, { annualAmount: string; employerName: string; yearsInRole: string }> = {};
+        for (const src of draft.incomeSources) {
+          types.push(src.type);
+          details[src.type] = {
+            annualAmount: src.annualAmount || "",
+            employerName: src.employerName || "",
+            yearsInRole: src.yearsInRole || "",
+          };
+        }
+        setSelectedIncomeTypes(types);
+        setIncomeDetails(details);
+      }
       setCurrentStep(1);
       setShowRestoreBanner(false);
       toast({ title: "Draft restored from your account", description: "We loaded your saved progress." });
@@ -550,6 +597,20 @@ export default function PreApproval() {
         const parsed = JSON.parse(saved);
         const step = parseInt(savedStep, 10);
         form.reset({ ...form.getValues(), ...parsed });
+        if (Array.isArray(parsed.incomeSources) && parsed.incomeSources.length > 0) {
+          const types: string[] = [];
+          const details: Record<string, { annualAmount: string; employerName: string; yearsInRole: string }> = {};
+          for (const src of parsed.incomeSources) {
+            types.push(src.type);
+            details[src.type] = {
+              annualAmount: src.annualAmount || "",
+              employerName: src.employerName || "",
+              yearsInRole: src.yearsInRole || "",
+            };
+          }
+          setSelectedIncomeTypes(types);
+          setIncomeDetails(details);
+        }
         setCurrentStep(step);
         setShowRestoreBanner(false);
         toast({ title: "Progress restored", description: "We picked up where you left off." });
@@ -737,12 +798,33 @@ export default function PreApproval() {
       return;
     }
 
-    // Validate ONLY the current field before moving forward
+    if (currentQ.id === "incomeSources") {
+      const sources = form.getValues("incomeSources") || [];
+      const allValid = sources.length > 0 && sources.every((s: any) => s.annualAmount && s.annualAmount.length > 0);
+      if (!allValid && sources.length > 0) {
+        toast({
+          title: "Please complete all income details",
+          description: "Each income source needs at least an annual amount.",
+          variant: "destructive"
+        });
+        return;
+      }
+      setDirection(1);
+      setCurrentStep((prev) => prev + 1);
+      return;
+    }
+
     if (currentQ.field) {
       const isValid = await form.trigger(currentQ.field);
       if (isValid) {
         setDirection(1);
-        setCurrentStep((prev) => prev + 1);
+        const nextStep = currentStep + 1;
+        const nextQ = QUESTIONS[nextStep];
+        if (nextQ && nextQ.id === "incomeSources" && !form.getValues("hasAdditionalIncome")) {
+          setCurrentStep(nextStep + 1);
+        } else {
+          setCurrentStep(nextStep);
+        }
       } else {
         toast({ 
           title: "Please fill out this field", 
@@ -756,12 +838,18 @@ export default function PreApproval() {
   const handleBack = () => {
     if (currentStep > 0) {
       setDirection(-1);
-      setCurrentStep((prev) => prev - 1);
+      const prevStep = currentStep - 1;
+      const prevQ = QUESTIONS[prevStep];
+      if (prevQ && prevQ.id === "incomeSources" && !form.getValues("hasAdditionalIncome")) {
+        setCurrentStep(prevStep - 1);
+      } else {
+        setCurrentStep(prevStep);
+      }
     }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && currentQ.type !== "choice" && currentQ.type !== "state") {
+    if (e.key === "Enter" && currentQ.type !== "choice" && currentQ.type !== "state" && currentQ.type !== "income_sources") {
       e.preventDefault();
       handleNext();
     }
@@ -831,13 +919,29 @@ export default function PreApproval() {
           <div className="grid gap-3 w-full max-w-lg mx-auto">
             {currentQ.options?.map((option) => {
               const OptionIcon = option.icon;
-              const isSelected = form.watch(currentQ.field as keyof PreApprovalFormData) === option.value;
+              const fieldVal = form.watch(currentQ.field as keyof PreApprovalFormData);
+              const isSelected = currentQ.id === "hasAdditionalIncome"
+                ? (option.value === "yes" ? fieldVal === true : fieldVal === false)
+                : fieldVal === option.value;
               return (
                 <button
                   key={option.value}
                   type="button"
                   data-testid={`option-${currentQ.field}-${option.value}`}
                   onClick={() => {
+                    if (currentQ.id === "hasAdditionalIncome") {
+                      if (option.value === "yes") {
+                        form.setValue("hasAdditionalIncome", true as never);
+                      } else {
+                        form.setValue("hasAdditionalIncome", false as never);
+                        form.setValue("incomeSources", [] as never);
+                      }
+                      setTimeout(() => {
+                        setDirection(1);
+                        setCurrentStep((prev) => option.value === "no" ? prev + 2 : prev + 1);
+                      }, 200);
+                      return;
+                    }
                     form.setValue(currentQ.field as keyof PreApprovalFormData, option.value as never);
                     setTimeout(() => {
                       setDirection(1);
@@ -898,6 +1002,150 @@ export default function PreApproval() {
             </div>
           </div>
         );
+
+      case "income_sources": {
+        const employmentTypeMap: Record<string, string> = { employed: "w2", self_employed: "self_employed", retired: "pension" };
+        const primaryType = employmentTypeMap[form.getValues("employmentType") || ""] || "";
+        const allIncomeTypes = [
+          { value: "w2", label: "W-2 Employment", icon: Briefcase },
+          { value: "self_employed", label: "Self-Employment / 1099", icon: Users },
+          { value: "rental", label: "Rental Income", icon: Home },
+          { value: "social_security", label: "Social Security", icon: Shield },
+          { value: "pension", label: "Pension / Retirement", icon: Clock },
+          { value: "investment", label: "Investment Income", icon: TrendingUp },
+          { value: "other", label: "Other Income", icon: DollarSign },
+        ].filter((t) => t.value !== primaryType);
+
+        const toggleIncomeType = (typeValue: string) => {
+          const isSelected = selectedIncomeTypes.includes(typeValue);
+          let newTypes: string[];
+          if (isSelected) {
+            newTypes = selectedIncomeTypes.filter((t) => t !== typeValue);
+            const newDetails = { ...incomeDetails };
+            delete newDetails[typeValue];
+            setIncomeDetails(newDetails);
+          } else {
+            newTypes = [...selectedIncomeTypes, typeValue];
+            if (!incomeDetails[typeValue]) {
+              setIncomeDetails({ ...incomeDetails, [typeValue]: { annualAmount: "", employerName: "", yearsInRole: "" } });
+            }
+          }
+          setSelectedIncomeTypes(newTypes);
+          const entries = newTypes.map((t) => ({
+            type: t as any,
+            annualAmount: (isSelected ? incomeDetails : { ...incomeDetails, [typeValue]: incomeDetails[typeValue] || { annualAmount: "", employerName: "", yearsInRole: "" } })[t]?.annualAmount || "",
+            employerName: (isSelected ? incomeDetails : { ...incomeDetails, [typeValue]: incomeDetails[typeValue] || { annualAmount: "", employerName: "", yearsInRole: "" } })[t]?.employerName || "",
+            yearsInRole: (isSelected ? incomeDetails : { ...incomeDetails, [typeValue]: incomeDetails[typeValue] || { annualAmount: "", employerName: "", yearsInRole: "" } })[t]?.yearsInRole || "",
+          }));
+          form.setValue("incomeSources", entries as never);
+        };
+
+        const updateDetail = (typeValue: string, field: string, value: string) => {
+          const newDetails = {
+            ...incomeDetails,
+            [typeValue]: { ...incomeDetails[typeValue], [field]: value },
+          };
+          setIncomeDetails(newDetails);
+          const entries = selectedIncomeTypes.map((t) => ({
+            type: t as any,
+            annualAmount: newDetails[t]?.annualAmount || "",
+            employerName: newDetails[t]?.employerName || "",
+            yearsInRole: newDetails[t]?.yearsInRole || "",
+          }));
+          form.setValue("incomeSources", entries as never);
+        };
+
+        const needsEmployerDetails = (typeValue: string) => typeValue === "w2" || typeValue === "self_employed";
+
+        return (
+          <div className="w-full max-w-lg mx-auto space-y-6">
+            <div className="grid grid-cols-2 gap-3">
+              {allIncomeTypes.map((incomeType) => {
+                const TypeIcon = incomeType.icon;
+                const isActive = selectedIncomeTypes.includes(incomeType.value);
+                return (
+                  <button
+                    key={incomeType.value}
+                    type="button"
+                    data-testid={`toggle-income-${incomeType.value}`}
+                    onClick={() => toggleIncomeType(incomeType.value)}
+                    className={`flex items-center gap-3 p-4 text-left text-sm font-medium border-2 rounded-xl transition-all duration-200
+                      ${isActive
+                        ? "border-primary bg-primary/5"
+                        : "border-muted hover:border-primary/50"
+                      }`}
+                  >
+                    <div className={`flex h-9 w-9 items-center justify-center rounded-lg transition-colors shrink-0
+                      ${isActive ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
+                      <TypeIcon className="h-4 w-4" />
+                    </div>
+                    <span className={`flex-1 ${isActive ? "text-primary" : "text-foreground"}`}>
+                      {incomeType.label}
+                    </span>
+                    <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors shrink-0
+                      ${isActive ? "border-primary bg-primary" : "border-muted-foreground/30"}`}>
+                      {isActive && <Check className="w-3 h-3 text-primary-foreground" />}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {selectedIncomeTypes.length > 0 && (
+              <div className="space-y-4">
+                {selectedIncomeTypes.map((typeValue) => {
+                  const typeInfo = allIncomeTypes.find((t) => t.value === typeValue);
+                  const details = incomeDetails[typeValue] || { annualAmount: "", employerName: "", yearsInRole: "" };
+                  return (
+                    <div key={typeValue} className="border-2 rounded-xl p-5 space-y-4 text-left" data-testid={`card-income-${typeValue}`}>
+                      <div className="flex items-center gap-2">
+                        {typeInfo && <typeInfo.icon className="h-4 w-4 text-primary" />}
+                        <span className="font-semibold text-foreground">{typeInfo?.label}</span>
+                      </div>
+                      <div>
+                        <label className="text-sm text-muted-foreground mb-1 block">Annual Amount</label>
+                        <div className="relative">
+                          <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                          <Input
+                            data-testid={`input-income-amount-${typeValue}`}
+                            value={details.annualAmount}
+                            onChange={(e) => updateDetail(typeValue, "annualAmount", formatCurrency(e.target.value))}
+                            className="pl-9"
+                            placeholder="75,000"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-sm text-muted-foreground mb-1 block">
+                          {needsEmployerDetails(typeValue) ? "Employer Name" : "Source"}
+                        </label>
+                        <Input
+                          data-testid={`input-income-employer-${typeValue}`}
+                          value={details.employerName}
+                          onChange={(e) => updateDetail(typeValue, "employerName", e.target.value)}
+                          placeholder={needsEmployerDetails(typeValue) ? "Company name" : "Source name (optional)"}
+                        />
+                      </div>
+                      {needsEmployerDetails(typeValue) && (
+                        <div>
+                          <label className="text-sm text-muted-foreground mb-1 block">Years in Role</label>
+                          <Input
+                            data-testid={`input-income-years-${typeValue}`}
+                            value={details.yearsInRole}
+                            onChange={(e) => updateDetail(typeValue, "yearsInRole", e.target.value.replace(/\D/g, ""))}
+                            placeholder="3"
+                            inputMode="numeric"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      }
 
       case "boolean_pair":
         return (
@@ -1095,7 +1343,7 @@ export default function PreApproval() {
             </div>
 
             {/* Continue Button (for non-choice inputs) */}
-            {(currentQ.type === "currency" || currentQ.type === "number" || currentQ.type === "boolean_pair" || currentQ.type === "final") && (
+            {(currentQ.type === "currency" || currentQ.type === "number" || currentQ.type === "boolean_pair" || currentQ.type === "income_sources" || currentQ.type === "final") && (
               <Button 
                 onClick={handleNext} 
                 size="lg" 

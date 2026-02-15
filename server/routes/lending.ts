@@ -38,6 +38,12 @@ const loanApplicationInputSchema = z.object({
   isVeteran: z.boolean().optional().default(false),
   isFirstTimeBuyer: z.boolean().optional().default(false),
   propertyState: z.string().max(2).optional(),
+  incomeSources: z.array(z.object({
+    type: z.enum(["w2", "self_employed", "rental", "social_security", "pension", "investment", "other"]),
+    annualAmount: z.string().or(z.number()).transform(v => String(v).replace(/[,$]/g, "")),
+    employerName: z.string().max(200).optional(),
+    yearsInRole: z.string().or(z.number()).transform(v => String(v)).optional(),
+  })).optional(),
 });
 
 export function registerLendingRoutes(
@@ -391,6 +397,7 @@ export function registerLendingRoutes(
         isVeteran: formData.isVeteran,
         isFirstTimeBuyer: formData.isFirstTimeBuyer,
         propertyState: formData.propertyState,
+        incomeSources: formData.incomeSources || null,
         referringBrokerId,
       };
 
@@ -838,6 +845,12 @@ export function registerLendingRoutes(
     propertyAddress: z.string().max(500).optional(),
     propertyCity: z.string().max(100).optional(),
     propertyZip: z.string().max(10).optional(),
+    incomeSources: z.array(z.object({
+      type: z.enum(["w2", "self_employed", "rental", "social_security", "pension", "investment", "other"]),
+      annualAmount: z.string().or(z.number()).transform(v => String(v).replace(/[,$]/g, "")),
+      employerName: z.string().max(200).optional(),
+      yearsInRole: z.string().or(z.number()).transform(v => String(v)).optional(),
+    })).optional(),
   });
 
   app.patch("/api/loan-applications/:id", isAuthenticated, async (req, res) => {
@@ -880,6 +893,7 @@ export function registerLendingRoutes(
       if (formData.propertyAddress !== undefined) updateData.propertyAddress = formData.propertyAddress;
       if (formData.propertyCity !== undefined) updateData.propertyCity = formData.propertyCity;
       if (formData.propertyZip !== undefined) updateData.propertyZip = formData.propertyZip;
+      if (formData.incomeSources !== undefined) updateData.incomeSources = formData.incomeSources;
 
       const updated = await storage.updateLoanApplication(id, updateData);
       res.json(updated);

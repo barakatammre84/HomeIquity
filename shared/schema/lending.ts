@@ -54,6 +54,9 @@ export const loanApplications = pgTable("loan_applications", {
   isVeteran: boolean("is_veteran").default(false),
   isFirstTimeBuyer: boolean("is_first_time_buyer").default(false),
   
+  // Multi-income source tracking
+  incomeSources: jsonb("income_sources"),
+  
   // Calculated Values (populated by AI analysis)
   dtiRatio: decimal("dti_ratio", { precision: 5, scale: 2 }),
   ltvRatio: decimal("ltv_ratio", { precision: 5, scale: 2 }),
@@ -554,11 +557,25 @@ export const insertBorrowerDeclarationsSchema = createInsertSchema(borrowerDecla
 export type InsertBorrowerDeclarations = z.infer<typeof insertBorrowerDeclarationsSchema>;
 export type BorrowerDeclarations = typeof borrowerDeclarations.$inferSelect;
 
+// Income source entry for multi-income tracking
+export const incomeSourceEntrySchema = z.object({
+  type: z.enum(["w2", "self_employed", "rental", "social_security", "pension", "investment", "other"]),
+  annualAmount: z.string().min(1, "Income amount is required"),
+  employerName: z.string().optional(),
+  yearsInRole: z.string().optional(),
+});
+
+export type IncomeSourceEntry = z.infer<typeof incomeSourceEntrySchema>;
+
 // Pre-approval form validation schema
 export const preApprovalFormSchema = z.object({
   annualIncome: z.string().min(1, "Annual income is required"),
   employmentType: z.enum(["employed", "self_employed", "retired", "other"]),
   employmentYears: z.string().min(1, "Years employed is required"),
+  
+  // Multi-income sources
+  hasAdditionalIncome: z.boolean().optional(),
+  incomeSources: z.array(incomeSourceEntrySchema).optional(),
   
   monthlyDebts: z.string().min(1, "Monthly debts is required"),
   creditScore: z.string().min(1, "Credit score range is required"),

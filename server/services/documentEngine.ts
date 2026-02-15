@@ -89,6 +89,87 @@ export async function generateDocumentRequirements(loanApplication: LoanApplicat
     });
   }
 
+  const incomeSources = (loanApplication.incomeSources as Array<{ type: string }>) || [];
+  for (const source of incomeSources) {
+    const t = source.type?.toLowerCase();
+    if ((t === "w2") && employmentType !== "employed" && employmentType !== "w2") {
+      requirements.push({
+        documentName: "Additional W-2 Employment - Paystubs (30 Days)",
+        documentType: "pay_stub",
+        category: "income",
+        priority: "prior_to_approval",
+        description: "Most recent 30 days of pay stubs for additional W-2 employment",
+        sourceRule: "ADDITIONAL_W2",
+      });
+      requirements.push({
+        documentName: "Additional W-2 Employment - W2s (2 Years)",
+        documentType: "w2",
+        category: "income",
+        priority: "prior_to_approval",
+        description: "W-2 wage statements for additional employment for the past 2 tax years",
+        sourceRule: "ADDITIONAL_W2",
+      });
+    }
+    if (t === "self_employed" && employmentType !== "self_employed" && employmentType !== "selfemployed") {
+      requirements.push({
+        documentName: "Additional Self-Employment - 1040 Tax Returns (2 Years)",
+        documentType: "tax_return",
+        category: "income",
+        priority: "prior_to_approval",
+        description: "Complete federal 1040 tax returns with all schedules for additional self-employment income",
+        sourceRule: "ADDITIONAL_SELF_EMPLOYED",
+      });
+    }
+    if (t === "rental") {
+      requirements.push({
+        documentName: "Rental Income - Lease Agreements",
+        documentType: "lease_agreement",
+        category: "income",
+        priority: "prior_to_approval",
+        description: "Current signed lease agreements for rental properties",
+        sourceRule: "RENTAL_INCOME",
+      });
+      requirements.push({
+        documentName: "Rental Income - Schedule E (2 Years)",
+        documentType: "tax_return",
+        category: "income",
+        priority: "prior_to_approval",
+        description: "IRS Schedule E from tax returns showing rental income for the past 2 years",
+        sourceRule: "RENTAL_INCOME",
+      });
+    }
+    if (t === "social_security") {
+      requirements.push({
+        documentName: "Social Security Award Letter",
+        documentType: "award_letter",
+        category: "income",
+        priority: "prior_to_approval",
+        description: "SSA benefit verification letter or award letter showing monthly benefit amount",
+        sourceRule: "SOCIAL_SECURITY_INCOME",
+      });
+    }
+    if (t === "pension") {
+      requirements.push({
+        documentName: "Pension/Retirement Distribution Statement",
+        documentType: "pension_statement",
+        category: "income",
+        priority: "prior_to_approval",
+        description: "Most recent pension or retirement distribution statement showing periodic payment amount",
+        sourceRule: "PENSION_INCOME",
+      });
+    }
+    if (t === "investment") {
+      requirements.push({
+        documentName: "Investment Account Statements (2 Months)",
+        documentType: "investment_statement",
+        category: "income",
+        priority: "prior_to_approval",
+        description: "Most recent 2 months of investment/brokerage account statements showing dividend/interest income",
+        sourceRule: "INVESTMENT_INCOME",
+      });
+    }
+  }
+
   for (const req of requirements) {
     const existingConditions = await storage.getLoanConditionsByApplication(loanApplication.id);
     const alreadyExists = existingConditions.some(
@@ -135,6 +216,29 @@ export function getDocumentRulesForProfile(loanApplication: LoanApplication): st
 
   if (loanType === "va" || isVeteran) {
     rules.push("VA_LOAN: DD-214");
+  }
+
+  const incomeSources = (loanApplication.incomeSources as Array<{ type: string }>) || [];
+  for (const source of incomeSources) {
+    const t = source.type?.toLowerCase();
+    if (t === "w2" && employmentType !== "employed" && employmentType !== "w2") {
+      rules.push("ADDITIONAL_W2: Paystubs (30 Days), W2s (2 Years)");
+    }
+    if (t === "self_employed" && employmentType !== "self_employed" && employmentType !== "selfemployed") {
+      rules.push("ADDITIONAL_SELF_EMPLOYED: 1040 Tax Returns (2 Years)");
+    }
+    if (t === "rental") {
+      rules.push("RENTAL_INCOME: Lease Agreements, Schedule E (2 Years)");
+    }
+    if (t === "social_security") {
+      rules.push("SOCIAL_SECURITY_INCOME: SSA Award Letter");
+    }
+    if (t === "pension") {
+      rules.push("PENSION_INCOME: Distribution Statement");
+    }
+    if (t === "investment") {
+      rules.push("INVESTMENT_INCOME: Account Statements (2 Months)");
+    }
   }
 
   return rules;
