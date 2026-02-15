@@ -165,14 +165,26 @@ export async function generateLoanEstimate(applicationId: string): Promise<LoanE
     throw new Error("Application not found");
   }
 
-  const purchasePrice = Number(application.purchasePrice) || 400000;
-  const downPayment = Number(application.downPayment) || 80000;
+  const purchasePrice = Number(application.purchasePrice);
+  if (!purchasePrice || purchasePrice <= 0) {
+    throw new Error("Purchase price is required to generate a loan estimate");
+  }
+  const downPayment = Number(application.downPayment);
+  if (isNaN(downPayment) || downPayment < 0) {
+    throw new Error("Down payment is required to generate a loan estimate");
+  }
   const loanAmount = purchasePrice - downPayment;
+  if (loanAmount <= 0) {
+    throw new Error("Loan amount must be positive (purchase price must exceed down payment)");
+  }
   const creditScore = application.creditScore;
   if (!creditScore) {
     throw new Error("Credit score is required to generate a loan estimate");
   }
-  const propertyState = application.propertyState || "CA";
+  const propertyState = application.propertyState;
+  if (!propertyState) {
+    throw new Error("Property state is required to generate a loan estimate");
+  }
   
   const ltv = (loanAmount / purchasePrice) * 100;
   const isVeteran = application.isVeteran || false;

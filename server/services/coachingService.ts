@@ -1275,7 +1275,7 @@ const coachIntakeSchema = z.object({
   loanPurpose: z.string().optional(),
   isVeteran: z.boolean().optional(),
   isFirstTimeBuyer: z.boolean().optional(),
-}).strict();
+}).strip();
 
 const actionPlanItemSchema = z.object({
   id: z.string().min(1),
@@ -1509,9 +1509,9 @@ function getNextMissingInput(ctx?: VerifiedUserContext): { what: string; why: st
   if (!ctx.creditScore) {
     return {
       what: "Your approximate credit score range",
-      why: "Underwriting systems use credit scores to determine which loan programs your profile can be evaluated against.",
+      why: "Underwriting systems use credit scores as a required input for evaluation.",
       effort: "About 30 seconds — even a rough range works. You can check for free through your bank.",
-      unlocks: `Enables program matching and rate tier assessment. Moves your completion to ${Math.min(100, (ctx.completionPercentage || 0) + 8)}%.`,
+      unlocks: `Completes a core underwriting input. Moves your completion to ${Math.min(100, (ctx.completionPercentage || 0) + 8)}%.`,
     };
   }
   if (!ctx.monthlyDebts) {
@@ -1625,9 +1625,9 @@ ${formatNextRequiredInput(
     return {
       message: formatNextRequiredInput(
         "Your approximate credit score range",
-        "Underwriting systems use credit scores to determine which loan programs your profile can be evaluated against.",
+        "Underwriting systems use credit scores as a required input for evaluation.",
         "About 30 seconds — even a rough range works. You can check for free through your bank.",
-        `Enables program matching and rate tier assessment. Moves your completion to ${Math.min(100, completion + 8)}%.`
+        `Completes a core underwriting input. Moves your completion to ${Math.min(100, completion + 8)}%.`
       ),
     };
   }

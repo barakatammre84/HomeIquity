@@ -470,7 +470,7 @@ export function registerLendingRoutes(
             activityType: "status_change",
             title: analysisResult.isApproved ? "Pre-Approved!" : "Application Review Required",
             description: analysisResult.isApproved 
-              ? `Congratulations! You've been pre-approved for up to $${parseFloat(analysisResult.preApprovalAmount).toLocaleString()}`
+              ? `Congratulations! You've been pre-approved for up to $${(parseFloat(analysisResult.preApprovalAmount) || 0).toLocaleString()}`
               : "Your application requires additional review.",
           });
         } catch (actErr) {
@@ -484,7 +484,7 @@ export function registerLendingRoutes(
               userId,
               type: "application_pre_approved",
               title: "You've Been Pre-Approved!",
-              body: `Congratulations! You've been pre-approved for up to $${parseFloat(analysisResult.preApprovalAmount).toLocaleString()}.`,
+              body: `Congratulations! You've been pre-approved for up to $${(parseFloat(analysisResult.preApprovalAmount) || 0).toLocaleString()}.`,
               entityType: "loan_application",
               entityId: application.id,
               status: "unread",
@@ -493,7 +493,7 @@ export function registerLendingRoutes(
               sendNotificationEmail({
                 type: "application_pre_approved",
                 recipientEmail: user.email,
-                data: { borrowerName, amount: parseFloat(analysisResult.preApprovalAmount).toLocaleString(), applicationId: application.id },
+                data: { borrowerName, amount: (parseFloat(analysisResult.preApprovalAmount) || 0).toLocaleString(), applicationId: application.id },
               });
             }
           } else {
@@ -946,7 +946,7 @@ export function registerLendingRoutes(
               recipientEmail: borrower.email,
               data: {
                 borrowerName,
-                amount: parseFloat(application.preApprovalAmount || "0").toLocaleString(),
+                amount: (parseFloat(application.preApprovalAmount || "0") || 0).toLocaleString(),
                 applicationId: id,
               },
             });
@@ -1163,7 +1163,7 @@ export function registerLendingRoutes(
           recipientEmail: user.email,
           data: {
             borrowerName,
-            amount: parseFloat(loanAmount).toLocaleString(),
+            amount: (parseFloat(loanAmount) || 0).toLocaleString(),
             letterNumber,
           },
         });

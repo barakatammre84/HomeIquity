@@ -39,3 +39,23 @@ The `BorrowerGraph` service (`server/services/borrowerGraph.ts`) aggregates all 
 -   **vaul:** Drawer component.
 -   **lucide-react:** Icon library.
 -   **framer-motion:** Animation library.
+
+## Recent Changes
+
+### Stabilization & Compliance Fixes (Feb 2026)
+- **Company Config Centralization**: `server/config/company.ts` is the single source of truth for NMLS ID, MERS Org ID, legal name, and contact info. All letter generation, email templates, and MISMO XML reference `COMPANY_CONFIG`.
+- **IDOR Fix**: Document upload route verifies applicationId ownership before associating documents.
+- **Credit Score Integrity**: Removed silent 700/720 fallbacks; invalid/missing credit scores now produce validation errors.
+- **Loan Estimate Validation**: Removed fabricated defaults for purchasePrice (400000), downPayment (80000), propertyState ("CA"); now throws validation errors when these required fields are missing.
+- **FCRA Consent Validation**: Credit consent endpoint rejects `consentGiven=false`; SSN last-4 validated as exactly 4 digits.
+- **Eligibility Inference Removed**: `borrowerGraph.eligibleLoanTypes` no longer infers loan program eligibility from credit scores; reports only user-declared preferred loan type.
+- **Affordability Messages**: Property affordability responses use factual, compliance-safe language without qualitative borrower assessments.
+- **AI Schema Safety**: `coachIntakeSchema` uses `.strip()` instead of `.strict()` to prevent silent rejection of valid intake data when the AI returns extra fields.
+- **Compliance Language**: Removed "rate tier assessment" and "program matching" language from coach responses; replaced with neutral "core underwriting input" framing.
+- **NaN Guards**: All `parseFloat` calls in letter generation and notification emails guarded against NaN propagation.
+- **Error Logging**: Silent `catch {}` blocks replaced with contextual `console.error` logging.
+- **Numeric Validation**: Underwriting routes validate numeric inputs before parseFloat.
+- **Typo Fix**: `hoaMontly` corrected to `hoaMonthly` in underwriting logic.
+- **Pre-Approval Letter**: Product type logic simplified to `isVeteran ? "VA" : "CONV"`.
+- **Broker Commission Security**: PATCH `/api/broker/commissions/:id` validates field whitelist.
+- **Admin Audit Accuracy**: Role change audit log captures correct `previousRole`.

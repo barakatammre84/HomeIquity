@@ -503,11 +503,8 @@ export async function buildBorrowerGraph(userId: string): Promise<BorrowerGraph>
   }
 
   const eligibleLoanTypes: string[] = [];
-  if (creditScore) {
-    if (creditScore >= 620) eligibleLoanTypes.push("conventional");
-    if (creditScore >= 580) eligibleLoanTypes.push("fha");
-    if (creditScore >= 580 && (activeApp?.isVeteran || coachIntake?.isVeteran)) eligibleLoanTypes.push("va");
-    if (creditScore >= 640) eligibleLoanTypes.push("usda");
+  if (activeApp?.preferredLoanType) {
+    eligibleLoanTypes.push(activeApp.preferredLoanType);
   }
 
   const requiredDocs = ["pay_stub", "w2", "tax_return", "bank_statement", "government_id"];
@@ -796,16 +793,12 @@ export async function getPropertyAffordability(
   const canAfford = (estimatedDTI !== null && estimatedDTI <= 50) && !additionalSavingsNeeded;
 
   let message: string;
-  if (canAfford && estimatedDTI && estimatedDTI <= 43) {
-    message = `This home fits your financial profile. Your estimated DTI would be ${estimatedDTI}%, well within guidelines.`;
-  } else if (canAfford) {
-    message = `You could qualify for this home, though your DTI of ${estimatedDTI}% is on the higher side. An FHA loan may offer more flexibility.`;
+  if (estimatedDTI !== null && additionalSavingsNeeded === null) {
+    message = `Based on your current information, the estimated DTI for this property would be ${estimatedDTI}%. Estimated monthly payment: $${estimatedMonthlyPayment?.toLocaleString() || "N/A"}. Final eligibility is determined during underwriting review.`;
   } else if (additionalSavingsNeeded) {
-    message = `You would need approximately $${additionalSavingsNeeded.toLocaleString()} more in savings for the down payment and closing costs on this home.`;
-  } else if (estimatedDTI && estimatedDTI > 50) {
-    message = `This home may stretch your budget. Your estimated DTI would be ${estimatedDTI}%. Consider properties under $${graph.eligibility.estimatedMaxPurchase?.toLocaleString() || "N/A"}.`;
+    message = `Based on your current information, an estimated additional $${additionalSavingsNeeded.toLocaleString()} in documented savings may be needed for the down payment and closing costs. Final requirements are determined during underwriting review.`;
   } else {
-    message = `We need more financial information to assess your affordability for this home. Complete your application or chat with the AI Coach.`;
+    message = `Additional financial information is needed to estimate affordability for this property. Complete your application or provide details through the readiness assistant.`;
   }
 
   return {

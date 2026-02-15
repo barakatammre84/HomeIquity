@@ -17,6 +17,7 @@ import type {
   Document,
   BorrowerDeclarations,
 } from "@shared/schema";
+import { COMPANY_CONFIG } from "./config/company";
 import {
   MISMO_NAMESPACE,
   XLINK_NAMESPACE,
@@ -916,7 +917,7 @@ export function generateMISMO34XML(
 ): string {
   const {
     includeAboutVersions = true,
-    mersOrgId = "1234567",
+    mersOrgId = COMPANY_CONFIG.mersOrgId,
     generateMersMin = true,
   } = options;
 
