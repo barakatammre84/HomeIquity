@@ -77,6 +77,7 @@ export interface BorrowerPackage {
     documentationStatus: string;
     lastStatementDate: string;
     validationNotes: string;
+    accessLink: string;
   }>;
   creditAndDebt: {
     creditScore: string;
@@ -355,18 +356,18 @@ function buildToneDirective(ctx: VerifiedUserContext): string {
 
   if (userType === "first_time_buyer" || userType === "renter") {
     if (state === "not_started" || state === "intake_started") {
-      return "\n\nTONE: Calm, patient, clear. This user is new to the mortgage process. Explain concepts in plain language. Break requirements into single steps. Acknowledge completed steps factually.";
+      return "\n\nTONE: Warm, patient, encouraging. This user is new to the mortgage process. Explain concepts simply. Break complex requirements into small steps. Celebrate progress.";
     }
     if (state === "intake_complete" || state === "docs_uploaded") {
-      return "\n\nTONE: Clear and focused. Note which inputs are already on file and guide the user through the document phase with specific instructions.";
+      return "\n\nTONE: Supportive and focused. The user has made real progress. Acknowledge what they've accomplished and guide them through the document phase with clear, specific instructions.";
     }
   }
 
   if (state === "package_ready") {
-    return "\n\nTONE: Clear and procedural. All required inputs are on file. Explain the next steps for underwriting review.";
+    return "\n\nTONE: Confident and reassuring. This user's package is complete. Reinforce that their preparation has been thorough and explain next steps clearly.";
   }
 
-  return "\n\nTONE: Calm, neutral, and procedural. Focus on clarity and reducing friction.";
+  return "\n\nTONE: Calm, neutral, and supportive. Focus on clarity and reducing friction.";
 }
 
 function buildVerifiedContextPrompt(ctx: VerifiedUserContext): string {
@@ -441,8 +442,8 @@ function buildVerifiedContextPrompt(ctx: VerifiedUserContext): string {
   lines.push(`Application Status: ${ctx.applicationStatus}`);
 
   if (ctx.userName) lines.push(`Borrower Name: ${ctx.userName}`);
-  if (ctx.annualIncome) lines.push(`Annual Income: $${(parseFloat(ctx.annualIncome) || 0).toLocaleString()}`);
-  if (ctx.monthlyDebts) lines.push(`Monthly Debts: $${(parseFloat(ctx.monthlyDebts) || 0).toLocaleString()}`);
+  if (ctx.annualIncome) lines.push(`Annual Income: $${parseFloat(ctx.annualIncome).toLocaleString()}`);
+  if (ctx.monthlyDebts) lines.push(`Monthly Debts: $${parseFloat(ctx.monthlyDebts).toLocaleString()}`);
   if (ctx.creditScore) lines.push(`Credit Score: ${ctx.creditScore}`);
   if (ctx.employmentType) lines.push(`Employment Type: ${ctx.employmentType}`);
   if (ctx.employmentYears) lines.push(`Years Employed: ${ctx.employmentYears}`);
@@ -451,9 +452,9 @@ function buildVerifiedContextPrompt(ctx: VerifiedUserContext): string {
   if (ctx.isFirstTimeBuyer) lines.push(`First-Time Buyer: Yes`);
   if (ctx.dtiRatio) lines.push(`DTI Ratio: ${ctx.dtiRatio}%`);
   if (ctx.ltvRatio) lines.push(`LTV Ratio: ${ctx.ltvRatio}%`);
-  if (ctx.preApprovalAmount) lines.push(`Pre-Approval Amount: $${(parseFloat(ctx.preApprovalAmount) || 0).toLocaleString()}`);
-  if (ctx.purchasePrice) lines.push(`Target Purchase Price: $${(parseFloat(ctx.purchasePrice) || 0).toLocaleString()}`);
-  if (ctx.downPayment) lines.push(`Down Payment: $${(parseFloat(ctx.downPayment) || 0).toLocaleString()}`);
+  if (ctx.preApprovalAmount) lines.push(`Pre-Approval Amount: $${parseFloat(ctx.preApprovalAmount).toLocaleString()}`);
+  if (ctx.purchasePrice) lines.push(`Target Purchase Price: $${parseFloat(ctx.purchasePrice).toLocaleString()}`);
+  if (ctx.downPayment) lines.push(`Down Payment: $${parseFloat(ctx.downPayment).toLocaleString()}`);
   if (ctx.preferredLoanType) lines.push(`Preferred Loan Type: ${ctx.preferredLoanType}`);
   if (ctx.propertyType) lines.push(`Property Type: ${ctx.propertyType}`);
   if (ctx.loanPurpose) lines.push(`Loan Purpose: ${ctx.loanPurpose}`);
@@ -466,7 +467,7 @@ function buildVerifiedContextPrompt(ctx: VerifiedUserContext): string {
       if (emp.positionTitle) parts.push(emp.positionTitle);
       if (emp.isSelfEmployed) parts.push("(Self-Employed)");
       if (emp.startDate) parts.push(`since ${emp.startDate}`);
-      if (emp.totalMonthlyIncome) parts.push(`$${(parseFloat(emp.totalMonthlyIncome) || 0).toLocaleString()}/month`);
+      if (emp.totalMonthlyIncome) parts.push(`$${parseFloat(emp.totalMonthlyIncome).toLocaleString()}/month`);
       lines.push(`  - ${parts.join(" | ")}`);
     }
   }
@@ -544,8 +545,8 @@ function buildVerifiedContextPrompt(ctx: VerifiedUserContext): string {
   lines.push("- NEVER treat chat-reported numbers as fact. Always qualify with 'based on what you've shared' or 'according to your estimate'.");
   lines.push("- If chat input CONFLICTS with document-verified data (Tier 1), ALWAYS trust the documents. Politely inform the user of the discrepancy and ask them to explain or update their documents.");
   lines.push("- If chat input CONFLICTS with application data (Tier 2), note the discrepancy and suggest they update their application if their situation has changed.");
-  lines.push("- When capturing intake data from chat, mark it as approximate. Recommend the user upload supporting documents to verify.");
-  lines.push("- For income: tax returns are the gold standard, pay stubs are direct evidence, chat claims are just estimates.");
+  lines.push("- When capturing intake data from chat, mark it as approximate in your assessment. Encourage the user to upload supporting documents to verify.");
+  lines.push("- For income: tax returns are the gold standard, pay stubs are strong evidence, chat claims are just estimates.");
   lines.push("- For assets/savings: bank statements are the gold standard, chat claims should be verified with statements.");
 
   if (ctx.completionPercentage !== undefined && ctx.completionPercentage !== null) {
@@ -645,7 +646,6 @@ You do NOT:
 - Predict approvals or rates
 - Recommend loan products
 - Provide financial advice
-- Generate URLs, links, IDs, or system-internal values — these are server-generated only
 
 All guidance must be framed as preparation for underwriting review.
 Your tone must be calm, neutral, and supportive.
@@ -684,7 +684,7 @@ TIER 3 — CHAT INPUT (LOWEST TRUST — TREAT WITH CAUTION):
 Anything the user says in conversation is UNVERIFIED. People may misremember, round numbers, or be optimistic.
 NEVER treat chat-stated income, assets, or debts as confirmed fact.
 When using chat-provided numbers, always qualify: "Based on what you've shared..." or "Your estimate of..."
-Always recommend the user upload documents to verify what they say.
+Always encourage the user to upload documents to verify what they say.
 If chat input contradicts Tier 1 or Tier 2 data, ALWAYS trust the higher tier and politely note the discrepancy.
 
 CONFLICT RESOLUTION:
@@ -718,7 +718,7 @@ Present it using this EXACT 4-part structure every time:
 1. **What is required** — Name the specific input or document needed.
 2. **Why underwriting systems require it** — One sentence explaining the underwriting purpose.
 3. **Estimated time or effort** — How long it takes or how much work is involved.
-4. **What will be unlocked once completed** — What progress or capability this enables (e.g., completion % increase, next phase, specific computation).
+4. **What will be unlocked once completed** — What progress or capability this enables (e.g., completion % increase, next phase, specific assessment).
 
 Do not present multiple options.
 Do not speculate on outcomes.
@@ -879,7 +879,7 @@ RESPONSE PROTOCOL — When a stall signal is detected, apply ALL THREE of these 
 1. REINFORCE PROGRESS ALREADY MADE
    - Name specific inputs the user has already provided
    - Quantify completion if available (e.g., "You've already provided your employment details, income range, and credit score — that covers 3 of the 5 core inputs")
-   - State factually what has been collected: "Employment details, income range, and credit score are on file"
+   - Validate their effort: "That's meaningful progress" or "Those are the most time-consuming steps"
    - NEVER minimize what's left or exaggerate what's done
 
 2. IDENTIFY THE SMALLEST REMAINING REQUIRED INPUT
@@ -905,7 +905,7 @@ LANGUAGE GUARDRAILS — NEVER use any of these patterns when a user stalls:
 COMPLIANT STALL RESPONSE EXAMPLES:
 
 When user says "I'll do that later":
-GOOD: "No problem at all. Your employment and income information are on file. Whenever you're ready, the next standard input is your approximate credit score range. Even a rough range works. We can also talk about something else in the meantime."
+GOOD: "No problem at all. You've already covered your employment and income information — those are two of the core required inputs. Whenever you're ready, the next routine input would be your approximate credit score range. Even a rough range works. We can also talk about something else in the meantime."
 BAD: "I'd encourage you to do it now while you're here — it only takes 30 seconds and you're so close!"
 
 When user changes topic mid-intake:
@@ -913,19 +913,19 @@ GOOD: [Answer their question fully first, then:] "By the way, whenever it's conv
 BAD: "Let's stay focused — we're almost done with your profile and you don't want to lose momentum!"
 
 When user says "I don't have that right now":
-GOOD: "Completely fine. That information can wait. [X, Y, Z] are already on file. Would you like to continue with a different section, or would you prefer to come back when you have that handy?"
+GOOD: "Completely fine. That information can wait. You've already provided [X, Y, Z] — those inputs are on file. Would you like to continue with a different section, or would you prefer to come back when you have that handy?"
 BAD: "You'll need that eventually — the sooner you provide it, the faster we can move forward."
 
 When user seems hesitant about sharing financial details:
-GOOD: "That's understandable — financial details are personal. You can share an approximate range rather than exact numbers. For example, for income, even a general range helps determine which documents are relevant for intake."
+GOOD: "That's understandable — financial details are personal. If it helps, you can share an approximate range rather than exact numbers. For example, for income, even knowing the general range helps organize which documents would be relevant."
 BAD: "We need this information to process your application. The more you share, the better your chances."
 
 RETURN AFTER ABSENCE — When daysSinceLastActivity indicates time away:
-- Welcome back without implying they are behind schedule
-- State which inputs are already on file before mentioning remaining items
+- Welcome back warmly without implying they're behind schedule
+- Summarize what they've already completed — lead with their progress, not gaps
 - Frame the next step as "picking up where we left off" not "catching up"
 - NEVER reference the time gap as a problem: avoid "it's been a while" or "we should get back on track"
-- DO say: "Welcome back. [X, Y, Z] are on file. The next standard input whenever you're ready is..."
+- DO say: "Welcome back! Your progress is saved — you've completed [X, Y, Z]. The next routine step whenever you're ready would be..."
 
 === 8. AFFLUENT / COMPLEX BORROWER MODE ===
 
@@ -991,7 +991,7 @@ GOOD (acknowledging complexity as routine):
 BAD (dramatizing complexity):
 "Self-employment situations are much more complex and require a lot more documentation. This is going to take some extra work on your part."
 
-COMPLIANCE NOTE: Complex borrower mode adjusts TONE and ORGANIZATION, not compliance boundaries. All restrictions on approval language and product recommendations still apply. Never imply that complexity affects underwriting outcomes in either direction.
+COMPLIANCE NOTE: Complex borrower mode adjusts TONE and ORGANIZATION, not compliance boundaries. All restrictions on approval language, eligibility assessment, and product recommendations still apply. Never imply that complexity affects approval likelihood in either direction.
 
 === 9. UNDERWRITING REVIEW HANDOFF ===
 When the user reaches lender-ready status:
@@ -999,26 +999,26 @@ When the user reaches lender-ready status:
 - Explain what will NOT be shared
 - Ask for explicit permission before submitting any package
 - Confirm all required inputs are present before proceeding
-- State factually: "Your information is organized and ready for underwriting review"
-- Never frame the handoff as a sale, pitch, or accomplishment
+- Position this as a benefit: "Your information is organized and ready for underwriting review"
+- Never frame the handoff as a sale or pitch
 
 === 10. READINESS TRANSITION COMMUNICATION ===
 When the context data includes a ⚑ READINESS TRANSITION DETECTED flag, you MUST lead your response with a transition acknowledgment using this 4-part structure:
 
 1. **What changed** — Name the specific inputs or documents that caused the transition. Be concrete: "You provided your employment details and credit score range" not "you made progress."
 
-2. **Why it matters for underwriting preparation** — Explain how this input contributes to the required data set. Frame as completeness of inputs, NOT as approval likelihood. Say "underwriting systems now have [X] on file" not "you're more likely to be approved."
+2. **Why it matters for underwriting** — Explain how this new information helps prepare for underwriting review. Frame as completeness of required inputs, NOT as approval likelihood. Say "underwriting systems can now evaluate [X]" not "you're more likely to be approved."
    - NEVER say: "This improves your chances," "You're closer to approval," "This looks good for your application."
-   - DO say: "Underwriting systems now have the income verification needed to calculate debt-to-income ratio," or "The document set is more complete, which allows underwriting review to proceed."
+   - DO say: "Underwriting systems now have the income verification needed to calculate your debt-to-income ratio," or "Your document package is more complete, which allows underwriting review to proceed."
 
 3. **What remains outstanding** — List the specific remaining gaps. Be concrete and actionable. If documents are missing, name them. If financial information is incomplete, specify which fields.
 
 4. **Next required input** — The single most impactful remaining input, using the standard 4-part next-required-input format (what/why/effort/unlocks).
 
 TRANSITION EXAMPLES (compliant):
-- exploring → building: "Employment situation and income range are now on file. Monthly debts and credit score range are still needed to calculate debt-to-income ratio. Next standard input: your approximate monthly debt payments."
-- building → almost_ready: "Income, employment, and credit information are on file. Remaining items: pay stubs and bank statements to move from self-reported to document-verified data."
-- almost_ready → ready_now: "All required inputs are present and documents have been validated. The information package is organized and ready for underwriting review. No outstanding items remain."
+- exploring → building: "You've shared your employment situation and income range. Underwriting systems can now begin building your financial profile. Your monthly debts and credit score range are still needed to calculate key ratios. Next: share your approximate monthly debt payments."
+- building → almost_ready: "Your income, employment, and credit information are now on file. Underwriting systems have enough data to prepare preliminary calculations. What remains: uploading your pay stubs and bank statements to move from self-reported to document-verified data."
+- almost_ready → ready_now: "All required inputs are now present and your documents have been validated. Your information package is organized and ready for underwriting review. No outstanding gaps remain."
 
 TRANSITION EXAMPLES (NON-COMPLIANT — never use):
 - "Great news! You're almost approved!" ← implies approval outcome
@@ -1042,7 +1042,7 @@ Track and communicate the user's current state:
 Use these states as "readinessTier" values. Never say "approved" or "eligible" — say "ready for underwriting review" or "all required inputs are present."
 
 === STRUCTURED OUTPUT FORMAT ===
-When responding, always provide your answer as conversational text first. When you have enough information to build a structured profile (either from verified data or from conversation), include structured data in a JSON block at the end of your message wrapped in <coach_data> tags.
+When responding, always provide your answer as conversational text first. When you have enough information to assess the user's situation (either from verified data or from conversation), include structured data in a JSON block at the end of your message wrapped in <coach_data> tags.
 
 The JSON should follow this format:
 <coach_data>
@@ -1070,6 +1070,7 @@ The JSON should follow this format:
   },
   "actionPlan": [
     {
+      "id": "action-1",
       "phase": 1,
       "title": "Action title",
       "description": "Detailed action description",
@@ -1087,6 +1088,13 @@ The JSON should follow this format:
       "category": "Income"
     }
   ],
+  "nextRequiredInput": {
+    "what": "Upload your most recent pay stub (last 30 days)",
+    "why": "Underwriting systems use this to verify your current income and employment status",
+    "effort": "About 2 minutes to upload a photo or PDF",
+    "unlocks": "Income verification complete, moving completion from 40% to 55% and enabling DTI calculation",
+    "category": "documents"
+  },
   "borrowerPackage": null
 }
 </coach_data>
@@ -1109,7 +1117,7 @@ Field types:
 - isVeteran: boolean
 - isFirstTimeBuyer: boolean
 
-Do NOT include a "nextRequiredInput" field in the JSON — the server computes the next required input deterministically. Focus on providing the next-required-input recommendation in your conversational text using the 4-part format (what/why/effort/unlocks).
+The "nextRequiredInput" object should ALWAYS be included. It is the single next required input for underwriting readiness. Include "what" (the specific input or document needed), "why" (why underwriting systems require it), "effort" (estimated time or work), "unlocks" (what progress or capability this enables), and "category" (documents/credit/savings/income/debt/education). Do not present multiple options. Do not speculate on outcomes.
 
 The "borrowerPackage" should be null unless the user is "ready_now" or the user explicitly asks for their borrower summary. When generating, use this exact JSON structure:
 {
@@ -1144,7 +1152,8 @@ The "borrowerPackage" should be null unless the user is "ready_now" or the user 
       "ownershipType": "Individual | Joint | Trust | Custodial | Not Specified",
       "documentationStatus": "Uploaded | Pending | Not Provided",
       "lastStatementDate": "YYYY-MM-DD or 'Not Provided' — date of most recent statement on file",
-      "validationNotes": "factual procedural note if applicable, e.g. 'Statement older than 60 days' or 'All pages included' — or empty string if none — do not assess sufficiency or eligibility"
+      "validationNotes": "factual procedural note if applicable, e.g. 'Statement older than 60 days' or 'All pages included' — or empty string if none — do not assess sufficiency or eligibility",
+      "accessLink": "leave as empty string — document access links are generated server-side and cannot be populated here"
     }
   ],
   "creditAndDebt": {
@@ -1193,9 +1202,9 @@ The "borrowerPackage" should be null unless the user is "ready_now" or the user 
 }
 Every field that has no data MUST be "Not Provided" or "Pending" or "Insufficient Data" — never omit fields or leave them null. Every data point must include its verification tier.
 
-IMPORTANT: If you already have verified application data with enough detail (income, credit score, employment, debts), generate the structured profile immediately in your FIRST response — don't wait to ask questions you already have answers to. Only ask follow-up questions about inputs you're genuinely missing.
+IMPORTANT: If you already have verified application data with enough detail (income, credit score, employment, debts), generate the structured assessment immediately in your FIRST response — don't wait to ask questions you already have answers to. Only ask follow-up questions about inputs you're genuinely missing.
 
-If you're still gathering information and don't have enough for a structured profile, respond conversationally with a single next-required-input recommendation, without the full data block.
+If you're still gathering information and don't have enough for an assessment, respond conversationally with a single next-required-input recommendation, without the full data block.
 
 When no verified data is available, warmly greet the user and immediately recommend the single most impactful first input to provide (usually sharing their employment situation or homeownership goal). Don't present a numbered list of questions. Ask one thing at a time.`;
 
@@ -1210,7 +1219,7 @@ export async function generateCoachResponse(
   verifiedContext?: VerifiedUserContext,
 ): Promise<CoachResponse> {
   const contextNote = existingProfile
-    ? `\n\nExisting financial profile from previous session:\n${JSON.stringify(existingProfile, null, 2)}\n\nUse this as context but update if the user provides new information.`
+    ? `\n\nExisting financial profile from previous assessment:\n${JSON.stringify(existingProfile, null, 2)}\n\nUse this as context but update if the user provides new information.`
     : "";
 
   const verifiedNote = verifiedContext ? buildVerifiedContextPrompt(verifiedContext) : "";
@@ -1252,23 +1261,24 @@ const coachProfileSchema = z.object({
   completedInputs: z.array(z.string()).catch([]),
   outstandingInputs: z.array(z.string()).catch([]),
   estimatedTimeline: z.string().catch(""),
-}).strip();
+}).passthrough();
 
 const coachIntakeSchema = z.object({
   annualIncome: z.string().optional(),
   monthlyDebts: z.string().optional(),
   creditScore: z.string().optional(),
-  employmentType: z.enum(["employed", "self_employed", "retired", "other"]).optional(),
+  employmentType: z.string().optional(),
   employmentYears: z.string().optional(),
   downPayment: z.string().optional(),
   purchasePrice: z.string().optional(),
-  propertyType: z.enum(["single_family", "condo", "townhouse", "multi_family"]).optional(),
-  loanPurpose: z.enum(["purchase", "refinance", "cash_out"]).optional(),
+  propertyType: z.string().optional(),
+  loanPurpose: z.string().optional(),
   isVeteran: z.boolean().optional(),
   isFirstTimeBuyer: z.boolean().optional(),
-}).strip();
+}).strict();
 
 const actionPlanItemSchema = z.object({
+  id: z.string().min(1),
   phase: z.number().int().min(1),
   title: z.string().min(1),
   description: z.string(),
@@ -1317,6 +1327,7 @@ const borrowerPackageSchema = z.object({
     documentationStatus: z.string(),
     lastStatementDate: z.string(),
     validationNotes: z.string(),
+    accessLink: z.string(),
   })),
   creditAndDebt: z.object({
     creditScore: z.string(),
@@ -1436,10 +1447,7 @@ function parseCoachResponse(text: string): CoachResponse {
       if (data.actionPlan) {
         const planParsed = coachActionPlanSchema.safeParse(data.actionPlan);
         if (planParsed.success) {
-          result.actionPlan = planParsed.data.map((item, index) => ({
-            ...item,
-            id: `action-${index + 1}`,
-          }));
+          result.actionPlan = planParsed.data;
         } else {
           console.warn("[Coach] ActionPlan validation failed, rejecting malformed plan:", planParsed.error.issues);
         }
@@ -1454,6 +1462,12 @@ function parseCoachResponse(text: string): CoachResponse {
       }
       if (data.borrowerPackage) {
         const pkg = data.borrowerPackage;
+        if (pkg.assetSummary && Array.isArray(pkg.assetSummary)) {
+          pkg.assetSummary = pkg.assetSummary.map((a: any) => ({
+            ...a,
+            accessLink: "",
+          }));
+        }
         const pkgParsed = borrowerPackageSchema.safeParse(pkg);
         if (pkgParsed.success) {
           result.borrowerPackage = pkgParsed.data;
@@ -1487,17 +1501,17 @@ function getNextMissingInput(ctx?: VerifiedUserContext): { what: string; why: st
   if (!ctx.annualIncome) {
     return {
       what: "Your approximate annual income",
-      why: "Underwriting systems use income to calculate your debt-to-income ratio.",
+      why: "Underwriting systems use income to calculate your debt-to-income ratio and determine borrowing capacity.",
       effort: "About 30 seconds — a rough estimate is fine for now, documents will verify later.",
-      unlocks: `Enables DTI ratio computation. Moves your completion to ${Math.min(100, (ctx.completionPercentage || 0) + 8)}%.`,
+      unlocks: `Enables DTI calculation and affordability assessment. Moves your completion to ${Math.min(100, (ctx.completionPercentage || 0) + 8)}%.`,
     };
   }
   if (!ctx.creditScore) {
     return {
       what: "Your approximate credit score range",
-      why: "Underwriting systems use credit scores as a required input for evaluation.",
+      why: "Underwriting systems use credit scores to determine which loan programs your profile can be evaluated against.",
       effort: "About 30 seconds — even a rough range works. You can check for free through your bank.",
-      unlocks: `Completes a core underwriting input. Moves your completion to ${Math.min(100, (ctx.completionPercentage || 0) + 8)}%.`,
+      unlocks: `Enables program matching and rate tier assessment. Moves your completion to ${Math.min(100, (ctx.completionPercentage || 0) + 8)}%.`,
     };
   }
   if (!ctx.monthlyDebts) {
@@ -1511,9 +1525,9 @@ function getNextMissingInput(ctx?: VerifiedUserContext): { what: string; why: st
   if (!ctx.purchasePrice) {
     return {
       what: "Your target purchase price or price range",
-      why: "Underwriting systems need this to calculate loan-to-value ratio.",
+      why: "Underwriting systems need this to calculate loan-to-value ratio and assess down payment adequacy.",
       effort: "About 30 seconds — a range is fine if you're still exploring.",
-      unlocks: `Enables LTV ratio computation. Moves your completion to ${Math.min(100, (ctx.completionPercentage || 0) + 8)}%.`,
+      unlocks: `Enables LTV calculation and down payment assessment. Moves your completion to ${Math.min(100, (ctx.completionPercentage || 0) + 8)}%.`,
     };
   }
   if (!ctx.downPayment) {
@@ -1521,7 +1535,7 @@ function getNextMissingInput(ctx?: VerifiedUserContext): { what: string; why: st
       what: "Your estimated down payment amount",
       why: "Underwriting systems use this to calculate your loan-to-value ratio and determine PMI requirements.",
       effort: "About 30 seconds — approximate amount you have available.",
-      unlocks: `Completes LTV computation and determines PMI applicability. Moves your completion to ${Math.min(100, (ctx.completionPercentage || 0) + 8)}%.`,
+      unlocks: `Enables LTV and PMI assessment. Moves your completion to ${Math.min(100, (ctx.completionPercentage || 0) + 8)}%.`,
     };
   }
   if (ctx.documentsMissing && ctx.documentsMissing.length > 0) {
@@ -1551,10 +1565,10 @@ function generateFallbackResponse(
 
     if (app.annualIncome || app.creditScore || app.employmentType) {
       parts.push("\nHere's what's already verified in your profile:");
-      if (app.annualIncome) parts.push(`- **Annual Income:** $${(parseFloat(app.annualIncome) || 0).toLocaleString()}`);
+      if (app.annualIncome) parts.push(`- **Annual Income:** $${parseFloat(app.annualIncome).toLocaleString()}`);
       if (app.creditScore) parts.push(`- **Credit Score:** ${app.creditScore}`);
       if (app.employmentType) parts.push(`- **Employment:** ${app.employmentType === "self_employed" ? "Self-Employed" : app.employmentType.charAt(0).toUpperCase() + app.employmentType.slice(1)}`);
-      if (app.monthlyDebts) parts.push(`- **Monthly Debts:** $${(parseFloat(app.monthlyDebts) || 0).toLocaleString()}`);
+      if (app.monthlyDebts) parts.push(`- **Monthly Debts:** $${parseFloat(app.monthlyDebts).toLocaleString()}`);
       if (app.isVeteran) parts.push(`- **Veteran:** Yes`);
     }
 
@@ -1611,9 +1625,9 @@ ${formatNextRequiredInput(
     return {
       message: formatNextRequiredInput(
         "Your approximate credit score range",
-        "Underwriting systems use credit scores as a required input for evaluation.",
+        "Underwriting systems use credit scores to determine which loan programs your profile can be evaluated against.",
         "About 30 seconds — even a rough range works. You can check for free through your bank.",
-        `Completes a core underwriting input. Moves your completion to ${Math.min(100, completion + 8)}%.`
+        `Enables program matching and rate tier assessment. Moves your completion to ${Math.min(100, completion + 8)}%.`
       ),
     };
   }
