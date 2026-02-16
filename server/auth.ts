@@ -32,7 +32,8 @@ declare global {
   }
 }
 
-const isProduction = !!process.env.REPL_DEPLOYMENT;
+const isProduction =
+  process.env.NODE_ENV === "production" || !!process.env.REPL_DEPLOYMENT;
 
 export async function setupAuth(app: Express) {
   await setupOIDCAuth(app);
