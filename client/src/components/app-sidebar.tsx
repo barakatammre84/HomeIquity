@@ -17,31 +17,25 @@ import {
   SidebarHeader,
 } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { isStaffRole } from "@shared/schema";
 import {
   LayoutDashboard,
   FileText,
   CheckSquare,
-  BookOpen,
   Upload,
   Users,
   LogOut,
-  Clipboard,
   GitBranch,
   Shield,
-  FolderOpen,
   Home,
   DollarSign,
-  Building,
   Percent,
   PenSquare,
   Star,
   Calculator,
   Link2,
   BarChart3,
-  Handshake,
   Scale,
   ChevronDown,
   ChevronRight,
@@ -50,21 +44,12 @@ import {
   ListTodo,
   HelpCircle,
   GraduationCap,
-  AlertCircle,
   Rocket,
-  Fingerprint,
   PiggyBank,
-  Palette,
   ClipboardList,
-  AlertTriangle,
-  Calendar,
-  Target,
-  Clock,
-  HomeIcon,
-  TrendingUp,
+  Palette,
 } from "lucide-react";
 
-// Team member interface
 interface TeamMember {
   id: string;
   name: string;
@@ -75,7 +60,6 @@ interface TeamMember {
   presenceStatus: 'online' | 'away' | 'offline';
 }
 
-// Get presence status color
 function getStatusColor(status: string) {
   switch (status) {
     case "online": return "text-emerald-500";
@@ -84,7 +68,6 @@ function getStatusColor(status: string) {
   }
 }
 
-// Role display names for the sidebar
 const ROLE_DISPLAY_NAMES: Record<string, string> = {
   admin: "Tech/Ops Lead",
   lo: "Loan Officer",
@@ -94,27 +77,21 @@ const ROLE_DISPLAY_NAMES: Record<string, string> = {
   closer: "Closer/Funder",
 };
 
-// Expected team roles for a complete loan team
-const EXPECTED_TEAM_ROLES = ["lo", "processor", "underwriter", "closer"];
-
-// Client navigation - for Aspiring Owners and Active Buyers
 const aspiringOwnerNavigation = [
   {
-    section: "Explore Homeownership",
+    section: "Explore",
     items: [
       { title: "Overview", href: "/dashboard", icon: LayoutDashboard, testId: "link-borrower-dashboard" },
       { title: "My Journey", href: "/onboarding", icon: Rocket, testId: "link-onboarding" },
-      { title: "Gap to Homeownership", href: "/gap-calculator", icon: Calculator, testId: "link-gap-calculator" },
       { title: "Browse Properties", href: "/properties", icon: Home, testId: "link-properties" },
+      { title: "Messages", href: "/messages", icon: MessageCircle, testId: "link-messages", showMessageBadge: true },
     ],
   },
   {
     section: "Get Ready",
     items: [
       { title: "Pre-Approval", href: "/apply", icon: Star, testId: "link-pre-approval" },
-      { title: "Identity Verification", href: "/identity-verification", icon: Fingerprint, testId: "link-identity-verification" },
-      { title: "Accelerator Program", href: "/accelerator", icon: Target, testId: "link-accelerator" },
-      { title: "First-Time Buyer Hub", href: "/first-time-buyer", icon: GraduationCap, testId: "link-first-time-buyer" },
+      { title: "Gap Calculator", href: "/gap-calculator", icon: Calculator, testId: "link-gap-calculator" },
       { title: "Down Payment Help", href: "/down-payment-wizard", icon: PiggyBank, testId: "link-dpa-wizard" },
     ],
   },
@@ -125,56 +102,39 @@ const activeBuyerNavigation = [
     section: "My Mortgage",
     items: [
       { title: "Overview", href: "/dashboard", icon: LayoutDashboard, testId: "link-borrower-dashboard" },
-      { title: "My Journey", href: "/onboarding", icon: Rocket, testId: "link-onboarding" },
       { title: "Tasks", href: "/tasks", icon: CheckSquare, testId: "link-tasks", showBadge: true },
-      { title: "Identity Verification", href: "/identity-verification", icon: Fingerprint, testId: "link-identity-verification" },
-      { title: "Verification", href: "/verification", icon: Shield, testId: "link-verification" },
-    ],
-  },
-  {
-    section: "My Files",
-    items: [
-      { title: "My Application", href: "/application-summary", icon: FileText, testId: "link-application-summary" },
       { title: "Documents", href: "/documents", icon: Upload, testId: "link-documents" },
-      { title: "URLA Form", href: "/urla-form", icon: Clipboard, testId: "link-urla-form" },
+      { title: "Messages", href: "/messages", icon: MessageCircle, testId: "link-messages", showMessageBadge: true },
     ],
   },
   {
-    section: "Homeowner Tools",
+    section: "Progress",
     items: [
-      { title: "Homeowner Dashboard", href: "/homeowner-dashboard", icon: HomeIcon, testId: "link-homeowner-dashboard" },
-      { title: "Accelerator Program", href: "/accelerator", icon: Target, testId: "link-accelerator-buyer" },
+      { title: "My Journey", href: "/onboarding", icon: Rocket, testId: "link-onboarding" },
+      { title: "My Application", href: "/application-summary", icon: FileText, testId: "link-application-summary" },
+      { title: "Verification", href: "/verification", icon: Shield, testId: "link-verification" },
     ],
   },
 ];
 
 const staffNavigation = [
   {
-    section: "Staff Dashboard",
+    section: "Operations",
     items: [
       { title: "Overview", href: "/staff-dashboard", icon: LayoutDashboard, testId: "link-staff-overview" },
       { title: "Pipeline Queue", href: "/pipeline-queue", icon: GitBranch, testId: "link-pipeline-queue" },
       { title: "Task Operations", href: "/task-operations", icon: ListTodo, testId: "link-task-operations" },
       { title: "Analytics", href: "/analytics", icon: BarChart3, testId: "link-analytics" },
+      { title: "Messages", href: "/messages", icon: MessageCircle, testId: "link-messages", showMessageBadge: true },
+    ],
+  },
+  {
+    section: "Partners",
+    items: [
       { title: "Broker Dashboard", href: "/broker-dashboard", icon: DollarSign, testId: "link-broker-dashboard" },
-      { title: "Invite Clients", href: "/invite-clients", icon: Link2, testId: "link-invite-clients" },
-    ],
-  },
-  {
-    section: "Realtor Revenue Engine",
-    items: [
       { title: "Client Pipeline", href: "/agent-pipeline", icon: ClipboardList, testId: "link-agent-pipeline" },
-      { title: "Scenario Calculator", href: "/scenario-desk", icon: Calculator, testId: "link-scenario-desk" },
-      { title: "Deal Rescue", href: "/deal-rescue", icon: AlertTriangle, testId: "link-deal-rescue" },
-      { title: "Strategy Sessions", href: "/strategy-sessions", icon: Calendar, testId: "link-strategy-sessions" },
-      { title: "Closing Guarantee", href: "/closing-guarantee", icon: Clock, testId: "link-closing-guarantee" },
-    ],
-  },
-  {
-    section: "Partner Services",
-    items: [
-      { title: "Order Services", href: "/partner-services", icon: Handshake, testId: "link-partner-services" },
-      { title: "Co-Branding Portal", href: "/co-branding", icon: Palette, testId: "link-co-branding" },
+      { title: "Invite Clients", href: "/invite-clients", icon: Link2, testId: "link-invite-clients" },
+      { title: "Co-Branding", href: "/co-branding", icon: Palette, testId: "link-co-branding" },
     ],
   },
   {
@@ -199,13 +159,13 @@ const adminNavigation = [
   },
 ];
 
-// Navigation item type for proper typing
 interface NavItem {
   title: string;
   href: string;
   icon: ComponentType<{ className?: string }>;
   testId: string;
   showBadge?: boolean;
+  showMessageBadge?: boolean;
 }
 
 interface NavSection {
@@ -217,41 +177,39 @@ export function AppSidebar() {
   const [location] = useLocation();
   const { user } = useAuth();
   const [isHelpExpanded, setIsHelpExpanded] = useState(false);
-  
-  // Fetch team members from API with presence (refresh every 30s)
+
   const { data: teamMembers = [] } = useQuery<TeamMember[]>({
     queryKey: ["/api/team-members"],
     enabled: !!user,
     refetchInterval: 30000,
   });
-  
-  // Fetch unread message count
+
   const { data: unreadData } = useQuery<{ count: number }>({
     queryKey: ["/api/messages/unread/count"],
     enabled: !!user,
     refetchInterval: 10000,
   });
-  
+
   const unreadCount = unreadData?.count || 0;
 
-  const isActive = (href: string) => location === href;
-  
-  // Use the isStaffRole helper from schema
+  const isActive = (href: string) => {
+    if (href === "/messages") return location === href || location.startsWith("/messages/");
+    return location === href;
+  };
+
   const userRole = user?.role || "";
   const isStaff = isStaffRole(userRole);
   const isAdmin = userRole === "admin";
   const isAspiringOwner = userRole === "aspiring_owner";
-  
-  // Fetch pending task count for borrowers
+
   const { data: pendingTasksData } = useQuery<{ pendingCount: number }>({
     queryKey: ["/api/task-engine/my-tasks/pending-count"],
     enabled: !!user && !isStaff,
     refetchInterval: 30000,
   });
-  
+
   const pendingTaskCount = pendingTasksData?.pendingCount || 0;
 
-  // Select appropriate navigation based on role
   let navigation: NavSection[];
   if (isStaff) {
     navigation = staffNavigation;
@@ -260,26 +218,21 @@ export function AppSidebar() {
   } else {
     navigation = activeBuyerNavigation;
   }
-  
+
   const isBroker = userRole === "broker";
   const isLender = userRole === "lender";
-  
+
   const portalLabel = isAdmin
     ? "Admin Portal"
     : isBroker
       ? "Broker Portal"
       : isLender
         ? "Lender Portal"
-        : isStaff 
-          ? "Staff Portal" 
-          : isAspiringOwner 
-            ? "Aspiring Owner" 
+        : isStaff
+          ? "Staff Portal"
+          : isAspiringOwner
+            ? "Aspiring Owner"
             : "Active Buyer";
-
-  // Check which team roles are missing
-  const assignedRoles = teamMembers.map(m => m.role);
-  const missingRoles = EXPECTED_TEAM_ROLES.filter(role => !assignedRoles.includes(role));
-  const hasMissingTeamMembers = missingRoles.length > 0;
 
   return (
     <Sidebar>
@@ -306,6 +259,11 @@ export function AppSidebar() {
                         {item.showBadge && pendingTaskCount > 0 && (
                           <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 px-1.5 text-xs font-medium text-white" data-testid="badge-pending-tasks">
                             {pendingTaskCount > 99 ? '99+' : pendingTaskCount}
+                          </span>
+                        )}
+                        {item.showMessageBadge && unreadCount > 0 && (
+                          <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-medium text-primary-foreground" data-testid="badge-unread-count">
+                            {unreadCount > 99 ? '99+' : unreadCount}
                           </span>
                         )}
                       </Link>
@@ -336,50 +294,21 @@ export function AppSidebar() {
             </SidebarGroupContent>
           </SidebarGroup>
         ))}
-
-        {/* Messages Section */}
-        <SidebarGroup>
-          <SidebarGroupLabel>Communication</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isActive("/messages") || location.startsWith("/messages/")}>
-                  <Link href="/messages" className="cursor-pointer" data-testid="link-messages">
-                    <MessageCircle className="h-4 w-4" />
-                    <span>Messages</span>
-                    {unreadCount > 0 && (
-                      <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-medium text-primary-foreground" data-testid="badge-unread-count">
-                        {unreadCount > 99 ? '99+' : unreadCount}
-                      </span>
-                    )}
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
       </SidebarContent>
 
       <SidebarFooter>
-        {/* Help & Learn section for clients with team dropdown */}
         {!isStaff && (
           <SidebarGroup>
             <SidebarGroupContent>
               <SidebarMenu>
-                {/* Help with Team Dropdown */}
                 <SidebarMenuItem>
-                  <SidebarMenuButton 
+                  <SidebarMenuButton
                     onClick={() => setIsHelpExpanded(!isHelpExpanded)}
                     data-testid="button-help-toggle"
                   >
                     <HelpCircle className="h-4 w-4" />
-                    <span>Help</span>
-                    <div className="ml-auto flex items-center gap-1.5">
-                      {hasMissingTeamMembers && (
-                        <Badge variant="outline" className="text-xs text-amber-600 border-amber-300 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-700" data-testid="badge-help-incomplete">
-                          Incomplete
-                        </Badge>
-                      )}
+                    <span>Your Team</span>
+                    <div className="ml-auto">
                       {isHelpExpanded ? (
                         <ChevronDown className="h-4 w-4" />
                       ) : (
@@ -389,15 +318,12 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                   {isHelpExpanded && (
                     <SidebarMenuSub>
-                      <SidebarMenuSubItem>
-                        <div className="px-2 py-1.5 text-xs text-muted-foreground font-medium">Your Team</div>
-                      </SidebarMenuSubItem>
                       {teamMembers.length > 0 ? (
                         teamMembers.map((member) => (
                           <SidebarMenuSubItem key={member.id}>
                             <SidebarMenuSubButton asChild>
-                              <Link 
-                                href={`/messages/${member.id}`} 
+                              <Link
+                                href={`/messages/${member.id}`}
                                 className="cursor-pointer flex items-center gap-2"
                                 data-testid={`link-help-team-${member.id}`}
                               >
@@ -407,7 +333,7 @@ export function AppSidebar() {
                                       {member.initials}
                                     </AvatarFallback>
                                   </Avatar>
-                                  <Circle 
+                                  <Circle
                                     className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 fill-current ${getStatusColor(member.presenceStatus)}`}
                                   />
                                 </div>
@@ -421,45 +347,15 @@ export function AppSidebar() {
                         ))
                       ) : (
                         <SidebarMenuSubItem>
-                          <div className="px-2 py-2 flex items-center gap-2 text-sm text-muted-foreground">
-                            <AlertCircle className="h-4 w-4 text-amber-500" />
-                            <span>No team assigned yet</span>
+                          <div className="px-2 py-2 text-sm text-muted-foreground">
+                            No team assigned yet
                           </div>
                         </SidebarMenuSubItem>
                       )}
-                      {missingRoles.length > 0 && teamMembers.length > 0 && (
-                        <>
-                          <SidebarMenuSubItem>
-                            <div className="px-2 py-1.5 text-xs text-muted-foreground font-medium border-t mt-1 pt-2">Pending Assignment</div>
-                          </SidebarMenuSubItem>
-                          {missingRoles.map((role) => (
-                            <SidebarMenuSubItem key={role}>
-                              <div className="px-2 py-1.5 flex items-center gap-2 text-sm text-muted-foreground">
-                                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-muted">
-                                  <AlertCircle className="h-3.5 w-3.5 text-amber-500" />
-                                </div>
-                                <span>{ROLE_DISPLAY_NAMES[role] || role}</span>
-                                <Badge variant="outline" className="ml-auto text-[10px] text-amber-600 border-amber-300">
-                                  TBD
-                                </Badge>
-                              </div>
-                            </SidebarMenuSubItem>
-                          ))}
-                        </>
-                      )}
-                      <SidebarMenuSubItem>
-                        <SidebarMenuSubButton asChild>
-                          <Link href="/staff" className="cursor-pointer" data-testid="link-contact-staff">
-                            <Users className="h-4 w-4" />
-                            <span>Contact Staff</span>
-                          </Link>
-                        </SidebarMenuSubButton>
-                      </SidebarMenuSubItem>
                     </SidebarMenuSub>
                   )}
                 </SidebarMenuItem>
 
-                {/* Learn - Links to Resources page */}
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild isActive={isActive("/resources")}>
                     <Link href="/resources" className="cursor-pointer" data-testid="link-learn">

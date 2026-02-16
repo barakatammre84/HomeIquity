@@ -13,7 +13,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { BorrowerRequests } from "@/components/BorrowerRequests";
 import { ApplicationSwitcher } from "@/components/ApplicationSwitcher";
 import { JourneyTracker } from "@/components/JourneyTracker";
-import { HomeReadinessPassport } from "@/components/HomeReadinessPassport";
 import { isStaffRole } from "@shared/schema";
 import type { LoanApplication, DealActivity } from "@shared/schema";
 import {
@@ -32,12 +31,10 @@ import {
   Users,
   Download,
   Loader2,
-  Calculator,
   AlertTriangle,
   AlertCircle,
   ChevronDown,
   ChevronUp,
-  BookOpen,
   MessageCircle,
   Shield,
   Target,
@@ -533,40 +530,6 @@ function FinancialSnapshot({ graph }: { graph: BorrowerGraphData }) {
   );
 }
 
-function QuietToolsGrid({ application }: { application: LoanApplication | null }) {
-  const tools = [
-    { icon: Home, label: "Listings", href: "/properties", testId: "tool-listings" },
-    { icon: Bot, label: "Coach", href: "/ai-coach", testId: "tool-coach" },
-    { icon: Calculator, label: "Calculators", href: "/calculators/affordability", testId: "tool-calculators" },
-    { icon: BookOpen, label: "Learn", href: "/learn", testId: "tool-learn" },
-  ];
-
-  if (application) {
-    tools.push({ icon: FileText, label: "Documents", href: "/documents", testId: "tool-documents" });
-    tools.push({ icon: MessageCircle, label: "Messages", href: "/messages", testId: "tool-messages" });
-  }
-
-  return (
-    <div className="space-y-3" data-testid="section-tools">
-      <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-        Tools
-      </h3>
-      <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-        {tools.map((tool) => (
-          <Link key={tool.testId} href={tool.href} data-testid={`link-${tool.testId}`}>
-            <Card className="hover-elevate">
-              <CardContent className="p-3 flex flex-col items-center gap-1.5 text-center">
-                <tool.icon className="h-4 w-4 text-muted-foreground" />
-                <span className="text-[11px] font-medium text-muted-foreground">{tool.label}</span>
-              </CardContent>
-            </Card>
-          </Link>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 function CollapsibleInsights({
   application,
   activities,
@@ -964,12 +927,6 @@ export default function Dashboard() {
           <PreQualLetterCard applicationId={activeApplication.id} />
         )}
 
-        {/* Section 3: Tools (quiet, secondary) */}
-        <QuietToolsGrid application={activeApplication || null} />
-
-        {/* Home Readiness Passport - powered by Borrower Graph */}
-        <HomeReadinessPassport />
-
         {/* Financial Snapshot - powered by Borrower Graph */}
         {borrowerGraph && !graphError && (
           <FinancialSnapshot graph={borrowerGraph} />
@@ -989,83 +946,7 @@ export default function Dashboard() {
           />
         )}
 
-        {/* New user: minimal onboarding */}
-        {!activeApplication && (
-          <NewUserOnboarding
-            userName={user?.firstName || undefined}
-            hasCoachSession={hasCoachSession}
-            hasBrowsedProperties={browsedProperties}
-            hasApplication={applications.length > 0}
-          />
-        )}
-
       </div>
-    </div>
-  );
-}
-
-function NewUserOnboarding({
-  userName,
-  hasCoachSession,
-  hasBrowsedProperties,
-  hasApplication,
-}: {
-  userName?: string;
-  hasCoachSession: boolean;
-  hasBrowsedProperties: boolean;
-  hasApplication: boolean;
-}) {
-  const steps = [
-    { done: hasCoachSession, icon: Bot, label: "Chat with AI Coach", href: "/ai-coach" },
-    { done: hasBrowsedProperties, icon: Home, label: "Browse properties", href: "/properties" },
-    { done: hasApplication, icon: FileText, label: "Start pre-approval", href: "/apply" },
-  ];
-
-  const completedCount = steps.filter(s => s.done).length;
-
-  return (
-    <div className="space-y-3" data-testid="section-onboarding">
-      <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-        Getting Started
-      </h3>
-      <Card data-testid="card-onboarding">
-        <CardContent className="p-4 space-y-3">
-          <div className="flex items-center justify-between gap-3 flex-wrap">
-            <p className="text-sm text-muted-foreground">
-              {completedCount === 0
-                ? "Start exploring at your own pace."
-                : `${completedCount} of ${steps.length} completed`}
-            </p>
-            <Badge variant="secondary" className="text-[10px]" data-testid="badge-onboarding-progress">
-              {completedCount}/{steps.length}
-            </Badge>
-          </div>
-          <div className="space-y-2">
-            {steps.map((step, index) => {
-              const StepIcon = step.icon;
-              return (
-                <Link key={index} href={step.href} data-testid={`link-onboarding-step-${index}`}>
-                  <div className="flex items-center gap-3 p-2 rounded-md hover-elevate" data-testid={`row-onboarding-step-${index}`}>
-                    <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border ${step.done ? "border-emerald-500 bg-emerald-500 text-white" : "text-muted-foreground"}`}>
-                      {step.done ? (
-                        <CheckCircle2 className="h-3.5 w-3.5" />
-                      ) : (
-                        <StepIcon className="h-3.5 w-3.5" />
-                      )}
-                    </div>
-                    <span className={`text-sm ${step.done ? "text-muted-foreground line-through" : "font-medium"}`}>
-                      {step.label}
-                    </span>
-                    {!step.done && (
-                      <ArrowRight className="h-3 w-3 text-muted-foreground ml-auto" />
-                    )}
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }

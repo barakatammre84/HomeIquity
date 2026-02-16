@@ -14,8 +14,6 @@ import {
   Home,
   FileText,
   TrendingUp,
-  Calculator,
-  Search,
   Percent,
   Scale,
   Bot,
@@ -23,7 +21,6 @@ import {
   Building2,
   Briefcase,
   Key,
-  Compass,
 } from "lucide-react";
 
 const AUDIENCE_PATHS = [
@@ -80,63 +77,6 @@ const AUDIENCE_PATHS = [
     cta: "View Properties",
     href: "/properties",
     color: "bg-purple-500/10 text-purple-600 dark:text-purple-400",
-  },
-];
-
-const PRODUCT_MODULES = [
-  {
-    id: "lend",
-    icon: FileText,
-    title: "Homiquity Lend",
-    description: "Pre-approval, refinance, and full mortgage origination. Clear decisions backed by deterministic underwriting rules.",
-    href: "/apply",
-    color: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
-    available: true,
-  },
-  {
-    id: "listings",
-    icon: Search,
-    title: "Homiquity Listings",
-    description: "Browse properties with real-time data and see personalized affordability for every listing.",
-    href: "/properties",
-    color: "bg-primary/10 text-primary",
-    available: true,
-  },
-  {
-    id: "coach",
-    icon: Bot,
-    title: "Homiquity Coach",
-    description: "AI-powered homebuyer guidance. Get personalized readiness assessments and answers to your mortgage questions.",
-    href: "/ai-coach",
-    color: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
-    available: true,
-  },
-  {
-    id: "rates",
-    icon: Percent,
-    title: "Rates & Calculators",
-    description: "Compare current mortgage rates and model different scenarios with our affordability and payment calculators.",
-    href: "/rates",
-    color: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
-    available: true,
-  },
-  {
-    id: "dashboard",
-    icon: Compass,
-    title: "Your Dashboard",
-    description: "Track your application progress, upload documents, and monitor every milestone from start to close.",
-    href: "/dashboard",
-    color: "bg-purple-500/10 text-purple-600 dark:text-purple-400",
-    available: true,
-  },
-  {
-    id: "tools",
-    icon: Calculator,
-    title: "Education & Tools",
-    description: "First-time buyer guides, down payment assistance resources, and homeownership education.",
-    href: "/education/first-time-buyer",
-    color: "bg-rose-500/10 text-rose-600 dark:text-rose-400",
-    available: true,
   },
 ];
 
@@ -309,38 +249,6 @@ export default function Landing() {
         </div>
       </section>
 
-      <section className="border-y bg-muted/30 px-4 py-20 sm:px-6 lg:px-8" data-testid="section-product-suite">
-        <div className="mx-auto max-w-6xl">
-          <div className="text-center">
-            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-              One platform for everything
-            </h2>
-            <p className="mt-4 text-lg text-muted-foreground">
-              From pre-approval to property search, Homiquity brings it all together
-            </p>
-          </div>
-
-          <div className="mt-16 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {PRODUCT_MODULES.map((mod) => {
-              const Icon = mod.icon;
-              return (
-                <Card key={mod.id} data-testid={`card-product-${mod.id}`}>
-                  <CardContent className="p-6">
-                    <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${mod.color}`}>
-                      <Icon className="h-6 w-6" />
-                    </div>
-                    <h3 className="mt-4 text-lg font-semibold" data-testid={`text-product-title-${mod.id}`}>{mod.title}</h3>
-                    <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
-                      {mod.description}
-                    </p>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
       <RatesTeaser />
 
       <section className="border-y bg-muted/30 px-4 py-16 sm:px-6 lg:px-8" data-testid="section-why-trust">
@@ -405,43 +313,6 @@ export default function Landing() {
                   confidence they deserve when making the biggest financial decision of their life. We're just getting started, 
                   and we'd love for you to be part of the journey.
                 </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="px-4 py-16 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-6xl">
-          <div className="rounded-2xl border bg-card p-8 sm:p-12">
-            <div className="flex flex-col items-center gap-8 text-center lg:flex-row lg:text-left">
-              <div className="flex-1">
-                <div className="flex items-center justify-center gap-2 lg:justify-start">
-                  <Shield className="h-5 w-5 text-emerald-500" />
-                  <h3 className="text-xl font-semibold">Your trust is our foundation</h3>
-                </div>
-                <p className="mt-3 text-muted-foreground leading-relaxed">
-                  Homiquity is committed to fair lending practices, regulatory compliance, 
-                  and the highest standards of data security. Every decision is transparent and explainable.
-                </p>
-              </div>
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:gap-6">
-                <div className="flex flex-col items-center gap-1.5 rounded-xl border bg-background p-4" data-testid="badge-trust-ehl">
-                  <Scale className="h-5 w-5 text-primary" />
-                  <span className="text-xs font-medium text-center">Equal Housing Lender</span>
-                </div>
-                <div className="flex flex-col items-center gap-1.5 rounded-xl border bg-background p-4" data-testid="badge-trust-encryption">
-                  <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-                  <span className="text-xs font-medium text-center">256-bit Encrypted</span>
-                </div>
-                <div className="flex flex-col items-center gap-1.5 rounded-xl border bg-background p-4" data-testid="badge-trust-mismo">
-                  <FileText className="h-5 w-5 text-primary" />
-                  <span className="text-xs font-medium text-center">MISMO 3.4</span>
-                </div>
-                <div className="flex flex-col items-center gap-1.5 rounded-xl border bg-background p-4" data-testid="badge-trust-fair">
-                  <Shield className="h-5 w-5 text-primary" />
-                  <span className="text-xs font-medium text-center">Fair Lending</span>
-                </div>
               </div>
             </div>
           </div>

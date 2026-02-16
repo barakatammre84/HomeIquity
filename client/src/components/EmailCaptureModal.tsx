@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -43,6 +44,7 @@ function incrementPageViews(): number {
 export function EmailCaptureModal() {
   const { isAuthenticated, isLoading } = useAuth();
   const { toast } = useToast();
+  const [location] = useLocation();
   const [show, setShow] = useState(false);
   const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -51,9 +53,8 @@ export function EmailCaptureModal() {
     if (isLoading) return;
     if (isAuthenticated) return;
 
-    const excludedPaths = ["/apply", "/ai-coach", "/dashboard", "/documents", "/tasks", "/messages", "/verification", "/credit-consent", "/e-consent"];
-    const currentPath = window.location.pathname;
-    if (excludedPaths.some(p => currentPath.startsWith(p))) return;
+    const allowedPaths = ["/resources", "/learn", "/education", "/first-time-buyer", "/down-payment-wizard", "/article", "/faq"];
+    if (!allowedPaths.some(p => location.startsWith(p))) return;
 
     const state = getState();
     if (state.captured || state.dismissed) {
@@ -69,7 +70,7 @@ export function EmailCaptureModal() {
       const timer = setTimeout(() => setShow(true), 2000);
       return () => clearTimeout(timer);
     }
-  }, [isAuthenticated, isLoading]);
+  }, [isAuthenticated, isLoading, location]);
 
   const handleDismiss = useCallback(() => {
     setShow(false);
@@ -91,7 +92,7 @@ export function EmailCaptureModal() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: email.trim(),
-          source: window.location.pathname,
+          source: location,
           website: honeypot,
         }),
       });

@@ -10,7 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LayoutDashboard, Users, Menu, X, Phone, ChevronDown, Home, Calculator, FileText, HelpCircle, DollarSign, Percent, Bot, MessageCircle, FolderOpen, CheckSquare, ArrowRight } from "lucide-react";
+import { LayoutDashboard, Menu, X, Phone, ChevronDown, Home, Calculator, FileText, Percent, Bot, ArrowRight } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 
@@ -29,15 +29,10 @@ const buyMenuItems: NavItem[] = [
 ];
 
 const refinanceMenuItems: NavItem[] = [
-  { href: "/apply?type=refinance", label: "Apply to Refinance", description: "Lower your monthly payment", icon: FileText },
-  { href: "/rates/refinance", label: "Refinance Rates", description: "Compare today's rates", icon: Percent },
-  { href: "/rates/cash-out", label: "Cash-Out Refinance", description: "Access your home equity", icon: DollarSign },
-];
-
-const helocMenuItems: NavItem[] = [
-  { href: "/apply?type=heloc", label: "Apply for HELOC", description: "Flexible home equity line", icon: FileText },
-  { href: "/rates/heloc", label: "HELOC Rates", description: "Current HELOC rates", icon: Percent },
-  { href: "/calculators/mortgage", label: "Mortgage Calculator", description: "Estimate your payments", icon: Calculator },
+  { href: "/apply?type=refinance", label: "Refinance", description: "Lower your monthly payment", icon: FileText },
+  { href: "/apply?type=heloc", label: "Apply for HELOC", description: "Flexible home equity line of credit", icon: FileText },
+  { href: "/rates/cash-out", label: "Cash-Out Rates", description: "Access your home equity", icon: Percent },
+  { href: "/rates/heloc", label: "HELOC Rates", description: "See current HELOC rates", icon: Percent },
 ];
 
 interface NavDropdownProps {
@@ -51,7 +46,7 @@ function NavDropdown({ label, items, testId }: NavDropdownProps) {
   const [, navigate] = useLocation();
 
   return (
-    <div 
+    <div
       className="relative"
       onMouseEnter={() => setIsOpen(true)}
       onMouseLeave={() => setIsOpen(false)}
@@ -67,7 +62,7 @@ function NavDropdown({ label, items, testId }: NavDropdownProps) {
         {label}
         <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-200", isOpen && "rotate-180")} />
       </button>
-      
+
       <div className={cn(
         "absolute left-0 top-full pt-2 transition-opacity duration-150",
         isOpen ? "opacity-100 visible" : "opacity-0 invisible pointer-events-none"
@@ -168,16 +163,13 @@ export function Navigation() {
       )}
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
-          {/* Logo */}
           <Link href="/" className="flex items-center">
             <span className="text-2xl font-bold tracking-tight text-primary">homiquity</span>
           </Link>
 
-          {/* Desktop Navigation */}
           <div className="hidden items-center gap-1 lg:flex">
             <NavDropdown label="Buy" items={buyMenuItems} testId="nav-dropdown-buy" />
-            <NavDropdown label="Refinance" items={refinanceMenuItems} testId="nav-dropdown-refinance" />
-            <NavDropdown label="HELOC" items={helocMenuItems} testId="nav-dropdown-heloc" />
+            <NavDropdown label="Refinance & HELOC" items={refinanceMenuItems} testId="nav-dropdown-refinance" />
             <Link href="/rates">
               <button className="px-4 py-2 text-sm font-medium text-foreground/80 hover:text-foreground">
                 Rates
@@ -190,9 +182,7 @@ export function Navigation() {
             </Link>
           </div>
 
-          {/* Right side actions */}
           <div className="flex items-center gap-2">
-            {/* Phone - hidden on mobile */}
             <a href="tel:1-800-HOMIQTY" className="hidden sm:block">
               <Button
                 variant="ghost"
@@ -257,30 +247,12 @@ export function Navigation() {
                       AI Coach
                     </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/messages" className="w-full cursor-pointer" data-testid="menu-messages">
-                      <MessageCircle className="mr-2 h-4 w-4" />
-                      Messages
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/documents" className="w-full cursor-pointer" data-testid="menu-documents">
-                      <FolderOpen className="mr-2 h-4 w-4" />
-                      Documents
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/tasks" className="w-full cursor-pointer" data-testid="menu-tasks">
-                      <CheckSquare className="mr-2 h-4 w-4" />
-                      Tasks
-                    </Link>
-                  </DropdownMenuItem>
                   {user.role === "admin" && (
                     <>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem asChild>
                         <Link href="/admin" className="w-full cursor-pointer" data-testid="menu-admin">
-                          <Users className="mr-2 h-4 w-4" />
+                          <LayoutDashboard className="mr-2 h-4 w-4" />
                           Admin Panel
                         </Link>
                       </DropdownMenuItem>
@@ -318,7 +290,6 @@ export function Navigation() {
               </div>
             )}
 
-            {/* Mobile menu button */}
             <Button
               variant="ghost"
               size="icon"
@@ -331,13 +302,11 @@ export function Navigation() {
           </div>
         </div>
 
-        {/* Mobile menu */}
         {mobileMenuOpen && (
           <div className="border-t py-4 lg:hidden">
             <div className="flex flex-col">
               <MobileNavSection label="Buy" items={buyMenuItems} onItemClick={() => setMobileMenuOpen(false)} />
-              <MobileNavSection label="Refinance" items={refinanceMenuItems} onItemClick={() => setMobileMenuOpen(false)} />
-              <MobileNavSection label="HELOC" items={helocMenuItems} onItemClick={() => setMobileMenuOpen(false)} />
+              <MobileNavSection label="Refinance & HELOC" items={refinanceMenuItems} onItemClick={() => setMobileMenuOpen(false)} />
               <Link href="/rates">
                 <button
                   className="w-full border-b border-border py-4 text-left font-medium text-foreground"
@@ -354,37 +323,13 @@ export function Navigation() {
                   Resources
                 </button>
               </Link>
-              
+
               {isAuthenticated ? (
                 <div className="mt-4 flex flex-col gap-1">
                   <Link href="/dashboard">
                     <button className="flex w-full items-center gap-3 rounded-lg px-2 py-3 text-left text-sm font-medium text-foreground hover-elevate" onClick={() => setMobileMenuOpen(false)} data-testid="mobile-link-dashboard">
                       <LayoutDashboard className="h-4 w-4 text-muted-foreground" />
                       Dashboard
-                    </button>
-                  </Link>
-                  <Link href="/ai-coach">
-                    <button className="flex w-full items-center gap-3 rounded-lg px-2 py-3 text-left text-sm font-medium text-foreground hover-elevate" onClick={() => setMobileMenuOpen(false)} data-testid="mobile-link-ai-coach">
-                      <Bot className="h-4 w-4 text-muted-foreground" />
-                      AI Coach
-                    </button>
-                  </Link>
-                  <Link href="/messages">
-                    <button className="flex w-full items-center gap-3 rounded-lg px-2 py-3 text-left text-sm font-medium text-foreground hover-elevate" onClick={() => setMobileMenuOpen(false)} data-testid="mobile-link-messages">
-                      <MessageCircle className="h-4 w-4 text-muted-foreground" />
-                      Messages
-                    </button>
-                  </Link>
-                  <Link href="/documents">
-                    <button className="flex w-full items-center gap-3 rounded-lg px-2 py-3 text-left text-sm font-medium text-foreground hover-elevate" onClick={() => setMobileMenuOpen(false)} data-testid="mobile-link-documents">
-                      <FolderOpen className="h-4 w-4 text-muted-foreground" />
-                      Documents
-                    </button>
-                  </Link>
-                  <Link href="/tasks">
-                    <button className="flex w-full items-center gap-3 rounded-lg px-2 py-3 text-left text-sm font-medium text-foreground hover-elevate" onClick={() => setMobileMenuOpen(false)} data-testid="mobile-link-tasks">
-                      <CheckSquare className="h-4 w-4 text-muted-foreground" />
-                      Tasks
                     </button>
                   </Link>
                   <div className="mt-2 border-t pt-3">
