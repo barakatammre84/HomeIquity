@@ -28,6 +28,7 @@ import {
   Users,
   AlertCircle,
   TrendingUp,
+  ClipboardCheck,
 } from "lucide-react";
 
 interface OnboardingStatus {
@@ -116,6 +117,26 @@ function getJourneySteps(status: OnboardingStatus): JourneyStep[] {
       icon: FileText,
       href: "/documents",
       complete: docsVerified || false,
+      active: hasApp && identityVerified,
+      required: true,
+    },
+    {
+      id: "e_consent",
+      title: "Electronic Consent",
+      description: "Review and agree to electronic disclosures and communications",
+      icon: FileText,
+      href: "/e-consent",
+      complete: false,
+      active: hasApp,
+      required: true,
+    },
+    {
+      id: "credit_consent",
+      title: "Credit Authorization",
+      description: "Authorize a credit check to verify your credit history",
+      icon: Shield,
+      href: "/e-consent",
+      complete: false,
       active: hasApp && identityVerified,
       required: true,
     },
@@ -316,6 +337,9 @@ export default function OnboardingJourney() {
           <div>
             <h1 className="text-xl font-bold text-foreground md:text-2xl" data-testid="text-journey-title">Your Mortgage Journey</h1>
             <p className="text-sm text-muted-foreground">Personalized steps to get you to closing day.</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Your <Link href="/dashboard" className="text-primary hover:underline">dashboard</Link> always shows your most important next step.
+            </p>
           </div>
         </div>
       </div>

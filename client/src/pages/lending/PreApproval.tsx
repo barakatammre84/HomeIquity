@@ -31,7 +31,8 @@ import {
   ThumbsUp,
   Info,
   Plus,
-  Trash2
+  Trash2,
+  LogIn
 } from "lucide-react";
 
 const US_STATES = [
@@ -480,8 +481,10 @@ export default function PreApproval() {
 
   const AUTOSAVE_KEY = "homiquity_preapproval_draft";
   const AUTOSAVE_STEP_KEY = "homiquity_preapproval_step";
+  const PENDING_SUBMIT_KEY = "homiquity_preapproval_pending_submit";
   const [autosaveRestored, setAutosaveRestored] = useState(false);
   const [showRestoreBanner, setShowRestoreBanner] = useState(false);
+  const [showAuthGate, setShowAuthGate] = useState(false);
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const saveToLocalStorage = useCallback((values: PreApprovalFormData, step: number) => {
@@ -504,8 +507,27 @@ export default function PreApproval() {
     try {
       localStorage.removeItem(AUTOSAVE_KEY);
       localStorage.removeItem(AUTOSAVE_STEP_KEY);
+      localStorage.removeItem(PENDING_SUBMIT_KEY);
     } catch {}
   }, []);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    try {
+      const pending = localStorage.getItem(PENDING_SUBMIT_KEY);
+      if (!pending) return;
+      const saved = localStorage.getItem(AUTOSAVE_KEY);
+      if (!saved) { localStorage.removeItem(PENDING_SUBMIT_KEY); return; }
+      const formData = JSON.parse(saved) as PreApprovalFormData;
+      form.reset(formData);
+      localStorage.removeItem(PENDING_SUBMIT_KEY);
+      setTimeout(() => {
+        submitMutation.mutate(formData);
+      }, 500);
+    } catch {
+      localStorage.removeItem(PENDING_SUBMIT_KEY);
+    }
+  }, [isAuthenticated]);
 
   const currentQ = QUESTIONS[currentStep];
   
@@ -789,6 +811,12 @@ export default function PreApproval() {
     if (currentQ.type === "final") {
       const isValid = await form.trigger();
       if (isValid) {
+        if (!isAuthenticated) {
+          saveToLocalStorage(form.getValues(), currentStep);
+          localStorage.setItem(PENDING_SUBMIT_KEY, "true");
+          setShowAuthGate(true);
+          return;
+        }
         submitMutation.mutate(form.getValues());
       } else {
         toast({ 
@@ -1502,6 +1530,51 @@ export default function PreApproval() {
           </motion.div>
         </AnimatePresence>
       </div>
+
+      {showAuthGate && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4"
+          data-testid="auth-gate-overlay"
+        >
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="bg-card border rounded-xl shadow-lg p-8 max-w-md w-full text-center"
+          >
+            <div className="mx-auto mb-6 h-16 w-16 bg-primary/10 rounded-full flex items-center justify-center">
+              <LogIn className="h-8 w-8 text-primary" />
+            </div>
+            <h3 className="text-2xl font-bold text-foreground mb-3" data-testid="text-auth-gate-title">
+              Sign in to get your results
+            </h3>
+            <p className="text-muted-foreground mb-6">
+              Your answers are saved. Sign in to submit your application and see your pre-approval options instantly.
+            </p>
+            <div className="space-y-3">
+              <a href="/api/login" className="block">
+                <Button size="lg" className="w-full" data-testid="button-auth-gate-login">
+                  Sign In
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </a>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowAuthGate(false)}
+                data-testid="button-auth-gate-dismiss"
+              >
+                Go back to form
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground mt-4 flex items-center justify-center gap-1">
+              <Shield className="h-3 w-3" />
+              Your data is encrypted and secure
+            </p>
+          </motion.div>
+        </motion.div>
+      )}
 
       {/* Footer */}
       <div className="p-4 sm:p-6 text-center border-t border-muted">

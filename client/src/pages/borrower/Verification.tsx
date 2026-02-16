@@ -21,6 +21,7 @@ import {
   Shield,
   ExternalLink,
   RefreshCw,
+  ArrowRight,
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -434,6 +435,28 @@ export default function VerificationPage() {
                 </Card>
               </>
             )}
+
+      <Card className="mb-6" data-testid="card-cross-link-identity">
+        <CardContent className="pt-5 pb-4">
+          <div className="flex items-start gap-3">
+            <div className="p-2 bg-primary/10 rounded-lg shrink-0">
+              <Shield className="h-5 w-5 text-primary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-foreground">Looking for identity verification?</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Knowledge-based authentication (KBA) and KYC checks are handled on a separate page.
+              </p>
+              <Link href="/identity-verification">
+                <Button variant="outline" size="sm" className="mt-2 gap-1" data-testid="button-goto-identity">
+                  Go to Identity Verification
+                  <ArrowRight className="h-3 w-3" />
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
           </div>
     </>
   );

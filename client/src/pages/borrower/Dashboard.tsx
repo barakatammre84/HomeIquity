@@ -40,6 +40,7 @@ import {
   Target,
   Briefcase,
   PiggyBank,
+  Rocket,
 } from "lucide-react";
 
 interface DashboardData {
@@ -893,6 +894,12 @@ export default function Dashboard() {
                   <Button size="lg" data-testid="button-dominant-action">
                     {dominant.buttonLabel}
                     <ArrowRight className="h-4 w-4 ml-2" />
+                  </Button>
+                </Link>
+                <Link href="/onboarding" data-testid="link-view-journey">
+                  <Button variant="ghost" size="sm" className="text-muted-foreground gap-1">
+                    <Rocket className="h-3.5 w-3.5" />
+                    View full journey checklist
                   </Button>
                 </Link>
               </div>

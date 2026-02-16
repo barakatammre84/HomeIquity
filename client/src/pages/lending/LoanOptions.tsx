@@ -25,6 +25,9 @@ import {
   AlertCircle,
   Download,
   Loader2,
+  Rocket,
+  Upload,
+  UserCheck,
 } from "lucide-react";
 
 interface LoanOptionsData {
@@ -283,14 +286,88 @@ export default function LoanOptions() {
           </div>
         )}
 
-        <div className="mt-12 rounded-lg border bg-card p-6">
-          <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
-            <div>
-              <h3 className="text-lg font-semibold">Ready to proceed?</h3>
-              <p className="text-sm text-muted-foreground">
-                Lock your rate and upload your documents to complete your application.
-              </p>
-            </div>
+        <div className="mt-12 space-y-6">
+          <div>
+            <h2 className="text-2xl font-bold" data-testid="text-next-steps-heading">What Happens Next</h2>
+            <p className="text-muted-foreground mt-1">
+              {options.some(o => o.isLocked)
+                ? "Great, your rate is locked. Complete these steps to finalize your mortgage."
+                : "Lock your preferred rate above, then complete these steps to move forward."}
+            </p>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-3">
+            <Card data-testid="card-next-step-journey">
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 shrink-0">
+                    <Rocket className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-foreground">Your Journey</h3>
+                    <p className="text-xs text-muted-foreground">See all remaining steps</p>
+                  </div>
+                </div>
+                <p className="text-sm text-muted-foreground mb-4">
+                  View your personalized checklist of everything needed to reach closing day.
+                </p>
+                <Link href="/onboarding">
+                  <Button variant="outline" className="w-full gap-2" data-testid="button-next-journey">
+                    View Journey
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+
+            <Card data-testid="card-next-step-documents">
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 shrink-0">
+                    <Upload className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-foreground">Upload Documents</h3>
+                    <p className="text-xs text-muted-foreground">Income, ID, assets</p>
+                  </div>
+                </div>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Upload pay stubs, tax returns, and bank statements to verify your application.
+                </p>
+                <Link href="/documents">
+                  <Button variant="outline" className="w-full gap-2" data-testid="button-next-documents">
+                    Upload Documents
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+
+            <Card data-testid="card-next-step-verification">
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 shrink-0">
+                    <UserCheck className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-foreground">Verify Identity</h3>
+                    <p className="text-xs text-muted-foreground">Quick security check</p>
+                  </div>
+                </div>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Complete identity verification to meet compliance requirements and speed up review.
+                </p>
+                <Link href="/identity-verification">
+                  <Button variant="outline" className="w-full gap-2" data-testid="button-next-verification">
+                    Verify Identity
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="flex justify-center pt-2">
             <Link href="/dashboard">
               <Button className="gap-2" data-testid="button-go-to-dashboard">
                 Go to Dashboard
