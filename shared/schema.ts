@@ -6,3 +6,4 @@ export * from "./schema/compliance";
 export * from "./schema/coach";
 export * from "./schema/property";
 export * from "./schema/admin";
+export * from "./schema/intelligence";

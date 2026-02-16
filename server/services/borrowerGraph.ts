@@ -13,9 +13,14 @@ import {
   savingsTransactions,
   journeyMilestones,
   tasks,
+  borrowerProfiles,
+  realEstateOwned,
+  borrowerStateHistory,
+  readinessChecklist,
+  intentEvents,
 } from "@shared/schema";
-import type { User, LoanApplication } from "@shared/schema";
-import { eq, desc, sql, and, gte, count } from "drizzle-orm";
+import type { User, LoanApplication, BorrowerProfile, RealEstateOwned } from "@shared/schema";
+import { eq, desc, sql, and, gte, count, isNotNull } from "drizzle-orm";
 
 export interface IncomeSource {
   source: "document" | "application" | "coach" | "goal";
@@ -89,6 +94,49 @@ export interface EligibilitySignals {
   eligibleLoanTypes: string[];
 }
 
+export interface BorrowerProfileSnapshot {
+  citizenshipStatus: string | null;
+  maritalStatus: string | null;
+  numberOfDependents: number | null;
+  currentHousingStatus: string | null;
+  currentMonthlyHousingPayment: number | null;
+  militaryStatus: string | null;
+  hasCoBorrower: boolean;
+  hasForeclosureHistory: boolean;
+  hasBankruptcyHistory: boolean;
+  hasRealEstateOwned: boolean;
+  riskTolerance: string | null;
+  vaEligible: boolean;
+}
+
+export interface REOProperty {
+  address: string;
+  propertyType: string | null;
+  marketValue: number | null;
+  mortgageBalance: number | null;
+  mortgagePayment: number | null;
+  monthlyRentalIncome: number | null;
+  netEquity: number | null;
+  occupancyType: string | null;
+  willBeSold: boolean;
+}
+
+export interface ReadinessChecklistSummary {
+  totalFields: number;
+  collectedFields: number;
+  verifiedFields: number;
+  completionByCategory: Record<string, { total: number; collected: number; verified: number }>;
+  calculatedReadinessScore: number;
+}
+
+export interface BorrowerStateSummary {
+  currentState: string;
+  previousState: string | null;
+  stateEnteredAt: string | null;
+  daysInCurrentState: number | null;
+  totalTransitions: number;
+}
+
 export interface GoalProfile {
   goal: string | null;
   targetHomePrice: number | null;
@@ -109,6 +157,11 @@ export interface BorrowerGraph {
   email: string | null;
   role: string;
   memberSince: string | null;
+
+  profile: BorrowerProfileSnapshot;
+  state: BorrowerStateSummary;
+  readinessDetail: ReadinessChecklistSummary;
+  realEstateOwned: REOProperty[];
 
   applications: Array<{
     id: string;
@@ -158,6 +211,7 @@ export interface BorrowerGraph {
     engagementLevel: "high" | "medium" | "low" | "dormant";
     daysSinceLastActivity: number | null;
     suggestedNextAction: string;
+    intentScore: number;
   };
 }
 
@@ -187,6 +241,11 @@ export async function buildBorrowerGraph(userId: string): Promise<BorrowerGraph>
     goalRows,
     recentActivities,
     activityCounts,
+    profileRows,
+    reoRows,
+    stateRows,
+    checklistRows,
+    intentCounts,
   ] = await Promise.all([
     storage.getLoanApplicationsByUser(userId),
     db.select().from(documents).where(eq(documents.userId, userId)).orderBy(desc(documents.createdAt)),
@@ -214,6 +273,21 @@ export async function buildBorrowerGraph(userId: string): Promise<BorrowerGraph>
       .groupBy(userActivities.page)
       .orderBy(sql`count(*) desc`)
       .limit(10),
+    db.select().from(borrowerProfiles).where(eq(borrowerProfiles.userId, userId)).limit(1),
+    db.select().from(realEstateOwned).where(eq(realEstateOwned.userId, userId)),
+    db.select().from(borrowerStateHistory)
+      .where(eq(borrowerStateHistory.userId, userId))
+      .orderBy(desc(borrowerStateHistory.transitionedAt)),
+    db.select().from(readinessChecklist).where(eq(readinessChecklist.userId, userId)),
+    db.select({
+      eventType: intentEvents.eventType,
+      count: sql<number>`count(*)::int`,
+    }).from(intentEvents)
+      .where(and(
+        eq(intentEvents.userId, userId),
+        gte(intentEvents.occurredAt, sql`now() - interval '30 days'`)
+      ))
+      .groupBy(intentEvents.eventType),
   ]);
 
   const activeApp = apps.find(a => a.status !== "draft" && a.status !== "denied" && a.status !== "declined") || apps[0] || null;
@@ -465,6 +539,47 @@ export async function buildBorrowerGraph(userId: string): Promise<BorrowerGraph>
       monthlyAmount: parseNum(coachIntake.monthlyDebts) || 0,
       description: "Monthly debts (coach conversation)",
     });
+  }
+
+  for (const reo of reoRows) {
+    if (reo.mortgagePayment) {
+      const payment = parseNum(reo.mortgagePayment) || 0;
+      const taxes = parseNum(reo.monthlyTaxes) || 0;
+      const ins = parseNum(reo.monthlyInsurance) || 0;
+      const hoa = parseNum(reo.monthlyHoa) || 0;
+      if (payment + taxes + ins + hoa > 0) {
+        liabilityRecords.push({
+          source: "application",
+          trust: "tier2",
+          monthlyAmount: payment + taxes + ins + hoa,
+          description: `REO mortgage: ${reo.propertyAddress}`,
+        });
+      }
+    }
+    if (reo.monthlyRentalIncome) {
+      const rentalIncome = parseNum(reo.monthlyRentalIncome) || 0;
+      if (rentalIncome > 0) {
+        incomeSources.push({
+          source: "application",
+          trust: "tier2",
+          type: "rental_income",
+          amount: rentalIncome * 0.75,
+          period: "monthly",
+          employerName: null,
+        });
+      }
+    }
+    if (reo.netEquity || reo.marketValue) {
+      const equity = parseNum(reo.netEquity) || (parseNum(reo.marketValue) || 0) - (parseNum(reo.mortgageBalance) || 0);
+      if (equity > 0) {
+        assetRecords.push({
+          source: "application",
+          trust: "tier2",
+          type: "real_estate_equity",
+          balance: equity,
+        });
+      }
+    }
   }
 
   const tier1Income = incomeSources.filter(i => i.trust === "tier1" && i.period === "annual");
@@ -772,12 +887,102 @@ export async function buildBorrowerGraph(userId: string): Promise<BorrowerGraph>
     }
   }
 
+  const bProfile = profileRows[0] || null;
+  const profileSnapshot: BorrowerProfileSnapshot = {
+    citizenshipStatus: bProfile?.citizenshipStatus || null,
+    maritalStatus: bProfile?.maritalStatus || null,
+    numberOfDependents: bProfile?.numberOfDependents || null,
+    currentHousingStatus: bProfile?.currentHousingStatus || null,
+    currentMonthlyHousingPayment: parseNum(bProfile?.currentMonthlyHousingPayment) || null,
+    militaryStatus: bProfile?.militaryStatus || null,
+    hasCoBorrower: bProfile?.hasCoBorrower || false,
+    hasForeclosureHistory: bProfile?.hasForeclosureHistory || false,
+    hasBankruptcyHistory: bProfile?.hasBankruptcyHistory || false,
+    hasRealEstateOwned: bProfile?.hasRealEstateOwned || reoRows.length > 0,
+    riskTolerance: bProfile?.riskTolerance || null,
+    vaEligible: (bProfile?.militaryStatus === "veteran" || bProfile?.militaryStatus === "active_duty" ||
+      bProfile?.militaryStatus === "reserve_national_guard" || bProfile?.militaryStatus === "surviving_spouse") ||
+      (activeApp?.isVeteran || false),
+  };
+
+  const latestState = stateRows[0] || null;
+  const stateSummary: BorrowerStateSummary = {
+    currentState: latestState?.toState || "lead",
+    previousState: latestState?.fromState || null,
+    stateEnteredAt: latestState?.transitionedAt?.toISOString() || null,
+    daysInCurrentState: latestState?.transitionedAt
+      ? Math.floor((Date.now() - new Date(latestState.transitionedAt).getTime()) / 86400000)
+      : null,
+    totalTransitions: stateRows.length,
+  };
+
+  const checklistSummary: ReadinessChecklistSummary = (() => {
+    const totalFields = checklistRows.length;
+    const collectedFields = checklistRows.filter(r => r.isCollected).length;
+    const verifiedFields = checklistRows.filter(r =>
+      r.verificationStatus === "document_extracted" ||
+      r.verificationStatus === "third_party_verified" ||
+      r.verificationStatus === "manually_verified"
+    ).length;
+
+    const categoryMap: Record<string, { total: number; collected: number; verified: number }> = {};
+    for (const row of checklistRows) {
+      const cat = row.category;
+      if (!categoryMap[cat]) categoryMap[cat] = { total: 0, collected: 0, verified: 0 };
+      categoryMap[cat].total++;
+      if (row.isCollected) categoryMap[cat].collected++;
+      if (row.verificationStatus === "document_extracted" ||
+        row.verificationStatus === "third_party_verified" ||
+        row.verificationStatus === "manually_verified") {
+        categoryMap[cat].verified++;
+      }
+    }
+
+    const calculatedReadinessScore = totalFields > 0
+      ? Math.round((collectedFields / totalFields) * 100)
+      : 0;
+
+    return { totalFields, collectedFields, verifiedFields, completionByCategory: categoryMap, calculatedReadinessScore };
+  })();
+
+  const reoMapped: REOProperty[] = reoRows.map(r => ({
+    address: r.propertyAddress,
+    propertyType: r.propertyType || null,
+    marketValue: parseNum(r.marketValue),
+    mortgageBalance: parseNum(r.mortgageBalance),
+    mortgagePayment: parseNum(r.mortgagePayment),
+    monthlyRentalIncome: parseNum(r.monthlyRentalIncome),
+    netEquity: parseNum(r.netEquity) || ((parseNum(r.marketValue) || 0) - (parseNum(r.mortgageBalance) || 0)) || null,
+    occupancyType: r.occupancyType || null,
+    willBeSold: r.willBeSold || false,
+  }));
+
+  const intentMap = new Map(intentCounts.map(e => [e.eventType, e.count]));
+  const getIntentCount = (type: string) => intentMap.get(type) || 0;
+  const intentScore = Math.min(100,
+    getIntentCount("pre_approval_start") * 20 +
+    getIntentCount("pre_approval_complete") * 30 +
+    getIntentCount("document_upload_complete") * 10 +
+    getIntentCount("property_affordability_check") * 8 +
+    getIntentCount("calculator_use") * 5 +
+    getIntentCount("coach_session_complete") * 8 +
+    getIntentCount("lender_comparison_view") * 6 +
+    getIntentCount("property_save") * 4 +
+    getIntentCount("cta_click") * 3 +
+    getIntentCount("return_visit") * 2
+  );
+
   return {
     userId,
     userName: user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.email?.split("@")[0] || null,
     email: user.email || null,
     role: user.role,
     memberSince: user.createdAt?.toISOString() || null,
+
+    profile: profileSnapshot,
+    state: stateSummary,
+    readinessDetail: checklistSummary,
+    realEstateOwned: reoMapped,
 
     applications: apps.map(a => ({
       id: a.id,
@@ -865,6 +1070,7 @@ export async function buildBorrowerGraph(userId: string): Promise<BorrowerGraph>
       engagementLevel,
       daysSinceLastActivity,
       suggestedNextAction,
+      intentScore,
     },
   };
 }
