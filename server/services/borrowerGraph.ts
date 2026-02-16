@@ -120,6 +120,10 @@ export interface BorrowerGraph {
     preApprovalAmount: number | null;
     isVeteran: boolean;
     isFirstTimeBuyer: boolean;
+    employmentType: string | null;
+    propertyType: string | null;
+    propertyState: string | null;
+    propertyValue: number | null;
     createdAt: string | null;
   }>;
 
@@ -297,7 +301,23 @@ export async function buildBorrowerGraph(userId: string): Promise<BorrowerGraph>
   }
 
   if (activeApp) {
-    if (activeApp.annualIncome) {
+    const hasLineItemIncome = activeApp.incomeSources && Array.isArray(activeApp.incomeSources) && (activeApp.incomeSources as any[]).length > 0;
+
+    if (hasLineItemIncome) {
+      for (const src of activeApp.incomeSources as any[]) {
+        const amt = parseNum(src.annualAmount?.toString().replace(/[,$]/g, ""));
+        if (amt && amt > 0) {
+          incomeSources.push({
+            source: "application",
+            trust: "tier2",
+            type: src.type || "additional_income",
+            amount: amt,
+            period: "annual",
+            employerName: src.employerName || null,
+          });
+        }
+      }
+    } else if (activeApp.annualIncome) {
       incomeSources.push({
         source: "application",
         trust: "tier2",
@@ -307,6 +327,7 @@ export async function buildBorrowerGraph(userId: string): Promise<BorrowerGraph>
         employerName: activeApp.employerName || null,
       });
     }
+
     if (activeApp.monthlyDebts) {
       liabilityRecords.push({
         source: "application",
@@ -314,6 +335,31 @@ export async function buildBorrowerGraph(userId: string): Promise<BorrowerGraph>
         monthlyAmount: parseNum(activeApp.monthlyDebts) || 0,
         description: "Total monthly debts (application)",
       });
+    }
+
+    if (activeApp.aiAnalysis) {
+      try {
+        const ai = activeApp.aiAnalysis as any;
+        if (ai.estimatedIncome && !activeApp.annualIncome && !hasLineItemIncome) {
+          incomeSources.push({
+            source: "application",
+            trust: "tier2",
+            type: "ai_extracted",
+            amount: parseNum(ai.estimatedIncome) || 0,
+            period: "annual",
+          });
+        }
+        if (ai.estimatedAssets) {
+          assetRecords.push({
+            source: "application",
+            trust: "tier2",
+            type: "ai_extracted_assets",
+            balance: parseNum(ai.estimatedAssets) || 0,
+          });
+        }
+      } catch (err) {
+        console.warn("[BorrowerGraph] Failed to parse aiAnalysis:", err);
+      }
     }
   }
 
@@ -349,6 +395,17 @@ export async function buildBorrowerGraph(userId: string): Promise<BorrowerGraph>
         balance: parseNum(goalData.currentSavingsBalance) || 0,
       });
     }
+    if (goalData.currentMonthlySavings) {
+      const monthlySavings = parseNum(goalData.currentMonthlySavings) || 0;
+      if (monthlySavings > 0) {
+        assetRecords.push({
+          source: "goal",
+          trust: "tier3",
+          type: "monthly_savings_capacity",
+          balance: monthlySavings,
+        });
+      }
+    }
     if (goalData.monthlyDebts) {
       liabilityRecords.push({
         source: "goal",
@@ -356,6 +413,17 @@ export async function buildBorrowerGraph(userId: string): Promise<BorrowerGraph>
         monthlyAmount: parseNum(goalData.monthlyDebts) || 0,
         description: "Monthly debts (goal tracker)",
       });
+    }
+    if (goalData.currentRent) {
+      const rent = parseNum(goalData.currentRent) || 0;
+      if (rent > 0) {
+        liabilityRecords.push({
+          source: "goal",
+          trust: "tier3",
+          monthlyAmount: rent,
+          description: "Current rent payment (goal tracker)",
+        });
+      }
     }
   }
 
@@ -404,27 +472,23 @@ export async function buildBorrowerGraph(userId: string): Promise<BorrowerGraph>
   const tier1Monthly = incomeSources.filter(i => i.trust === "tier1" && i.period === "monthly");
   const tier2Monthly = incomeSources.filter(i => i.trust === "tier2" && i.period === "monthly");
 
+  const sumAnnual = (items: IncomeSource[]) => items.reduce((sum, i) => sum + i.amount, 0);
+  const sumMonthlyToAnnual = (items: IncomeSource[]) => items.reduce((sum, i) => sum + i.amount * 12, 0);
+
   let bestAnnualIncome: number | null = null;
   let bestIncomeSource: string | null = null;
 
-  if (tier1Income.length > 0) {
-    bestAnnualIncome = Math.max(...tier1Income.map(i => i.amount));
+  if (tier1Income.length > 0 || tier1Monthly.length > 0) {
+    bestAnnualIncome = sumAnnual(tier1Income) + sumMonthlyToAnnual(tier1Monthly);
     bestIncomeSource = "document";
-  } else if (tier1Monthly.length > 0) {
-    bestAnnualIncome = Math.max(...tier1Monthly.map(i => i.amount)) * 12;
-    bestIncomeSource = "document";
-  } else if (tier2Income.length > 0) {
-    bestAnnualIncome = Math.max(...tier2Income.map(i => i.amount));
-    bestIncomeSource = "application";
-  } else if (tier2Monthly.length > 0) {
-    bestAnnualIncome = Math.max(...tier2Monthly.map(i => i.amount)) * 12;
+  } else if (tier2Income.length > 0 || tier2Monthly.length > 0) {
+    bestAnnualIncome = sumAnnual(tier2Income) + sumMonthlyToAnnual(tier2Monthly);
     bestIncomeSource = "application";
   } else {
     const allIncome = incomeSources.filter(i => i.amount > 0);
     if (allIncome.length > 0) {
-      const best = allIncome[0];
-      bestAnnualIncome = best.period === "monthly" ? best.amount * 12 : best.amount;
-      bestIncomeSource = best.source;
+      bestAnnualIncome = allIncome.reduce((sum, i) => sum + (i.period === "monthly" ? i.amount * 12 : i.amount), 0);
+      bestIncomeSource = allIncome[0].source;
     }
   }
 
@@ -432,12 +496,15 @@ export async function buildBorrowerGraph(userId: string): Promise<BorrowerGraph>
     .filter(a => a.trust === "tier1")
     .reduce((sum, a) => sum + a.balance, 0) || null;
 
-  const totalMonthlyDebts = liabilityRecords.length > 0
-    ? liabilityRecords.sort((a, b) => {
-        const trustOrder = { tier2: 0, tier3: 1 };
-        return (trustOrder[a.trust] || 1) - (trustOrder[b.trust] || 1);
-      })[0].monthlyAmount
-    : null;
+  const totalMonthlyDebts = (() => {
+    if (liabilityRecords.length === 0) return null;
+    const tier2Liabilities = liabilityRecords.filter(l => l.trust === "tier2");
+    const tier3Liabilities = liabilityRecords.filter(l => l.trust === "tier3");
+    if (tier2Liabilities.length > 0) {
+      return tier2Liabilities.reduce((sum, l) => sum + l.monthlyAmount, 0);
+    }
+    return tier3Liabilities.reduce((sum, l) => sum + l.monthlyAmount, 0);
+  })();
 
   let creditScore: number | null = null;
   let creditScoreSource: EligibilitySignals["creditScoreSource"] = null;
@@ -477,11 +544,14 @@ export async function buildBorrowerGraph(userId: string): Promise<BorrowerGraph>
   }
 
   const employmentYears = activeApp?.employmentYears || (empHistory.length > 0 ? empHistory[0]?.yearsOnJob : null);
-  const employmentStable = employmentYears != null ? employmentYears >= 2 : null;
+  const appEmploymentType = activeApp?.employmentType || null;
+  const employmentStable = employmentYears != null
+    ? (appEmploymentType === "self_employed" ? employmentYears >= 2 : employmentYears >= 1)
+    : null;
 
   const hasAdequateSavings = (() => {
-    if (!activeApp?.purchasePrice) return null;
-    const pp = parseNum(activeApp.purchasePrice) || 0;
+    const pp = parseNum(activeApp?.purchasePrice) || parseNum(activeApp?.propertyValue) || 0;
+    if (pp <= 0) return null;
     const neededDown = pp * 0.035;
     const neededClosing = pp * 0.03;
     const total = neededDown + neededClosing;
@@ -503,7 +573,41 @@ export async function buildBorrowerGraph(userId: string): Promise<BorrowerGraph>
   }
 
   const eligibleLoanTypes: string[] = [];
-  if (activeApp?.preferredLoanType) {
+  const appIsVeteran = activeApp?.isVeteran || false;
+  const appIsFirstTime = activeApp?.isFirstTimeBuyer || false;
+  const appPropertyType = activeApp?.propertyType || null;
+  const downPaymentPct = (() => {
+    if (!activeApp?.purchasePrice || !activeApp?.downPayment) return null;
+    const pp = parseNum(activeApp.purchasePrice) || 0;
+    const dp = parseNum(activeApp.downPayment) || 0;
+    return pp > 0 ? (dp / pp) * 100 : null;
+  })();
+
+  if (appIsVeteran) {
+    eligibleLoanTypes.push("va");
+  }
+  if (creditScore !== null && creditScore >= 580 && (downPaymentPct === null || downPaymentPct >= 3.5)) {
+    eligibleLoanTypes.push("fha");
+  }
+  if (creditScore !== null && creditScore >= 620 && (downPaymentPct === null || downPaymentPct >= 5)) {
+    eligibleLoanTypes.push("conventional");
+  }
+  const loanAmount = (() => {
+    if (!activeApp?.purchasePrice || !activeApp?.downPayment) return null;
+    const pp = parseNum(activeApp.purchasePrice) || 0;
+    const dp = parseNum(activeApp.downPayment) || 0;
+    return pp - dp;
+  })();
+  if (loanAmount !== null && loanAmount > 766550) {
+    eligibleLoanTypes.push("jumbo");
+  }
+  if (activeApp?.loanPurpose === "purchase" && (appPropertyType === "single_family" || appPropertyType === "condo") &&
+      activeApp?.propertyState && !["AK", "HI", "GU", "VI", "AS"].includes(activeApp.propertyState)) {
+    if (creditScore === null || creditScore >= 640) {
+      eligibleLoanTypes.push("usda");
+    }
+  }
+  if (eligibleLoanTypes.length === 0 && activeApp?.preferredLoanType) {
     eligibleLoanTypes.push(activeApp.preferredLoanType);
   }
 
@@ -541,13 +645,17 @@ export async function buildBorrowerGraph(userId: string): Promise<BorrowerGraph>
       calcScore = statusScores[activeApp.status] || 30;
     }
     if (creditScore) { calcScore += 5; readiness.completedInputs.push("Credit score provided"); }
-    if (employmentYears !== null) { calcScore += 5; readiness.completedInputs.push("Employment duration provided"); }
+    if (employmentYears !== null) { calcScore += 3; readiness.completedInputs.push("Employment duration provided"); }
+    if (appEmploymentType) { calcScore += 2; readiness.completedInputs.push("Employment type provided"); }
+    if (activeApp?.propertyState) { calcScore += 2; readiness.completedInputs.push("Property location provided"); }
+    if (activeApp?.propertyType) { calcScore += 2; readiness.completedInputs.push("Property type provided"); }
     if (hasAdequateSavings) { calcScore += 5; readiness.completedInputs.push("Savings documented"); }
     if (estimatedDTI) { calcScore += 5; readiness.completedInputs.push("DTI calculated"); }
 
     if (documentsMissing.length > 2) readiness.outstandingInputs.push("Missing required documents");
     if (!creditScore) readiness.outstandingInputs.push("Credit score not provided");
     if (employmentYears === null) readiness.outstandingInputs.push("Employment duration not provided");
+    if (!activeApp?.propertyState) readiness.outstandingInputs.push("Property location not provided");
 
     readiness.completionPercentage = Math.min(calcScore, 100);
     readiness.tier = calcScore >= 80 ? "ready_now" : calcScore >= 60 ? "almost_ready" : calcScore >= 35 ? "building" : "exploring";
@@ -681,6 +789,10 @@ export async function buildBorrowerGraph(userId: string): Promise<BorrowerGraph>
       preApprovalAmount: parseNum(a.preApprovalAmount),
       isVeteran: a.isVeteran || false,
       isFirstTimeBuyer: a.isFirstTimeBuyer || false,
+      employmentType: a.employmentType || null,
+      propertyType: a.propertyType || null,
+      propertyState: a.propertyState || null,
+      propertyValue: parseNum(a.propertyValue),
       createdAt: a.createdAt?.toISOString() || null,
     })),
 
