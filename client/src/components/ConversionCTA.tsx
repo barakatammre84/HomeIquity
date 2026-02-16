@@ -100,7 +100,7 @@ export function ConversionCTA({ context, purchasePrice, state, propertyType }: C
           <div className="flex items-center gap-4 text-xs text-muted-foreground">
             <span className="flex items-center gap-1">
               <Shield className="h-3 w-3" />
-              No credit impact
+              No hard credit check
             </span>
             <span className="flex items-center gap-1">
               <Calculator className="h-3 w-3" />

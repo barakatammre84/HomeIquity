@@ -112,7 +112,7 @@ export default function MortgageRates() {
             </h1>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
               Here are today's mortgage rates{searchZipcode ? ` in ${searchZipcode}` : ""}. 
-              Get a personalized quote in as little as 3 minutes, with no impact to your credit score.
+              Get a personalized quote in as little as 3 minutes. No hard credit check.
             </p>
           </div>
 

@@ -361,6 +361,10 @@ export function registerRateSheetRoutes(
     try {
       const profile: BorrowerPricingProfile = req.body;
 
+      if (profile.loanPurpose === ("cash_out" as any)) {
+        profile.loanPurpose = "cash_out_refinance";
+      }
+
       if (!profile.creditScore || !profile.loanAmount || !profile.propertyValue) {
         return res.status(400).json({
           error: "Missing required fields: creditScore, loanAmount, propertyValue",

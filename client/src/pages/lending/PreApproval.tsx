@@ -32,7 +32,8 @@ import {
   Info,
   Plus,
   Trash2,
-  LogIn
+  LogIn,
+  HelpCircle
 } from "lucide-react";
 
 const US_STATES = [
@@ -191,7 +192,7 @@ const QUESTIONS: Question[] = [
     type: "currency",
     question: "What are your total monthly debt payments?",
     placeholder: "1,500",
-    subtext: "Include car loans, credit cards, student loans, etc. (not rent/mortgage)",
+    subtext: "Car, student, and personal loans, credit card minimums, child support. Don't include rent, utilities, or groceries.",
     icon: CreditCard
   },
   {
@@ -199,19 +200,21 @@ const QUESTIONS: Question[] = [
     field: "creditScore",
     type: "choice",
     question: "Roughly, what is your credit score?",
+    subtext: "An estimate is fine -- we'll verify this later with a soft check that won't affect your score.",
     icon: CreditCard,
     options: [
       { value: "760", label: "760+", icon: Check },
       { value: "720", label: "720-759", icon: Check },
       { value: "680", label: "680-719", icon: Check },
       { value: "640", label: "640-679", icon: Check },
-      { value: "600", label: "Below 640", icon: Check }
+      { value: "600", label: "Under 640", icon: Check },
+      { value: "not_sure", label: "Not sure", icon: HelpCircle }
     ]
   },
   {
     id: "veteranAndFirstTime",
     type: "boolean_pair",
-    question: "A couple more questions about you",
+    question: "These help us find programs you may qualify for",
     icon: Shield,
     booleanFields: [
       { field: "isVeteran", label: "I am a U.S. military veteran or active duty", icon: Shield },
@@ -222,7 +225,7 @@ const QUESTIONS: Question[] = [
     id: "final",
     type: "final",
     question: "You're almost there!",
-    subtitle: "Click submit to get your personalized loan options. This will not affect your credit score."
+    subtitle: "Click submit to get your personalized loan options. Soft credit check only -- won't affect your score."
   }
 ];
 
@@ -730,7 +733,7 @@ export default function PreApproval() {
       const validEmploymentTypes = ["employed", "self_employed", "retired", "other"] as const;
       const validPropertyTypes = ["single_family", "condo", "townhouse", "multi_family"] as const;
       const validLoanPurposes = ["purchase", "refinance", "cash_out"] as const;
-      const validCreditScores = ["760", "720", "680", "640", "600"] as const;
+      const validCreditScores = ["760", "720", "680", "640", "600", "not_sure"] as const;
 
       if (!formData.annualIncome && ci.annualIncome) formData.annualIncome = ci.annualIncome.replace(/[^0-9.]/g, "");
       if (!formData.monthlyDebts && ci.monthlyDebts) formData.monthlyDebts = ci.monthlyDebts.replace(/[^0-9.]/g, "");
@@ -910,22 +913,31 @@ export default function PreApproval() {
         const fieldName = currentQ.field as keyof PreApprovalFormData;
         const watchedValue = form.watch(fieldName);
         const displayValue = typeof watchedValue === 'string' ? watchedValue : "";
+        const fieldError = form.formState.errors[fieldName];
         return (
-          <div className="relative w-full max-w-md mx-auto">
-            <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 w-8 h-8 text-primary" />
-            <Input
-              key={`currency-${fieldName}`}
-              autoFocus
-              data-testid={`input-${currentQ.field}`}
-              value={displayValue}
-              onChange={(e) => {
-                const formatted = formatCurrency(e.target.value);
-                form.setValue(fieldName, formatted as never, { shouldValidate: true, shouldDirty: true });
-              }}
-              className="pl-16 h-20 text-4xl border-0 border-b-2 border-muted rounded-none focus-visible:ring-0 focus-visible:border-primary bg-transparent placeholder:text-muted-foreground/40"
-              placeholder={currentQ.placeholder}
-              onKeyDown={handleKeyDown}
-            />
+          <div className="w-full max-w-md mx-auto">
+            <div className="relative">
+              <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 w-8 h-8 text-primary" />
+              <Input
+                key={`currency-${fieldName}`}
+                autoFocus
+                data-testid={`input-${currentQ.field}`}
+                value={displayValue}
+                onChange={(e) => {
+                  const formatted = formatCurrency(e.target.value);
+                  form.setValue(fieldName, formatted as never, { shouldValidate: true, shouldDirty: true });
+                }}
+                className={`pl-16 h-20 text-4xl border-0 border-b-2 rounded-none focus-visible:ring-0 bg-transparent placeholder:text-muted-foreground/40 ${fieldError ? "border-destructive focus-visible:border-destructive" : "border-muted focus-visible:border-primary"}`}
+                placeholder={currentQ.placeholder}
+                onKeyDown={handleKeyDown}
+              />
+            </div>
+            {fieldError && (
+              <p className="mt-2 text-sm text-destructive flex items-center gap-1.5" data-testid={`error-${currentQ.field}`}>
+                <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                {fieldError.message as string}
+              </p>
+            )}
           </div>
         );
       }
@@ -934,24 +946,33 @@ export default function PreApproval() {
         const fieldName = currentQ.field as keyof PreApprovalFormData;
         const watchedValue = form.watch(fieldName);
         const displayValue = typeof watchedValue === 'string' ? watchedValue : "";
+        const fieldError = form.formState.errors[fieldName];
         return (
-          <div className="relative w-full max-w-md mx-auto">
-            {IconComponent && <IconComponent className="absolute left-4 top-1/2 -translate-y-1/2 w-8 h-8 text-primary" />}
-            <Input
-              key={`number-${fieldName}`}
-              autoFocus
-              data-testid={`input-${currentQ.field}`}
-              type="text"
-              inputMode="numeric"
-              value={displayValue}
-              onChange={(e) => {
-                const value = e.target.value.replace(/\D/g, "");
-                form.setValue(fieldName, value as never, { shouldValidate: true, shouldDirty: true });
-              }}
-              className="pl-16 h-20 text-4xl border-0 border-b-2 border-muted rounded-none focus-visible:ring-0 focus-visible:border-primary bg-transparent placeholder:text-muted-foreground/40"
-              placeholder={currentQ.placeholder}
-              onKeyDown={handleKeyDown}
-            />
+          <div className="w-full max-w-md mx-auto">
+            <div className="relative">
+              {IconComponent && <IconComponent className="absolute left-4 top-1/2 -translate-y-1/2 w-8 h-8 text-primary" />}
+              <Input
+                key={`number-${fieldName}`}
+                autoFocus
+                data-testid={`input-${currentQ.field}`}
+                type="text"
+                inputMode="numeric"
+                value={displayValue}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/\D/g, "");
+                  form.setValue(fieldName, value as never, { shouldValidate: true, shouldDirty: true });
+                }}
+                className={`pl-16 h-20 text-4xl border-0 border-b-2 rounded-none focus-visible:ring-0 bg-transparent placeholder:text-muted-foreground/40 ${fieldError ? "border-destructive focus-visible:border-destructive" : "border-muted focus-visible:border-primary"}`}
+                placeholder={currentQ.placeholder}
+                onKeyDown={handleKeyDown}
+              />
+            </div>
+            {fieldError && (
+              <p className="mt-2 text-sm text-destructive flex items-center gap-1.5" data-testid={`error-${currentQ.field}`}>
+                <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                {fieldError.message as string}
+              </p>
+            )}
           </div>
         );
       }

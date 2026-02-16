@@ -42,7 +42,7 @@ interface PublicProfile {
 
 const BENEFITS = [
   { icon: Clock, title: "3-Minute Pre-Approval", description: "Get a clear answer in minutes, not days." },
-  { icon: Shield, title: "No Credit Impact", description: "Soft pull pre-qualification protects your score." },
+  { icon: Shield, title: "Soft Credit Check", description: "Soft pull pre-qualification protects your score." },
   { icon: Calculator, title: "True Numbers", description: "See real rates, fees, and monthly payments upfront." },
   { icon: Award, title: "Transparent Process", description: "Track every step from application to closing." },
 ];

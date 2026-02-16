@@ -1,0 +1,95 @@
+
+Friction Audit: Borrower Journey
+LANDING PAGE (/)
+1. Hero has two competing CTAs of equal visual weight
+
+"Start Your Pre-Approval" and "Browse Properties" sit side by side. Users who don't know which to click may hesitate.
+Fix: Make "Browse Properties" a text link or ghost button without the outline border, so there's one obvious primary action.
+2. Six audience cards all look the same
+
+Every card is the same size, color weight, and layout. A first-time buyer scanning quickly can't find themselves fast.
+Fix: Visually highlight the 2 most common paths (First-Time Buyers, Current Homeowners) with a subtle border or "Most Popular" badge.
+3. Bottom CTA duplicates the hero CTA
+
+"Start Your Pre-Approval" appears twice. Users who scrolled to the bottom already saw it.
+Fix: Shift the bottom CTA to a warmer, outcome-focused prompt like "See your options in 3 minutes" with "Start Your Pre-Approval" as the button.
+PRE-APPROVAL FORM (/apply)
+4. 14 steps feels long -- no section grouping
+
+The step counter says "Step 1 of 14" which triggers a "this is going to take forever" reaction.
+Fix: Group steps into 3 phases (Property, Income, Profile) and show "Phase 1 of 3" or remove the total count and just show "Step 1" with the time estimate.
+5. Credit score question creates anxiety
+
+"Roughly, what is your credit score?" -- many borrowers don't know theirs and feel judged picking a range.
+Fix: Add a "Not sure" option that maps to a middle default. Add subtext: "Don't worry -- we'll verify this later. An estimate is fine."
+6. "Below 640" label is stigmatizing
+
+The lowest credit option says "Below 640" which feels like a label of inadequacy.
+Fix: Relabel to "Under 640 -- that's okay" or simply "Under 640" with reassuring subtext like "Many programs are available at every credit level."
+7. Monthly debts question lacks guidance on what to include
+
+Subtext says "Include car loans, credit cards, student loans, etc. (not rent/mortgage)" but some borrowers also have child support, alimony, or medical payments.
+Fix: Expand to "Car, student, personal loans, credit card minimums, child support. Don't include rent, utilities, or groceries."
+8. "A couple more questions about you" is vague
+
+The boolean pair step title doesn't tell the user why these questions matter.
+Fix: Change to "These help us find programs you may qualify for" so the user understands the benefit.
+9. Final step says "This will not affect your credit score" -- inconsistent with footer
+
+The footer says "Soft credit check only - won't affect your score" but the final step says "This will not affect your credit score."
+Fix: Standardize to "Soft credit check only - won't affect your score" everywhere.
+10. Auth gate appears after the user has already answered everything
+
+Being asked to sign in at the very end feels like a bait-and-switch. The user invested 3 minutes and now hits a wall.
+Fix: Add a dismissible sign-in prompt earlier (around step 3-4) saying "Sign in now to save your progress automatically" -- so the auth gate at the end is expected or already handled.
+11. Advisory panel is desktop-only
+
+Mobile users (likely 50%+) never see the live DTI, estimated payment, or contextual advice.
+Fix: Show a compact, collapsed advisory bar at the bottom of mobile that users can expand (like a "peek" drawer).
+DASHBOARD (/dashboard)
+12. "You're 10% ready to move forward" discourages new users
+
+A brand-new user sees 10% and a nearly empty progress bar. Feels like they're already behind.
+Fix: Either start at 0% with "Let's get started" framing, or hide the readiness bar until they've taken at least one meaningful action.
+13. "View details" link goes to # (broken)
+
+Line 862: <Link href="#">View details</Link> -- this link doesn't navigate anywhere.
+Fix: Link to /onboarding or the pipeline page for the active application.
+14. Dominant action card + journey checklist link creates split attention
+
+The dominant CTA says "Get Started" but right below it says "View full journey checklist." New users may click the checklist link instead and get overwhelmed by 7+ steps.
+Fix: Hide the journey checklist link for users who haven't started an application. They don't need to see the full roadmap yet.
+ONBOARDING JOURNEY (/onboarding)
+15. "Review Disclosures" and "Authorize Credit Check" both link to /e-consent
+
+Two separate steps go to the same page. The user doesn't know the difference, and clicking one may complete both.
+Fix: Either combine into one step ("Review & Authorize Disclosures") or give them distinct destinations.
+16. All steps show "Get Started" buttons even when they're not actionable yet
+
+Steps that depend on prior steps (e.g., "Upload Documents" before identity is verified) show an active button that might lead to a dead end.
+Fix: Show "Locked" or "Complete the step above first" for steps whose prerequisites aren't met, instead of a clickable button.
+17. Feedback form shown to brand-new users
+
+The "Share Your Feedback" card appears even when a user has completed 0 steps. They have nothing to give feedback on yet.
+Fix: Only show the feedback card after 2+ steps are completed.
+SUPPORTING COMPONENTS
+18. WhatsNext.tsx still says "No impact to your credit score"
+
+Line 56: Non-compliant language that was fixed elsewhere but missed here.
+Fix: Change to "No hard credit check."
+19. ConversionCTA.tsx still says "No credit impact"
+
+Line 103: Same compliance inconsistency.
+Fix: Change to "No hard credit check."
+20. RatePageHeader.tsx says "no impact to your credit score"
+
+Still using the old, non-compliant wording.
+Fix: Standardize to "No hard credit check."
+21. PartnerLanding.tsx says "No Credit Impact"
+
+Line 45: Agent/broker-facing page also uses misleading terminology.
+Fix: Change to "Soft credit check."
+22. ReferralLanding.tsx has a "No Credit Impact" badge
+
+Line 200: Same issue in the referral partner page.
+Fix: Change badge text to "Soft Credit Check."

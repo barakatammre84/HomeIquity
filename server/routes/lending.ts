@@ -3,6 +3,7 @@ import type { IStorage } from "../storage";
 import { 
   insertBorrowerDeclarationsSchema,
   isStaffRole,
+  VALID_US_STATES,
   type User,
 } from "@shared/schema";
 import { analyzeLoanApplication } from "../gemini";
@@ -18,40 +19,81 @@ const declarationsValidationSchema = insertBorrowerDeclarationsSchema.partial().
   applicationId: z.string().optional(),
 });
 
+const validEmploymentTypes = ["employed", "self_employed", "retired", "other"] as const;
+const validPropertyTypes = ["single_family", "condo", "townhouse", "multi_family"] as const;
+const validLoanPurposes = ["purchase", "refinance", "cash_out"] as const;
+
+const serverCurrencyTransform = (fieldLabel: string) =>
+  z.string().or(z.number())
+    .transform(v => String(v).replace(/[,$]/g, ""))
+    .refine(v => { const n = parseFloat(v); return !isNaN(n) && n >= 0; }, { message: `${fieldLabel} must be a valid dollar amount` })
+    .refine(v => parseFloat(v) <= 100_000_000, { message: `${fieldLabel} exceeds the maximum allowed value` });
+
+const serverPositiveCurrencyTransform = (fieldLabel: string) =>
+  z.string().or(z.number())
+    .transform(v => String(v).replace(/[,$]/g, ""))
+    .refine(v => { const n = parseFloat(v); return !isNaN(n) && n > 0; }, { message: `${fieldLabel} must be greater than $0` })
+    .refine(v => parseFloat(v) <= 100_000_000, { message: `${fieldLabel} exceeds the maximum allowed value` });
+
+const serverRentalPropertySchema = z.object({
+  address: z.string().min(1, "Property address is required").max(500, "Address is too long"),
+  city: z.string().max(100).optional(),
+  state: z.string().refine(v => !v || (VALID_US_STATES as readonly string[]).includes(v), { message: "Invalid state code" }).optional(),
+  monthlyRentalIncome: z.string().or(z.number())
+    .transform(v => String(v).replace(/[,$]/g, ""))
+    .refine(v => { const n = parseFloat(v); return !isNaN(n) && n > 0; }, { message: "Rental income must be greater than $0" }),
+  monthlyDebtPayment: z.string().or(z.number())
+    .transform(v => String(v).replace(/[,$]/g, ""))
+    .refine(v => { const n = parseFloat(v); return !isNaN(n) && n >= 0; }, { message: "Debt payment must be a valid amount" })
+    .optional(),
+});
+
+const serverIncomeSourceSchema = z.object({
+  type: z.enum(["w2", "self_employed", "rental", "social_security", "pension", "investment", "other"]),
+  annualAmount: z.string().or(z.number())
+    .transform(v => String(v).replace(/[,$]/g, ""))
+    .refine(v => { const n = parseFloat(v); return !isNaN(n) && n > 0; }, { message: "Income amount must be greater than $0" }),
+  employerName: z.string().max(200, "Employer name is too long").optional(),
+  yearsInRole: z.string().or(z.number())
+    .transform(v => { const n = parseInt(String(v)); return isNaN(n) ? "0" : String(Math.max(0, Math.min(80, n))); })
+    .optional(),
+  rentalProperties: z.array(serverRentalPropertySchema).optional(),
+});
+
 const loanApplicationInputSchema = z.object({
-  annualIncome: z.string().or(z.number()).transform(v => String(v).replace(/[,$]/g, "")).refine(v => parseFloat(v) > 0, { message: "Annual income is required" }),
-  monthlyDebts: z.string().or(z.number()).transform(v => String(v).replace(/[,$]/g, "")),
+  annualIncome: serverPositiveCurrencyTransform("Annual income"),
+  monthlyDebts: serverCurrencyTransform("Monthly debts"),
   creditScore: z.string().or(z.number()).transform(v => {
-    const n = parseInt(String(v));
+    const s = String(v);
+    if (s === "not_sure") return 680;
+    const n = parseInt(s);
     if (isNaN(n)) throw new Error("Credit score must be a valid number");
     return Math.max(300, Math.min(850, n));
   }).refine(v => v >= 300 && v <= 850, { message: "Credit score must be between 300 and 850" }),
-  employmentType: z.string().min(1).max(50).optional(),
+  employmentType: z.enum(validEmploymentTypes, { errorMap: () => ({ message: "Please select a valid employment type" }) }).optional(),
   employmentYears: z.string().or(z.number()).transform(v => {
     const n = parseInt(String(v));
     return isNaN(n) ? 0 : Math.max(0, Math.min(80, n));
   }).optional(),
-  propertyType: z.string().max(50).optional(),
-  purchasePrice: z.string().or(z.number()).transform(v => String(v).replace(/[,$]/g, "")).refine(v => parseFloat(v) > 0, { message: "Purchase price is required" }),
-  downPayment: z.string().or(z.number()).transform(v => String(v).replace(/[,$]/g, "")).refine(v => parseFloat(v) >= 0, { message: "Down payment is required" }),
-  loanPurpose: z.string().max(50).optional(),
+  propertyType: z.enum(validPropertyTypes, { errorMap: () => ({ message: "Please select a valid property type" }) }).optional(),
+  purchasePrice: serverPositiveCurrencyTransform("Purchase price"),
+  downPayment: serverCurrencyTransform("Down payment"),
+  loanPurpose: z.enum(validLoanPurposes, { errorMap: () => ({ message: "Please select a valid loan purpose" }) }).optional(),
   isVeteran: z.boolean().optional().default(false),
   isFirstTimeBuyer: z.boolean().optional().default(false),
-  propertyState: z.string().max(2).optional(),
-  incomeSources: z.array(z.object({
-    type: z.enum(["w2", "self_employed", "rental", "social_security", "pension", "investment", "other"]),
-    annualAmount: z.string().or(z.number()).transform(v => String(v).replace(/[,$]/g, "")),
-    employerName: z.string().max(200).optional(),
-    yearsInRole: z.string().or(z.number()).transform(v => String(v)).optional(),
-    rentalProperties: z.array(z.object({
-      address: z.string().min(1).max(500),
-      city: z.string().max(100).optional(),
-      state: z.string().max(2).optional(),
-      monthlyRentalIncome: z.string().or(z.number()).transform(v => String(v).replace(/[,$]/g, "")),
-      monthlyDebtPayment: z.string().or(z.number()).transform(v => String(v).replace(/[,$]/g, "")).optional(),
-    })).optional(),
-  })).optional(),
-});
+  propertyState: z.string()
+    .refine(v => !v || (VALID_US_STATES as readonly string[]).includes(v), { message: "Please select a valid US state" })
+    .optional(),
+  incomeSources: z.array(serverIncomeSourceSchema).optional(),
+}).refine(
+  (data) => {
+    const dp = parseFloat(String(data.downPayment));
+    const pp = parseFloat(String(data.purchasePrice));
+    if (isNaN(dp) || isNaN(pp)) return true;
+    return dp <= pp;
+  },
+  { message: "Down payment cannot be more than the purchase price", path: ["downPayment"] }
+);
 
 export function registerLendingRoutes(
   app: Express,
@@ -829,35 +871,36 @@ export function registerLendingRoutes(
   });
 
   const loanApplicationUpdateSchema = z.object({
-    annualIncome: z.string().or(z.number()).transform(v => String(v).replace(/[,$]/g, "")).optional(),
-    monthlyDebts: z.string().or(z.number()).transform(v => String(v).replace(/[,$]/g, "")).optional(),
+    annualIncome: serverPositiveCurrencyTransform("Annual income").optional(),
+    monthlyDebts: serverCurrencyTransform("Monthly debts").optional(),
     creditScore: z.string().or(z.number()).transform(v => {
-      const n = parseInt(String(v));
+      const s = String(v);
+      if (s === "not_sure") return 680;
+      const n = parseInt(s);
       if (isNaN(n)) throw new Error("Credit score must be a valid number");
       return Math.max(300, Math.min(850, n));
     }).refine(v => v >= 300 && v <= 850, { message: "Credit score must be between 300 and 850" }).optional(),
-    employmentType: z.string().min(1).max(50).optional(),
+    employmentType: z.enum(validEmploymentTypes, { errorMap: () => ({ message: "Invalid employment type" }) }).optional(),
     employmentYears: z.string().or(z.number()).transform(v => {
       const n = parseInt(String(v));
       return isNaN(n) ? 0 : Math.max(0, Math.min(80, n));
     }).optional(),
-    propertyType: z.string().max(50).optional(),
-    purchasePrice: z.string().or(z.number()).transform(v => String(v).replace(/[,$]/g, "")).optional(),
-    downPayment: z.string().or(z.number()).transform(v => String(v).replace(/[,$]/g, "")).optional(),
-    loanPurpose: z.string().max(50).optional(),
+    propertyType: z.enum(validPropertyTypes, { errorMap: () => ({ message: "Invalid property type" }) }).optional(),
+    purchasePrice: serverPositiveCurrencyTransform("Purchase price").optional(),
+    downPayment: serverCurrencyTransform("Down payment").optional(),
+    loanPurpose: z.enum(validLoanPurposes, { errorMap: () => ({ message: "Invalid loan purpose" }) }).optional(),
     isVeteran: z.boolean().optional(),
     isFirstTimeBuyer: z.boolean().optional(),
-    propertyState: z.string().max(2).optional(),
-    employerName: z.string().max(200).optional(),
-    propertyAddress: z.string().max(500).optional(),
-    propertyCity: z.string().max(100).optional(),
-    propertyZip: z.string().max(10).optional(),
-    incomeSources: z.array(z.object({
-      type: z.enum(["w2", "self_employed", "rental", "social_security", "pension", "investment", "other"]),
-      annualAmount: z.string().or(z.number()).transform(v => String(v).replace(/[,$]/g, "")),
-      employerName: z.string().max(200).optional(),
-      yearsInRole: z.string().or(z.number()).transform(v => String(v)).optional(),
-    })).optional(),
+    propertyState: z.string()
+      .refine(v => !v || (VALID_US_STATES as readonly string[]).includes(v), { message: "Invalid state code" })
+      .optional(),
+    employerName: z.string().max(200, "Employer name is too long").optional(),
+    propertyAddress: z.string().max(500, "Address is too long").optional(),
+    propertyCity: z.string().max(100, "City name is too long").optional(),
+    propertyZip: z.string()
+      .refine(v => !v || /^\d{5}(-\d{4})?$/.test(v), { message: "ZIP code must be 5 digits (e.g., 90210) or ZIP+4 (e.g., 90210-1234)" })
+      .optional(),
+    incomeSources: z.array(serverIncomeSourceSchema).optional(),
   });
 
   app.patch("/api/loan-applications/:id", isAuthenticated, async (req, res) => {

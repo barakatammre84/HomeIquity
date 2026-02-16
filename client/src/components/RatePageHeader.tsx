@@ -213,7 +213,7 @@ export default function RatePageHeader({
           <Link href="/apply" className="text-primary underline font-medium">
             personalized quote
           </Link>{" "}
-          in as quick as 3 minutes with no impact to your credit score.
+          in as quick as 3 minutes. No hard credit check.
         </p>
 
         <Button 

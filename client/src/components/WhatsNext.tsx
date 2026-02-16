@@ -53,7 +53,7 @@ export function getNextActions(props: WhatsNextProps): NextAction[] {
       icon: Sparkles,
       iconColor: "text-emerald-500",
       title: "Start your pre-approval",
-      description: "Get pre-approved in as little as 3 minutes. No impact to your credit score.",
+      description: "Get pre-approved in as little as 3 minutes. No hard credit check.",
       href: "/apply",
       buttonLabel: "Get Started",
       priority: 1,

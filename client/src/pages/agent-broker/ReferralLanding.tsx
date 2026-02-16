@@ -197,7 +197,7 @@ export default function ReferralLanding() {
             <div className="space-y-4">
               <div className="flex flex-wrap justify-center gap-2">
                 <Badge variant="secondary">3-Minute Pre-Approval</Badge>
-                <Badge variant="secondary">No Credit Impact</Badge>
+                <Badge variant="secondary">Soft Credit Check</Badge>
                 <Badge variant="secondary">Free Service</Badge>
               </div>
               <Button 
