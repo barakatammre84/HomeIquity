@@ -65,13 +65,13 @@ function getBorrowerTypeLabel(type: string) {
 function getBorrowerTypeDescription(type: string) {
   switch (type) {
     case "first_time_buyer":
-      return "Your personalized path includes educational resources, down payment assistance information, and step-by-step guidance designed for first-time homebuyers.";
+      return "Includes extra guidance, down payment help, and educational resources for first-time buyers.";
     case "self_employed":
-      return "Your path includes additional documentation requirements like tax returns, profit & loss statements, and bank statements to verify your self-employment income.";
+      return "Includes additional steps for tax returns, P&L statements, and bank statements.";
     case "non_qm":
-      return "Your path explores alternative qualification criteria including bank statement programs, asset-based lending, and interest-only options.";
+      return "Includes alternative qualification options like bank statement and asset-based programs.";
     default:
-      return "Your standard mortgage journey with streamlined verification and quick processing.";
+      return "Streamlined verification and quick processing.";
   }
 }
 
@@ -93,8 +93,8 @@ function getJourneySteps(status: OnboardingStatus): JourneyStep[] {
   const baseSteps: JourneyStep[] = [
     {
       id: "application",
-      title: "Submit Application",
-      description: "Complete the pre-approval application form",
+      title: "Apply for Pre-Approval",
+      description: "Answer a few questions about your finances",
       icon: FileText,
       href: "/apply",
       complete: hasApp,
@@ -104,7 +104,7 @@ function getJourneySteps(status: OnboardingStatus): JourneyStep[] {
     {
       id: "identity",
       title: "Verify Your Identity",
-      description: "Complete knowledge-based authentication and compliance checks",
+      description: "Quick identity check to protect your information",
       icon: Shield,
       href: "/identity-verification",
       complete: identityVerified && kycCleared,
@@ -114,7 +114,7 @@ function getJourneySteps(status: OnboardingStatus): JourneyStep[] {
     {
       id: "documents",
       title: "Upload Documents",
-      description: "Provide required financial and identity documents",
+      description: "Income, tax, and ID documents",
       icon: FileText,
       href: "/documents",
       complete: docsVerified || false,
@@ -123,8 +123,8 @@ function getJourneySteps(status: OnboardingStatus): JourneyStep[] {
     },
     {
       id: "e_consent",
-      title: "Electronic Consent",
-      description: "Review and agree to electronic disclosures and communications",
+      title: "Review Disclosures",
+      description: "Agree to electronic disclosures",
       icon: ClipboardCheck,
       href: "/e-consent",
       complete: false,
@@ -133,8 +133,8 @@ function getJourneySteps(status: OnboardingStatus): JourneyStep[] {
     },
     {
       id: "credit_consent",
-      title: "Credit Authorization",
-      description: "Authorize a credit check to verify your credit history",
+      title: "Authorize Credit Check",
+      description: "Lets us pull your credit report",
       icon: CreditCard,
       href: "/e-consent",
       complete: false,
@@ -148,7 +148,7 @@ function getJourneySteps(status: OnboardingStatus): JourneyStep[] {
       {
         id: "education",
         title: "Homebuyer Education",
-        description: "Learn about the mortgage process, down payments, and closing costs",
+        description: "Learn about down payments, closing costs, and the mortgage process",
         icon: GraduationCap,
         href: "/learn",
         complete: false,
@@ -158,7 +158,7 @@ function getJourneySteps(status: OnboardingStatus): JourneyStep[] {
       {
         id: "affordability",
         title: "Check Affordability",
-        description: "Use our calculator to understand what you can afford",
+        description: "See what price range fits your budget",
         icon: Calculator,
         href: "/calculators/affordability",
         complete: false,
@@ -173,7 +173,7 @@ function getJourneySteps(status: OnboardingStatus): JourneyStep[] {
       {
         id: "tax_docs",
         title: "Tax Documentation",
-        description: "Upload 2 years of personal & business tax returns, P&L statements",
+        description: "2 years of personal and business tax returns, plus P&L",
         icon: DollarSign,
         href: "/documents",
         complete: false,
@@ -183,7 +183,7 @@ function getJourneySteps(status: OnboardingStatus): JourneyStep[] {
       {
         id: "bank_statements",
         title: "Bank Statements",
-        description: "Provide 12-24 months of personal and business bank statements",
+        description: "12-24 months of personal and business statements",
         icon: Briefcase,
         href: "/documents",
         complete: false,
@@ -198,7 +198,7 @@ function getJourneySteps(status: OnboardingStatus): JourneyStep[] {
       {
         id: "alt_docs",
         title: "Alternative Documentation",
-        description: "Provide bank statements, asset documentation, or alternative income proof",
+        description: "Bank statements, asset docs, or alternative income proof",
         icon: FileText,
         href: "/documents",
         complete: false,
@@ -208,7 +208,7 @@ function getJourneySteps(status: OnboardingStatus): JourneyStep[] {
       {
         id: "asset_review",
         title: "Asset Qualification Review",
-        description: "We'll review your assets to determine qualification under non-QM guidelines",
+        description: "We review your assets against non-QM qualification guidelines",
         icon: DollarSign,
         href: "/verification",
         complete: false,
@@ -222,7 +222,7 @@ function getJourneySteps(status: OnboardingStatus): JourneyStep[] {
     {
       id: "review",
       title: "Application Review",
-      description: "Our team reviews your complete application package",
+      description: "Our team reviews your full application",
       icon: Users,
       href: "/dashboard",
       complete: status.applicationStatus === "pre_approved" || status.applicationStatus === "approved",
@@ -231,7 +231,7 @@ function getJourneySteps(status: OnboardingStatus): JourneyStep[] {
     },
     {
       id: "approval",
-      title: "Get Pre-Approved",
+      title: "Get Your Letter",
       description: "Receive your verified pre-approval letter",
       icon: CheckCircle2,
       href: "/dashboard",
@@ -337,10 +337,7 @@ export default function OnboardingJourney() {
           </div>
           <div>
             <h1 className="text-xl font-bold text-foreground md:text-2xl" data-testid="text-journey-title">Your Mortgage Journey</h1>
-            <p className="text-sm text-muted-foreground">Personalized steps to get you to closing day.</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Your <Link href="/dashboard" className="text-primary hover:underline">dashboard</Link> always shows your most important next step.
-            </p>
+            <p className="text-sm text-muted-foreground">Here's every step from application to closing.</p>
           </div>
         </div>
       </div>

@@ -83,14 +83,14 @@ const QUESTIONS: Question[] = [
     id: "intro",
     type: "intro",
     title: "Let's get you home.",
-    subtitle: "We'll get you a verified pre-approval letter in about 3 minutes. No impact to your credit score.",
+    subtitle: "We'll get you a verified pre-approval letter in about 3 minutes. No hard credit check.",
     buttonText: "Start My Pre-Approval"
   },
   {
     id: "loanPurpose",
     field: "loanPurpose",
     type: "choice",
-    question: "First things first, what is your goal?",
+    question: "What are you looking to do?",
     icon: Home,
     options: [
       { value: "purchase", label: "Buying a Home", icon: Home },
@@ -1406,9 +1406,9 @@ export default function PreApproval() {
             {currentQ.buttonText} <ArrowRight className="ml-2" />
           </Button>
           <p className="mt-8 text-sm text-muted-foreground">
-            Already have an account?{" "}
+            Have a saved application?{" "}
             <a href="/api/login" className="text-primary hover:underline">
-              Sign in
+              Sign in to resume
             </a>
           </p>
           {urlPropertyId && urlSource === "property-detail" && (
@@ -1547,10 +1547,10 @@ export default function PreApproval() {
               <LogIn className="h-8 w-8 text-primary" />
             </div>
             <h3 className="text-2xl font-bold text-foreground mb-3" data-testid="text-auth-gate-title">
-              Sign in to get your results
+              One last step
             </h3>
             <p className="text-muted-foreground mb-6">
-              Your answers are saved. Sign in to submit your application and see your pre-approval options instantly.
+              Sign in to see your pre-approval results. Your answers are already saved.
             </p>
             <div className="space-y-3">
               <a href="/api/login" className="block">
@@ -1570,7 +1570,7 @@ export default function PreApproval() {
             </div>
             <p className="text-xs text-muted-foreground mt-4 flex items-center justify-center gap-1">
               <Shield className="h-3 w-3" />
-              Your data is encrypted and secure
+              Your data is encrypted and never shared
             </p>
           </motion.div>
         </motion.div>
@@ -1580,7 +1580,7 @@ export default function PreApproval() {
       <div className="p-4 sm:p-6 text-center border-t border-muted">
         <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
           <Shield className="h-4 w-4" />
-          <span>Soft credit check only - won't affect your credit score</span>
+          <span>Soft credit check only - won't affect your score</span>
         </div>
       </div>
     </div>

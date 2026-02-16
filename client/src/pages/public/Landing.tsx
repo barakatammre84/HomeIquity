@@ -28,8 +28,8 @@ const AUDIENCE_PATHS = [
     id: "first-time",
     icon: Key,
     title: "First-Time Buyers",
-    description: "Understand what you need, get organized, and feel ready to buy your first home.",
-    cta: "Check Your Readiness",
+    description: "Not sure where to start? We'll walk you through it step by step.",
+    cta: "See Where You Stand",
     href: "/ai-coach",
     color: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
   },
@@ -37,8 +37,8 @@ const AUDIENCE_PATHS = [
     id: "homeowners",
     icon: Home,
     title: "Current Homeowners",
-    description: "Track your equity, explore refinancing options, and plan your next move with clarity.",
-    cta: "Explore Options",
+    description: "See if refinancing could lower your payment or unlock your equity.",
+    cta: "Check Refinance Options",
     href: "/apply?type=refinance",
     color: "bg-primary/10 text-primary",
   },
@@ -46,7 +46,7 @@ const AUDIENCE_PATHS = [
     id: "move-up",
     icon: TrendingUp,
     title: "Move-Up Buyers",
-    description: "Ready for your next chapter? Start your pre-approval and browse available homes.",
+    description: "Ready for your next home? Get pre-approved and start shopping.",
     cta: "Get Pre-Approved",
     href: "/apply",
     color: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
@@ -54,9 +54,9 @@ const AUDIENCE_PATHS = [
   {
     id: "affluent",
     icon: Briefcase,
-    title: "Complex Borrowers",
-    description: "Self-employed, multiple properties, or unique income? We organize the complexity.",
-    cta: "Start Application",
+    title: "Complex Income",
+    description: "Self-employed, multiple properties, or non-traditional income? We handle it.",
+    cta: "Get Pre-Approved",
     href: "/apply",
     color: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
   },
@@ -64,8 +64,8 @@ const AUDIENCE_PATHS = [
     id: "veterans",
     icon: Shield,
     title: "Veterans & Military",
-    description: "Explore VA loan options built with the respect and understanding you deserve. Founded by a fellow veteran.",
-    cta: "Explore VA Options",
+    description: "VA loans with no down payment. Built by a fellow veteran.",
+    cta: "Explore VA Loans",
     href: "/apply?type=va",
     color: "bg-red-500/10 text-red-600 dark:text-red-400",
   },
@@ -73,8 +73,8 @@ const AUDIENCE_PATHS = [
     id: "investors",
     icon: Building2,
     title: "Real Estate Investors",
-    description: "Evaluate deals, manage documents, and make smarter investment decisions.",
-    cta: "View Properties",
+    description: "Finance your next investment property with confidence.",
+    cta: "Browse Properties",
     href: "/properties",
     color: "bg-purple-500/10 text-purple-600 dark:text-purple-400",
   },
@@ -123,7 +123,7 @@ export default function Landing() {
                   className="w-full gap-2 bg-emerald-500 font-semibold text-white shadow-lg shadow-emerald-500/25 sm:w-auto"
                   data-testid="button-hero-preapprove"
                 >
-                  Check Your Readiness
+                  Start Your Pre-Approval
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               </Link>
@@ -142,15 +142,15 @@ export default function Landing() {
             <div className="mt-6 flex flex-wrap items-center justify-center gap-6 text-sm text-white/70">
               <span className="flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-                No hard credit pull
+                No hard credit check
               </span>
               <span className="flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-                Free to use
+                Takes about 3 minutes
               </span>
               <span className="flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-                No pressure, ever
+                100% free
               </span>
             </div>
           </div>
@@ -188,7 +188,7 @@ export default function Landing() {
               Where are you on your journey?
             </h2>
             <p className="mt-4 text-lg text-muted-foreground">
-              Homiquity meets you wherever you are in the homeownership process
+              Pick your situation and we'll show you the right next step
             </p>
           </div>
 
@@ -223,19 +223,19 @@ export default function Landing() {
         <div className="mx-auto max-w-6xl">
           <div className="text-center">
             <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-              How Homiquity works
+              How it works
             </h2>
             <p className="mt-4 text-lg text-muted-foreground">
-              A clear, straightforward process from start to finish
+              Four steps from start to offer
             </p>
           </div>
           
           <div className="mt-16 grid gap-8 sm:grid-cols-4">
             {[
-              { step: 1, title: "Understand your readiness", desc: "Answer a few questions or chat with our AI coach to see where you stand." },
-              { step: 2, title: "Get organized", desc: "We help you gather and organize everything you'll need for a smooth process." },
-              { step: 3, title: "Get your decision", desc: "Our system evaluates your profile using industry-standard guidelines and delivers a clear answer." },
-              { step: 4, title: "Move forward", desc: "Use your pre-approval to make confident offers on homes you love." },
+              { step: 1, title: "Answer a few questions", desc: "Tell us about your income, debts, and what you're looking for. Takes about 3 minutes." },
+              { step: 2, title: "Get your answer", desc: "We evaluate your profile against real lending guidelines and give you a clear decision." },
+              { step: 3, title: "Upload your documents", desc: "We tell you exactly what's needed and keep everything organized in one place." },
+              { step: 4, title: "Shop with confidence", desc: "Use your pre-approval letter to make competitive offers on homes you love." },
             ].map((item) => (
               <div key={item.step} className="relative text-center">
                 <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-xl font-bold text-white shadow-lg shadow-primary/25">
@@ -255,10 +255,10 @@ export default function Landing() {
         <div className="mx-auto max-w-6xl">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-              Why trust a new platform?
+              Built on experience you can trust
             </h2>
             <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
-              We're new to you, but not new to mortgage lending. Here's what we bring to the table.
+              15+ years of banking and lending, now available to you online.
             </p>
           </div>
 
@@ -322,10 +322,10 @@ export default function Landing() {
       <section className="px-4 py-20 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-4xl text-center">
           <h2 className="text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
-            Ready to see where you stand?
+            Find out what you qualify for
           </h2>
           <p className="mt-6 text-lg text-muted-foreground">
-            No pressure, no commitment. Just clarity about your homeownership options.
+            Answer a few questions and get a clear decision in minutes. No commitment required.
           </p>
           
           <div className="mt-10 flex w-full max-w-md mx-auto flex-col items-center gap-3 sm:w-auto sm:max-w-none sm:flex-row sm:justify-center sm:gap-4">
@@ -335,7 +335,7 @@ export default function Landing() {
                 className="w-full gap-2 bg-emerald-500 font-semibold shadow-lg shadow-emerald-500/25 sm:w-auto"
                 data-testid="button-cta-preapprove"
               >
-                Get Pre-Approved
+                Start Your Pre-Approval
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>
@@ -347,13 +347,13 @@ export default function Landing() {
                 data-testid="button-cta-coach"
               >
                 <Bot className="h-4 w-4" />
-                Talk to AI Coach
+                Not sure yet? Talk to our AI Coach
               </Button>
             </Link>
           </div>
           
           <p className="mt-6 text-sm text-muted-foreground">
-            No hard credit check. Free to use. Unsubscribe anytime.
+            No hard credit check. Free to use. No strings attached.
           </p>
         </div>
       </section>

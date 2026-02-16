@@ -136,17 +136,17 @@ function getPersonalizedGreeting(user: any, application: LoanApplication | null,
   if (!application) {
     switch (goal) {
       case "buying_first_home":
-        return { title: greeting, subtitle: "Ready to take the first step toward homeownership? We'll make it simple." };
+        return { title: greeting, subtitle: "Your pre-approval is the first step. Let's get started." };
       case "buying_next_home":
         return { title: greeting, subtitle: "Let's find the right mortgage for your next home." };
       case "refinancing":
-        return { title: greeting, subtitle: "See if refinancing could save you money each month." };
+        return { title: greeting, subtitle: "Let's see if refinancing could lower your payment." };
       case "investing":
-        return { title: greeting, subtitle: "Let's explore financing for your next investment property." };
+        return { title: greeting, subtitle: "Get pre-approved for your next investment property." };
       case "just_exploring":
-        return { title: greeting, subtitle: "Take your time exploring. We're here when you're ready." };
+        return { title: greeting, subtitle: "Explore your options. Start when you're ready." };
       default:
-        return { title: greeting, subtitle: "Let's get you on the path to homeownership." };
+        return { title: greeting, subtitle: "Here's where you stand on your mortgage journey." };
     }
   }
 
@@ -209,7 +209,7 @@ function getDominantAction(
         return {
           icon: Sparkles,
           title: "Start your pre-approval",
-          description: "Takes about 3 minutes. No impact to your credit score.",
+          description: "Takes about 3 minutes. No hard credit check.",
           href: "/apply",
           buttonLabel: "Get Started",
         };
@@ -217,7 +217,7 @@ function getDominantAction(
         return {
           icon: Sparkles,
           title: "Check your refinance options",
-          description: "See if you could lower your monthly payment or tap into your equity.",
+          description: "See if you could lower your payment or tap into your equity.",
           href: "/apply",
           buttonLabel: "Get Started",
         };
@@ -233,7 +233,7 @@ function getDominantAction(
         return {
           icon: Sparkles,
           title: "Start your pre-approval",
-          description: "Takes about 3 minutes. No impact to your credit score.",
+          description: "Takes about 3 minutes. No hard credit check.",
           href: "/apply",
           buttonLabel: "Get Started",
         };
@@ -343,12 +343,12 @@ function getDominantAction(
 
 function getProgressNudge(readiness: number, application: LoanApplication | null): string | null {
   if (!application) {
-    if (readiness >= 25) return "You're making great progress. Start your pre-approval to reach 50%.";
+    if (readiness >= 25) return "Good start. Apply for pre-approval to jump to 50%.";
     return null;
   }
-  if (readiness >= 90) return "Almost done. Just a few final steps.";
-  if (readiness >= 70) return "You're making great progress. Keep going.";
-  if (readiness >= 50) return "Halfway there. Each step brings you closer.";
+  if (readiness >= 90) return "Almost done. A few final steps remain.";
+  if (readiness >= 70) return "Great progress. Keep it up.";
+  if (readiness >= 50) return "Halfway there. Each completed step moves you closer.";
   return null;
 }
 

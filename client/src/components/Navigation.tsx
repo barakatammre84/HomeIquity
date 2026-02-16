@@ -22,17 +22,17 @@ interface NavItem {
 }
 
 const buyMenuItems: NavItem[] = [
-  { href: "/apply", label: "Get Pre-Approved", description: "Start your home buying journey", icon: FileText },
-  { href: "/rates/purchase", label: "Today's Rates", description: "See current purchase rates", icon: Percent },
-  { href: "/calculators/affordability", label: "Affordability Calculator", description: "What can you afford?", icon: Calculator },
-  { href: "/properties", label: "Browse Homes", description: "Find your dream home", icon: Home },
+  { href: "/apply", label: "Get Pre-Approved", description: "Takes about 3 minutes", icon: FileText },
+  { href: "/rates/purchase", label: "Today's Rates", description: "Current purchase rates", icon: Percent },
+  { href: "/calculators/affordability", label: "Affordability Calculator", description: "See what fits your budget", icon: Calculator },
+  { href: "/properties", label: "Browse Homes", description: "Search available listings", icon: Home },
 ];
 
 const refinanceMenuItems: NavItem[] = [
-  { href: "/apply?type=refinance", label: "Refinance", description: "Lower your monthly payment", icon: FileText },
-  { href: "/apply?type=heloc", label: "Apply for HELOC", description: "Flexible home equity line of credit", icon: FileText },
-  { href: "/rates/cash-out", label: "Cash-Out Rates", description: "Access your home equity", icon: Percent },
-  { href: "/rates/heloc", label: "HELOC Rates", description: "See current HELOC rates", icon: Percent },
+  { href: "/apply?type=refinance", label: "Refinance", description: "See if you can lower your payment", icon: FileText },
+  { href: "/apply?type=heloc", label: "Apply for HELOC", description: "Tap into your home equity", icon: FileText },
+  { href: "/rates/cash-out", label: "Cash-Out Rates", description: "Current cash-out rates", icon: Percent },
+  { href: "/rates/heloc", label: "HELOC Rates", description: "Current HELOC rates", icon: Percent },
 ];
 
 interface NavDropdownProps {
@@ -151,11 +151,11 @@ export function Navigation() {
         <div className="bg-primary/10 border-b border-primary/20">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-4 py-2">
             <span className="text-sm text-foreground/80" data-testid="text-resume-banner">
-              You have an application in progress.
+              You have an application in progress
             </span>
             <Link href="/dashboard">
               <Button variant="ghost" size="sm" className="gap-1 text-primary text-sm font-medium" data-testid="button-resume-app">
-                Go to Dashboard <ArrowRight className="h-3 w-3" />
+                Resume <ArrowRight className="h-3 w-3" />
               </Button>
             </Link>
           </div>

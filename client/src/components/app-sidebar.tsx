@@ -81,16 +81,16 @@ const aspiringOwnerNavigation = [
   {
     section: "Explore",
     items: [
-      { title: "Overview", href: "/dashboard", icon: LayoutDashboard, testId: "link-borrower-dashboard" },
-      { title: "My Journey", href: "/onboarding", icon: Rocket, testId: "link-onboarding" },
-      { title: "Browse Properties", href: "/properties", icon: Home, testId: "link-properties" },
+      { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard, testId: "link-borrower-dashboard" },
+      { title: "Browse Homes", href: "/properties", icon: Home, testId: "link-properties" },
       { title: "Messages", href: "/messages", icon: MessageCircle, testId: "link-messages", showMessageBadge: true },
     ],
   },
   {
     section: "Get Ready",
     items: [
-      { title: "Pre-Approval", href: "/apply", icon: Star, testId: "link-pre-approval" },
+      { title: "Get Pre-Approved", href: "/apply", icon: Star, testId: "link-pre-approval" },
+      { title: "My Journey", href: "/onboarding", icon: Rocket, testId: "link-onboarding" },
       { title: "Gap Calculator", href: "/gap-calculator", icon: Calculator, testId: "link-gap-calculator" },
       { title: "Down Payment Help", href: "/down-payment-wizard", icon: PiggyBank, testId: "link-dpa-wizard" },
     ],
@@ -101,8 +101,8 @@ const activeBuyerNavigation = [
   {
     section: "My Mortgage",
     items: [
-      { title: "Overview", href: "/dashboard", icon: LayoutDashboard, testId: "link-borrower-dashboard" },
-      { title: "Tasks", href: "/tasks", icon: CheckSquare, testId: "link-tasks", showBadge: true },
+      { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard, testId: "link-borrower-dashboard" },
+      { title: "To-Do", href: "/tasks", icon: CheckSquare, testId: "link-tasks", showBadge: true },
       { title: "Documents", href: "/documents", icon: Upload, testId: "link-documents" },
       { title: "Messages", href: "/messages", icon: MessageCircle, testId: "link-messages", showMessageBadge: true },
     ],
@@ -111,7 +111,7 @@ const activeBuyerNavigation = [
     section: "Progress",
     items: [
       { title: "My Journey", href: "/onboarding", icon: Rocket, testId: "link-onboarding" },
-      { title: "My Application", href: "/application-summary", icon: FileText, testId: "link-application-summary" },
+      { title: "Application Details", href: "/application-summary", icon: FileText, testId: "link-application-summary" },
       { title: "Verification", href: "/verification", icon: Shield, testId: "link-verification" },
     ],
   },
