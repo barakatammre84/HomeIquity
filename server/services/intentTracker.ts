@@ -273,11 +273,39 @@ export async function updateReadinessField(
     manually_verified: "tier1",
   };
 
+  const tierRank: Record<string, number> = {
+    "": 0,
+    tier3: 1,
+    tier2: 2,
+    tier1: 3,
+  };
+
+  const newTier = tierMap[options.verificationStatus] || "";
+
+  const [existing] = await db.select({
+    trustTier: readinessChecklist.trustTier,
+    verificationStatus: readinessChecklist.verificationStatus,
+  })
+    .from(readinessChecklist)
+    .where(and(
+      eq(readinessChecklist.userId, userId),
+      eq(readinessChecklist.fieldName, fieldName),
+    ))
+    .limit(1);
+
+  if (existing) {
+    const existingRank = tierRank[existing.trustTier || ""] || 0;
+    const newRank = tierRank[newTier] || 0;
+    if (newRank < existingRank) {
+      return;
+    }
+  }
+
   await db.update(readinessChecklist)
     .set({
       isCollected: options.verificationStatus !== "not_collected",
       verificationStatus: options.verificationStatus,
-      trustTier: tierMap[options.verificationStatus] || null,
+      trustTier: newTier || null,
       sourceTable: options.sourceTable || null,
       sourceField: options.sourceField || null,
       sourceRecordId: options.sourceRecordId || null,

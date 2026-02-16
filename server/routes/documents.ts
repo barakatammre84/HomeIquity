@@ -228,6 +228,22 @@ export function registerDocumentRoutes(
         }),
       });
 
+      if (extractedData.confidence !== "low" && extractedData.extractedFields) {
+        try {
+          const { wireExtractionToReadiness } = await import("../services/optimizationEngine");
+          const readinessResult = await wireExtractionToReadiness(
+            document.userId,
+            id,
+            document.documentType,
+            extractedData.extractedFields,
+            extractedData.confidence
+          );
+          console.log(`[OPT-1] Readiness fields updated: ${readinessResult.fieldsUpdated.join(", ") || "none"}`);
+        } catch (readinessErr) {
+          console.warn("[OPT-1] Readiness wiring failed (non-fatal):", readinessErr);
+        }
+      }
+
       if (document.applicationId) {
         const { taskEventEmitter } = await import("../services/taskEventEmitter");
         

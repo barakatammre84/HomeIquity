@@ -117,6 +117,23 @@ export function registerComplianceRoutes(
             rawResponse: identityResult.rawResponse,
             verifiedAt: identityResult.verified ? new Date() : undefined,
           });
+
+          if (identityResult.verified) {
+            try {
+              const { wirePlaidToReadiness } = await import("../services/optimizationEngine");
+              await wirePlaidToReadiness(userId, "identity", {
+                itemId,
+                fullName: identityResult.identityData.names[0] || null,
+                addresses: identityResult.identityData.addresses,
+                emails: identityResult.identityData.emails,
+                phoneNumbers: identityResult.identityData.phoneNumbers,
+                verified: true,
+                verifiedAt: new Date().toISOString(),
+              });
+            } catch (readinessErr) {
+              console.warn("[OPT-4] Plaid identity readiness wiring failed:", readinessErr);
+            }
+          }
         } catch (identityError) {
           console.error("Identity fetch error:", identityError);
           await storage.updateVerification(verification.id, {
@@ -131,6 +148,19 @@ export function registerComplianceRoutes(
         await storage.updateVerification(verification.id, {
           status: "in_progress",
         });
+
+        try {
+          const { wirePlaidToReadiness } = await import("../services/optimizationEngine");
+          await wirePlaidToReadiness(userId, verificationType as "employment" | "income", {
+            itemId,
+            verificationType,
+            verificationId: verification.id,
+            status: "in_progress",
+            initiatedAt: new Date().toISOString(),
+          });
+        } catch (readinessErr) {
+          console.warn(`[OPT-4] Plaid ${verificationType} readiness wiring failed:`, readinessErr);
+        }
       }
 
       res.json({

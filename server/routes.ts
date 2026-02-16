@@ -18,6 +18,7 @@ import { registerUnderwritingRulesRoutes } from "./routes/underwriting-rules";
 import { registerPolicyOpsRoutes } from "./routes/policy-ops";
 import { registerRateSheetRoutes } from "./routes/rate-sheets";
 import { registerIntelligenceRoutes } from "./routes/intelligence";
+import { registerOptimizationRoutes } from "./routes/optimizations";
 import { seedDatabase } from "./seed";
 
 
@@ -45,6 +46,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerPolicyOpsRoutes(app, storage, isAuthenticated, isAdmin);
   registerRateSheetRoutes(app, storage, isAuthenticated, isAdmin);
   registerIntelligenceRoutes(app, storage, isAuthenticated, isAdmin);
+  registerOptimizationRoutes(app);
 
   app.all("/api/*", (_req, res) => {
     res.status(404).json({ error: "Not found" });

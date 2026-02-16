@@ -484,6 +484,13 @@ export function registerLendingRoutes(
       try {
         await storage.updateLoanApplication(application.id, { status: "analyzing" });
 
+        try {
+          const { syncApplicationStatusToStateMachine } = await import("../services/optimizationEngine");
+          await syncApplicationStatusToStateMachine(userId, application.id, "analyzing");
+        } catch (syncErr) {
+          console.warn("[OPT-5] State sync failed for analyzing (non-fatal):", syncErr);
+        }
+
         const analysisResult = await analyzeLoanApplication({
           annualIncome: applicationData.annualIncome,
           monthlyDebts: applicationData.monthlyDebts,
@@ -499,6 +506,13 @@ export function registerLendingRoutes(
         });
 
         const newStatus = analysisResult.isApproved ? "pre_approved" : "denied";
+
+        try {
+          const { syncApplicationStatusToStateMachine } = await import("../services/optimizationEngine");
+          await syncApplicationStatusToStateMachine(userId, application.id, newStatus);
+        } catch (syncErr) {
+          console.warn(`[OPT-5] State sync failed for ${newStatus} (non-fatal):`, syncErr);
+        }
         
         await storage.updateLoanApplication(application.id, {
           status: newStatus,
