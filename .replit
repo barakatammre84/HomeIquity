@@ -45,3 +45,7 @@ integrations = ["javascript_log_in_with_replit:2.0.0", "javascript_gemini_ai_int
 
 [userenv.production]
 VITE_REPL_DEPLOYMENT = "1"
+
+[userenv.shared]
+CREDIT_ENCRYPTION_KEY = "4bC1xjKPdQDbiMxgvGUr+GUXOQGgEBmlfbwfunKNnRU="
+PII_HASH_SALT = "E9bfPVjP6JFk7ldU/Pxn3PAf1bN++LoeSzmKCOX9MARE7puvZtrIYr2rYl6PWM7y"
