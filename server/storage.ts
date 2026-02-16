@@ -253,7 +253,8 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
-  getAllUsers(): Promise<User[]>;
+  getAllUsers(limit?: number): Promise<User[]>;
+  getUsersByIds(ids: string[]): Promise<User[]>;
   updateUserRole(id: string, role: string): Promise<User | undefined>;
 
   // Loan Applications
@@ -261,7 +262,7 @@ export interface IStorage {
   getLoanApplication(id: string): Promise<LoanApplication | undefined>;
   getLoanApplicationWithAccess(id: string, userId: string, userRole: string): Promise<LoanApplication | undefined>;
   getLoanApplicationsByUser(userId: string): Promise<LoanApplication[]>;
-  getAllLoanApplications(): Promise<LoanApplication[]>;
+  getAllLoanApplications(limit?: number): Promise<LoanApplication[]>;
   updateLoanApplication(id: string, data: Partial<LoanApplication>): Promise<LoanApplication | undefined>;
 
   // Loan Options
@@ -388,7 +389,7 @@ export interface IStorage {
   getTask(id: string): Promise<Task | undefined>;
   getTasksByApplication(applicationId: string): Promise<Task[]>;
   getTasksByUser(userId: string): Promise<Task[]>;
-  getAllTasks(): Promise<Task[]>;
+  getAllTasks(limit?: number): Promise<Task[]>;
   updateTask(id: string, data: Partial<Task>): Promise<Task | undefined>;
   deleteTask(id: string): Promise<void>;
   
@@ -868,8 +869,13 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async getAllUsers(): Promise<User[]> {
-    return await db.select().from(users).orderBy(desc(users.createdAt));
+  async getAllUsers(limit: number = 500): Promise<User[]> {
+    return await db.select().from(users).orderBy(desc(users.createdAt)).limit(limit);
+  }
+
+  async getUsersByIds(ids: string[]): Promise<User[]> {
+    if (ids.length === 0) return [];
+    return await db.select().from(users).where(inArray(users.id, ids));
   }
 
   async updateUserRole(id: string, role: string): Promise<User | undefined> {
@@ -930,11 +936,12 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(loanApplications.createdAt));
   }
 
-  async getAllLoanApplications(): Promise<LoanApplication[]> {
+  async getAllLoanApplications(limit: number = 500): Promise<LoanApplication[]> {
     return await db
       .select()
       .from(loanApplications)
-      .orderBy(desc(loanApplications.createdAt));
+      .orderBy(desc(loanApplications.createdAt))
+      .limit(limit);
   }
 
   async updateLoanApplication(
@@ -1110,67 +1117,55 @@ export class DatabaseStorage implements IStorage {
 
   // Stats
   async getAdminStats() {
-    const [userCount] = await db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(users);
+    const [
+      [userCount],
+      appStats,
+      recentAppsWithUsers,
+      loanTypeStats,
+    ] = await Promise.all([
+      db.select({ count: sql<number>`count(*)::int` }).from(users),
 
-    const [appCount] = await db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(loanApplications);
-
-    const [volumeResult] = await db
-      .select({ total: sql<string>`coalesce(sum(purchase_price::numeric), 0)::text` })
-      .from(loanApplications)
-      .where(eq(loanApplications.status, "approved"));
-
-    const [approvedCount] = await db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(loanApplications)
-      .where(eq(loanApplications.status, "approved"));
-
-    const statusCounts = await db
-      .select({
+      db.select({
         status: loanApplications.status,
         count: sql<number>`count(*)::int`,
+        volume: sql<string>`coalesce(sum(purchase_price::numeric), 0)::text`,
       })
-      .from(loanApplications)
-      .groupBy(loanApplications.status);
+        .from(loanApplications)
+        .groupBy(loanApplications.status),
 
-    const recentApps = await db
-      .select()
-      .from(loanApplications)
-      .orderBy(desc(loanApplications.createdAt))
-      .limit(10);
-
-    const appsWithUsers = await Promise.all(
-      recentApps.map(async (app) => {
-        const [user] = await db
-          .select()
-          .from(users)
-          .where(eq(users.id, app.userId))
-          .limit(1);
-        return { ...app, user };
+      db.select({
+        application: loanApplications,
+        user: users,
       })
-    );
+        .from(loanApplications)
+        .leftJoin(users, eq(loanApplications.userId, users.id))
+        .orderBy(desc(loanApplications.createdAt))
+        .limit(10),
 
-    const approvalRate =
-      appCount.count > 0
-        ? Math.round((approvedCount.count / appCount.count) * 100)
-        : 0;
-
-    // Get loan breakdown by type from loanOptions table
-    const loanTypeStats = await db
-      .select({
+      db.select({
         type: loanOptions.loanType,
         count: sql<number>`count(DISTINCT ${loanOptions.applicationId})::int`,
         volume: sql<string>`coalesce(sum(${loanOptions.loanAmount}::numeric), 0)::text`,
       })
-      .from(loanOptions)
-      .innerJoin(loanApplications, eq(loanOptions.applicationId, loanApplications.id))
-      .where(eq(loanOptions.isRecommended, true))
-      .groupBy(loanOptions.loanType);
+        .from(loanOptions)
+        .innerJoin(loanApplications, eq(loanOptions.applicationId, loanApplications.id))
+        .where(eq(loanOptions.isRecommended, true))
+        .groupBy(loanOptions.loanType),
+    ]);
 
-    // Ensure all loan types are represented with defaults
+    const totalApplications = appStats.reduce((sum, s) => sum + s.count, 0);
+    const approvedRow = appStats.find(s => s.status === "approved");
+    const approvedCount = approvedRow?.count ?? 0;
+    const totalLoanVolume = approvedRow?.volume ?? "0";
+    const approvalRate = totalApplications > 0
+      ? Math.round((approvedCount / totalApplications) * 100)
+      : 0;
+
+    const appsWithUsers = recentAppsWithUsers.map(r => ({
+      ...r.application,
+      user: r.user,
+    }));
+
     const loansByTypeMap = new Map(loanTypeStats.map(lt => [lt.type, lt]));
     const loansByType = ["conventional", "fha", "va"].map(type => ({
       type,
@@ -1180,10 +1175,10 @@ export class DatabaseStorage implements IStorage {
 
     return {
       totalUsers: userCount.count,
-      totalApplications: appCount.count,
-      totalLoanVolume: volumeResult.total,
+      totalApplications,
+      totalLoanVolume,
       approvalRate,
-      applicationsByStatus: statusCounts,
+      applicationsByStatus: appStats.map(s => ({ status: s.status, count: s.count })),
       loansByType,
       recentApplications: appsWithUsers,
     };
@@ -1573,8 +1568,8 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(tasks.createdAt));
   }
 
-  async getAllTasks(): Promise<Task[]> {
-    return await db.select().from(tasks).orderBy(desc(tasks.createdAt));
+  async getAllTasks(limit: number = 500): Promise<Task[]> {
+    return await db.select().from(tasks).orderBy(desc(tasks.createdAt)).limit(limit);
   }
 
   async updateTask(id: string, data: Partial<Task>): Promise<Task | undefined> {

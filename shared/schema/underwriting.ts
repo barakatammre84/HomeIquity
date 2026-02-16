@@ -163,7 +163,14 @@ export const tasks = pgTable("tasks", {
   
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => [
+  index("idx_tasks_application").on(table.applicationId),
+  index("idx_tasks_assigned_user").on(table.assignedToUserId),
+  index("idx_tasks_status").on(table.status),
+  index("idx_tasks_created").on(table.createdAt),
+  index("idx_tasks_sla_due").on(table.slaDueAt),
+  index("idx_tasks_app_status").on(table.applicationId, table.status),
+]);
 
 export const insertTaskSchema = createInsertSchema(tasks).omit({
   id: true,

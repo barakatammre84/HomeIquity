@@ -1934,23 +1934,24 @@ export function registerBorrowerRoutes(
       const userId = req.user!.id;
       const conversations = await storage.getConversations(userId);
       
-      // Get partner info for each conversation
-      const enrichedConversations = await Promise.all(
-        conversations.map(async (conv) => {
-          const partner = await storage.getUser(conv.partnerId);
-          return {
-            ...conv,
-            partner: partner ? {
-              id: partner.id,
-              name: `${partner.firstName || ''} ${partner.lastName || ''}`.trim() || partner.email || 'User',
-              role: partner.role,
-              email: partner.email,
-              profileImageUrl: partner.profileImageUrl,
-              initials: getInitials(partner),
-            } : null,
-          };
-        })
-      );
+      const partnerIds = [...new Set(conversations.map(c => c.partnerId).filter(Boolean))];
+      const partners = await storage.getUsersByIds(partnerIds);
+      const partnerMap = new Map(partners.map(p => [p.id, p]));
+
+      const enrichedConversations = conversations.map((conv) => {
+        const partner = partnerMap.get(conv.partnerId) || null;
+        return {
+          ...conv,
+          partner: partner ? {
+            id: partner.id,
+            name: `${partner.firstName || ''} ${partner.lastName || ''}`.trim() || partner.email || 'User',
+            role: partner.role,
+            email: partner.email,
+            profileImageUrl: partner.profileImageUrl,
+            initials: getInitials(partner),
+          } : null,
+        };
+      });
       
       res.json(enrichedConversations);
     } catch (error) {

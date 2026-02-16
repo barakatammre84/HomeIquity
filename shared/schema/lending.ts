@@ -71,7 +71,13 @@ export const loanApplications = pgTable("loan_applications", {
   
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => [
+  index("idx_loan_applications_user").on(table.userId),
+  index("idx_loan_applications_status").on(table.status),
+  index("idx_loan_applications_created").on(table.createdAt),
+  index("idx_loan_applications_broker").on(table.referringBrokerId),
+  index("idx_loan_applications_user_status").on(table.userId, table.status),
+]);
 
 export const insertLoanApplicationSchema = createInsertSchema(loanApplications).omit({
   id: true,
@@ -245,7 +251,12 @@ export const documents = pgTable("documents", {
   
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => [
+  index("idx_documents_application").on(table.applicationId),
+  index("idx_documents_user").on(table.userId),
+  index("idx_documents_status").on(table.status),
+  index("idx_documents_user_status").on(table.userId, table.status),
+]);
 
 export const insertDocumentSchema = createInsertSchema(documents).omit({
   id: true,

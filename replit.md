@@ -42,6 +42,13 @@ The `BorrowerGraph` service (`server/services/borrowerGraph.ts`) aggregates all 
 
 ## Recent Changes
 
+### Performance Optimizations (Feb 2026)
+- **Database Indexes**: Added 15 missing indexes on `loan_applications` (userId, status, createdAt, referringBrokerId, compound userId+status), `documents` (applicationId, userId, status, compound userId+status), and `tasks` (applicationId, assignedToUserId, status, createdAt, slaDueAt, compound applicationId+status).
+- **N+1 Query Fix (Admin Stats)**: Replaced sequential user lookups for 10 recent applications with a single LEFT JOIN query. Consolidated 7 serial DB round-trips into 4 parallel queries using Promise.all.
+- **N+1 Query Fix (Conversations)**: Replaced per-conversation user fetching with batch `getUsersByIds` using `inArray` for a single DB round-trip.
+- **Unbounded Query Limits**: Added default limit of 500 to `getAllUsers`, `getAllLoanApplications`, `getAllTasks` to prevent full table scans.
+- **New Storage Method**: `getUsersByIds(ids: string[])` for efficient batch user lookups.
+
 ### Stabilization & Compliance Fixes (Feb 2026)
 - **Company Config Centralization**: `server/config/company.ts` is the single source of truth for NMLS ID, MERS Org ID, legal name, and contact info. All letter generation, email templates, and MISMO XML reference `COMPANY_CONFIG`.
 - **IDOR Fix**: Document upload route verifies applicationId ownership before associating documents.
