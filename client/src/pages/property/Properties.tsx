@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -277,9 +276,8 @@ export default function Properties() {
   const currentLoading = isLiveMode ? liveLoading : isLoading;
 
   return (
-    <div className="min-h-screen bg-background">
+    <>
       <SEOHead title="Browse Properties - Find Your Dream Home" description="Search homes for sale with live MLS listings. Get instant mortgage estimates and pre-approval for properties across the US." />
-      <Navigation />
 
       <div className="relative h-64 bg-gradient-to-r from-primary/90 to-primary">
         <img
@@ -565,7 +563,7 @@ export default function Properties() {
       )}
 
       <Footer />
-    </div>
+    </>
   );
 }
 
