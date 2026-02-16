@@ -4,9 +4,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import {
-  SidebarTrigger,
-} from "@/components/ui/sidebar";
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -312,9 +310,8 @@ export default function BorrowerFile() {
 
   return (
     <>
-      <header className="sticky top-0 z-10 flex items-center justify-between border-b bg-background px-6 py-3">
+      <div className="flex items-center justify-between border-b bg-background px-6 py-3">
         <div className="flex items-center gap-4">
-          <SidebarTrigger data-testid="button-sidebar-toggle" />
           <Button variant="ghost" size="sm" asChild>
             <Link href="/pipeline-queue">
               <ArrowLeft className="mr-2 h-4 w-4" />
@@ -332,7 +329,7 @@ export default function BorrowerFile() {
             Generate LE
           </Button>
         </div>
-      </header>
+      </div>
 
       <div className="p-6">
             <div className="mx-auto max-w-6xl space-y-6">

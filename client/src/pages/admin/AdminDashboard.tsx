@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Navigation } from "@/components/Navigation";
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -73,7 +73,6 @@ export default function AdminDashboard() {
   if (user?.role !== "admin") {
     return (
       <div className="min-h-screen bg-background">
-        <Navigation />
         <div className="mx-auto max-w-7xl px-4 py-16 text-center sm:px-6 lg:px-8">
           <AlertCircle className="mx-auto h-12 w-12 text-destructive" />
           <h2 className="mt-4 text-xl font-semibold">Access Denied</h2>
@@ -88,7 +87,6 @@ export default function AdminDashboard() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background">
-        <Navigation />
         <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
           <Skeleton className="mb-8 h-8 w-48" />
           <div className="grid gap-6 md:grid-cols-4">
@@ -115,8 +113,6 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navigation />
-
       {/* Premium Admin Header */}
       <div className="relative overflow-hidden bg-gradient-to-br from-primary via-primary to-primary/90">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.1),transparent_50%)]" />

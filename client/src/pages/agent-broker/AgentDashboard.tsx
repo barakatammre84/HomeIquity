@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { Navigation } from "@/components/Navigation";
+
 import { Footer } from "@/components/Footer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -62,8 +62,6 @@ export default function AgentDashboard() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navigation />
-
       {/* Premium Agent Header */}
       <div className="relative overflow-hidden bg-gradient-to-br from-primary via-primary to-primary/90">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.1),transparent_50%)]" />

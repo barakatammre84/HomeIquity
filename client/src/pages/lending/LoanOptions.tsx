@@ -1,6 +1,6 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams, Link } from "wouter";
-import { Navigation } from "@/components/Navigation";
+
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -67,7 +67,6 @@ export default function LoanOptions() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background">
-        <Navigation />
         <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
           <div className="mb-8 text-center">
             <Skeleton className="mx-auto h-8 w-64" />
@@ -86,7 +85,6 @@ export default function LoanOptions() {
   if (error || !data) {
     return (
       <div className="min-h-screen bg-background">
-        <Navigation />
         <div className="mx-auto max-w-7xl px-4 py-16 text-center sm:px-6 lg:px-8">
           <AlertCircle className="mx-auto h-12 w-12 text-destructive" />
           <h2 className="mt-4 text-xl font-semibold">Unable to load loan options</h2>
@@ -106,8 +104,6 @@ export default function LoanOptions() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navigation />
-
       <div className="bg-gradient-to-b from-primary/5 to-background py-12">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="text-center">

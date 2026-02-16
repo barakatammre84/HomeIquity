@@ -1,7 +1,6 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -250,8 +249,6 @@ export default function BuyerProperties() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navigation />
-
       {/* Hero Section */}
       <div className="relative bg-gradient-to-r from-primary to-primary/80 py-12">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">

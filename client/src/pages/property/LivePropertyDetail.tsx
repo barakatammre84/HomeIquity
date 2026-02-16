@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useSearch } from "wouter";
 import { SEOHead } from "@/components/SEOHead";
-import { Navigation } from "@/components/Navigation";
+
 import { Footer } from "@/components/Footer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -199,7 +199,6 @@ export default function LivePropertyDetailPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background">
-        <Navigation />
         <div className="mx-auto max-w-6xl px-4 py-8">
           <Skeleton className="mb-4 h-10 w-40" />
           <Skeleton className="mb-6 h-96 w-full rounded-xl" />
@@ -222,7 +221,6 @@ export default function LivePropertyDetailPage() {
   if (error || !property) {
     return (
       <div className="min-h-screen bg-background">
-        <Navigation />
         <div className="mx-auto max-w-6xl px-4 py-16 text-center">
           <Home className="mx-auto h-16 w-16 text-muted-foreground" />
           <h1 className="mt-4 text-2xl font-bold">Property Not Found</h1>
@@ -241,7 +239,6 @@ export default function LivePropertyDetailPage() {
   return (
     <div className="min-h-screen bg-background">
       <SEOHead title="Property Details" description="View detailed property information including photos, price history, mortgage estimates, schools, and neighborhood data." />
-      <Navigation />
 
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
         <Link href="/properties">

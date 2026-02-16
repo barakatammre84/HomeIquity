@@ -1,9 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useParams, Link } from "wouter";
-import {
-  SidebarTrigger,
-} from "@/components/ui/sidebar";
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -175,9 +173,8 @@ export default function LoanEstimate() {
 
   return (
     <>
-      <header className="sticky top-0 z-10 flex items-center justify-between border-b bg-background px-6 py-3">
+      <div className="flex items-center justify-between border-b bg-background px-6 py-3">
         <div className="flex items-center gap-4">
-          <SidebarTrigger data-testid="button-sidebar-toggle" />
           <Button variant="ghost" size="icon" asChild>
             <Link href={`/borrower-file/${id}`}>
               <ArrowLeft className="h-4 w-4" />
@@ -203,7 +200,7 @@ export default function LoanEstimate() {
             Download PDF
           </Button>
         </div>
-      </header>
+      </div>
 
       <ScrollArea className="h-[calc(100vh-64px)]">
             <div className="p-6">

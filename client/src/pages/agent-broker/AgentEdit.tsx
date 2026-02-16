@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Navigation } from "@/components/Navigation";
+
 import { Footer } from "@/components/Footer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -71,7 +71,6 @@ export default function AgentEdit() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background">
-        <Navigation />
         <div className="mx-auto max-w-4xl px-4 py-12">Loading...</div>
       </div>
     );
@@ -118,8 +117,6 @@ export default function AgentEdit() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navigation />
-
       <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
         <Button
           variant="ghost"

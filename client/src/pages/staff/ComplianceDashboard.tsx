@@ -1,9 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { Link } from "wouter";
-import {
-  SidebarTrigger,
-} from "@/components/ui/sidebar";
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -196,7 +194,6 @@ export default function ComplianceDashboard() {
         <div className="relative px-6 py-8">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <SidebarTrigger className="text-white hover:bg-white/10" data-testid="button-sidebar-toggle" />
               <div>
                 <div className="flex items-center gap-2 text-primary-foreground/80 mb-1">
                   <Shield className="h-4 w-4" />
