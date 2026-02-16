@@ -5,7 +5,7 @@ import { useLocation, Link } from "wouter";
 import { SEOHead } from "@/components/SEOHead";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { preApprovalFormSchema, type PreApprovalFormData } from "@shared/schema";
+import { preApprovalFormSchema, type PreApprovalFormData, type RentalPropertyEntry } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
@@ -30,7 +30,8 @@ import {
   AlertCircle,
   ThumbsUp,
   Info,
-  Plus
+  Plus,
+  Trash2
 } from "lucide-react";
 
 const US_STATES = [
@@ -431,6 +432,7 @@ export default function PreApproval() {
   const [applicationId, setApplicationId] = useState<string | null>(null);
   const [selectedIncomeTypes, setSelectedIncomeTypes] = useState<string[]>([]);
   const [incomeDetails, setIncomeDetails] = useState<Record<string, { annualAmount: string; employerName: string; yearsInRole: string }>>({});
+  const [rentalProperties, setRentalProperties] = useState<RentalPropertyEntry[]>([]);
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const { user, isAuthenticated } = useAuth();
@@ -581,6 +583,9 @@ export default function PreApproval() {
             employerName: src.employerName || "",
             yearsInRole: src.yearsInRole || "",
           };
+          if (src.type === "rental" && Array.isArray(src.rentalProperties)) {
+            setRentalProperties(src.rentalProperties);
+          }
         }
         setSelectedIncomeTypes(types);
         setIncomeDetails(details);
@@ -607,6 +612,9 @@ export default function PreApproval() {
               employerName: src.employerName || "",
               yearsInRole: src.yearsInRole || "",
             };
+            if (src.type === "rental" && Array.isArray(src.rentalProperties)) {
+              setRentalProperties(src.rentalProperties);
+            }
           }
           setSelectedIncomeTypes(types);
           setIncomeDetails(details);
@@ -800,11 +808,17 @@ export default function PreApproval() {
 
     if (currentQ.id === "incomeSources") {
       const sources = form.getValues("incomeSources") || [];
-      const allValid = sources.length > 0 && sources.every((s: any) => s.annualAmount && s.annualAmount.length > 0);
+      const allValid = sources.length > 0 && sources.every((s: any) => {
+        if (s.type === "rental") {
+          const props = s.rentalProperties || [];
+          return props.length > 0 && props.every((p: any) => p.address && p.monthlyRentalIncome && parseFloat(String(p.monthlyRentalIncome).replace(/,/g, "")) > 0);
+        }
+        return s.annualAmount && s.annualAmount.length > 0;
+      });
       if (!allValid && sources.length > 0) {
         toast({
           title: "Please complete all income details",
-          description: "Each income source needs at least an annual amount.",
+          description: "Each income source needs at least an annual amount. Rental properties need an address and monthly income.",
           variant: "destructive"
         });
         return;
@@ -1016,6 +1030,24 @@ export default function PreApproval() {
           { value: "other", label: "Other Income", icon: DollarSign },
         ].filter((t) => t.value !== primaryType);
 
+        const buildFormEntries = (types: string[], details: typeof incomeDetails, rentals: RentalPropertyEntry[]) => {
+          return types.map((t) => {
+            const d = details[t] || { annualAmount: "", employerName: "", yearsInRole: "" };
+            const entry: any = {
+              type: t,
+              annualAmount: d.annualAmount || "",
+              employerName: d.employerName || "",
+              yearsInRole: d.yearsInRole || "",
+            };
+            if (t === "rental" && rentals.length > 0) {
+              entry.rentalProperties = rentals;
+              const totalMonthly = rentals.reduce((sum, p) => sum + (parseFloat(p.monthlyRentalIncome.replace(/,/g, "")) || 0), 0);
+              entry.annualAmount = totalMonthly > 0 ? formatCurrency(String(Math.round(totalMonthly * 12))) : "";
+            }
+            return entry;
+          });
+        };
+
         const toggleIncomeType = (typeValue: string) => {
           const isSelected = selectedIncomeTypes.includes(typeValue);
           let newTypes: string[];
@@ -1024,20 +1056,20 @@ export default function PreApproval() {
             const newDetails = { ...incomeDetails };
             delete newDetails[typeValue];
             setIncomeDetails(newDetails);
+            if (typeValue === "rental") {
+              setRentalProperties([]);
+            }
           } else {
             newTypes = [...selectedIncomeTypes, typeValue];
             if (!incomeDetails[typeValue]) {
               setIncomeDetails({ ...incomeDetails, [typeValue]: { annualAmount: "", employerName: "", yearsInRole: "" } });
             }
+            if (typeValue === "rental" && rentalProperties.length === 0) {
+              setRentalProperties([{ address: "", monthlyRentalIncome: "", monthlyDebtPayment: "" }]);
+            }
           }
           setSelectedIncomeTypes(newTypes);
-          const entries = newTypes.map((t) => ({
-            type: t as any,
-            annualAmount: (isSelected ? incomeDetails : { ...incomeDetails, [typeValue]: incomeDetails[typeValue] || { annualAmount: "", employerName: "", yearsInRole: "" } })[t]?.annualAmount || "",
-            employerName: (isSelected ? incomeDetails : { ...incomeDetails, [typeValue]: incomeDetails[typeValue] || { annualAmount: "", employerName: "", yearsInRole: "" } })[t]?.employerName || "",
-            yearsInRole: (isSelected ? incomeDetails : { ...incomeDetails, [typeValue]: incomeDetails[typeValue] || { annualAmount: "", employerName: "", yearsInRole: "" } })[t]?.yearsInRole || "",
-          }));
-          form.setValue("incomeSources", entries as never);
+          form.setValue("incomeSources", buildFormEntries(newTypes, isSelected ? incomeDetails : { ...incomeDetails, [typeValue]: incomeDetails[typeValue] || { annualAmount: "", employerName: "", yearsInRole: "" } }, typeValue === "rental" && isSelected ? [] : rentalProperties) as never);
         };
 
         const updateDetail = (typeValue: string, field: string, value: string) => {
@@ -1046,16 +1078,30 @@ export default function PreApproval() {
             [typeValue]: { ...incomeDetails[typeValue], [field]: value },
           };
           setIncomeDetails(newDetails);
-          const entries = selectedIncomeTypes.map((t) => ({
-            type: t as any,
-            annualAmount: newDetails[t]?.annualAmount || "",
-            employerName: newDetails[t]?.employerName || "",
-            yearsInRole: newDetails[t]?.yearsInRole || "",
-          }));
-          form.setValue("incomeSources", entries as never);
+          form.setValue("incomeSources", buildFormEntries(selectedIncomeTypes, newDetails, rentalProperties) as never);
+        };
+
+        const addRentalProperty = () => {
+          const updated = [...rentalProperties, { address: "", monthlyRentalIncome: "", monthlyDebtPayment: "" }];
+          setRentalProperties(updated);
+          form.setValue("incomeSources", buildFormEntries(selectedIncomeTypes, incomeDetails, updated) as never);
+        };
+
+        const removeRentalProperty = (index: number) => {
+          const updated = rentalProperties.filter((_, i) => i !== index);
+          setRentalProperties(updated);
+          form.setValue("incomeSources", buildFormEntries(selectedIncomeTypes, incomeDetails, updated) as never);
+        };
+
+        const updateRentalProperty = (index: number, field: keyof RentalPropertyEntry, value: string) => {
+          const updated = rentalProperties.map((p, i) => i === index ? { ...p, [field]: value } : p);
+          setRentalProperties(updated);
+          form.setValue("incomeSources", buildFormEntries(selectedIncomeTypes, incomeDetails, updated) as never);
         };
 
         const needsEmployerDetails = (typeValue: string) => typeValue === "w2" || typeValue === "self_employed";
+
+        const rentalAnnualTotal = rentalProperties.reduce((sum, p) => sum + (parseFloat(p.monthlyRentalIncome.replace(/,/g, "")) || 0), 0) * 12;
 
         return (
           <div className="w-full max-w-lg mx-auto space-y-6">
@@ -1096,9 +1142,95 @@ export default function PreApproval() {
                 {selectedIncomeTypes.map((typeValue) => {
                   const typeInfo = allIncomeTypes.find((t) => t.value === typeValue);
                   const details = incomeDetails[typeValue] || { annualAmount: "", employerName: "", yearsInRole: "" };
+
+                  if (typeValue === "rental") {
+                    return (
+                      <div key={typeValue} className="border-2 rounded-xl p-5 space-y-4 text-left" data-testid="card-income-rental">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Home className="h-4 w-4 text-primary" />
+                          <span className="font-semibold text-foreground">Rental Properties</span>
+                          {rentalAnnualTotal > 0 && (
+                            <span className="text-sm text-muted-foreground ml-auto">
+                              ${formatCurrency(String(Math.round(rentalAnnualTotal)))}/yr total
+                            </span>
+                          )}
+                        </div>
+
+                        {rentalProperties.map((prop, idx) => (
+                          <div key={idx} className="border rounded-xl p-4 space-y-3 bg-muted/30" data-testid={`rental-property-${idx}`}>
+                            <div className="flex items-center justify-between gap-2 flex-wrap">
+                              <span className="text-sm font-medium text-foreground">Property {idx + 1}</span>
+                              {rentalProperties.length > 1 && (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  data-testid={`button-remove-rental-${idx}`}
+                                  onClick={() => removeRentalProperty(idx)}
+                                >
+                                  <Trash2 className="h-4 w-4 text-muted-foreground" />
+                                </Button>
+                              )}
+                            </div>
+                            <div>
+                              <label className="text-sm text-muted-foreground mb-1 block">Property Address</label>
+                              <Input
+                                data-testid={`input-rental-address-${idx}`}
+                                value={prop.address}
+                                onChange={(e) => updateRentalProperty(idx, "address", e.target.value)}
+                                placeholder="123 Main St, City, State"
+                              />
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <label className="text-sm text-muted-foreground mb-1 block">Monthly Rental Income</label>
+                                <div className="relative">
+                                  <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                                  <Input
+                                    data-testid={`input-rental-income-${idx}`}
+                                    value={prop.monthlyRentalIncome}
+                                    onChange={(e) => updateRentalProperty(idx, "monthlyRentalIncome", formatCurrency(e.target.value))}
+                                    className="pl-9"
+                                    placeholder="2,000"
+                                    inputMode="decimal"
+                                  />
+                                </div>
+                              </div>
+                              <div>
+                                <label className="text-sm text-muted-foreground mb-1 block">Monthly Debt Payment</label>
+                                <div className="relative">
+                                  <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                                  <Input
+                                    data-testid={`input-rental-debt-${idx}`}
+                                    value={prop.monthlyDebtPayment || ""}
+                                    onChange={(e) => updateRentalProperty(idx, "monthlyDebtPayment", formatCurrency(e.target.value))}
+                                    className="pl-9"
+                                    placeholder="1,200"
+                                    inputMode="decimal"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+
+                        <Button
+                          type="button"
+                          variant="outline"
+                          data-testid="button-add-rental-property"
+                          onClick={addRentalProperty}
+                          className="w-full"
+                        >
+                          <Plus className="h-4 w-4 mr-2" />
+                          Add Another Property
+                        </Button>
+                      </div>
+                    );
+                  }
+
                   return (
                     <div key={typeValue} className="border-2 rounded-xl p-5 space-y-4 text-left" data-testid={`card-income-${typeValue}`}>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         {typeInfo && <typeInfo.icon className="h-4 w-4 text-primary" />}
                         <span className="font-semibold text-foreground">{typeInfo?.label}</span>
                       </div>

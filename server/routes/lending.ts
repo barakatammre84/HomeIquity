@@ -43,6 +43,13 @@ const loanApplicationInputSchema = z.object({
     annualAmount: z.string().or(z.number()).transform(v => String(v).replace(/[,$]/g, "")),
     employerName: z.string().max(200).optional(),
     yearsInRole: z.string().or(z.number()).transform(v => String(v)).optional(),
+    rentalProperties: z.array(z.object({
+      address: z.string().min(1).max(500),
+      city: z.string().max(100).optional(),
+      state: z.string().max(2).optional(),
+      monthlyRentalIncome: z.string().or(z.number()).transform(v => String(v).replace(/[,$]/g, "")),
+      monthlyDebtPayment: z.string().or(z.number()).transform(v => String(v).replace(/[,$]/g, "")).optional(),
+    })).optional(),
   })).optional(),
 });
 
@@ -1052,6 +1059,48 @@ export function registerLendingRoutes(
 
       const borrowerName = [user.firstName, user.lastName].filter(Boolean).join(" ") || "Borrower";
 
+      const annualIncome = parseFloat(application.annualIncome || "0");
+      const monthlyDebts = parseFloat(application.monthlyDebts || "0");
+      const loanAmountNum = parseFloat(loanAmount) || 0;
+      const rate = 0.065;
+      const months = 360;
+      const monthlyRate = rate / 12;
+      const monthlyPayment = loanAmountNum > 0
+        ? (loanAmountNum * monthlyRate * Math.pow(1 + monthlyRate, months)) / (Math.pow(1 + monthlyRate, months) - 1)
+        : 0;
+      let rentalDebtTotal = 0;
+      if (Array.isArray(application.incomeSources)) {
+        for (const src of application.incomeSources as any[]) {
+          if (src.type === "rental" && Array.isArray(src.rentalProperties)) {
+            for (const p of src.rentalProperties) {
+              rentalDebtTotal += parseFloat(String(p.monthlyDebtPayment || "0").replace(/,/g, "")) || 0;
+            }
+          }
+        }
+      }
+      const totalMonthlyObligations = monthlyDebts + (monthlyPayment || 0) + rentalDebtTotal;
+      const monthlyIncome = annualIncome / 12;
+      const dti = monthlyIncome > 0 ? (totalMonthlyObligations / monthlyIncome) * 100 : 0;
+      const dpPercent = purchasePrice > 0 ? ((downPayment / purchasePrice) * 100).toFixed(1) : undefined;
+
+      const creditScore = application.creditScore ? parseInt(String(application.creditScore)) : 0;
+      let creditRange = "";
+      if (creditScore >= 760) creditRange = "760+";
+      else if (creditScore >= 720) creditRange = "720-759";
+      else if (creditScore >= 680) creditRange = "680-719";
+      else if (creditScore >= 640) creditRange = "640-679";
+      else if (creditScore > 0) creditRange = `${creditScore}`;
+
+      const incomeSources = Array.isArray(application.incomeSources) ? (application.incomeSources as any[]).map(s => ({
+        type: s.type || "other",
+        annualAmount: String(s.annualAmount || "0"),
+        rentalProperties: Array.isArray(s.rentalProperties) ? s.rentalProperties.map((p: any) => ({
+          address: p.address || "",
+          monthlyRentalIncome: String(p.monthlyRentalIncome || "0"),
+          monthlyDebtPayment: String(p.monthlyDebtPayment || "0"),
+        })) : undefined,
+      })) : undefined;
+
       const pdfBuffer = await generatePreApprovalPDF({
         letterNumber,
         borrowerName,
@@ -1067,6 +1116,17 @@ export function registerLendingRoutes(
         conditions,
         disclaimers,
         watermarkApplied: true,
+        purchasePrice: purchasePrice > 0 ? String(purchasePrice) : undefined,
+        downPayment: downPayment > 0 ? String(downPayment) : undefined,
+        downPaymentPercent: dpPercent,
+        annualIncome: annualIncome > 0 ? String(annualIncome) : undefined,
+        monthlyPaymentEstimate: monthlyPayment > 0 ? String(Math.round(monthlyPayment)) : undefined,
+        estimatedDti: dti > 0 ? dti.toFixed(1) : undefined,
+        creditScoreRange: creditRange || undefined,
+        employmentType: application.employmentType || undefined,
+        propertyType: application.propertyType || undefined,
+        propertyState: application.propertyState || undefined,
+        incomeSources: incomeSources && incomeSources.length > 0 ? incomeSources : undefined,
       });
 
       const storageKey = `letters/${letterNumber}.pdf`;
@@ -1247,6 +1307,48 @@ export function registerLendingRoutes(
       const loanAmount = application.preApprovalAmount || String(purchasePrice - downPayment);
       const borrowerName = [user.firstName, user.lastName].filter(Boolean).join(" ") || "Borrower";
 
+      const annualIncome = parseFloat(application.annualIncome || "0");
+      const monthlyDebts = parseFloat(application.monthlyDebts || "0");
+      const loanAmountNum = parseFloat(loanAmount) || 0;
+      const rate = 0.065;
+      const months = 360;
+      const monthlyRate = rate / 12;
+      const monthlyPayment = loanAmountNum > 0
+        ? (loanAmountNum * monthlyRate * Math.pow(1 + monthlyRate, months)) / (Math.pow(1 + monthlyRate, months) - 1)
+        : 0;
+      let dlRentalDebtTotal = 0;
+      if (Array.isArray(application.incomeSources)) {
+        for (const src of application.incomeSources as any[]) {
+          if (src.type === "rental" && Array.isArray(src.rentalProperties)) {
+            for (const p of src.rentalProperties) {
+              dlRentalDebtTotal += parseFloat(String(p.monthlyDebtPayment || "0").replace(/,/g, "")) || 0;
+            }
+          }
+        }
+      }
+      const totalMonthlyObligations = monthlyDebts + (monthlyPayment || 0) + dlRentalDebtTotal;
+      const monthlyIncome = annualIncome / 12;
+      const dti = monthlyIncome > 0 ? (totalMonthlyObligations / monthlyIncome) * 100 : 0;
+      const dpPercent = purchasePrice > 0 ? ((downPayment / purchasePrice) * 100).toFixed(1) : undefined;
+
+      const creditScore = application.creditScore ? parseInt(String(application.creditScore)) : 0;
+      let creditRange = "";
+      if (creditScore >= 760) creditRange = "760+";
+      else if (creditScore >= 720) creditRange = "720-759";
+      else if (creditScore >= 680) creditRange = "680-719";
+      else if (creditScore >= 640) creditRange = "640-679";
+      else if (creditScore > 0) creditRange = `${creditScore}`;
+
+      const dlIncomeSources = Array.isArray(application.incomeSources) ? (application.incomeSources as any[]).map(s => ({
+        type: s.type || "other",
+        annualAmount: String(s.annualAmount || "0"),
+        rentalProperties: Array.isArray(s.rentalProperties) ? s.rentalProperties.map((p: any) => ({
+          address: p.address || "",
+          monthlyRentalIncome: String(p.monthlyRentalIncome || "0"),
+          monthlyDebtPayment: String(p.monthlyDebtPayment || "0"),
+        })) : undefined,
+      })) : undefined;
+
       const pdfBuffer = await generatePreApprovalPDF({
         letterNumber: letter?.letterNumber || `BN-${Date.now().toString(36).toUpperCase()}`,
         borrowerName,
@@ -1268,6 +1370,17 @@ export function registerLendingRoutes(
         ],
         disclaimers: [],
         watermarkApplied: true,
+        purchasePrice: purchasePrice > 0 ? String(purchasePrice) : undefined,
+        downPayment: downPayment > 0 ? String(downPayment) : undefined,
+        downPaymentPercent: dpPercent,
+        annualIncome: annualIncome > 0 ? String(annualIncome) : undefined,
+        monthlyPaymentEstimate: monthlyPayment > 0 ? String(Math.round(monthlyPayment)) : undefined,
+        estimatedDti: dti > 0 ? dti.toFixed(1) : undefined,
+        creditScoreRange: creditRange || undefined,
+        employmentType: application.employmentType || undefined,
+        propertyType: application.propertyType || undefined,
+        propertyState: application.propertyState || undefined,
+        incomeSources: dlIncomeSources && dlIncomeSources.length > 0 ? dlIncomeSources : undefined,
       });
 
       logAudit(req, "pre_approval_letter.downloaded", "pre_approval_letter", letter?.id || id);

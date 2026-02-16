@@ -18,6 +18,17 @@ interface LetterData {
   conditions: string[];
   disclaimers: string[];
   watermarkApplied: boolean;
+  purchasePrice?: string;
+  downPayment?: string;
+  downPaymentPercent?: string;
+  annualIncome?: string;
+  monthlyPaymentEstimate?: string;
+  estimatedDti?: string;
+  creditScoreRange?: string;
+  employmentType?: string;
+  propertyType?: string;
+  propertyState?: string;
+  incomeSources?: Array<{ type: string; annualAmount: string; rentalProperties?: Array<{ address: string; monthlyRentalIncome: string; monthlyDebtPayment?: string }> }>;
 }
 
 const DEEP_NAVY = "#0f1729";
@@ -134,6 +145,59 @@ export function generatePreApprovalPDF(data: LetterData): Promise<Buffer> {
     doc.text(capitalize(data.occupancy), boxX + boxW / 3, y + 74);
 
     y += boxH + 20;
+
+    const hasFinancialData = data.purchasePrice || data.annualIncome || data.estimatedDti || data.creditScoreRange;
+    if (hasFinancialData) {
+      doc.fontSize(12).fillColor(DEEP_NAVY);
+      doc.text("Financial Summary", leftCol, y, { underline: true });
+      y += 20;
+
+      const summaryItems: Array<{ label: string; value: string }> = [];
+      if (data.purchasePrice) summaryItems.push({ label: "Purchase Price", value: `$${formatCurrency(data.purchasePrice)}` });
+      if (data.downPayment) {
+        const dpLabel = data.downPaymentPercent ? `Down Payment (${data.downPaymentPercent}%)` : "Down Payment";
+        summaryItems.push({ label: dpLabel, value: `$${formatCurrency(data.downPayment)}` });
+      }
+      if (data.annualIncome) summaryItems.push({ label: "Annual Income", value: `$${formatCurrency(data.annualIncome)}` });
+      if (data.employmentType) summaryItems.push({ label: "Employment", value: capitalize(data.employmentType.replace("_", " ")) });
+      if (data.creditScoreRange) summaryItems.push({ label: "Credit Score Range", value: data.creditScoreRange });
+      if (data.estimatedDti) summaryItems.push({ label: "Debt-to-Income Ratio", value: `${data.estimatedDti}%` });
+      if (data.monthlyPaymentEstimate) summaryItems.push({ label: "Est. Monthly Payment", value: `$${formatCurrency(data.monthlyPaymentEstimate)}` });
+      if (data.propertyType) summaryItems.push({ label: "Property Type", value: capitalize(data.propertyType.replace("_", " ")) });
+      if (data.propertyState) summaryItems.push({ label: "Property State", value: data.propertyState.toUpperCase() });
+
+      doc.fontSize(10).fillColor(GRAY_600);
+      for (const item of summaryItems) {
+        doc.text(`${item.label}: ${item.value}`, leftCol + 8, y);
+        y = doc.y + 6;
+      }
+
+      if (data.incomeSources && data.incomeSources.length > 0) {
+        y += 6;
+        doc.fontSize(10).fillColor(DEEP_NAVY);
+        doc.text("Income Breakdown:", leftCol + 8, y);
+        y = doc.y + 6;
+        doc.fontSize(9).fillColor(GRAY_600);
+        for (const src of data.incomeSources) {
+          const typeLabel = capitalize(src.type.replace("_", " "));
+          doc.text(`  ${typeLabel}: $${formatCurrency(src.annualAmount)}/yr`, leftCol + 16, y);
+          y = doc.y + 4;
+          if (src.rentalProperties && src.rentalProperties.length > 0) {
+            doc.fontSize(8).fillColor(GRAY_400);
+            for (const prop of src.rentalProperties) {
+              const debtStr = prop.monthlyDebtPayment && parseFloat(prop.monthlyDebtPayment) > 0
+                ? ` (debt: $${formatCurrency(prop.monthlyDebtPayment)}/mo)`
+                : "";
+              doc.text(`    ${prop.address} - $${formatCurrency(prop.monthlyRentalIncome)}/mo income${debtStr}`, leftCol + 24, y, { width: pageWidth - 48 });
+              y = doc.y + 3;
+            }
+            doc.fontSize(9).fillColor(GRAY_600);
+          }
+        }
+      }
+
+      y += 10;
+    }
 
     if (data.conditions.length > 0) {
       doc.fontSize(12).fillColor(DEEP_NAVY);

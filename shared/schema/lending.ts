@@ -568,12 +568,24 @@ export const insertBorrowerDeclarationsSchema = createInsertSchema(borrowerDecla
 export type InsertBorrowerDeclarations = z.infer<typeof insertBorrowerDeclarationsSchema>;
 export type BorrowerDeclarations = typeof borrowerDeclarations.$inferSelect;
 
+// Rental property entry for per-property income tracking
+export const rentalPropertyEntrySchema = z.object({
+  address: z.string().min(1, "Property address is required"),
+  city: z.string().optional(),
+  state: z.string().optional(),
+  monthlyRentalIncome: z.string().min(1, "Monthly rental income is required"),
+  monthlyDebtPayment: z.string().optional(),
+});
+
+export type RentalPropertyEntry = z.infer<typeof rentalPropertyEntrySchema>;
+
 // Income source entry for multi-income tracking
 export const incomeSourceEntrySchema = z.object({
   type: z.enum(["w2", "self_employed", "rental", "social_security", "pension", "investment", "other"]),
   annualAmount: z.string().min(1, "Income amount is required"),
   employerName: z.string().optional(),
   yearsInRole: z.string().optional(),
+  rentalProperties: z.array(rentalPropertyEntrySchema).optional(),
 });
 
 export type IncomeSourceEntry = z.infer<typeof incomeSourceEntrySchema>;
