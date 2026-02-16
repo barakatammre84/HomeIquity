@@ -22,8 +22,6 @@ import {
   CircleDot,
   XCircle,
   Loader2,
-  Briefcase,
-  ArrowRight,
 } from "lucide-react";
 import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
@@ -469,27 +467,6 @@ export default function IdentityVerification() {
         </CardContent>
       </Card>
 
-      <Card className="mb-6" data-testid="card-cross-link-verification">
-        <CardContent className="pt-5 pb-4">
-          <div className="flex items-start gap-3">
-            <div className="p-2 bg-primary/10 rounded-lg shrink-0">
-              <Briefcase className="h-5 w-5 text-primary" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-foreground">Need to verify income or assets?</p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Employment, income, and asset verification through your bank is handled on a separate page.
-              </p>
-              <Link href="/verification">
-                <Button variant="outline" size="sm" className="mt-2 gap-1" data-testid="button-goto-verification">
-                  Go to Financial Verification
-                  <ArrowRight className="h-3 w-3" />
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }

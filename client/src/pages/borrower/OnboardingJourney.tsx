@@ -29,6 +29,7 @@ import {
   AlertCircle,
   TrendingUp,
   ClipboardCheck,
+  CreditCard,
 } from "lucide-react";
 
 interface OnboardingStatus {
@@ -124,7 +125,7 @@ function getJourneySteps(status: OnboardingStatus): JourneyStep[] {
       id: "e_consent",
       title: "Electronic Consent",
       description: "Review and agree to electronic disclosures and communications",
-      icon: FileText,
+      icon: ClipboardCheck,
       href: "/e-consent",
       complete: false,
       active: hasApp,
@@ -134,7 +135,7 @@ function getJourneySteps(status: OnboardingStatus): JourneyStep[] {
       id: "credit_consent",
       title: "Credit Authorization",
       description: "Authorize a credit check to verify your credit history",
-      icon: Shield,
+      icon: CreditCard,
       href: "/e-consent",
       complete: false,
       active: hasApp && identityVerified,
@@ -352,8 +353,7 @@ export default function OnboardingJourney() {
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-sm font-semibold text-foreground">{getBorrowerTypeLabel(status.borrowerType)} Path</span>
-                <Badge variant="outline" data-testid="badge-borrower-type">{getBorrowerTypeLabel(status.borrowerType)}</Badge>
+                <Badge variant="outline" data-testid="badge-borrower-type">{getBorrowerTypeLabel(status.borrowerType)} Path</Badge>
               </div>
               <p className="text-xs text-muted-foreground mt-1">{getBorrowerTypeDescription(status.borrowerType)}</p>
             </div>

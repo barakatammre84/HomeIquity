@@ -21,7 +21,6 @@ import {
   HelpCircle,
   ExternalLink,
   ArrowRight,
-  Sparkles,
   Bot,
 } from "lucide-react";
 import { Link } from "wouter";
@@ -272,36 +271,6 @@ export default function DownPaymentWizard() {
         </div>
       )}
 
-      <Card className="mt-6" data-testid="card-dpa-apply-cta">
-        <CardContent className="pt-5 pb-4">
-          <div className="flex items-start gap-3">
-            <div className="p-2 bg-primary/10 rounded-lg shrink-0">
-              <Sparkles className="h-5 w-5 text-primary" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-foreground">Know your down payment plan?</p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Start your pre-approval to see exactly how much home you can afford.
-              </p>
-              <div className="flex gap-2 mt-2 flex-wrap">
-                <Link href="/apply">
-                  <Button size="sm" className="gap-1" data-testid="button-dpa-apply">
-                    Get Pre-Approved
-                    <ArrowRight className="h-3 w-3" />
-                  </Button>
-                </Link>
-                <Link href="/ai-coach">
-                  <Button variant="outline" size="sm" className="gap-1" data-testid="button-dpa-coach">
-                    <Bot className="h-3 w-3" />
-                    Ask AI Coach
-                  </Button>
-                </Link>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
       <Card className="mt-6" data-testid="card-bottom-cta">
         <CardContent className="py-6 text-center">
           <PiggyBank className="mx-auto h-8 w-8 text-primary mb-3" />
@@ -314,10 +283,10 @@ export default function DownPaymentWizard() {
                 <ArrowRight className="h-4 w-4 ml-1" />
               </Link>
             </Button>
-            <Button variant="outline" asChild data-testid="button-first-time-hub">
-              <Link href="/first-time-buyer">
-                First-Time Buyer Guide
-                <ChevronRight className="h-4 w-4 ml-1" />
+            <Button variant="outline" asChild data-testid="button-dpa-coach">
+              <Link href="/ai-coach">
+                <Bot className="h-3.5 w-3.5" />
+                Ask AI Coach
               </Link>
             </Button>
           </div>

@@ -298,69 +298,60 @@ export default function LoanOptions() {
 
           <div className="grid gap-4 sm:grid-cols-3">
             <Card data-testid="card-next-step-journey">
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 shrink-0">
-                    <Rocket className="h-5 w-5 text-primary" />
+              <CardContent className="pt-5 pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 shrink-0">
+                    <Rocket className="h-4 w-4 text-primary" />
                   </div>
-                  <div>
-                    <h3 className="font-semibold text-foreground">Your Journey</h3>
-                    <p className="text-xs text-muted-foreground">See all remaining steps</p>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm font-semibold text-foreground">Your Journey</h3>
+                    <p className="text-xs text-muted-foreground">Personalized checklist to closing</p>
                   </div>
                 </div>
-                <p className="text-sm text-muted-foreground mb-4">
-                  View your personalized checklist of everything needed to reach closing day.
-                </p>
                 <Link href="/onboarding">
-                  <Button variant="outline" className="w-full gap-2" data-testid="button-next-journey">
+                  <Button variant="outline" size="sm" className="w-full gap-2 mt-3" data-testid="button-next-journey">
                     View Journey
-                    <ArrowRight className="h-4 w-4" />
+                    <ArrowRight className="h-3 w-3" />
                   </Button>
                 </Link>
               </CardContent>
             </Card>
 
             <Card data-testid="card-next-step-documents">
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 shrink-0">
-                    <Upload className="h-5 w-5 text-primary" />
+              <CardContent className="pt-5 pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 shrink-0">
+                    <Upload className="h-4 w-4 text-primary" />
                   </div>
-                  <div>
-                    <h3 className="font-semibold text-foreground">Upload Documents</h3>
-                    <p className="text-xs text-muted-foreground">Income, ID, assets</p>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm font-semibold text-foreground">Upload Documents</h3>
+                    <p className="text-xs text-muted-foreground">Pay stubs, tax returns, bank statements</p>
                   </div>
                 </div>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Upload pay stubs, tax returns, and bank statements to verify your application.
-                </p>
                 <Link href="/documents">
-                  <Button variant="outline" className="w-full gap-2" data-testid="button-next-documents">
+                  <Button variant="outline" size="sm" className="w-full gap-2 mt-3" data-testid="button-next-documents">
                     Upload Documents
-                    <ArrowRight className="h-4 w-4" />
+                    <ArrowRight className="h-3 w-3" />
                   </Button>
                 </Link>
               </CardContent>
             </Card>
 
             <Card data-testid="card-next-step-verification">
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 shrink-0">
-                    <UserCheck className="h-5 w-5 text-primary" />
+              <CardContent className="pt-5 pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 shrink-0">
+                    <UserCheck className="h-4 w-4 text-primary" />
                   </div>
-                  <div>
-                    <h3 className="font-semibold text-foreground">Verify Identity</h3>
-                    <p className="text-xs text-muted-foreground">Quick security check</p>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm font-semibold text-foreground">Verify Identity</h3>
+                    <p className="text-xs text-muted-foreground">Quick compliance check</p>
                   </div>
                 </div>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Complete identity verification to meet compliance requirements and speed up review.
-                </p>
                 <Link href="/identity-verification">
-                  <Button variant="outline" className="w-full gap-2" data-testid="button-next-verification">
+                  <Button variant="outline" size="sm" className="w-full gap-2 mt-3" data-testid="button-next-verification">
                     Verify Identity
-                    <ArrowRight className="h-4 w-4" />
+                    <ArrowRight className="h-3 w-3" />
                   </Button>
                 </Link>
               </CardContent>

@@ -33,7 +33,6 @@ import {
   Percent,
   PiggyBank,
   Building,
-  ArrowRight,
 } from "lucide-react";
 
 interface QualificationBreakdown {
@@ -348,29 +347,6 @@ export default function PropertyDetail() {
               </div>
             )}
 
-            {!hasPreApproval && (
-              <Card className="mt-8" data-testid="card-preapproval-cta">
-                <CardContent className="pt-6">
-                  <div className="flex flex-col items-center text-center space-y-4">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-                      <CheckCircle className="h-6 w-6 text-primary" />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-semibold text-foreground">Interested in this home?</h3>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        Get pre-approved to show sellers you're a serious buyer.
-                      </p>
-                    </div>
-                    <Link href={`/apply?price=${property.price}&state=${property.state || ""}&propertyId=${property.id}&source=property-detail`}>
-                      <Button className="gap-2" data-testid="button-preapprove-for-property">
-                        Get Pre-Approved for This Home
-                        <ArrowRight className="h-4 w-4" />
-                      </Button>
-                    </Link>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
           </div>
 
           {/* Sidebar - Qualification Details */}
