@@ -101,7 +101,6 @@ app.use((req, res, next) => {
     return next();
   }
 
-  // Skip CSRF check for non-API routes
   if (!req.path.startsWith('/api')) {
     return next();
   }
@@ -109,52 +108,49 @@ app.use((req, res, next) => {
   const origin = req.headers.origin;
   const referer = req.headers.referer;
   const host = req.headers.host;
-
-  // In development, allow requests from localhost
   const isDev = process.env.NODE_ENV === 'development';
-  
-  // Check if origin matches host
-  if (origin) {
-    try {
-      const originUrl = new URL(origin);
-      const hostName = host?.split(':')[0];
-      if (originUrl.hostname === hostName || 
-          (isDev && (originUrl.hostname === 'localhost' || originUrl.hostname === '127.0.0.1'))) {
-        return next();
-      }
-    } catch {
-      // Invalid origin URL
+
+  const allowedDomains = new Set<string>();
+  const hostName = host?.split(':')[0];
+  if (hostName) allowedDomains.add(hostName);
+  if (process.env.REPLIT_DOMAINS) {
+    for (const d of process.env.REPLIT_DOMAINS.split(',')) {
+      const trimmed = d.trim();
+      if (trimmed) allowedDomains.add(trimmed);
     }
   }
-
-  // Fallback: check referer
-  if (referer) {
-    try {
-      const refererUrl = new URL(referer);
-      const hostName = host?.split(':')[0];
-      if (refererUrl.hostname === hostName ||
-          (isDev && (refererUrl.hostname === 'localhost' || refererUrl.hostname === '127.0.0.1'))) {
-        return next();
-      }
-    } catch {
-      // Invalid referer URL
-    }
+  if (process.env.REPLIT_DEV_DOMAIN) {
+    allowedDomains.add(process.env.REPLIT_DEV_DOMAIN.trim());
+  }
+  if (isDev) {
+    allowedDomains.add('localhost');
+    allowedDomains.add('127.0.0.1');
   }
 
-  // In development mode, be more lenient
+  const isAllowed = (headerValue: string | undefined): boolean => {
+    if (!headerValue) return false;
+    try {
+      const url = new URL(headerValue);
+      return allowedDomains.has(url.hostname);
+    } catch {
+      return false;
+    }
+  };
+
+  if (isAllowed(origin) || isAllowed(referer)) {
+    return next();
+  }
+
   if (isDev) {
     return next();
   }
 
   if (!origin && !referer) {
-    if (isDev) {
-      return next();
-    }
     log(`CSRF check failed: no origin or referer header, host=${host}`);
     return res.status(403).json({ error: 'CSRF validation failed' });
   }
 
-  log(`CSRF check failed: origin=${origin}, referer=${referer}, host=${host}`);
+  log(`CSRF check failed: origin=${origin}, referer=${referer}, host=${host}, allowed=${Array.from(allowedDomains).join(',')}`);
   return res.status(403).json({ error: 'CSRF validation failed' });
 });
 
