@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
-import { formatCurrency } from "@/lib/authUtils";
+import { formatCurrency } from "@/lib/formatters";
 import { useAuth } from "@/hooks/useAuth";
 import { AffordabilityBadge, AffordabilityDetail } from "@/components/AffordabilityBadge";
 import {

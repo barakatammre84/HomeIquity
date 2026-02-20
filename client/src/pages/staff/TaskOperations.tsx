@@ -1,7 +1,10 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { formatTimeRemaining } from "@/lib/formatters";
+import { type SlaStatus, SLA_DOT_COLORS, SLA_STATUS_LABELS } from "@/lib/sla";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -43,8 +46,6 @@ import {
   Filter,
   RefreshCw
 } from "lucide-react";
-
-type SlaStatus = "green" | "amber" | "red";
 
 interface TaskWithSlaStatus {
   id: string;
@@ -89,17 +90,6 @@ interface SlaClassConfig {
   colorCode?: string;
 }
 
-const SLA_STATUS_COLORS: Record<SlaStatus, string> = {
-  green: "bg-emerald-500",
-  amber: "bg-amber-500",
-  red: "bg-red-500",
-};
-
-const SLA_STATUS_LABELS: Record<SlaStatus, string> = {
-  green: "On Track",
-  amber: "At Risk",
-  red: "Breached",
-};
 
 const ROLE_LABELS: Record<string, string> = {
   LO: "Loan Officer",
@@ -121,20 +111,11 @@ const USER_ROLE_TO_TASK_ROLE: Record<string, string> = {
   admin: "ADMIN",
 };
 
-function formatTimeRemaining(minutes: number | null): string {
-  if (minutes === null) return "N/A";
-  if (minutes <= 0) return "Overdue";
-  
-  if (minutes < 60) return `${minutes}m`;
-  if (minutes < 1440) return `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
-  return `${Math.floor(minutes / 1440)}d ${Math.floor((minutes % 1440) / 60)}h`;
-}
-
 function SlaStatusBadge({ status }: { status: SlaStatus }) {
   return (
     <Badge 
       variant="outline" 
-      className={`${SLA_STATUS_COLORS[status]} text-white border-0`}
+      className={`${SLA_DOT_COLORS[status]} text-white border-0`}
       data-testid={`badge-sla-${status}`}
     >
       {SLA_STATUS_LABELS[status]}
@@ -334,6 +315,7 @@ function TaskTable({
 
 export default function TaskOperations() {
   const { user } = useAuth();
+  const { toast } = useToast();
   const userRole = user?.role || "";
   const taskRole = USER_ROLE_TO_TASK_ROLE[userRole] || "all";
   const [selectedRole, setSelectedRole] = useState<string>(taskRole);
@@ -369,6 +351,13 @@ export default function TaskOperations() {
       setSelectedTaskId(null);
       setEscalationReason("");
     },
+    onError: (error: Error) => {
+      toast({
+        title: "Escalation Failed",
+        description: error.message || "An unexpected error occurred",
+        variant: "destructive",
+      });
+    },
   });
 
   const updateStatusMutation = useMutation({
@@ -378,6 +367,13 @@ export default function TaskOperations() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/task-engine"] });
     },
+    onError: (error: Error) => {
+      toast({
+        title: "Task Status Update Failed",
+        description: error.message || "An unexpected error occurred",
+        variant: "destructive",
+      });
+    },
   });
 
   const runEscalationMutation = useMutation({
@@ -386,6 +382,13 @@ export default function TaskOperations() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/task-engine"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Escalation Check Failed",
+        description: error.message || "An unexpected error occurred",
+        variant: "destructive",
+      });
     },
   });
 

@@ -22,6 +22,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { Link } from "wouter";
+import { formatCurrency, formatCurrencyDecimal } from "@/lib/formatters";
 
 type LoanProgram = "conventional" | "fha" | "va" | "usda";
 
@@ -160,14 +161,6 @@ function calculateScenario(input: ScenarioInput): ScenarioResult | null {
     programNotes,
     interestRateUsed: interestRate,
   };
-}
-
-function formatCurrency(value: number): string {
-  return "$" + value.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
-}
-
-function formatCurrencyDecimal(value: number): string {
-  return "$" + value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function ResultRow({ label, value, icon: Icon, highlight }: { label: string; value: string; icon?: typeof DollarSign; highlight?: boolean }) {

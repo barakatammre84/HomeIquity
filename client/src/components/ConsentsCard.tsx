@@ -105,7 +105,7 @@ function ConsentItem({ consent, isPending }: { consent: ConsentStatus; isPending
 
 export function ConsentsCard({ applicationId }: { applicationId?: string }) {
   const { data: consents, isLoading } = useQuery<Consent[]>({
-    queryKey: [`/api/consents/application/${applicationId}`],
+    queryKey: ['/api/consents/application', applicationId],
     enabled: !!applicationId,
   });
 

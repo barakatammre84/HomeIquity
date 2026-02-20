@@ -2,7 +2,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams, Link } from "wouter";
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { formatCurrency, getStatusColor } from "@/lib/authUtils";
+import { formatCurrency, getStatusColor } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -134,17 +134,17 @@ export default function LoanPipeline() {
   });
 
   const { data: appData, isLoading: appLoading } = useQuery<ApplicationData>({
-    queryKey: [`/api/loan-applications/${applicationId}`],
+    queryKey: ['/api/loan-applications', applicationId],
     enabled: !!applicationId && !authLoading,
   });
 
   const { data: pipelineData, isLoading: pipelineLoading } = useQuery<PipelineData>({
-    queryKey: [`/api/loan-applications/${applicationId}/pipeline`],
+    queryKey: ['/api/loan-applications', applicationId, 'pipeline'],
     enabled: !!applicationId && !authLoading,
   });
 
   const { data: applicationProperties = [], isLoading: propertiesLoading } = useQuery<ApplicationProperty[]>({
-    queryKey: [`/api/loan-applications/${applicationId}/properties`],
+    queryKey: ['/api/loan-applications', applicationId, 'properties'],
     enabled: !!applicationId && !authLoading,
   });
 
@@ -153,8 +153,8 @@ export default function LoanPipeline() {
       return await apiRequest("POST", `/api/loan-applications/${applicationId}/properties`, propertyData);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/loan-applications/${applicationId}/properties`] });
-      queryClient.invalidateQueries({ queryKey: [`/api/loan-applications/${applicationId}`] });
+      queryClient.invalidateQueries({ queryKey: ['/api/loan-applications', applicationId, 'properties'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/loan-applications', applicationId] });
       setShowAddPropertyDialog(false);
       setNewProperty({
         address: "",
@@ -184,8 +184,8 @@ export default function LoanPipeline() {
       return await apiRequest("POST", `/api/loan-applications/${applicationId}/properties/${propertyId}/switch`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/loan-applications/${applicationId}/properties`] });
-      queryClient.invalidateQueries({ queryKey: [`/api/loan-applications/${applicationId}`] });
+      queryClient.invalidateQueries({ queryKey: ['/api/loan-applications', applicationId, 'properties'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/loan-applications', applicationId] });
       toast({
         title: "Property Switched",
         description: "Your application has been updated to the new property.",
@@ -205,7 +205,7 @@ export default function LoanPipeline() {
       return await apiRequest("POST", `/api/loan-applications/${applicationId}/properties/${propertyId}/deal-fell-through`, { reason });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/loan-applications/${applicationId}/properties`] });
+      queryClient.invalidateQueries({ queryKey: ['/api/loan-applications', applicationId, 'properties'] });
       setShowDealFellThroughDialog(false);
       setSelectedPropertyForAction(null);
       setDealFellThroughReason("");

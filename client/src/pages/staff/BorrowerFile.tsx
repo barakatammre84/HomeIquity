@@ -57,13 +57,30 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { isStaffRole } from "@shared/schema";
+import { formatCurrency, formatDate } from "@/lib/formatters";
 import type { LoanApplication, Document, LoanCondition, UrlaPersonalInfo } from "@shared/schema";
+
+interface ActivityItem {
+  id?: string;
+  activityType: string;
+  title: string;
+  description?: string;
+  createdAt: string;
+}
+
+interface LoanOption {
+  id: string;
+  loanType: string;
+  interestRate: string;
+  term: number;
+  monthlyPayment: string;
+}
 
 interface ApplicationData {
   application: LoanApplication;
-  options: any[];
+  options: LoanOption[];
   documents: Document[];
-  activities: any[];
+  activities: ActivityItem[];
 }
 
 interface PersonalInfoData {
@@ -81,7 +98,7 @@ interface PipelineData {
     blockers: string[];
     nextSteps: string[];
   };
-  summary: any;
+  summary: Record<string, unknown> | null;
   milestones: Record<string, Date | null>;
   conditions: LoanCondition[];
 }
@@ -130,26 +147,6 @@ interface CreditAuditEntry {
   performedBy: string | null;
 }
 
-function formatDate(date: Date | string | null | undefined): string {
-  if (!date) return "N/A";
-  return new Date(date).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
-
-function formatCurrency(amount: number | string | null | undefined): string {
-  if (!amount) return "$0";
-  const num = typeof amount === "string" ? parseFloat(amount) : amount;
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(num);
-}
-
 export default function BorrowerFile() {
   const params = useParams();
   const applicationId = params.id as string;
@@ -157,27 +154,27 @@ export default function BorrowerFile() {
   const { toast } = useToast();
 
   const { data: appData, isLoading: appLoading } = useQuery<ApplicationData>({
-    queryKey: [`/api/loan-applications/${applicationId}`],
+    queryKey: ['/api/loan-applications', applicationId],
     enabled: !!applicationId && !authLoading,
   });
 
   const { data: pipelineData, isLoading: pipelineLoading } = useQuery<PipelineData>({
-    queryKey: [`/api/loan-applications/${applicationId}/pipeline`],
+    queryKey: ['/api/loan-applications', applicationId, 'pipeline'],
     enabled: !!applicationId && !authLoading,
   });
 
   const { data: urlaData } = useQuery<{ personalInfo: UrlaPersonalInfo | null }>({
-    queryKey: [`/api/urla/${applicationId}`],
+    queryKey: ['/api/urla', applicationId],
     enabled: !!applicationId && !authLoading,
   });
 
   const { data: creditData, isLoading: creditLoading, refetch: refetchCredit } = useQuery<CreditSummary>({
-    queryKey: [`/api/loan-applications/${applicationId}/credit/summary`],
+    queryKey: ['/api/loan-applications', applicationId, 'credit', 'summary'],
     enabled: !!applicationId && !authLoading,
   });
 
   const { data: auditLog } = useQuery<{ auditLog: CreditAuditEntry[] }>({
-    queryKey: [`/api/loan-applications/${applicationId}/credit/audit-log`],
+    queryKey: ['/api/loan-applications', applicationId, 'credit', 'audit-log'],
     enabled: !!applicationId && !authLoading,
   });
 
@@ -193,8 +190,8 @@ export default function BorrowerFile() {
       return apiRequest("PATCH", `/api/loan-applications/${applicationId}/status`, { status, notes });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/loan-applications/${applicationId}`] });
-      queryClient.invalidateQueries({ queryKey: [`/api/loan-applications/${applicationId}/pipeline`] });
+      queryClient.invalidateQueries({ queryKey: ['/api/loan-applications', applicationId] });
+      queryClient.invalidateQueries({ queryKey: ['/api/loan-applications', applicationId, 'pipeline'] });
       toast({ title: "Status Updated", description: `Application status has been changed.` });
       setStatusUpdate({ open: false, status: "", notes: "" });
     },
@@ -208,8 +205,8 @@ export default function BorrowerFile() {
       return apiRequest("PATCH", `/api/conditions/${id}`, { status, clearanceNotes });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/loan-applications/${applicationId}/pipeline`] });
-      queryClient.invalidateQueries({ queryKey: [`/api/loan-applications/${applicationId}`] });
+      queryClient.invalidateQueries({ queryKey: ['/api/loan-applications', applicationId, 'pipeline'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/loan-applications', applicationId] });
       const actionLabel = conditionAction.action === "cleared" ? "Cleared" : conditionAction.action === "waived" ? "Waived" : "Marked N/A";
       toast({
         title: `Condition ${actionLabel}`,
@@ -244,9 +241,9 @@ export default function BorrowerFile() {
       return await response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/loan-applications/${applicationId}/credit/summary`] });
-      queryClient.invalidateQueries({ queryKey: [`/api/loan-applications/${applicationId}/credit/audit-log`] });
-      queryClient.invalidateQueries({ queryKey: [`/api/loan-applications/${applicationId}`] });
+      queryClient.invalidateQueries({ queryKey: ['/api/loan-applications', applicationId, 'credit', 'summary'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/loan-applications', applicationId, 'credit', 'audit-log'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/loan-applications', applicationId] });
       toast({
         title: "Credit Pull Complete",
         description: "Credit report has been successfully retrieved.",
@@ -787,7 +784,7 @@ export default function BorrowerFile() {
                           </p>
                         ) : (
                           <div className="space-y-4">
-                            {activities.map((activity: any, index: number) => (
+                            {activities.map((activity: ActivityItem, index: number) => (
                               <div
                                 key={activity.id || index}
                                 className="relative flex gap-4 pb-4 last:pb-0"

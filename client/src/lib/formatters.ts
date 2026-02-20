@@ -1,14 +1,24 @@
-export function isUnauthorizedError(error: Error): boolean {
-  return /^401: .*Unauthorized/.test(error.message);
-}
-
-export function formatCurrency(value: number | string): string {
-  const num = typeof value === "string" ? parseFloat(value) : value;
+export function formatCurrency(amount: number | string | null | undefined): string {
+  if (amount === null || amount === undefined) return "$0";
+  const num = typeof amount === "string" ? parseFloat(amount) : amount;
+  if (isNaN(num)) return "$0";
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
+  }).format(num);
+}
+
+export function formatCurrencyDecimal(amount: number | string | null | undefined): string {
+  if (amount === null || amount === undefined) return "$0.00";
+  const num = typeof amount === "string" ? parseFloat(amount) : amount;
+  if (isNaN(num)) return "$0.00";
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(num);
 }
 
@@ -20,6 +30,29 @@ export function formatPercent(value: number | string): string {
 export function formatNumber(value: number | string): string {
   const num = typeof value === "string" ? parseFloat(value) : value;
   return new Intl.NumberFormat("en-US").format(num);
+}
+
+export function formatDate(date: Date | string | null | undefined): string {
+  if (!date) return "N/A";
+  return new Date(date).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+export function formatTimeRemaining(minutes: number | null): string {
+  if (minutes === null) return "No SLA";
+  if (minutes <= 0) return "Overdue";
+  if (minutes < 60) return `${Math.round(minutes)}m`;
+  if (minutes < 1440) {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+  }
+  const days = Math.floor(minutes / 1440);
+  const hours = Math.floor((minutes % 1440) / 60);
+  return hours > 0 ? `${days}d ${hours}h` : `${days}d`;
 }
 
 export function getLoanTypeLabel(type: string): string {

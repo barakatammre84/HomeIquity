@@ -12,7 +12,7 @@ import {
   TableRow 
 } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { formatCurrency, getStatusLabel, getStatusColor } from "@/lib/authUtils";
+import { formatCurrency, getStatusLabel, getStatusColor } from "@/lib/formatters";
 import { useAuth } from "@/hooks/useAuth";
 import type { LoanApplication, User } from "@shared/schema";
 import {

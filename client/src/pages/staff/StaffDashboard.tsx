@@ -58,8 +58,8 @@ import {
   Bell,
 } from "lucide-react";
 import { format } from "date-fns";
-
-type SlaStatus = "green" | "amber" | "red";
+import { formatCurrency, formatTimeRemaining } from "@/lib/formatters";
+import { type SlaStatus, SLA_STATUS_COLORS, SLA_DOT_COLORS, SLA_SORT_ORDER } from "@/lib/sla";
 
 interface QueueTask {
   id: string;
@@ -149,36 +149,6 @@ interface RetentionReport {
   recommendations: string[];
 }
 
-const SLA_STATUS_COLORS: Record<SlaStatus, string> = {
-  green: "text-emerald-600 dark:text-emerald-400",
-  amber: "text-amber-600 dark:text-amber-400",
-  red: "text-red-600 dark:text-red-400",
-};
-
-const SLA_DOT_COLORS: Record<SlaStatus, string> = {
-  green: "bg-emerald-500",
-  amber: "bg-amber-500",
-  red: "bg-red-500",
-};
-
-function formatTimeRemaining(minutes: number | null): string {
-  if (minutes === null) return "No SLA";
-  if (minutes <= 0) return "Overdue";
-  if (minutes < 60) return `${Math.round(minutes)}m`;
-  if (minutes < 1440) return `${Math.round(minutes / 60)}h`;
-  return `${Math.round(minutes / 1440)}d`;
-}
-
-function formatCurrency(amount: number | string | null | undefined): string {
-  if (!amount) return "$0";
-  const num = typeof amount === "string" ? parseFloat(amount) : amount;
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(num);
-}
 
 function formatStageLabel(stage: string): string {
   return STAGE_DISPLAY[stage] || stage.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase());
@@ -452,7 +422,7 @@ export default function StaffDashboard() {
   });
 
   const createTaskMutation = useMutation({
-    mutationFn: async (taskData: any) => {
+    mutationFn: async (taskData: { applicationId: string; assignedToUserId: string; title: string; description: string; taskType: string; priority: string; dueDate: string }) => {
       const response = await apiRequest("POST", "/api/tasks", taskData);
       return await response.json();
     },
@@ -529,9 +499,8 @@ export default function StaffDashboard() {
     (queueTasks || [])
       .filter(t => t.status !== "COMPLETED" && t.status !== "EXPIRED")
       .sort((a, b) => {
-        const slaOrder: Record<SlaStatus, number> = { red: 0, amber: 1, green: 2 };
-        const aOrder = slaOrder[a.slaStatus] ?? 2;
-        const bOrder = slaOrder[b.slaStatus] ?? 2;
+        const aOrder = SLA_SORT_ORDER[a.slaStatus] ?? 2;
+        const bOrder = SLA_SORT_ORDER[b.slaStatus] ?? 2;
         if (aOrder !== bOrder) return aOrder - bOrder;
         return (a.timeRemaining ?? Infinity) - (b.timeRemaining ?? Infinity);
       }),

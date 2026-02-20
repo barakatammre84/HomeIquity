@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useParams, Link } from "wouter";
+import { formatCurrency, formatDate } from "@/lib/formatters";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -100,25 +101,6 @@ interface LoanEstimateData {
   };
 }
 
-function formatCurrency(amount: number | undefined | null): string {
-  if (amount === undefined || amount === null) return "$0";
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount);
-}
-
-function formatDate(date: string | undefined | null): string {
-  if (!date) return "N/A";
-  return new Date(date).toLocaleDateString("en-US", {
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  });
-}
-
 function CostLineItem({ label, amount, bold = false }: { label: string; amount: number; bold?: boolean }) {
   return (
     <div className={`flex justify-between py-1 ${bold ? "font-semibold" : ""}`}>
@@ -133,7 +115,7 @@ export default function LoanEstimate() {
   const { user, isLoading: authLoading } = useAuth();
 
   const { data: le, isLoading, error } = useQuery<LoanEstimateData>({
-    queryKey: [`/api/loan-applications/${id}/loan-estimate`],
+    queryKey: ['/api/loan-applications', id, 'loan-estimate'],
     enabled: !!id && !authLoading,
   });
 

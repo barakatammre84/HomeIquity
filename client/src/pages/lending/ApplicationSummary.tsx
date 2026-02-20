@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/useAuth";
-import { formatCurrency } from "@/lib/authUtils";
+import { formatCurrency } from "@/lib/formatters";
 import type { LoanApplication } from "@shared/schema";
 import {
   Home,

@@ -120,13 +120,6 @@ interface PolicyApprovalRecord {
   createdAt: string;
 }
 
-interface AlertItem {
-  id: string;
-  type: "gse_update" | "draft_pending" | "expiring" | "material_change";
-  message: string;
-  severity: "info" | "warning" | "error";
-  timestamp: string;
-}
 
 interface AuditEntry {
   id: string;
@@ -151,29 +144,6 @@ const RULE_CATEGORIES: { id: RuleCategory; label: string; icon: typeof CreditCar
   { id: "BROKER_OVERLAY", label: "Broker Risk Overlay", icon: Shield },
 ];
 
-const mockAlerts: AlertItem[] = [
-  {
-    id: "1",
-    type: "gse_update",
-    message: "Fannie Mae SEL-2026-02 available - Review recommended",
-    severity: "info",
-    timestamp: "2026-01-25",
-  },
-  {
-    id: "2",
-    type: "draft_pending",
-    message: "Broker Overlay v1.0 pending approval",
-    severity: "warning",
-    timestamp: "2026-01-20",
-  },
-  {
-    id: "3",
-    type: "expiring",
-    message: "12 pre-approvals expiring under old FHA policy",
-    severity: "warning",
-    timestamp: "2026-01-26",
-  },
-];
 
 function StatusBadge({ status }: { status: PolicyStatus }) {
   const config = {
@@ -192,11 +162,6 @@ function StatusBadge({ status }: { status: PolicyStatus }) {
   );
 }
 
-function AlertSeverityIcon({ severity }: { severity: AlertItem["severity"] }) {
-  if (severity === "error") return <AlertCircle className="h-4 w-4 text-destructive" />;
-  if (severity === "warning") return <AlertTriangle className="h-4 w-4 text-yellow-500" />;
-  return <Info className="h-4 w-4 text-blue-500" />;
-}
 
 function PolicyOpsDashboard() {
   const [selectedPolicy, setSelectedPolicy] = useState<PolicyProfile | null>(null);
@@ -306,20 +271,10 @@ function PolicyOpsDashboard() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {mockAlerts.map((alert) => (
-                    <div
-                      key={alert.id}
-                      className="flex items-start gap-3 p-3 border rounded-lg"
-                      data-testid={`alert-${alert.id}`}
-                    >
-                      <AlertSeverityIcon severity={alert.severity} />
-                      <div className="flex-1">
-                        <p className="text-sm">{alert.message}</p>
-                        <p className="text-xs text-muted-foreground mt-1">{alert.timestamp}</p>
-                      </div>
-                    </div>
-                  ))}
+                <div className="flex flex-col items-center justify-center py-6 text-center" data-testid="alerts-empty-state">
+                  <Bell className="h-8 w-8 text-muted-foreground/40 mb-2" />
+                  <p className="text-sm text-muted-foreground">No active alerts</p>
+                  <p className="text-xs text-muted-foreground/60 mt-1">Policy alerts will appear here when GSE updates, pending approvals, or expirations are detected</p>
                 </div>
               </CardContent>
             </Card>

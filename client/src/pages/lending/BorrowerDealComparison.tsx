@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { formatCurrency } from "@/lib/formatters";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -182,10 +183,6 @@ const labelConfig: Record<string, { text: string; icon: typeof DollarSign; color
   BEST_SHORT_TERM: { text: "Best Short-Term Option", icon: Zap, color: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200" },
   FASTEST_CLOSE: { text: "Fastest Closing", icon: Clock, color: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200" },
 };
-
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(amount);
-}
 
 function formatRate(rate: number): string {
   return rate.toFixed(3) + "%";

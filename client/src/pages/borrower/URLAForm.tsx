@@ -85,7 +85,7 @@ export default function URLAForm() {
   );
 
   const { data: urlaData, isLoading: urlaLoading } = useQuery<UrlaData>({
-    queryKey: [`/api/urla/${activeApplication?.id}`],
+    queryKey: ['/api/urla', activeApplication?.id],
     enabled: !!activeApplication?.id,
   });
 
@@ -117,7 +117,7 @@ export default function URLAForm() {
         title: "URLA Saved",
         description: "Your Uniform Residential Loan Application has been saved successfully.",
       });
-      queryClient.invalidateQueries({ queryKey: [`/api/urla/${activeApplication?.id}`] });
+      queryClient.invalidateQueries({ queryKey: ['/api/urla', activeApplication?.id] });
     },
     onError: () => {
       toast({

@@ -1,6 +1,7 @@
 import { Component, type ReactNode, type ErrorInfo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { formatCurrency } from "@/lib/formatters";
 import {
   User,
   Users,
@@ -135,14 +136,6 @@ function isNotProvided(val: string | null | undefined): boolean {
   if (!val) return true;
   const lower = val.toLowerCase().trim();
   return lower === "not provided" || lower === "pending" || lower === "n/a" || lower === "insufficient data" || lower === "";
-}
-
-function formatCurrency(val: string): string {
-  const stripped = val.replace(/[^0-9.-]/g, "");
-  if (stripped === "" || stripped === "." || stripped === "-") return val;
-  const num = Number(stripped);
-  if (isNaN(num)) return val;
-  return `$${num.toLocaleString()}`;
 }
 
 function VerificationBadge({ tier }: { tier: string }) {

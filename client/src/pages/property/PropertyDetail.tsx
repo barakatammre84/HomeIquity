@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
-import { formatCurrency } from "@/lib/authUtils";
+import { formatCurrency } from "@/lib/formatters";
 import type { Property, LoanApplication, AgentProfile } from "@shared/schema";
 import {
   MapPin,
@@ -157,7 +157,7 @@ export default function PropertyDetail() {
   }, []);
 
   const { data: property, isLoading: propertyLoading } = useQuery<Property>({
-    queryKey: [`/api/properties/${propertyId}`],
+    queryKey: ['/api/properties', propertyId],
   });
 
   useEffect(() => {
@@ -171,7 +171,7 @@ export default function PropertyDetail() {
   });
 
   const { data: agent } = useQuery<AgentProfile & { user?: { firstName: string; lastName: string; email: string } }>({
-    queryKey: property?.agentId ? [`/api/agents/${property.agentId}`] : [],
+    queryKey: property?.agentId ? ['/api/agents', property.agentId] : [],
     enabled: !!property?.agentId,
   });
 

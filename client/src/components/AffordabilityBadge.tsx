@@ -1,7 +1,7 @@
 import { useAffordability } from "@/hooks/useAffordability";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, AlertTriangle, TrendingUp, Loader2 } from "lucide-react";
-import { formatCurrency } from "@/lib/authUtils";
+import { formatCurrency } from "@/lib/formatters";
 
 interface AffordabilityBadgeProps {
   price: number;

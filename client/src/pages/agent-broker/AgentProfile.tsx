@@ -28,11 +28,11 @@ export default function AgentProfilePage() {
   const agentId = params?.agentId as string;
 
   const { data: agent, isLoading } = useQuery<AgentWithProperties>({
-    queryKey: [`/api/agents/${agentId}`],
+    queryKey: ['/api/agents', agentId],
   });
 
   const { data: listings } = useQuery<Property[]>({
-    queryKey: [`/api/agents/${agentId}/listings`],
+    queryKey: ['/api/agents', agentId, 'listings'],
     enabled: !!agent,
   });
 

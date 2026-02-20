@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { formatCurrency } from "@/lib/formatters";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -116,17 +117,7 @@ function StageProgress({ currentStage }: { currentStage: string | null }) {
   );
 }
 
-function formatCurrency(value: string | null): string {
-  if (!value) return "-";
-  const num = Number(value);
-  if (isNaN(num)) return value;
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(num);
-}
+
 
 function PipelineCard({ item }: { item: PipelineItem }) {
   return (

@@ -20,6 +20,12 @@ The backend uses Node.js, Express.js, and TypeScript, with PostgreSQL (Neon serv
 
 An AI Homebuyer Coach, powered by OpenAI GPT-5-mini, offers conversational mortgage readiness advice. The platform's core includes a Deterministic Underwriting Engine aligned with Fannie Mae/Freddie Mac rules, a Pricing Engine, and an Underwriting Rules DSL. AI Integration is solely for document data extraction. MISMO 3.4 GSE Compliance is supported via XML export. A Document Management System provides OCR, classification, and data extraction. Other features include a rules-driven Loan Pipeline & Borrower Dashboards, Property Search & Qualification with an affordability marketplace, Compliance & Security features (MISMO/ULAD Validation, TRID-compliant Loan Estimates), a Pre-Approval Letter Generator, a Policy Operations Admin UI, a Realtor Revenue Engine, and a Lifetime Homeowner Value Dashboard.
 
+### Shared Utilities (Feb 2026)
+- **`client/src/lib/formatters.ts`**: Centralized formatting functions (formatCurrency, formatCurrencyDecimal, formatPercent, formatNumber, formatDate, formatTimeRemaining, getLoanTypeLabel, getStatusLabel, getStatusColor). All 24+ consumer files import from here — no local formatter definitions.
+- **`client/src/lib/sla.ts`**: Shared SLA types and constants (SlaStatus type, SLA_STATUS_COLORS, SLA_DOT_COLORS, SLA_STATUS_LABELS, SLA_SORT_ORDER). Used by StaffDashboard and TaskOperations.
+- **QueryKey convention**: All TanStack Query keys use array segments (`['/api/loan-applications', id, 'pipeline']`) instead of template literals, enabling hierarchical cache invalidation. The default queryFn joins segments with `/`. For query-parameter URLs, use explicit queryFn.
+- **Dead code removed**: `authUtils.ts`, `auth-utils.ts`, `use-auth.ts` (re-export), `toast-utils.ts` — all had zero imports.
+
 ### System Design Choices
 The project adopts a domain-based modular structure for both server routes (e.g., `lending`, `borrower`, `documents`, `property`) and client pages (e.g., `lending`, `borrower`, `staff`, `agent-broker`) to enhance maintainability and scalability. The database schema is similarly modularized into domain-specific files (e.g., `core.ts`, `lending.ts`, `underwriting.ts`), which are re-exported through a central `shared/schema.ts` file.
 
