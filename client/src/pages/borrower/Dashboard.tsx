@@ -17,6 +17,7 @@ import { JourneyTracker } from "@/components/JourneyTracker";
 import { TrustLayer } from "@/components/TrustLayer";
 import { FirstVisitWelcome } from "@/components/WhatsNext";
 import { isStaffRole } from "@shared/schema";
+import PredictionInsights from "@/components/borrower/PredictionInsights";
 import type { LoanApplication, DealActivity } from "@shared/schema";
 import {
   CheckCircle2,
@@ -967,7 +968,12 @@ export default function Dashboard() {
           <PreQualLetterCard applicationId={activeApplication.id} />
         )}
 
-        {/* Section 7: Financial Snapshot (collapsed by default) */}
+        {/* Section 7: Prediction Insights */}
+        {activeApplication && activeApplication.status !== "draft" && (
+          <PredictionInsights applicationId={activeApplication.id} />
+        )}
+
+        {/* Section 8: Financial Snapshot (collapsed by default) */}
         {borrowerGraph && !graphError && (
           <FinancialSnapshot graph={borrowerGraph} />
         )}

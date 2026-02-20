@@ -19,6 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { Link } from "wouter";
 import { isStaffRole, ROLE_DISPLAY_NAMES } from "@shared/schema";
+import IntelligenceTab from "./IntelligenceTab";
 import type { Task, LoanApplication, User, LoanCondition } from "@shared/schema";
 import {
   Plus,
@@ -824,6 +825,10 @@ export default function StaffDashboard() {
               <Shield className="mr-1.5 h-4 w-4" />
               Compliance
             </TabsTrigger>
+            <TabsTrigger value="intelligence" data-testid="tab-intelligence">
+              <BarChart3 className="mr-1.5 h-4 w-4" />
+              Intelligence
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="pipeline">
@@ -1353,6 +1358,10 @@ export default function StaffDashboard() {
                 </CardContent>
               </Card>
             </div>
+          </TabsContent>
+
+          <TabsContent value="intelligence">
+            <IntelligenceTab />
           </TabsContent>
         </Tabs>
       </div>

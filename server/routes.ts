@@ -19,6 +19,7 @@ import { registerPolicyOpsRoutes } from "./routes/policy-ops";
 import { registerRateSheetRoutes } from "./routes/rate-sheets";
 import { registerIntelligenceRoutes } from "./routes/intelligence";
 import { registerOptimizationRoutes } from "./routes/optimizations";
+import { registerDataIntelligenceRoutes } from "./routes/data-intelligence";
 import { seedDatabase } from "./seed";
 
 
@@ -47,6 +48,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerRateSheetRoutes(app, storage);
   registerIntelligenceRoutes(app, storage);
   registerOptimizationRoutes(app);
+  registerDataIntelligenceRoutes(app);
 
   app.all("/api/*", (_req, res) => {
     res.status(404).json({ error: "Not found" });

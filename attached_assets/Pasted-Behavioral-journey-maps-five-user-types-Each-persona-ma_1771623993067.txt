@@ -1,0 +1,37 @@
+Behavioral journey maps — five user types
+Each persona map uses the same structure: Stages, User thoughts & emotions, Barriers, Design interventions, Success metrics. These maps are action‑ready and testable.
+
+Renters
+Stages: Awareness → Explore readiness → Micro‑prep → Qualification → Decision
+Thoughts & emotions: curious; anxious about credit; hopeful
+Barriers: unclear eligibility; fear of rejection; documentation gaps
+Interventions: simple pre‑qualifier quiz; rent‑to‑own pathway option; micro‑tasks with time estimates; friendly microcopy; credit‑improvement tips.   
+Metrics: pre‑qualifier completion rate; document upload rate; conversion to pre‑approval.
+
+First‑time Buyers
+Stages: Discovery → Budgeting → Pre‑approval → Offer → Closing
+Thoughts & emotions: excited; overwhelmed; risk‑averse
+Barriers: cognitive overload; jargon; fear of hidden costs
+Interventions: guided budget builder; “what this means” tooltips; one‑click cost breakdown; milestone celebrations; human advisor touchpoint before offer.   
+Metrics: time to pre‑approval; drop‑off at KYC; NPS after onboarding.
+
+Homeowners (refinance or second purchase)
+Stages: Trigger → Compare options → Document refresh → Approval → Refinance close
+Thoughts & emotions: pragmatic; skeptical about value; time‑sensitive
+Barriers: perceived low benefit; friction in document refresh
+Interventions: instant savings estimator; auto‑prefill from prior profile; “what changed since last time” insight; fast path for returning users.   
+Metrics: estimator engagement; refinance application completion; time to close.
+
+Affluent Borrowers
+Stages: Discovery → Product match → Concierge onboarding → Approval → Portfolio management
+Thoughts & emotions: efficiency‑driven; privacy‑sensitive; expects white‑glove service
+Barriers: too many generic steps; lack of personalization
+Interventions: tailored hero message; concierge contact; advanced product filters; compact deep‑dive analytics; privacy assurances.   
+Metrics: concierge conversion; time to decision; retention for cross‑sell.
+
+Investors
+Stages: Opportunity scan → Deal qualification → Portfolio underwriting → Funding → Reporting
+Thoughts & emotions: analytical; ROI‑focused; impatient with noise
+Barriers: insufficient data granularity; slow underwriting
+Interventions: investor dashboard variant with summary + deep dive; exportable deal packs; fast lane underwriting; alerts for portfolio events.   
+Metrics: deal view to qualification time; underwriting throughput; investor retention.

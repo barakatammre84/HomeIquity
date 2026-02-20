@@ -27,6 +27,15 @@ The `BorrowerGraph` service aggregates all user data into a single queryable pro
 
 The intelligence layer provides foundational data aggregation, state tracking, and matching infrastructure through a defined schema (`intelligence.ts`) with tables for borrower profiles, real estate owned, lender products, borrower state history, readiness checklist, intent events, lender match results, and anonymized borrower facts. Key services include a borrower state machine, a lender matching engine, and an intent tracker. Data points are collected once and reused across modules with a trust-tier resolution system (tier1 > tier2 > tier3) to ensure data accuracy.
 
+The **Deep Intelligence Layer** extends the platform with closed-loop feedback and predictive signals:
+- **Analytics Event Pipeline** (`analyticsEventPipeline.ts`): Structured event emission across all domains (underwriting, document, compliance, borrower, pricing, stage_transition). Supports automation tracking.
+- **Outcome Tracker** (`outcomeTracker.ts`): Records stage timestamps per loan, computes conversion funnels, measures estimate accuracy (pre-approval vs. final amounts), and refreshes anonymized cohort insights.
+- **Document Confidence** (`documentConfidence.ts`): Scores extraction confidence per document, manages human review workflow, tracks accuracy trends by doc type.
+- **Predictive Engine** (`predictiveEngine.ts`): Computes likelihood-to-close, estimated days to fund, risk-of-fallout, and condition delay risk using BorrowerGraph data. Caches snapshots with 4-hour TTL. Provides borrower benchmarking ("borrowers like you" comparisons) using anonymized cohort data.
+- **Data Intelligence Routes** (`routes/data-intelligence.ts`): REST API for analytics metrics, conversion funnel, document accuracy, predictions, benchmarks, and platform health dashboard.
+- **Staff Intelligence Tab**: New tab in Staff Dashboard showing conversion funnel, document extraction accuracy, automation activity by domain, and outcome segments by credit bucket.
+- **Borrower PredictionInsights**: Card on borrower dashboard showing likelihood, timeline, risk/positive factors, and cohort comparisons.
+
 ## External Dependencies
 
 ### Third-Party Services

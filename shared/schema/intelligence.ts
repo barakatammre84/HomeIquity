@@ -592,3 +592,237 @@ export const insertAnonymizedBorrowerFactSchema = createInsertSchema(anonymizedB
 
 export type InsertAnonymizedBorrowerFact = z.infer<typeof insertAnonymizedBorrowerFactSchema>;
 export type AnonymizedBorrowerFact = typeof anonymizedBorrowerFacts.$inferSelect;
+
+// ============================================================================
+// ANALYTICS EVENTS (Structured platform-wide event pipeline)
+// Captures every meaningful action across the platform for intelligence
+// ============================================================================
+
+export const ANALYTICS_DOMAINS = [
+  "underwriting",
+  "document",
+  "compliance",
+  "pipeline",
+  "borrower",
+  "staff",
+  "pricing",
+  "property",
+  "system",
+] as const;
+
+export type AnalyticsDomain = typeof ANALYTICS_DOMAINS[number];
+
+export const analyticsEvents = pgTable("analytics_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+
+  domain: varchar("domain", { length: 30 }).notNull(),
+  eventName: varchar("event_name", { length: 100 }).notNull(),
+
+  applicationId: varchar("application_id").references(() => loanApplications.id),
+  userId: varchar("user_id").references(() => users.id),
+  actorId: varchar("actor_id").references(() => users.id),
+  actorRole: varchar("actor_role", { length: 30 }),
+
+  entityType: varchar("entity_type", { length: 50 }),
+  entityId: varchar("entity_id", { length: 255 }),
+
+  payload: jsonb("payload"),
+  numericValue: decimal("numeric_value", { precision: 14, scale: 4 }),
+  textValue: varchar("text_value", { length: 500 }),
+
+  previousValue: jsonb("previous_value"),
+  newValue: jsonb("new_value"),
+
+  source: varchar("source", { length: 30 }).default("system"),
+  automationTriggered: boolean("automation_triggered").default(false),
+
+  occurredAt: timestamp("occurred_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_analytics_domain").on(table.domain),
+  index("idx_analytics_event_name").on(table.eventName),
+  index("idx_analytics_app").on(table.applicationId),
+  index("idx_analytics_user").on(table.userId),
+  index("idx_analytics_time").on(table.occurredAt),
+  index("idx_analytics_domain_event").on(table.domain, table.eventName),
+  index("idx_analytics_entity").on(table.entityType, table.entityId),
+]);
+
+export const insertAnalyticsEventSchema = createInsertSchema(analyticsEvents).omit({
+  id: true,
+});
+
+export type InsertAnalyticsEvent = z.infer<typeof insertAnalyticsEventSchema>;
+export type AnalyticsEvent = typeof analyticsEvents.$inferSelect;
+
+// ============================================================================
+// LOAN OUTCOME TRACKING (Closed-loop feedback for rule refinement)
+// Links decisions to outcomes to measure accuracy and improve over time
+// ============================================================================
+
+export const loanOutcomes = pgTable("loan_outcomes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  applicationId: varchar("application_id").references(() => loanApplications.id).notNull().unique(),
+
+  preApprovalAmount: decimal("pre_approval_amount", { precision: 14, scale: 2 }),
+  finalLoanAmount: decimal("final_loan_amount", { precision: 14, scale: 2 }),
+  amountAccuracyPct: decimal("amount_accuracy_pct", { precision: 5, scale: 2 }),
+
+  estimatedRate: decimal("estimated_rate", { precision: 5, scale: 3 }),
+  finalRate: decimal("final_rate", { precision: 5, scale: 3 }),
+  rateAccuracyBps: decimal("rate_accuracy_bps", { precision: 6, scale: 2 }),
+
+  estimatedClosingCosts: decimal("estimated_closing_costs", { precision: 10, scale: 2 }),
+  actualClosingCosts: decimal("actual_closing_costs", { precision: 10, scale: 2 }),
+
+  estimatedDti: decimal("estimated_dti", { precision: 5, scale: 2 }),
+  finalDti: decimal("final_dti", { precision: 5, scale: 2 }),
+  estimatedLtv: decimal("estimated_ltv", { precision: 5, scale: 2 }),
+  finalLtv: decimal("final_ltv", { precision: 5, scale: 2 }),
+
+  submittedAt: timestamp("submitted_at"),
+  preApprovedAt: timestamp("pre_approved_at"),
+  conditionalAt: timestamp("conditional_at"),
+  clearToCloseAt: timestamp("clear_to_close_at"),
+  fundedAt: timestamp("funded_at"),
+  deniedAt: timestamp("denied_at"),
+  withdrawnAt: timestamp("withdrawn_at"),
+
+  daysSubmittedToPreApproval: integer("days_submitted_to_pre_approval"),
+  daysPreApprovalToConditional: integer("days_pre_approval_to_conditional"),
+  daysConditionalToCtc: integer("days_conditional_to_ctc"),
+  daysCtcToFunded: integer("days_ctc_to_funded"),
+  totalDaysToClose: integer("total_days_to_close"),
+
+  outcome: varchar("outcome", { length: 30 }),
+  falloutReason: varchar("fallout_reason", { length: 100 }),
+  falloutStage: varchar("fallout_stage", { length: 50 }),
+
+  conditionsIssuedCount: integer("conditions_issued_count").default(0),
+  conditionsClearedCount: integer("conditions_cleared_count").default(0),
+  conditionsWaivedCount: integer("conditions_waived_count").default(0),
+  avgConditionClearanceDays: decimal("avg_condition_clearance_days", { precision: 5, scale: 1 }),
+
+  uwDecisionOverridden: boolean("uw_decision_overridden").default(false),
+  uwOverrideReason: varchar("uw_override_reason", { length: 255 }),
+
+  documentResubmissionCount: integer("document_resubmission_count").default(0),
+  automatedStepsCount: integer("automated_steps_count").default(0),
+  manualStepsCount: integer("manual_steps_count").default(0),
+
+  loanPurpose: varchar("loan_purpose", { length: 50 }),
+  productType: varchar("product_type", { length: 50 }),
+  propertyType: varchar("property_type", { length: 50 }),
+  propertyState: varchar("property_state", { length: 50 }),
+  creditScoreBucket: varchar("credit_score_bucket", { length: 20 }),
+
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_outcomes_app").on(table.applicationId),
+  index("idx_outcomes_outcome").on(table.outcome),
+  index("idx_outcomes_purpose").on(table.loanPurpose),
+  index("idx_outcomes_credit").on(table.creditScoreBucket),
+  index("idx_outcomes_funded").on(table.fundedAt),
+]);
+
+export const insertLoanOutcomeSchema = createInsertSchema(loanOutcomes).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertLoanOutcome = z.infer<typeof insertLoanOutcomeSchema>;
+export type LoanOutcome = typeof loanOutcomes.$inferSelect;
+
+// ============================================================================
+// DOCUMENT INTELLIGENCE CONFIDENCE (Extraction accuracy tracking)
+// Tracks per-extraction confidence and accuracy over time by doc type
+// ============================================================================
+
+export const documentConfidenceScores = pgTable("document_confidence_scores", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+
+  documentId: varchar("document_id").notNull(),
+  documentType: varchar("document_type", { length: 50 }).notNull(),
+  applicationId: varchar("application_id").references(() => loanApplications.id),
+
+  extractionEngine: varchar("extraction_engine", { length: 30 }).default("gemini"),
+  extractionVersion: varchar("extraction_version", { length: 20 }),
+
+  overallConfidence: decimal("overall_confidence", { precision: 5, scale: 4 }).notNull(),
+
+  fieldConfidences: jsonb("field_confidences"),
+
+  humanReviewRequired: boolean("human_review_required").default(false),
+  humanReviewCompleted: boolean("human_review_completed").default(false),
+  humanReviewedBy: varchar("human_reviewed_by").references(() => users.id),
+  humanReviewedAt: timestamp("human_reviewed_at"),
+
+  fieldsExtracted: integer("fields_extracted").default(0),
+  fieldsCorrect: integer("fields_correct"),
+  fieldsCorrected: integer("fields_corrected"),
+  fieldsMissed: integer("fields_missed"),
+  fieldAccuracyPct: decimal("field_accuracy_pct", { precision: 5, scale: 2 }),
+
+  processingTimeMs: integer("processing_time_ms"),
+  fileSize: integer("file_size"),
+  pageCount: integer("page_count"),
+
+  extractedAt: timestamp("extracted_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_doc_conf_document").on(table.documentId),
+  index("idx_doc_conf_type").on(table.documentType),
+  index("idx_doc_conf_app").on(table.applicationId),
+  index("idx_doc_conf_confidence").on(table.overallConfidence),
+  index("idx_doc_conf_review").on(table.humanReviewRequired, table.humanReviewCompleted),
+  index("idx_doc_conf_time").on(table.extractedAt),
+]);
+
+export const insertDocumentConfidenceSchema = createInsertSchema(documentConfidenceScores).omit({
+  id: true,
+});
+
+export type InsertDocumentConfidence = z.infer<typeof insertDocumentConfidenceSchema>;
+export type DocumentConfidence = typeof documentConfidenceScores.$inferSelect;
+
+// ============================================================================
+// PREDICTIVE MODEL SNAPSHOTS (Stores computed predictions per borrower)
+// Refreshed periodically, consumed by dashboards and coaching
+// ============================================================================
+
+export const predictiveSnapshots = pgTable("predictive_snapshots", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+
+  applicationId: varchar("application_id").references(() => loanApplications.id),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+
+  likelihoodToClose: decimal("likelihood_to_close", { precision: 5, scale: 4 }),
+  estimatedDaysToFund: integer("estimated_days_to_fund"),
+  riskOfFallout: decimal("risk_of_fallout", { precision: 5, scale: 4 }),
+  conditionDelayRisk: decimal("condition_delay_risk", { precision: 5, scale: 4 }),
+
+  riskFactors: jsonb("risk_factors"),
+  positiveFactors: jsonb("positive_factors"),
+
+  comparisonCohort: varchar("comparison_cohort", { length: 100 }),
+  cohortAvgDaysToClose: integer("cohort_avg_days_to_close"),
+  cohortConversionRate: decimal("cohort_conversion_rate", { precision: 5, scale: 4 }),
+
+  modelVersion: varchar("model_version", { length: 20 }).default("v1"),
+  inputHash: varchar("input_hash", { length: 64 }),
+
+  computedAt: timestamp("computed_at").defaultNow().notNull(),
+  expiresAt: timestamp("expires_at"),
+}, (table) => [
+  index("idx_predict_app").on(table.applicationId),
+  index("idx_predict_user").on(table.userId),
+  index("idx_predict_likelihood").on(table.likelihoodToClose),
+  index("idx_predict_time").on(table.computedAt),
+]);
+
+export const insertPredictiveSnapshotSchema = createInsertSchema(predictiveSnapshots).omit({
+  id: true,
+});
+
+export type InsertPredictiveSnapshot = z.infer<typeof insertPredictiveSnapshotSchema>;
+export type PredictiveSnapshot = typeof predictiveSnapshots.$inferSelect;
