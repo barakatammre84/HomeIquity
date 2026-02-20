@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import type { IStorage } from "../storage";
+import { requireRole } from "../auth";
 import {
-  isStaffRole,
   insertPolicyProfileSchema,
   insertPolicyThresholdSchema,
   insertPolicyLenderOverlaySchema,
@@ -21,20 +21,13 @@ const VALID_TRANSITIONS: Record<string, string[]> = {
 export function registerPolicyOpsRoutes(
   app: Express,
   storage: IStorage,
-  isAuthenticated: any,
-  isAdmin: any,
 ) {
   // ============================================================================
   // POLICY PROFILES
   // ============================================================================
 
-  app.get("/api/policy-profiles", isAuthenticated, async (req, res) => {
+  app.get("/api/policy-profiles", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
     try {
-      const userRole = req.user?.role;
-      if (!isStaffRole(userRole || "")) {
-        return res.status(403).json({ error: "Only staff can view policy profiles" });
-      }
-
       const { authority, productType, status } = req.query;
       const filters: { authority?: string; productType?: string; status?: string } = {};
       if (authority && typeof authority === "string") filters.authority = authority;
@@ -49,13 +42,8 @@ export function registerPolicyOpsRoutes(
     }
   });
 
-  app.get("/api/policy-profiles/:id", isAuthenticated, async (req, res) => {
+  app.get("/api/policy-profiles/:id", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
     try {
-      const userRole = req.user?.role;
-      if (!isStaffRole(userRole || "")) {
-        return res.status(403).json({ error: "Only staff can view policy profiles" });
-      }
-
       const profile = await storage.getPolicyProfile(req.params.id);
       if (!profile) {
         return res.status(404).json({ error: "Policy profile not found" });
@@ -74,13 +62,8 @@ export function registerPolicyOpsRoutes(
     }
   });
 
-  app.post("/api/policy-profiles", isAuthenticated, async (req, res) => {
+  app.post("/api/policy-profiles", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
     try {
-      const userRole = req.user?.role;
-      if (!["admin", "underwriter"].includes(userRole || "")) {
-        return res.status(403).json({ error: "Only admins and underwriters can create policy profiles" });
-      }
-
       const parsed = insertPolicyProfileSchema.safeParse(req.body);
       if (!parsed.success) {
         return res.status(400).json({ error: "Invalid policy data", details: parsed.error.flatten() });
@@ -105,13 +88,8 @@ export function registerPolicyOpsRoutes(
     }
   });
 
-  app.patch("/api/policy-profiles/:id", isAuthenticated, async (req, res) => {
+  app.patch("/api/policy-profiles/:id", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
     try {
-      const userRole = req.user?.role;
-      if (!["admin", "underwriter"].includes(userRole || "")) {
-        return res.status(403).json({ error: "Only admins and underwriters can update policy profiles" });
-      }
-
       const profile = await storage.getPolicyProfile(req.params.id);
       if (!profile) {
         return res.status(404).json({ error: "Policy profile not found" });
@@ -150,13 +128,8 @@ export function registerPolicyOpsRoutes(
   // POLICY WORKFLOW TRANSITIONS
   // ============================================================================
 
-  app.post("/api/policy-profiles/:id/submit", isAuthenticated, async (req, res) => {
+  app.post("/api/policy-profiles/:id/submit", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
     try {
-      const userRole = req.user?.role;
-      if (!["admin", "underwriter"].includes(userRole || "")) {
-        return res.status(403).json({ error: "Only admins and underwriters can submit policies" });
-      }
-
       const profile = await storage.getPolicyProfile(req.params.id);
       if (!profile) {
         return res.status(404).json({ error: "Policy profile not found" });
@@ -196,7 +169,7 @@ export function registerPolicyOpsRoutes(
     }
   });
 
-  app.post("/api/policy-profiles/:id/approve", isAdmin, async (req, res) => {
+  app.post("/api/policy-profiles/:id/approve", requireRole("admin"), async (req, res) => {
     try {
       const profile = await storage.getPolicyProfile(req.params.id);
       if (!profile) {
@@ -245,7 +218,7 @@ export function registerPolicyOpsRoutes(
     }
   });
 
-  app.post("/api/policy-profiles/:id/reject", isAdmin, async (req, res) => {
+  app.post("/api/policy-profiles/:id/reject", requireRole("admin"), async (req, res) => {
     try {
       const profile = await storage.getPolicyProfile(req.params.id);
       if (!profile) {
@@ -284,7 +257,7 @@ export function registerPolicyOpsRoutes(
     }
   });
 
-  app.post("/api/policy-profiles/:id/activate", isAdmin, async (req, res) => {
+  app.post("/api/policy-profiles/:id/activate", requireRole("admin"), async (req, res) => {
     try {
       const profile = await storage.getPolicyProfile(req.params.id);
       if (!profile) {
@@ -322,7 +295,7 @@ export function registerPolicyOpsRoutes(
     }
   });
 
-  app.post("/api/policy-profiles/:id/retire", isAdmin, async (req, res) => {
+  app.post("/api/policy-profiles/:id/retire", requireRole("admin"), async (req, res) => {
     try {
       const profile = await storage.getPolicyProfile(req.params.id);
       if (!profile) {
@@ -371,13 +344,8 @@ export function registerPolicyOpsRoutes(
   // POLICY THRESHOLDS
   // ============================================================================
 
-  app.get("/api/policy-thresholds", isAuthenticated, async (req, res) => {
+  app.get("/api/policy-thresholds", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
     try {
-      const userRole = req.user?.role;
-      if (!isStaffRole(userRole || "")) {
-        return res.status(403).json({ error: "Only staff can view policy thresholds" });
-      }
-
       const { policyProfileId } = req.query;
       if (!policyProfileId || typeof policyProfileId !== "string") {
         return res.status(400).json({ error: "policyProfileId query parameter is required" });
@@ -391,13 +359,8 @@ export function registerPolicyOpsRoutes(
     }
   });
 
-  app.post("/api/policy-thresholds", isAuthenticated, async (req, res) => {
+  app.post("/api/policy-thresholds", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
     try {
-      const userRole = req.user?.role;
-      if (!["admin", "underwriter"].includes(userRole || "")) {
-        return res.status(403).json({ error: "Only admins and underwriters can create thresholds" });
-      }
-
       const parsed = insertPolicyThresholdSchema.safeParse(req.body);
       if (!parsed.success) {
         return res.status(400).json({ error: "Invalid threshold data", details: parsed.error.flatten() });
@@ -427,13 +390,8 @@ export function registerPolicyOpsRoutes(
     }
   });
 
-  app.patch("/api/policy-thresholds/:id", isAuthenticated, async (req, res) => {
+  app.patch("/api/policy-thresholds/:id", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
     try {
-      const userRole = req.user?.role;
-      if (!["admin", "underwriter"].includes(userRole || "")) {
-        return res.status(403).json({ error: "Only admins and underwriters can update thresholds" });
-      }
-
       const threshold = await storage.getPolicyThreshold(req.params.id);
       if (!threshold) {
         return res.status(404).json({ error: "Threshold not found" });
@@ -484,13 +442,8 @@ export function registerPolicyOpsRoutes(
     }
   });
 
-  app.delete("/api/policy-thresholds/:id", isAuthenticated, async (req, res) => {
+  app.delete("/api/policy-thresholds/:id", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
     try {
-      const userRole = req.user?.role;
-      if (!["admin"].includes(userRole || "")) {
-        return res.status(403).json({ error: "Only admins can delete thresholds" });
-      }
-
       const threshold = await storage.getPolicyThreshold(req.params.id);
       if (!threshold) {
         return res.status(404).json({ error: "Threshold not found" });
@@ -520,13 +473,8 @@ export function registerPolicyOpsRoutes(
   // POLICY LENDER OVERLAYS
   // ============================================================================
 
-  app.get("/api/policy-overlays", isAuthenticated, async (req, res) => {
+  app.get("/api/policy-overlays", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
     try {
-      const userRole = req.user?.role;
-      if (!isStaffRole(userRole || "")) {
-        return res.status(403).json({ error: "Only staff can view policy overlays" });
-      }
-
       const { basePolicyProfileId } = req.query;
       if (!basePolicyProfileId || typeof basePolicyProfileId !== "string") {
         return res.status(400).json({ error: "basePolicyProfileId query parameter is required" });
@@ -540,13 +488,8 @@ export function registerPolicyOpsRoutes(
     }
   });
 
-  app.get("/api/policy-overlays/:id", isAuthenticated, async (req, res) => {
+  app.get("/api/policy-overlays/:id", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
     try {
-      const userRole = req.user?.role;
-      if (!isStaffRole(userRole || "")) {
-        return res.status(403).json({ error: "Only staff can view policy overlays" });
-      }
-
       const overlay = await storage.getPolicyLenderOverlay(req.params.id);
       if (!overlay) {
         return res.status(404).json({ error: "Overlay not found" });
@@ -558,13 +501,8 @@ export function registerPolicyOpsRoutes(
     }
   });
 
-  app.post("/api/policy-overlays", isAuthenticated, async (req, res) => {
+  app.post("/api/policy-overlays", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
     try {
-      const userRole = req.user?.role;
-      if (!["admin", "underwriter", "broker", "lender"].includes(userRole || "")) {
-        return res.status(403).json({ error: "Only admins, underwriters, brokers, and lenders can create overlays" });
-      }
-
       const parsed = insertPolicyLenderOverlaySchema.safeParse(req.body);
       if (!parsed.success) {
         return res.status(400).json({ error: "Invalid overlay data", details: parsed.error.flatten() });
@@ -594,13 +532,8 @@ export function registerPolicyOpsRoutes(
     }
   });
 
-  app.patch("/api/policy-overlays/:id", isAuthenticated, async (req, res) => {
+  app.patch("/api/policy-overlays/:id", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
     try {
-      const userRole = req.user?.role;
-      if (!["admin", "underwriter", "broker", "lender"].includes(userRole || "")) {
-        return res.status(403).json({ error: "Only admins, underwriters, brokers, and lenders can update overlays" });
-      }
-
       const overlay = await storage.getPolicyLenderOverlay(req.params.id);
       if (!overlay) {
         return res.status(404).json({ error: "Overlay not found" });
@@ -635,13 +568,8 @@ export function registerPolicyOpsRoutes(
     }
   });
 
-  app.delete("/api/policy-overlays/:id", isAuthenticated, async (req, res) => {
+  app.delete("/api/policy-overlays/:id", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
     try {
-      const userRole = req.user?.role;
-      if (!["admin"].includes(userRole || "")) {
-        return res.status(403).json({ error: "Only admins can delete overlays" });
-      }
-
       const overlay = await storage.getPolicyLenderOverlay(req.params.id);
       if (!overlay) {
         return res.status(404).json({ error: "Overlay not found" });
@@ -669,13 +597,8 @@ export function registerPolicyOpsRoutes(
   // POLICY APPROVAL HISTORY
   // ============================================================================
 
-  app.get("/api/policy-approvals/:policyProfileId", isAuthenticated, async (req, res) => {
+  app.get("/api/policy-approvals/:policyProfileId", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
     try {
-      const userRole = req.user?.role;
-      if (!isStaffRole(userRole || "")) {
-        return res.status(403).json({ error: "Only staff can view approval history" });
-      }
-
       const approvals = await storage.getPolicyApprovals(req.params.policyProfileId);
       res.json(approvals);
     } catch (error) {

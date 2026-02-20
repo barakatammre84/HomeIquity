@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated, isAdmin } from "./auth";
+import { setupAuth } from "./auth";
 import { registerLendingRoutes } from "./routes/lending";
 import { registerDocumentRoutes } from "./routes/documents";
 import { registerPropertyRoutes } from "./routes/property";
@@ -30,22 +30,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   await setupAuth(app);
   await seedDatabase();
 
-  registerLendingRoutes(app, storage, isAuthenticated, isAdmin);
-  registerDocumentRoutes(app, storage, isAuthenticated, isAdmin);
-  registerPropertyRoutes(app, storage, isAuthenticated, isAdmin);
-  registerAgentBrokerRoutes(app, storage, isAuthenticated, isAdmin);
-  registerAdminRoutes(app, storage, isAuthenticated, isAdmin);
-  await registerTaskEngineRoutes(app, storage, isAuthenticated, isAdmin);
-  registerUnderwritingRoutes(app, storage, isAuthenticated, isAdmin);
-  registerComplianceRoutes(app, storage, isAuthenticated, isAdmin);
-  registerBorrowerRoutes(app, storage, isAuthenticated, isAdmin);
-  registerNotificationRoutes(app, storage, isAuthenticated);
-  registerStaffInviteRoutes(app, storage, isAuthenticated, isAdmin);
+  registerLendingRoutes(app, storage);
+  registerDocumentRoutes(app, storage);
+  registerPropertyRoutes(app, storage);
+  registerAgentBrokerRoutes(app, storage);
+  registerAdminRoutes(app, storage);
+  await registerTaskEngineRoutes(app, storage);
+  registerUnderwritingRoutes(app, storage);
+  registerComplianceRoutes(app, storage);
+  registerBorrowerRoutes(app, storage);
+  registerNotificationRoutes(app, storage);
+  registerStaffInviteRoutes(app, storage);
   registerCoachRoutes(app);
-  registerUnderwritingRulesRoutes(app, storage, isAuthenticated, isAdmin);
-  registerPolicyOpsRoutes(app, storage, isAuthenticated, isAdmin);
-  registerRateSheetRoutes(app, storage, isAuthenticated, isAdmin);
-  registerIntelligenceRoutes(app, storage, isAuthenticated, isAdmin);
+  registerUnderwritingRulesRoutes(app, storage);
+  registerPolicyOpsRoutes(app, storage);
+  registerRateSheetRoutes(app, storage);
+  registerIntelligenceRoutes(app, storage);
   registerOptimizationRoutes(app);
 
   app.all("/api/*", (_req, res) => {

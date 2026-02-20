@@ -1,28 +1,19 @@
-import type { Express, Request, Response } from "express";
+import type { Express } from "express";
 import type { IStorage } from "../storage";
 import { logAudit } from "../auditLog";
 import { insertWholesaleLenderSchema, insertRateSheetSchema, insertRateSheetProductSchema, insertLenderPricingAdjustmentSchema } from "@shared/schema";
 import { computeOffers, type BorrowerPricingProfile } from "../services/pricingAdapter";
+import { requireRole } from "../auth";
 
 export function registerRateSheetRoutes(
   app: Express,
   storage: IStorage,
-  isAuthenticated: any,
-  isAdmin: any,
 ) {
-  const isStaff = [isAuthenticated, (req: Request, res: Response, next: Function) => {
-    const user = req.user as any;
-    if (!user || !["staff", "admin", "underwriter"].includes(user.role)) {
-      return res.status(403).json({ error: "Staff access required" });
-    }
-    next();
-  }];
-
   // ============================================================
   // WHOLESALE LENDERS
   // ============================================================
 
-  app.get("/api/wholesale-lenders", ...isStaff, async (req, res) => {
+  app.get("/api/wholesale-lenders", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
     try {
       const { status, integrationTier } = req.query;
       const lenders = await storage.getWholesaleLenders({
@@ -36,7 +27,7 @@ export function registerRateSheetRoutes(
     }
   });
 
-  app.get("/api/wholesale-lenders/:id", ...isStaff, async (req, res) => {
+  app.get("/api/wholesale-lenders/:id", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
     try {
       const lender = await storage.getWholesaleLender(req.params.id);
       if (!lender) return res.status(404).json({ error: "Lender not found" });
@@ -47,7 +38,7 @@ export function registerRateSheetRoutes(
     }
   });
 
-  app.post("/api/wholesale-lenders", isAdmin, async (req, res) => {
+  app.post("/api/wholesale-lenders", requireRole("admin"), async (req, res) => {
     try {
       const parsed = insertWholesaleLenderSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -68,7 +59,7 @@ export function registerRateSheetRoutes(
     }
   });
 
-  app.patch("/api/wholesale-lenders/:id", isAdmin, async (req, res) => {
+  app.patch("/api/wholesale-lenders/:id", requireRole("admin"), async (req, res) => {
     try {
       const existing = await storage.getWholesaleLender(req.params.id);
       if (!existing) return res.status(404).json({ error: "Lender not found" });
@@ -87,7 +78,7 @@ export function registerRateSheetRoutes(
   // RATE SHEETS
   // ============================================================
 
-  app.get("/api/rate-sheets", ...isStaff, async (req, res) => {
+  app.get("/api/rate-sheets", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
     try {
       const { lenderId, status } = req.query;
       const sheets = await storage.getRateSheets({
@@ -101,7 +92,7 @@ export function registerRateSheetRoutes(
     }
   });
 
-  app.get("/api/rate-sheets/active", ...isStaff, async (req, res) => {
+  app.get("/api/rate-sheets/active", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
     try {
       const sheets = await storage.getActiveRateSheets();
       res.json(sheets);
@@ -111,7 +102,7 @@ export function registerRateSheetRoutes(
     }
   });
 
-  app.get("/api/rate-sheets/:id", ...isStaff, async (req, res) => {
+  app.get("/api/rate-sheets/:id", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
     try {
       const sheet = await storage.getRateSheet(req.params.id);
       if (!sheet) return res.status(404).json({ error: "Rate sheet not found" });
@@ -122,7 +113,7 @@ export function registerRateSheetRoutes(
     }
   });
 
-  app.post("/api/rate-sheets", isAdmin, async (req, res) => {
+  app.post("/api/rate-sheets", requireRole("admin"), async (req, res) => {
     try {
       const parsed = insertRateSheetSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -151,7 +142,7 @@ export function registerRateSheetRoutes(
     }
   });
 
-  app.patch("/api/rate-sheets/:id", isAdmin, async (req, res) => {
+  app.patch("/api/rate-sheets/:id", requireRole("admin"), async (req, res) => {
     try {
       const existing = await storage.getRateSheet(req.params.id);
       if (!existing) return res.status(404).json({ error: "Rate sheet not found" });
@@ -170,7 +161,7 @@ export function registerRateSheetRoutes(
   // RATE SHEET PRODUCTS
   // ============================================================
 
-  app.get("/api/rate-sheets/:rateSheetId/products", ...isStaff, async (req, res) => {
+  app.get("/api/rate-sheets/:rateSheetId/products", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
     try {
       const products = await storage.getRateSheetProducts(req.params.rateSheetId);
       res.json(products);
@@ -180,7 +171,7 @@ export function registerRateSheetRoutes(
     }
   });
 
-  app.get("/api/rate-sheet-products/:id", ...isStaff, async (req, res) => {
+  app.get("/api/rate-sheet-products/:id", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
     try {
       const product = await storage.getRateSheetProduct(req.params.id);
       if (!product) return res.status(404).json({ error: "Product not found" });
@@ -191,7 +182,7 @@ export function registerRateSheetRoutes(
     }
   });
 
-  app.post("/api/rate-sheets/:rateSheetId/products", isAdmin, async (req, res) => {
+  app.post("/api/rate-sheets/:rateSheetId/products", requireRole("admin"), async (req, res) => {
     try {
       const sheet = await storage.getRateSheet(req.params.rateSheetId);
       if (!sheet) return res.status(404).json({ error: "Rate sheet not found" });
@@ -217,7 +208,7 @@ export function registerRateSheetRoutes(
     }
   });
 
-  app.post("/api/rate-sheets/:rateSheetId/products/bulk", isAdmin, async (req, res) => {
+  app.post("/api/rate-sheets/:rateSheetId/products/bulk", requireRole("admin"), async (req, res) => {
     try {
       const sheet = await storage.getRateSheet(req.params.rateSheetId);
       if (!sheet) return res.status(404).json({ error: "Rate sheet not found" });
@@ -254,7 +245,7 @@ export function registerRateSheetRoutes(
     }
   });
 
-  app.patch("/api/rate-sheet-products/:id", isAdmin, async (req, res) => {
+  app.patch("/api/rate-sheet-products/:id", requireRole("admin"), async (req, res) => {
     try {
       const existing = await storage.getRateSheetProduct(req.params.id);
       if (!existing) return res.status(404).json({ error: "Product not found" });
@@ -273,7 +264,7 @@ export function registerRateSheetRoutes(
   // LENDER PRICING ADJUSTMENTS
   // ============================================================
 
-  app.get("/api/lender-pricing-adjustments", ...isStaff, async (req, res) => {
+  app.get("/api/lender-pricing-adjustments", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
     try {
       const { lenderId, adjustmentType } = req.query;
       const adjustments = await storage.getLenderPricingAdjustments({
@@ -287,7 +278,7 @@ export function registerRateSheetRoutes(
     }
   });
 
-  app.post("/api/lender-pricing-adjustments", isAdmin, async (req, res) => {
+  app.post("/api/lender-pricing-adjustments", requireRole("admin"), async (req, res) => {
     try {
       const parsed = insertLenderPricingAdjustmentSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -309,7 +300,7 @@ export function registerRateSheetRoutes(
     }
   });
 
-  app.patch("/api/lender-pricing-adjustments/:id", isAdmin, async (req, res) => {
+  app.patch("/api/lender-pricing-adjustments/:id", requireRole("admin"), async (req, res) => {
     try {
       const adj = await storage.updateLenderPricingAdjustment(req.params.id, req.body);
       if (!adj) return res.status(404).json({ error: "Adjustment not found" });
@@ -327,7 +318,7 @@ export function registerRateSheetRoutes(
   // LENDER OFFERS
   // ============================================================
 
-  app.get("/api/lender-offers", ...isStaff, async (req, res) => {
+  app.get("/api/lender-offers", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
     try {
       const { applicationId, lenderId, status } = req.query;
       const offers = await storage.getLenderOffers({
@@ -342,7 +333,7 @@ export function registerRateSheetRoutes(
     }
   });
 
-  app.get("/api/lender-offers/:id", ...isStaff, async (req, res) => {
+  app.get("/api/lender-offers/:id", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
     try {
       const offer = await storage.getLenderOffer(req.params.id);
       if (!offer) return res.status(404).json({ error: "Offer not found" });
@@ -357,7 +348,7 @@ export function registerRateSheetRoutes(
   // OFFER COMPARISON - Pricing Engine Adapter
   // ============================================================
 
-  app.post("/api/lender-offers/compare", ...isStaff, async (req, res) => {
+  app.post("/api/lender-offers/compare", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
     try {
       const profile: BorrowerPricingProfile = req.body;
 

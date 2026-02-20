@@ -1,5 +1,6 @@
 import type { Express } from "express";
 import type { IStorage } from "../storage";
+import { isAuthenticated, requireRole } from "../auth";
 import { 
   insertBorrowerDeclarationsSchema,
   isStaffRole,
@@ -98,8 +99,6 @@ const loanApplicationInputSchema = z.object({
 export function registerLendingRoutes(
   app: Express,
   storage: IStorage,
-  isAuthenticated: any,
-  isAdmin: any,
 ) {
   app.get("/api/dashboard", isAuthenticated, async (req, res) => {
     try {
@@ -703,15 +702,8 @@ export function registerLendingRoutes(
   });
 
   // MISMO 3.4 XML Export Route - GSE compliant loan delivery format
-  app.get("/api/loan-applications/:id/mismo-export", isAuthenticated, async (req, res) => {
+  app.get("/api/loan-applications/:id/mismo-export", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
     try {
-      const userRole = req.user?.role;
-      
-      // Only staff roles can export MISMO XML
-      if (!isStaffRole(userRole || "")) {
-        return res.status(403).json({ error: "Only staff can export MISMO data" });
-      }
-
       const { id } = req.params;
       const mismoData = await storage.getMISMOLoanData(id);
       
@@ -972,12 +964,9 @@ export function registerLendingRoutes(
     notes: z.string().max(2000).optional(),
   });
 
-  app.patch("/api/loan-applications/:id/status", isAuthenticated, async (req, res) => {
+  app.patch("/api/loan-applications/:id/status", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
     try {
       const user = req.user as User;
-      if (!isStaffRole(user.role)) {
-        return res.status(403).json({ error: "Staff access required" });
-      }
 
       const { id } = req.params;
       const parsed = staffStatusSchema.safeParse(req.body);

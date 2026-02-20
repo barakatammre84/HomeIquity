@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import type { IStorage } from "../storage";
-import { isStaffRole, insertUnderwritingRuleDslSchema } from "@shared/schema";
+import { requireRole } from "../auth";
+import { insertUnderwritingRuleDslSchema } from "@shared/schema";
 import { logAudit } from "../auditLog";
 import { executeRules } from "../services/ruleEngine";
 import { z } from "zod";
@@ -8,16 +9,9 @@ import { z } from "zod";
 export function registerUnderwritingRulesRoutes(
   app: Express,
   storage: IStorage,
-  isAuthenticated: any,
-  isAdmin: any,
 ) {
-  app.get("/api/underwriting-rules", isAuthenticated, async (req, res) => {
+  app.get("/api/underwriting-rules", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
     try {
-      const userRole = req.user?.role;
-      if (!isStaffRole(userRole || "")) {
-        return res.status(403).json({ error: "Only staff can view underwriting rules" });
-      }
-
       const { category, triggerType, isActive } = req.query;
       const filters: { category?: string; triggerType?: string; isActive?: boolean } = {};
       if (category && typeof category === "string") filters.category = category;
@@ -32,13 +26,8 @@ export function registerUnderwritingRulesRoutes(
     }
   });
 
-  app.get("/api/underwriting-rules/:id", isAuthenticated, async (req, res) => {
+  app.get("/api/underwriting-rules/:id", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
     try {
-      const userRole = req.user?.role;
-      if (!isStaffRole(userRole || "")) {
-        return res.status(403).json({ error: "Only staff can view underwriting rules" });
-      }
-
       const rule = await storage.getUnderwritingRule(req.params.id);
       if (!rule) {
         return res.status(404).json({ error: "Rule not found" });
@@ -50,13 +39,8 @@ export function registerUnderwritingRulesRoutes(
     }
   });
 
-  app.post("/api/underwriting-rules", isAuthenticated, async (req, res) => {
+  app.post("/api/underwriting-rules", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
     try {
-      const userRole = req.user?.role;
-      if (!["admin", "underwriter"].includes(userRole || "")) {
-        return res.status(403).json({ error: "Only admins and underwriters can create rules" });
-      }
-
       const parsed = insertUnderwritingRuleDslSchema.safeParse(req.body);
       if (!parsed.success) {
         return res.status(400).json({ error: "Invalid rule data", details: parsed.error.flatten() });
@@ -87,13 +71,8 @@ export function registerUnderwritingRulesRoutes(
     }
   });
 
-  app.patch("/api/underwriting-rules/:id", isAuthenticated, async (req, res) => {
+  app.patch("/api/underwriting-rules/:id", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
     try {
-      const userRole = req.user?.role;
-      if (!["admin", "underwriter"].includes(userRole || "")) {
-        return res.status(403).json({ error: "Only admins and underwriters can update rules" });
-      }
-
       const rule = await storage.getUnderwritingRule(req.params.id);
       if (!rule) {
         return res.status(404).json({ error: "Rule not found" });
@@ -131,13 +110,8 @@ export function registerUnderwritingRulesRoutes(
     }
   });
 
-  app.delete("/api/underwriting-rules/:id", isAuthenticated, async (req, res) => {
+  app.delete("/api/underwriting-rules/:id", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
     try {
-      const userRole = req.user?.role;
-      if (!["admin"].includes(userRole || "")) {
-        return res.status(403).json({ error: "Only admins can delete rules" });
-      }
-
       const rule = await storage.getUnderwritingRule(req.params.id);
       if (!rule) {
         return res.status(404).json({ error: "Rule not found" });
@@ -160,13 +134,8 @@ export function registerUnderwritingRulesRoutes(
     }
   });
 
-  app.post("/api/underwriting-rules/:id/version", isAuthenticated, async (req, res) => {
+  app.post("/api/underwriting-rules/:id/version", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
     try {
-      const userRole = req.user?.role;
-      if (!["admin", "underwriter"].includes(userRole || "")) {
-        return res.status(403).json({ error: "Only admins and underwriters can version rules" });
-      }
-
       const rule = await storage.getUnderwritingRule(req.params.id);
       if (!rule) {
         return res.status(404).json({ error: "Rule not found" });
@@ -206,7 +175,7 @@ export function registerUnderwritingRulesRoutes(
     }
   });
 
-  app.post("/api/underwriting-rules/:id/approve", isAdmin, async (req, res) => {
+  app.post("/api/underwriting-rules/:id/approve", requireRole("admin"), async (req, res) => {
     try {
       const rule = await storage.getUnderwritingRule(req.params.id);
       if (!rule) {
@@ -248,13 +217,8 @@ export function registerUnderwritingRulesRoutes(
     }
   });
 
-  app.post("/api/underwriting-rules/:id/retire", isAuthenticated, async (req, res) => {
+  app.post("/api/underwriting-rules/:id/retire", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
     try {
-      const userRole = req.user?.role;
-      if (!["admin", "underwriter"].includes(userRole || "")) {
-        return res.status(403).json({ error: "Only admins and underwriters can retire rules" });
-      }
-
       const rule = await storage.getUnderwritingRule(req.params.id);
       if (!rule) {
         return res.status(404).json({ error: "Rule not found" });
@@ -282,13 +246,8 @@ export function registerUnderwritingRulesRoutes(
     }
   });
 
-  app.post("/api/underwriting-rules/execute", isAuthenticated, async (req, res) => {
+  app.post("/api/underwriting-rules/execute", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
     try {
-      const userRole = req.user?.role;
-      if (!["admin", "underwriter", "processor"].includes(userRole || "")) {
-        return res.status(403).json({ error: "Only admins, underwriters, and processors can execute rules" });
-      }
-
       const schema = z.object({
         snapshotId: z.string(),
         context: z.record(z.any()),
@@ -325,13 +284,8 @@ export function registerUnderwritingRulesRoutes(
     }
   });
 
-  app.get("/api/underwriting-rules/execution-log/:snapshotId", isAuthenticated, async (req, res) => {
+  app.get("/api/underwriting-rules/execution-log/:snapshotId", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
     try {
-      const userRole = req.user?.role;
-      if (!isStaffRole(userRole || "")) {
-        return res.status(403).json({ error: "Only staff can view execution logs" });
-      }
-
       const logs = await storage.getRuleExecutionLogs(req.params.snapshotId);
       res.json(logs);
     } catch (error) {

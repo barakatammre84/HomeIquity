@@ -1,12 +1,11 @@
 import type { Express } from "express";
 import type { IStorage } from "../storage";
+import { isAuthenticated } from "../auth";
 import { checkPropertyEligibility } from "../underwriting";
 
 export function registerPropertyRoutes(
   app: Express,
   storage: IStorage,
-  isAuthenticated: any,
-  isAdmin: any,
 ) {
   app.get("/api/properties/auto-complete", async (req, res) => {
     try {

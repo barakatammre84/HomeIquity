@@ -155,3 +155,15 @@ export const isAdmin: RequestHandler = async (req, res, next) => {
     return res.status(403).json({ error: "Forbidden" });
   });
 };
+
+export function requireRole(...allowedRoles: string[]): RequestHandler {
+  return async (req, res, next) => {
+    await (isAuthenticated as any)(req, res, () => {
+      const userRole = req.user?.role;
+      if (!userRole || !allowedRoles.includes(userRole)) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+      return next();
+    });
+  };
+}

@@ -1,5 +1,6 @@
 import type { Express } from "express";
 import type { IStorage } from "../storage";
+import { isAuthenticated, requireRole } from "../auth";
 import { isStaffRole } from "@shared/schema";
 import { 
   qualifyIncome, 
@@ -13,8 +14,6 @@ import { calculateLLPA, getAreaMedianIncome } from "../pricing";
 export function registerUnderwritingRoutes(
   app: Express,
   storage: IStorage,
-  isAuthenticated: any,
-  isAdmin: any,
 ) {
   // ========================================================================
   // UNDERWRITING ENGINE API ENDPOINTS
@@ -275,19 +274,12 @@ export function registerUnderwritingRoutes(
     }
   });
 
-  app.patch("/api/conditions/:id", isAuthenticated, async (req, res) => {
+  app.patch("/api/conditions/:id", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
     try {
       const { id } = req.params;
       const condition = await storage.getLoanCondition(id);
       if (!condition) {
         return res.status(404).json({ error: "Condition not found" });
-      }
-
-      const userRole = req.user?.role;
-      const isStaff = isStaffRole(userRole || "");
-      
-      if (!isStaff) {
-        return res.status(403).json({ error: "Only staff can update conditions" });
       }
 
       const { status, clearanceNotes } = req.body;
@@ -371,15 +363,9 @@ export function registerUnderwritingRoutes(
     }
   });
 
-  app.post("/api/loan-applications/:id/advance-stage", isAuthenticated, async (req, res) => {
+  app.post("/api/loan-applications/:id/advance-stage", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
     try {
       const { id } = req.params;
-      const userRole = req.user?.role;
-      const isStaff = isStaffRole(userRole || "");
-      
-      if (!isStaff) {
-        return res.status(403).json({ error: "Only staff can advance loan stages" });
-      }
 
       const application = await storage.getLoanApplication(id);
       if (!application) {
@@ -419,15 +405,8 @@ export function registerUnderwritingRoutes(
     }
   });
 
-  app.get("/api/pipeline/queue", isAuthenticated, async (req, res) => {
+  app.get("/api/pipeline/queue", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
     try {
-      const userRole = req.user?.role;
-      const isStaff = isStaffRole(userRole || "");
-      
-      if (!isStaff) {
-        return res.status(403).json({ error: "Only staff can view pipeline queue" });
-      }
-
       const applications = await storage.getAllLoanApplications();
       const activeApps = applications.filter(a => 
         !["draft", "funded", "denied"].includes(a.status || "draft")

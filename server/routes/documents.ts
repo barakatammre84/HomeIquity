@@ -1,5 +1,6 @@
 import type { Express } from "express";
 import type { IStorage } from "../storage";
+import { isAuthenticated, requireRole } from "../auth";
 import {
   extractTaxReturnData,
   extractPayStubData,
@@ -16,8 +17,6 @@ const objectStorageService = new ObjectStorageService();
 export function registerDocumentRoutes(
   app: Express,
   storage: IStorage,
-  isAuthenticated: any,
-  isAdmin: any,
 ) {
   app.post("/api/uploads/request-url", isAuthenticated, async (req, res) => {
     try {

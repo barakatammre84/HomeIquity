@@ -1,5 +1,5 @@
 import type { Express } from "express";
-import { isAuthenticated, isAdmin } from "../auth";
+import { isAuthenticated, requireRole } from "../auth";
 import {
   detectStaleApplications,
   sendReEngagementEmails,
@@ -57,11 +57,8 @@ export function registerOptimizationRoutes(app: Express) {
     }
   });
 
-  app.get("/api/optimizations/stale-applications", isAuthenticated, async (req, res) => {
+  app.get("/api/optimizations/stale-applications", requireRole("admin"), async (req, res) => {
     try {
-      if (req.user!.role !== "admin" && req.user!.role !== "loan_officer") {
-        return res.status(403).json({ error: "Insufficient permissions" });
-      }
       const result = await detectStaleApplications();
       res.json({ staleApplications: result, count: result.length });
     } catch (error) {
@@ -70,11 +67,8 @@ export function registerOptimizationRoutes(app: Express) {
     }
   });
 
-  app.post("/api/optimizations/re-engagement", isAuthenticated, async (req, res) => {
+  app.post("/api/optimizations/re-engagement", requireRole("admin"), async (req, res) => {
     try {
-      if (req.user!.role !== "admin") {
-        return res.status(403).json({ error: "Admin only" });
-      }
       const result = await sendReEngagementEmails();
       res.json(result);
     } catch (error) {
@@ -83,11 +77,8 @@ export function registerOptimizationRoutes(app: Express) {
     }
   });
 
-  app.get("/api/optimizations/sla-breaches", isAuthenticated, async (req, res) => {
+  app.get("/api/optimizations/sla-breaches", requireRole("admin"), async (req, res) => {
     try {
-      if (req.user!.role !== "admin" && req.user!.role !== "loan_officer") {
-        return res.status(403).json({ error: "Insufficient permissions" });
-      }
       const result = await checkSlaBreaches();
       res.json({
         breaches: result,
@@ -101,11 +92,8 @@ export function registerOptimizationRoutes(app: Express) {
     }
   });
 
-  app.post("/api/optimizations/sla-alerts", isAuthenticated, async (req, res) => {
+  app.post("/api/optimizations/sla-alerts", requireRole("admin"), async (req, res) => {
     try {
-      if (req.user!.role !== "admin") {
-        return res.status(403).json({ error: "Admin only" });
-      }
       const result = await sendSlaAlerts();
       res.json(result);
     } catch (error) {
@@ -114,11 +102,8 @@ export function registerOptimizationRoutes(app: Express) {
     }
   });
 
-  app.get("/api/optimizations/refinance-opportunities", isAuthenticated, async (req, res) => {
+  app.get("/api/optimizations/refinance-opportunities", requireRole("admin"), async (req, res) => {
     try {
-      if (req.user!.role !== "admin" && req.user!.role !== "loan_officer") {
-        return res.status(403).json({ error: "Insufficient permissions" });
-      }
       const result = await checkRefinanceOpportunities();
       res.json({
         opportunities: result,
@@ -132,11 +117,8 @@ export function registerOptimizationRoutes(app: Express) {
     }
   });
 
-  app.post("/api/optimizations/post-closing-lifecycle", isAuthenticated, async (req, res) => {
+  app.post("/api/optimizations/post-closing-lifecycle", requireRole("admin"), async (req, res) => {
     try {
-      if (req.user!.role !== "admin") {
-        return res.status(403).json({ error: "Admin only" });
-      }
       const result = await processPostClosingLifecycle();
       res.json(result);
     } catch (error) {
@@ -145,11 +127,8 @@ export function registerOptimizationRoutes(app: Express) {
     }
   });
 
-  app.post("/api/optimizations/aggregate-data", isAuthenticated, async (req, res) => {
+  app.post("/api/optimizations/aggregate-data", requireRole("admin"), async (req, res) => {
     try {
-      if (req.user!.role !== "admin") {
-        return res.status(403).json({ error: "Admin only" });
-      }
       const result = await aggregateAnonymizedData();
       res.json(result);
     } catch (error) {
@@ -158,11 +137,8 @@ export function registerOptimizationRoutes(app: Express) {
     }
   });
 
-  app.post("/api/optimizations/calculate-commission/:applicationId", isAuthenticated, async (req, res) => {
+  app.post("/api/optimizations/calculate-commission/:applicationId", requireRole("admin"), async (req, res) => {
     try {
-      if (req.user!.role !== "admin" && req.user!.role !== "loan_officer") {
-        return res.status(403).json({ error: "Insufficient permissions" });
-      }
       const { applicationId } = req.params;
       const { fundedAmount } = req.body;
 

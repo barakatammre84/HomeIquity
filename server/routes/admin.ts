@@ -10,18 +10,14 @@ import {
 import { z } from "zod";
 import { logAudit } from "../auditLog";
 import { refreshRates } from "../services/rateService";
+import { requireRole } from "../auth";
 
 export function registerAdminRoutes(
   app: Express,
   storage: IStorage,
-  isAuthenticated: any,
-  isAdmin: any,
 ) {
-  app.get("/api/admin/stats", isAuthenticated, async (req, res) => {
+  app.get("/api/admin/stats", requireRole("admin"), async (req, res) => {
     try {
-      if (req.user?.role !== "admin") {
-        return res.status(403).json({ error: "Forbidden" });
-      }
       const stats = await storage.getAdminStats();
       res.json(stats);
     } catch (error) {
@@ -30,11 +26,8 @@ export function registerAdminRoutes(
     }
   });
 
-  app.get("/api/admin/applications", isAuthenticated, async (req, res) => {
+  app.get("/api/admin/applications", requireRole("admin"), async (req, res) => {
     try {
-      if (req.user?.role !== "admin") {
-        return res.status(403).json({ error: "Forbidden" });
-      }
       const applications = await storage.getAllLoanApplications();
       res.json(applications);
     } catch (error) {
@@ -43,11 +36,8 @@ export function registerAdminRoutes(
     }
   });
 
-  app.get("/api/admin/users", isAuthenticated, async (req, res) => {
+  app.get("/api/admin/users", requireRole("admin"), async (req, res) => {
     try {
-      if (req.user?.role !== "admin") {
-        return res.status(403).json({ error: "Forbidden" });
-      }
       const users = await storage.getAllUsers();
       res.json(users);
     } catch (error) {
@@ -56,11 +46,8 @@ export function registerAdminRoutes(
     }
   });
 
-  app.patch("/api/admin/users/:id/role", isAuthenticated, async (req, res) => {
+  app.patch("/api/admin/users/:id/role", requireRole("admin"), async (req, res) => {
     try {
-      if (req.user?.role !== "admin") {
-        return res.status(403).json({ error: "Forbidden" });
-      }
       const { role } = req.body;
       if (!ALL_ROLES.includes(role)) {
         return res.status(400).json({ error: "Invalid role" });
@@ -89,12 +76,8 @@ export function registerAdminRoutes(
   // --- Content Categories (Admin) ---
   
   // Get all categories (admin - includes inactive)
-  app.get("/api/admin/content-categories", isAuthenticated, async (req, res) => {
+  app.get("/api/admin/content-categories", requireRole("admin", "lo"), async (req, res) => {
     try {
-      const userRole = req.user?.role;
-      if (!["admin", "broker", "lender"].includes(userRole || "")) {
-        return res.status(403).json({ error: "Admin access required" });
-      }
       const categories = await storage.getAllContentCategories();
       res.json(categories);
     } catch (error) {
@@ -104,12 +87,8 @@ export function registerAdminRoutes(
   });
 
   // Create category (admin)
-  app.post("/api/admin/content-categories", isAuthenticated, async (req, res) => {
+  app.post("/api/admin/content-categories", requireRole("admin", "lo"), async (req, res) => {
     try {
-      const userRole = req.user?.role;
-      if (!["admin"].includes(userRole || "")) {
-        return res.status(403).json({ error: "Admin access required" });
-      }
       const validatedData = insertContentCategorySchema.parse(req.body);
       const category = await storage.createContentCategory(validatedData);
       res.status(201).json(category);
@@ -123,12 +102,8 @@ export function registerAdminRoutes(
   });
 
   // Update category (admin)
-  app.patch("/api/admin/content-categories/:id", isAuthenticated, async (req, res) => {
+  app.patch("/api/admin/content-categories/:id", requireRole("admin", "lo"), async (req, res) => {
     try {
-      const userRole = req.user?.role;
-      if (!["admin"].includes(userRole || "")) {
-        return res.status(403).json({ error: "Admin access required" });
-      }
       const updated = await storage.updateContentCategory(req.params.id, req.body);
       if (!updated) {
         return res.status(404).json({ error: "Category not found" });
@@ -141,12 +116,8 @@ export function registerAdminRoutes(
   });
 
   // Delete category (admin)
-  app.delete("/api/admin/content-categories/:id", isAuthenticated, async (req, res) => {
+  app.delete("/api/admin/content-categories/:id", requireRole("admin", "lo"), async (req, res) => {
     try {
-      const userRole = req.user?.role;
-      if (!["admin"].includes(userRole || "")) {
-        return res.status(403).json({ error: "Admin access required" });
-      }
       await storage.deleteContentCategory(req.params.id);
       res.status(204).send();
     } catch (error) {
@@ -158,12 +129,8 @@ export function registerAdminRoutes(
   // --- Articles (Admin) ---
 
   // Get all articles (admin - includes drafts)
-  app.get("/api/admin/articles", isAuthenticated, async (req, res) => {
+  app.get("/api/admin/articles", requireRole("admin", "lo"), async (req, res) => {
     try {
-      const userRole = req.user?.role;
-      if (!["admin", "broker", "lender"].includes(userRole || "")) {
-        return res.status(403).json({ error: "Admin access required" });
-      }
       const articles = await storage.getAllArticles();
       res.json(articles);
     } catch (error) {
@@ -173,12 +140,8 @@ export function registerAdminRoutes(
   });
 
   // Get single article (admin)
-  app.get("/api/admin/articles/:id", isAuthenticated, async (req, res) => {
+  app.get("/api/admin/articles/:id", requireRole("admin", "lo"), async (req, res) => {
     try {
-      const userRole = req.user?.role;
-      if (!["admin", "broker", "lender"].includes(userRole || "")) {
-        return res.status(403).json({ error: "Admin access required" });
-      }
       const article = await storage.getArticle(req.params.id);
       if (!article) {
         return res.status(404).json({ error: "Article not found" });
@@ -191,12 +154,8 @@ export function registerAdminRoutes(
   });
 
   // Create article (admin)
-  app.post("/api/admin/articles", isAuthenticated, async (req, res) => {
+  app.post("/api/admin/articles", requireRole("admin", "lo"), async (req, res) => {
     try {
-      const userRole = req.user?.role;
-      if (!["admin"].includes(userRole || "")) {
-        return res.status(403).json({ error: "Admin access required" });
-      }
       const validatedData = insertArticleSchema.parse({
         ...req.body,
         authorId: req.user!.id,
@@ -214,13 +173,8 @@ export function registerAdminRoutes(
   });
 
   // Update article (admin)
-  app.patch("/api/admin/articles/:id", isAuthenticated, async (req, res) => {
+  app.patch("/api/admin/articles/:id", requireRole("admin", "lo"), async (req, res) => {
     try {
-      const userRole = req.user?.role;
-      if (!["admin"].includes(userRole || "")) {
-        return res.status(403).json({ error: "Admin access required" });
-      }
-      
       const updateData = { ...req.body };
       // Set publishedAt when publishing for the first time
       if (req.body.status === "published") {
@@ -242,12 +196,8 @@ export function registerAdminRoutes(
   });
 
   // Delete article (admin)
-  app.delete("/api/admin/articles/:id", isAuthenticated, async (req, res) => {
+  app.delete("/api/admin/articles/:id", requireRole("admin", "lo"), async (req, res) => {
     try {
-      const userRole = req.user?.role;
-      if (!["admin"].includes(userRole || "")) {
-        return res.status(403).json({ error: "Admin access required" });
-      }
       await storage.deleteArticle(req.params.id);
       res.status(204).send();
     } catch (error) {
@@ -259,12 +209,8 @@ export function registerAdminRoutes(
   // --- FAQs (Admin) ---
 
   // Get all FAQs (admin - includes drafts)
-  app.get("/api/admin/faqs", isAuthenticated, async (req, res) => {
+  app.get("/api/admin/faqs", requireRole("admin", "lo"), async (req, res) => {
     try {
-      const userRole = req.user?.role;
-      if (!["admin", "broker", "lender"].includes(userRole || "")) {
-        return res.status(403).json({ error: "Admin access required" });
-      }
       const faqs = await storage.getAllFaqs();
       res.json(faqs);
     } catch (error) {
@@ -274,12 +220,8 @@ export function registerAdminRoutes(
   });
 
   // Get single FAQ (admin)
-  app.get("/api/admin/faqs/:id", isAuthenticated, async (req, res) => {
+  app.get("/api/admin/faqs/:id", requireRole("admin", "lo"), async (req, res) => {
     try {
-      const userRole = req.user?.role;
-      if (!["admin", "broker", "lender"].includes(userRole || "")) {
-        return res.status(403).json({ error: "Admin access required" });
-      }
       const faq = await storage.getFaq(req.params.id);
       if (!faq) {
         return res.status(404).json({ error: "FAQ not found" });
@@ -292,12 +234,8 @@ export function registerAdminRoutes(
   });
 
   // Create FAQ (admin)
-  app.post("/api/admin/faqs", isAuthenticated, async (req, res) => {
+  app.post("/api/admin/faqs", requireRole("admin", "lo"), async (req, res) => {
     try {
-      const userRole = req.user?.role;
-      if (!["admin"].includes(userRole || "")) {
-        return res.status(403).json({ error: "Admin access required" });
-      }
       const validatedData = insertFaqSchema.parse({
         ...req.body,
         authorId: req.user!.id,
@@ -314,12 +252,8 @@ export function registerAdminRoutes(
   });
 
   // Update FAQ (admin)
-  app.patch("/api/admin/faqs/:id", isAuthenticated, async (req, res) => {
+  app.patch("/api/admin/faqs/:id", requireRole("admin", "lo"), async (req, res) => {
     try {
-      const userRole = req.user?.role;
-      if (!["admin"].includes(userRole || "")) {
-        return res.status(403).json({ error: "Admin access required" });
-      }
       const updated = await storage.updateFaq(req.params.id, req.body);
       if (!updated) {
         return res.status(404).json({ error: "FAQ not found" });
@@ -332,12 +266,8 @@ export function registerAdminRoutes(
   });
 
   // Delete FAQ (admin)
-  app.delete("/api/admin/faqs/:id", isAuthenticated, async (req, res) => {
+  app.delete("/api/admin/faqs/:id", requireRole("admin", "lo"), async (req, res) => {
     try {
-      const userRole = req.user?.role;
-      if (!["admin"].includes(userRole || "")) {
-        return res.status(403).json({ error: "Admin access required" });
-      }
       await storage.deleteFaq(req.params.id);
       res.status(204).send();
     } catch (error) {
@@ -512,13 +442,8 @@ export function registerAdminRoutes(
   // =============================================================================
 
   // Get all mortgage rates for admin
-  app.get("/api/admin/mortgage-rates", isAuthenticated, async (req, res) => {
+  app.get("/api/admin/mortgage-rates", requireRole("admin"), async (req, res) => {
     try {
-      const user = req.user as User;
-      if (user.role !== "admin") {
-        return res.status(403).json({ error: "Admin access required" });
-      }
-      
       const rates = await storage.getAllMortgageRates();
       res.json(rates);
     } catch (error) {
@@ -528,13 +453,8 @@ export function registerAdminRoutes(
   });
 
   // Get all rate programs for admin
-  app.get("/api/admin/mortgage-rate-programs", isAuthenticated, async (req, res) => {
+  app.get("/api/admin/mortgage-rate-programs", requireRole("admin"), async (req, res) => {
     try {
-      const user = req.user as User;
-      if (user.role !== "admin") {
-        return res.status(403).json({ error: "Admin access required" });
-      }
-      
       const programs = await storage.getAllMortgageRatePrograms();
       res.json(programs);
     } catch (error) {
@@ -544,13 +464,8 @@ export function registerAdminRoutes(
   });
 
   // Create a new rate program (admin only)
-  app.post("/api/admin/mortgage-rate-programs", isAuthenticated, async (req, res) => {
+  app.post("/api/admin/mortgage-rate-programs", requireRole("admin"), async (req, res) => {
     try {
-      const user = req.user as User;
-      if (user.role !== "admin") {
-        return res.status(403).json({ error: "Admin access required" });
-      }
-      
       const program = await storage.createMortgageRateProgram(req.body);
       res.status(201).json(program);
     } catch (error) {
@@ -560,13 +475,8 @@ export function registerAdminRoutes(
   });
 
   // Update a rate program (admin only)
-  app.patch("/api/admin/mortgage-rate-programs/:id", isAuthenticated, async (req, res) => {
+  app.patch("/api/admin/mortgage-rate-programs/:id", requireRole("admin"), async (req, res) => {
     try {
-      const user = req.user as User;
-      if (user.role !== "admin") {
-        return res.status(403).json({ error: "Admin access required" });
-      }
-      
       const program = await storage.updateMortgageRateProgram(req.params.id, req.body);
       if (!program) {
         return res.status(404).json({ error: "Program not found" });
@@ -579,13 +489,8 @@ export function registerAdminRoutes(
   });
 
   // Delete a rate program (admin only)
-  app.delete("/api/admin/mortgage-rate-programs/:id", isAuthenticated, async (req, res) => {
+  app.delete("/api/admin/mortgage-rate-programs/:id", requireRole("admin"), async (req, res) => {
     try {
-      const user = req.user as User;
-      if (user.role !== "admin") {
-        return res.status(403).json({ error: "Admin access required" });
-      }
-      
       await storage.deleteMortgageRateProgram(req.params.id);
       res.json({ success: true });
     } catch (error) {
@@ -595,13 +500,9 @@ export function registerAdminRoutes(
   });
 
   // Create a new mortgage rate (admin only)
-  app.post("/api/admin/mortgage-rates", isAuthenticated, async (req, res) => {
+  app.post("/api/admin/mortgage-rates", requireRole("admin"), async (req, res) => {
     try {
       const user = req.user as User;
-      if (user.role !== "admin") {
-        return res.status(403).json({ error: "Admin access required" });
-      }
-      
       const rateData = {
         ...req.body,
         createdBy: user.id,
@@ -616,13 +517,9 @@ export function registerAdminRoutes(
   });
 
   // Update a mortgage rate (admin only)
-  app.patch("/api/admin/mortgage-rates/:id", isAuthenticated, async (req, res) => {
+  app.patch("/api/admin/mortgage-rates/:id", requireRole("admin"), async (req, res) => {
     try {
       const user = req.user as User;
-      if (user.role !== "admin") {
-        return res.status(403).json({ error: "Admin access required" });
-      }
-      
       const rateData = {
         ...req.body,
         updatedBy: user.id,
@@ -639,13 +536,8 @@ export function registerAdminRoutes(
   });
 
   // Delete a mortgage rate (admin only)
-  app.delete("/api/admin/mortgage-rates/:id", isAuthenticated, async (req, res) => {
+  app.delete("/api/admin/mortgage-rates/:id", requireRole("admin"), async (req, res) => {
     try {
-      const user = req.user as User;
-      if (user.role !== "admin") {
-        return res.status(403).json({ error: "Admin access required" });
-      }
-      
       await storage.deleteMortgageRate(req.params.id);
       res.json({ success: true });
     } catch (error) {
@@ -654,13 +546,8 @@ export function registerAdminRoutes(
     }
   });
 
-  app.post("/api/admin/mortgage-rates/refresh", isAuthenticated, async (req, res) => {
+  app.post("/api/admin/mortgage-rates/refresh", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer"), async (req, res) => {
     try {
-      const user = req.user as User;
-      if (user.role !== "admin") {
-        return res.status(403).json({ error: "Admin access required" });
-      }
-
       const result = await refreshRates();
       res.json({ success: true, source: result.source, count: result.count });
     } catch (error) {

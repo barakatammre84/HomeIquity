@@ -1,5 +1,6 @@
 import type { Express } from "express";
 import type { IStorage } from "../storage";
+import { isAuthenticated, requireRole } from "../auth";
 import {
   insertCalculatorResultSchema,
   insertHomeownershipGoalSchema,
@@ -18,8 +19,6 @@ import { buildBorrowerGraph, getPropertyAffordability } from "../services/borrow
 export function registerBorrowerRoutes(
   app: Express,
   storage: IStorage,
-  isAuthenticated: any,
-  isAdmin: any,
 ) {
   // Calculator Results endpoints
   app.post("/api/calculator-results", isAuthenticated, async (req, res) => {
@@ -1097,7 +1096,7 @@ export function registerBorrowerRoutes(
   });
 
   // Create consent template (admin only)
-  app.post("/api/consent-templates", isAuthenticated, isAdmin, async (req, res) => {
+  app.post("/api/consent-templates", requireRole("admin"), async (req, res) => {
     try {
       const schema = z.object({
         consentType: z.string(),
@@ -1243,7 +1242,7 @@ export function registerBorrowerRoutes(
   });
 
   // Create partner provider (admin only)
-  app.post("/api/partner-providers", isAuthenticated, isAdmin, async (req, res) => {
+  app.post("/api/partner-providers", requireRole("admin"), async (req, res) => {
     try {
       const schema = z.object({
         name: z.string(),

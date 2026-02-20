@@ -1,18 +1,15 @@
 import type { Express } from "express";
 import type { IStorage } from "../storage";
+import { isAuthenticated, requireRole } from "../auth";
 import { z } from "zod";
 import crypto from "crypto";
 import {
-  isStaffRole,
-  STAFF_ROLES,
   type User,
 } from "@shared/schema";
 
 export function registerAgentBrokerRoutes(
   app: Express,
   storage: IStorage,
-  isAuthenticated: any,
-  isAdmin: any,
 ) {
   // Agent Profile Routes
   app.get("/api/agents", async (req, res) => {
@@ -110,12 +107,9 @@ export function registerAgentBrokerRoutes(
   });
 
   // Broker Referral Dashboard endpoints
-  app.get("/api/broker/referrals", isAuthenticated, async (req, res) => {
+  app.get("/api/broker/referrals", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
     try {
       const user = req.user as User;
-      if (!isStaffRole(user.role)) {
-        return res.status(403).json({ error: "Staff access required" });
-      }
       
       const referrals = await storage.getBrokerReferrals(user.id);
       res.json(referrals);
@@ -125,12 +119,9 @@ export function registerAgentBrokerRoutes(
     }
   });
 
-  app.get("/api/broker/stats", isAuthenticated, async (req, res) => {
+  app.get("/api/broker/stats", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
     try {
       const user = req.user as User;
-      if (!isStaffRole(user.role)) {
-        return res.status(403).json({ error: "Staff access required" });
-      }
       
       const stats = await storage.getBrokerReferralStats(user.id);
       res.json(stats);
@@ -140,12 +131,9 @@ export function registerAgentBrokerRoutes(
     }
   });
 
-  app.get("/api/broker/commissions", isAuthenticated, async (req, res) => {
+  app.get("/api/broker/commissions", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
     try {
       const user = req.user as User;
-      if (!isStaffRole(user.role)) {
-        return res.status(403).json({ error: "Staff access required" });
-      }
       
       const commissions = await storage.getBrokerCommissions(user.id);
       res.json(commissions);
@@ -155,12 +143,9 @@ export function registerAgentBrokerRoutes(
     }
   });
 
-  app.post("/api/broker/commissions", isAuthenticated, async (req, res) => {
+  app.post("/api/broker/commissions", requireRole("admin", "lo", "broker"), async (req, res) => {
     try {
       const user = req.user as User;
-      if (user.role !== "admin") {
-        return res.status(403).json({ error: "Admin access required" });
-      }
       
       const { brokerId, applicationId, loanAmount, commissionRate } = req.body;
       
@@ -186,12 +171,9 @@ export function registerAgentBrokerRoutes(
     }
   });
 
-  app.patch("/api/broker/commissions/:id", isAuthenticated, async (req, res) => {
+  app.patch("/api/broker/commissions/:id", requireRole("admin", "lo", "broker"), async (req, res) => {
     try {
       const user = req.user as User;
-      if (user.role !== "admin") {
-        return res.status(403).json({ error: "Admin access required" });
-      }
       
       const { id } = req.params;
 
@@ -222,13 +204,8 @@ export function registerAgentBrokerRoutes(
     }
   });
 
-  app.get("/api/admin/commissions/pending", isAuthenticated, async (req, res) => {
+  app.get("/api/admin/commissions/pending", requireRole("admin"), async (req, res) => {
     try {
-      const user = req.user as User;
-      if (user.role !== "admin") {
-        return res.status(403).json({ error: "Admin access required" });
-      }
-      
       const commissions = await storage.getAllPendingCommissions();
       res.json(commissions);
     } catch (error) {
@@ -396,13 +373,8 @@ export function registerAgentBrokerRoutes(
   // ===== ANALYTICS DASHBOARD =====
 
   // Get pipeline metrics
-  app.get("/api/analytics/pipeline", isAuthenticated, async (req, res) => {
+  app.get("/api/analytics/pipeline", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
     try {
-      const user = req.user as User;
-      if (!isStaffRole(user.role)) {
-        return res.status(403).json({ error: "Staff only" });
-      }
-
       const metrics = await storage.computePipelineMetrics();
       res.json(metrics);
     } catch (error) {
@@ -412,13 +384,8 @@ export function registerAgentBrokerRoutes(
   });
 
   // Get bottleneck analysis
-  app.get("/api/analytics/bottlenecks", isAuthenticated, async (req, res) => {
+  app.get("/api/analytics/bottlenecks", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
     try {
-      const user = req.user as User;
-      if (!isStaffRole(user.role)) {
-        return res.status(403).json({ error: "Staff only" });
-      }
-
       const analysis = await storage.getBottleneckAnalysis();
       res.json(analysis);
     } catch (error) {
@@ -428,13 +395,8 @@ export function registerAgentBrokerRoutes(
   });
 
   // Get staff workload metrics
-  app.get("/api/analytics/workload", isAuthenticated, async (req, res) => {
+  app.get("/api/analytics/workload", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
     try {
-      const user = req.user as User;
-      if (!isStaffRole(user.role)) {
-        return res.status(403).json({ error: "Staff only" });
-      }
-
       const metrics = await storage.getStaffWorkloadMetrics();
       res.json(metrics);
     } catch (error) {
@@ -444,13 +406,8 @@ export function registerAgentBrokerRoutes(
   });
 
   // Get historical snapshots
-  app.get("/api/analytics/history", isAuthenticated, async (req, res) => {
+  app.get("/api/analytics/history", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
     try {
-      const user = req.user as User;
-      if (!isStaffRole(user.role)) {
-        return res.status(403).json({ error: "Staff only" });
-      }
-
       const days = parseInt(req.query.days as string) || 30;
       const snapshots = await storage.getAnalyticsSnapshots(days);
       res.json(snapshots);
@@ -461,13 +418,8 @@ export function registerAgentBrokerRoutes(
   });
 
   // Get SLA configurations
-  app.get("/api/sla-configurations", isAuthenticated, async (req, res) => {
+  app.get("/api/sla-configurations", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
     try {
-      const user = req.user as User;
-      if (!isStaffRole(user.role)) {
-        return res.status(403).json({ error: "Staff only" });
-      }
-
       const configs = await storage.getAllSlaConfigurations();
       res.json(configs);
     } catch (error) {
@@ -477,7 +429,7 @@ export function registerAgentBrokerRoutes(
   });
 
   // Create SLA configuration (admin only)
-  app.post("/api/sla-configurations", isAuthenticated, isAdmin, async (req, res) => {
+  app.post("/api/sla-configurations", requireRole("admin"), async (req, res) => {
     try {
       const schema = z.object({
         name: z.string(),
@@ -522,13 +474,8 @@ export function registerAgentBrokerRoutes(
   });
 
   // Update application milestones
-  app.patch("/api/application-milestones/:applicationId", isAuthenticated, async (req, res) => {
+  app.patch("/api/application-milestones/:applicationId", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
     try {
-      const user = req.user as User;
-      if (!isStaffRole(user.role)) {
-        return res.status(403).json({ error: "Staff only" });
-      }
-
       const { applicationId } = req.params;
       
       // Get or create milestone record
@@ -940,11 +887,8 @@ export function registerAgentBrokerRoutes(
   // =============================================
   // Agent Pipeline Routes
   // =============================================
-  app.get("/api/agent-pipeline", isAuthenticated, async (req, res) => {
+  app.get("/api/agent-pipeline", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
     try {
-      if (!isStaffRole(req.user!.role)) {
-        return res.status(403).json({ error: "Staff access required" });
-      }
       const pipeline = await storage.getAgentPipeline(req.user!.id);
       res.json(pipeline);
     } catch (error) {
@@ -991,13 +935,8 @@ export function registerAgentBrokerRoutes(
     }
   });
 
-  app.put("/api/pre-approval-letters/:id/co-brand", isAuthenticated, async (req, res) => {
+  app.put("/api/pre-approval-letters/:id/co-brand", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
     try {
-      const userRole = (req.user as User).role;
-      if (!STAFF_ROLES.includes(userRole as typeof STAFF_ROLES[number])) {
-        return res.status(403).json({ error: "Only staff can add co-branding" });
-      }
-
       const { id } = req.params;
       const coBrandSchema = z.object({
         agentName: z.string(),

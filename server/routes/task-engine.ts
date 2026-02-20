@@ -1,21 +1,15 @@
 import type { Express } from "express";
 import type { IStorage } from "../storage";
+import { isAuthenticated, requireRole } from "../auth";
 import { isStaffRole } from "@shared/schema";
 
 export async function registerTaskEngineRoutes(
   app: Express,
   storage: IStorage,
-  isAuthenticated: any,
-  isAdmin: any,
 ) {
   // Task Routes - Admin/Staff can create and manage tasks
-  app.post("/api/tasks", isAuthenticated, async (req, res) => {
+  app.post("/api/tasks", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
     try {
-      const userRole = req.user?.role || "";
-      if (!isStaffRole(userRole || "")) {
-        return res.status(403).json({ error: "Only staff can create tasks" });
-      }
-
       const taskData = {
         ...req.body,
         createdByUserId: req.user!.id,

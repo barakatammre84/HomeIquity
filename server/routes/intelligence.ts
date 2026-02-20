@@ -1,5 +1,6 @@
 import type { Express } from "express";
 import type { IStorage } from "../storage";
+import { isAuthenticated, requireRole } from "../auth";
 import type { User } from "@shared/schema";
 import { db } from "../db";
 import {
@@ -9,7 +10,6 @@ import {
   insertBorrowerProfileSchema,
   insertRealEstateOwnedSchema,
   insertLenderProductSchema,
-  isStaffRole,
 } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
@@ -34,8 +34,6 @@ import {
 export function registerIntelligenceRoutes(
   app: Express,
   storage: IStorage,
-  isAuthenticated: any,
-  isAdmin: any,
 ) {
 
   app.get("/api/intelligence/profile", isAuthenticated, async (req, res) => {
@@ -280,7 +278,7 @@ export function registerIntelligenceRoutes(
     }
   });
 
-  app.get("/api/admin/lender-products", isAdmin, async (req, res) => {
+  app.get("/api/admin/lender-products", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
     try {
       const products = await db.select().from(lenderProducts);
       res.json(products);
@@ -290,7 +288,7 @@ export function registerIntelligenceRoutes(
     }
   });
 
-  app.post("/api/admin/lender-products", isAdmin, async (req, res) => {
+  app.post("/api/admin/lender-products", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
     try {
       const data = insertLenderProductSchema.parse(req.body);
       const [created] = await db.insert(lenderProducts).values(data).returning();
@@ -301,7 +299,7 @@ export function registerIntelligenceRoutes(
     }
   });
 
-  app.put("/api/admin/lender-products/:id", isAdmin, async (req, res) => {
+  app.put("/api/admin/lender-products/:id", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
     try {
       const data = insertLenderProductSchema.partial().parse(req.body);
       const [updated] = await db.update(lenderProducts)
@@ -315,7 +313,7 @@ export function registerIntelligenceRoutes(
     }
   });
 
-  app.delete("/api/admin/lender-products/:id", isAdmin, async (req, res) => {
+  app.delete("/api/admin/lender-products/:id", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
     try {
       await db.delete(lenderProducts).where(eq(lenderProducts.id, req.params.id));
       res.json({ success: true });
@@ -325,7 +323,7 @@ export function registerIntelligenceRoutes(
     }
   });
 
-  app.get("/api/staff/borrower/:userId/state", isAdmin, async (req, res) => {
+  app.get("/api/staff/borrower/:userId/state", requireRole("admin"), async (req, res) => {
     try {
       const { userId } = req.params;
       const current = await getCurrentState(userId);
@@ -338,7 +336,7 @@ export function registerIntelligenceRoutes(
     }
   });
 
-  app.post("/api/staff/borrower/:userId/state/transition", isAdmin, async (req, res) => {
+  app.post("/api/staff/borrower/:userId/state/transition", requireRole("admin"), async (req, res) => {
     try {
       const staffUser = req.user as User;
       const { userId } = req.params;

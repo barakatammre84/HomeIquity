@@ -1,5 +1,6 @@
 import type { Express } from "express";
 import type { IStorage } from "../storage";
+import { isAuthenticated, requireRole } from "../auth";
 import { isStaffRole, type User } from "@shared/schema";
 import { z } from "zod";
 import * as creditService from "../services/creditService";
@@ -7,8 +8,6 @@ import * as creditService from "../services/creditService";
 export function registerComplianceRoutes(
   app: Express,
   storage: IStorage,
-  isAuthenticated: any,
-  isAdmin: any,
 ) {
   // ============================================================================
   // PLAID VERIFICATION ROUTES
@@ -225,15 +224,8 @@ export function registerComplianceRoutes(
   });
 
   // Staff: Update verification status (approve/reject)
-  app.patch("/api/verifications/:id", isAuthenticated, async (req, res) => {
+  app.patch("/api/verifications/:id", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
     try {
-      const userRole = req.user?.role;
-      const isStaff = isStaffRole(userRole || "");
-
-      if (!isStaff) {
-        return res.status(403).json({ error: "Only staff can update verifications" });
-      }
-
       const verification = await storage.getVerification(req.params.id);
       if (!verification) {
         return res.status(404).json({ error: "Verification not found" });
@@ -457,13 +449,9 @@ export function registerComplianceRoutes(
   });
 
   // Request credit pull (staff only)
-  app.post("/api/loan-applications/:id/credit/pull", isAuthenticated, async (req, res) => {
+  app.post("/api/loan-applications/:id/credit/pull", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
     try {
       const user = req.user as User;
-      
-      if (!isStaffRole(user.role)) {
-        return res.status(403).json({ error: "Staff access required" });
-      }
       
       const application = await storage.getLoanApplication(req.params.id);
       if (!application) {

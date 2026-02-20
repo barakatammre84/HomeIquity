@@ -1,8 +1,9 @@
 import type { Express } from "express";
 import type { IStorage } from "../storage";
 import type { User } from "@shared/schema";
+import { isAuthenticated } from "../auth";
 
-export function registerNotificationRoutes(app: Express, storage: IStorage, isAuthenticated: any) {
+export function registerNotificationRoutes(app: Express, storage: IStorage) {
   app.get("/api/notifications", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;

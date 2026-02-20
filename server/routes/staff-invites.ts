@@ -4,9 +4,10 @@ import type { User } from "@shared/schema";
 import crypto from "crypto";
 import { logAudit } from "../auditLog";
 import { sendNotificationEmail } from "../services/emailService";
+import { isAuthenticated, requireRole } from "../auth";
 
-export function registerStaffInviteRoutes(app: Express, storage: IStorage, isAuthenticated: any, isAdmin: any) {
-  app.post("/api/staff-invites", isAdmin, async (req, res) => {
+export function registerStaffInviteRoutes(app: Express, storage: IStorage) {
+  app.post("/api/staff-invites", requireRole("admin"), async (req, res) => {
     try {
       const user = req.user as User;
       const { role, email, expiresInDays } = req.body;
@@ -47,7 +48,7 @@ export function registerStaffInviteRoutes(app: Express, storage: IStorage, isAut
     }
   });
 
-  app.get("/api/staff-invites", isAdmin, async (req, res) => {
+  app.get("/api/staff-invites", requireRole("admin"), async (req, res) => {
     try {
       const invites = await storage.getStaffInvites();
       res.json({ invites });
