@@ -44,6 +44,7 @@ import {
   Briefcase,
   PiggyBank,
   Rocket,
+  Zap,
 } from "lucide-react";
 
 interface DashboardData {
@@ -900,6 +901,10 @@ export default function Dashboard() {
                 </div>
               </div>
               <JourneyTracker status={activeApplication.status} showEstimates />
+              <div className="mt-3 pt-3 border-t flex items-center gap-2 text-[11px] text-muted-foreground/70" data-testid="text-automation-status">
+                <Zap className="h-3 w-3 text-violet-400" />
+                <span>Platform is automatically tracking compliance deadlines, verifying documents, and updating your progress</span>
+              </div>
             </CardContent>
           </Card>
         )}

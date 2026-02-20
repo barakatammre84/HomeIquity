@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -11,11 +11,49 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Progress } from "@/components/ui/progress";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
+import { Link } from "wouter";
 import { isStaffRole, ROLE_DISPLAY_NAMES } from "@shared/schema";
-import type { Task, LoanApplication, User } from "@shared/schema";
+import type { Task, LoanApplication, User, LoanCondition } from "@shared/schema";
+import {
+  Plus,
+  CheckCircle2,
+  Clock,
+  AlertCircle,
+  FileText,
+  User as UserIcon,
+  ChevronRight,
+  Search,
+  Calendar,
+  Upload,
+  Eye,
+  X,
+  ArrowUp,
+  Inbox,
+  Shield,
+  Zap,
+  Bot,
+  FileCheck,
+  ClipboardCheck,
+  DollarSign,
+  Timer,
+  TrendingUp,
+  AlertTriangle,
+  ArrowRight,
+  RefreshCw,
+  Activity,
+  BarChart3,
+  CircleCheck,
+  Sparkles,
+  ScanLine,
+  Brain,
+} from "lucide-react";
+import { format } from "date-fns";
 
 type SlaStatus = "green" | "amber" | "red";
 
@@ -40,6 +78,54 @@ interface QueueTask {
   percentageElapsed: number | null;
 }
 
+interface PipelineSummary {
+  applicationId: string;
+  currentStage: string;
+  priority: "urgent" | "high" | "normal";
+  daysInPipeline: number;
+  estimatedClosingDays: number;
+  completionPercentage: number;
+  documentsRequired: number;
+  documentsReceived: number;
+  conditionsTotal: number;
+  conditionsCleared: number;
+  lastActivityAt: Date;
+  assignedLO: string | null;
+  targetCloseDate: Date | null;
+  borrowerName?: string;
+  loanAmount?: string;
+}
+
+interface QueueData {
+  total: number;
+  byPriority: {
+    urgent: number;
+    high: number;
+    normal: number;
+  };
+  byStage: Record<string, PipelineSummary[]>;
+  queue: PipelineSummary[];
+}
+
+interface ComplianceData {
+  total: number;
+  gseReady: number;
+  ulddCompliant: number;
+  needsAttention: number;
+  applications: {
+    applicationId: string;
+    borrowerName: string;
+    status: string;
+    loanAmount: number | null;
+    score: number;
+    gseReady: boolean;
+    ulddCompliant: boolean;
+    criticalCount: number;
+    warningCount: number;
+    missingDocsCount: number;
+  }[];
+}
+
 const SLA_STATUS_COLORS: Record<SlaStatus, string> = {
   green: "text-emerald-600 dark:text-emerald-400",
   amber: "text-amber-600 dark:text-amber-400",
@@ -52,12 +138,6 @@ const SLA_DOT_COLORS: Record<SlaStatus, string> = {
   red: "bg-red-500",
 };
 
-const SLA_STATUS_LABELS: Record<SlaStatus, string> = {
-  green: "On Track",
-  amber: "At Risk",
-  red: "Breached",
-};
-
 function formatTimeRemaining(minutes: number | null): string {
   if (minutes === null) return "No SLA";
   if (minutes <= 0) return "Overdue";
@@ -65,28 +145,64 @@ function formatTimeRemaining(minutes: number | null): string {
   if (minutes < 1440) return `${Math.round(minutes / 60)}h`;
   return `${Math.round(minutes / 1440)}d`;
 }
-import {
-  Plus,
-  CheckCircle2,
-  Clock,
-  AlertCircle,
-  FileText,
-  User as UserIcon,
-  ChevronRight,
-  Search,
-  Calendar,
-  Upload,
-  Eye,
-  X,
-  ArrowUp,
-  Inbox,
-} from "lucide-react";
-import { format } from "date-fns";
 
-interface StaffData {
-  applications: (LoanApplication & { user?: User })[];
-  users: User[];
+function formatCurrency(amount: number | string | null | undefined): string {
+  if (!amount) return "$0";
+  const num = typeof amount === "string" ? parseFloat(amount) : amount;
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(num);
 }
+
+function formatStageLabel(stage: string): string {
+  return STAGE_DISPLAY[stage] || stage.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase());
+}
+
+const STAGE_ORDER = [
+  "pre_approved",
+  "doc_collection",
+  "processing",
+  "underwriting",
+  "conditional",
+  "clear_to_close",
+  "funded",
+];
+
+const STAGE_DISPLAY: Record<string, string> = {
+  pre_approved: "Pre-Approved",
+  doc_collection: "Doc Collection",
+  processing: "Processing",
+  underwriting: "Underwriting",
+  conditional: "Conditional Approval",
+  clear_to_close: "Clear to Close",
+  funded: "Funded",
+};
+
+const COMPLIANCE_CHECKLIST_ITEMS = [
+  { id: "le_issued", label: "Loan Estimate Issued", regulation: "TRID - within 3 business days of application", stage: "pre_approved" },
+  { id: "intent_to_proceed", label: "Intent to Proceed Received", regulation: "TRID - required before charging fees", stage: "pre_approved" },
+  { id: "income_verified", label: "Income Verification", regulation: "ATR/QM Rule - Ability to Repay", stage: "doc_collection" },
+  { id: "asset_verified", label: "Asset Verification", regulation: "Fannie Mae B3-4 / Freddie Mac 5501", stage: "doc_collection" },
+  { id: "employment_verified", label: "Employment Verification", regulation: "Fannie Mae B3-3 / VOIE", stage: "processing" },
+  { id: "credit_report_pulled", label: "Credit Report Obtained", regulation: "FCRA - Fair Credit Reporting Act", stage: "processing" },
+  { id: "appraisal_ordered", label: "Appraisal Ordered", regulation: "FIRREA / Dodd-Frank Section 1471", stage: "underwriting" },
+  { id: "title_search", label: "Title Search Complete", regulation: "ALTA Best Practices", stage: "underwriting" },
+  { id: "flood_cert", label: "Flood Certification", regulation: "National Flood Insurance Act", stage: "underwriting" },
+  { id: "mismo_valid", label: "MISMO 3.4 Data Complete", regulation: "GSE Submission Requirement", stage: "conditional" },
+  { id: "cd_issued", label: "Closing Disclosure Issued", regulation: "TRID - 3 business days before closing", stage: "clear_to_close" },
+  { id: "final_review", label: "Final Underwriting Review", regulation: "QC/QA Requirements", stage: "clear_to_close" },
+];
+
+const AUTOMATION_LABELS: Record<string, { label: string; icon: typeof Zap }> = {
+  "AUTO_RULE": { label: "Auto-triggered by rule engine", icon: Zap },
+  "STAGE_TRANSITION": { label: "Triggered by stage change", icon: ArrowRight },
+  "DOCUMENT_UPLOAD": { label: "Auto-detected from document", icon: ScanLine },
+  "SYSTEM": { label: "System automated", icon: Bot },
+  "AI_EXTRACTION": { label: "AI-extracted data", icon: Brain },
+};
 
 const documentCategories = [
   { value: "tax_return", label: "Tax Return" },
@@ -97,7 +213,7 @@ const documentCategories = [
   { value: "other", label: "Other Document" },
 ];
 
-const documentYears = ["2024", "2023", "2022", "2021"];
+const documentYears = ["2025", "2024", "2023", "2022"];
 
 const priorityOptions = [
   { value: "low", label: "Low" },
@@ -130,6 +246,109 @@ function getPriorityBadge(priority: string) {
   return <Badge className={p.className}>{p.label}</Badge>;
 }
 
+function AutomationBadge({ source }: { source?: string }) {
+  if (!source || source === "MANUAL") return null;
+  const info = AUTOMATION_LABELS[source];
+  if (!info) return null;
+  const Icon = info.icon;
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Badge variant="outline" className="gap-1 text-xs bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-900/30 dark:text-violet-300 dark:border-violet-800" data-testid="badge-automation">
+          <Icon className="h-3 w-3" />
+          Automated
+        </Badge>
+      </TooltipTrigger>
+      <TooltipContent side="top" className="text-xs max-w-xs">
+        <p>{info.label}</p>
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
+function ComplianceChecklistInline({ stage, completionPct }: { stage: string; completionPct: number }) {
+  const normalizedStage = stage === "analyzing" ? "pre_approved" : stage === "closing" ? "clear_to_close" : stage;
+  const stageIdx = STAGE_ORDER.indexOf(normalizedStage);
+  const effectiveIdx = stageIdx >= 0 ? stageIdx : 0;
+  const items = COMPLIANCE_CHECKLIST_ITEMS.map(item => {
+    const itemStageIdx = STAGE_ORDER.indexOf(item.stage);
+    const isComplete = itemStageIdx < effectiveIdx || (itemStageIdx === effectiveIdx && completionPct > 50);
+    const isCurrentStage = item.stage === normalizedStage;
+    const isOverdue = isCurrentStage && !isComplete && completionPct > 75;
+    return { ...item, isComplete, isCurrentStage, isOverdue };
+  });
+
+  const completed = items.filter(i => i.isComplete).length;
+  const total = items.length;
+
+  return (
+    <div className="space-y-3" data-testid="compliance-checklist">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Shield className="h-4 w-4 text-muted-foreground" />
+          <span className="text-sm font-medium">Compliance Checklist</span>
+        </div>
+        <span className="text-xs text-muted-foreground">{completed}/{total} complete</span>
+      </div>
+      <Progress value={(completed / total) * 100} className="h-1.5" />
+      <div className="space-y-1.5">
+        {items.map(item => (
+          <div
+            key={item.id}
+            className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-xs ${
+              item.isOverdue
+                ? "bg-red-50 dark:bg-red-900/20"
+                : item.isCurrentStage && !item.isComplete
+                  ? "bg-amber-50 dark:bg-amber-900/20"
+                  : ""
+            }`}
+            data-testid={`compliance-item-${item.id}`}
+          >
+            {item.isComplete ? (
+              <CircleCheck className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+            ) : item.isOverdue ? (
+              <AlertCircle className="h-3.5 w-3.5 text-red-500 shrink-0" />
+            ) : (
+              <div className="h-3.5 w-3.5 rounded-full border border-muted-foreground/30 shrink-0" />
+            )}
+            <span className={`flex-1 ${item.isComplete ? "text-muted-foreground line-through" : ""}`}>
+              {item.label}
+            </span>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button type="button" className="text-muted-foreground/60 hover:text-muted-foreground underline decoration-dotted underline-offset-2 cursor-help shrink-0" data-testid={`tooltip-regulation-${item.id}`}>
+                  ?
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="left" className="max-w-xs text-xs">
+                <p>{item.regulation}</p>
+              </TooltipContent>
+            </Tooltip>
+            {item.isOverdue && (
+              <Badge variant="destructive" className="text-[10px] px-1.5 py-0">Overdue</Badge>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function getRoleDefaultTab(role: string): string {
+  switch (role) {
+    case "underwriter":
+      return "conditions";
+    case "processor":
+    case "loa":
+      return "my-queue";
+    case "lo":
+    case "broker":
+      return "pipeline";
+    default:
+      return "pipeline";
+  }
+}
+
 export default function StaffDashboard() {
   const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
@@ -137,17 +356,25 @@ export default function StaffDashboard() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [selectedApplication, setSelectedApplication] = useState<string>("");
   const [searchTerm, setSearchTerm] = useState("");
-  const [activeTab, setActiveTab] = useState("my-queue");
+  const [complianceDetailApp, setComplianceDetailApp] = useState<string | null>(null);
 
   const isStaff = isStaffRole(user?.role || "");
   const userRole = user?.role || "";
   const ownerRole = userRole.toUpperCase();
+
+  const [activeTab, setActiveTab] = useState(() => getRoleDefaultTab(userRole));
 
   useEffect(() => {
     if (!authLoading && !isStaff) {
       navigate("/dashboard");
     }
   }, [authLoading, isStaff, navigate]);
+
+  useEffect(() => {
+    if (userRole) {
+      setActiveTab(getRoleDefaultTab(userRole));
+    }
+  }, [userRole]);
 
   const [newTask, setNewTask] = useState({
     title: "",
@@ -180,6 +407,17 @@ export default function StaffDashboard() {
     enabled: !authLoading && !!user && isStaff && !!ownerRole,
   });
 
+  const { data: pipelineData, isLoading: pipelineLoading } = useQuery<QueueData>({
+    queryKey: ["/api/pipeline/queue"],
+    enabled: !authLoading && !!user && isStaff,
+    refetchInterval: 30000,
+  });
+
+  const { data: complianceData } = useQuery<ComplianceData>({
+    queryKey: ["/api/compliance/dashboard"],
+    enabled: !authLoading && !!user && isStaff,
+  });
+
   const createTaskMutation = useMutation({
     mutationFn: async (taskData: any) => {
       const response = await apiRequest("POST", "/api/tasks", taskData);
@@ -187,19 +425,12 @@ export default function StaffDashboard() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-      toast({
-        title: "Task Created",
-        description: "The task has been created and assigned to the borrower.",
-      });
+      toast({ title: "Task Created", description: "The task has been created and assigned." });
       setCreateDialogOpen(false);
       resetNewTaskForm();
     },
     onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to create task",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: error.message || "Failed to create task", variant: "destructive" });
     },
   });
 
@@ -210,17 +441,10 @@ export default function StaffDashboard() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-      toast({
-        title: "Task Updated",
-        description: "The task has been updated successfully.",
-      });
+      toast({ title: "Task Updated", description: "The task has been updated successfully." });
     },
     onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to update task",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: error.message || "Failed to update task", variant: "destructive" });
     },
   });
 
@@ -240,21 +464,14 @@ export default function StaffDashboard() {
 
   const handleCreateTask = () => {
     if (!selectedApplication) {
-      toast({
-        title: "Error",
-        description: "Please select an application",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: "Please select an application", variant: "destructive" });
       return;
     }
-
     const application = applicationsData?.find(app => app.id === selectedApplication);
     if (!application) return;
-
     const taskTitle = newTask.documentCategory && newTask.documentYear
       ? `Upload ${newTask.documentYear} ${documentCategories.find(c => c.value === newTask.documentCategory)?.label}`
       : newTask.title;
-
     createTaskMutation.mutate({
       applicationId: selectedApplication,
       assignedToUserId: application.userId,
@@ -269,15 +486,48 @@ export default function StaffDashboard() {
     });
   };
 
+  const tasks = tasksData || [];
+  const applications = applicationsData || [];
+  const users = usersData || [];
+  const pipeline = pipelineData?.queue || [];
+  const byStage = pipelineData?.byStage || {};
+
+  const sortedQueueTasks = useMemo(() =>
+    (queueTasks || [])
+      .filter(t => t.status !== "COMPLETED" && t.status !== "EXPIRED")
+      .sort((a, b) => {
+        const slaOrder: Record<SlaStatus, number> = { red: 0, amber: 1, green: 2 };
+        const aOrder = slaOrder[a.slaStatus] ?? 2;
+        const bOrder = slaOrder[b.slaStatus] ?? 2;
+        if (aOrder !== bOrder) return aOrder - bOrder;
+        return (a.timeRemaining ?? Infinity) - (b.timeRemaining ?? Infinity);
+      }),
+    [queueTasks]
+  );
+
+  const queueBreached = sortedQueueTasks.filter(t => t.slaStatus === "red").length;
+  const queueAtRisk = sortedQueueTasks.filter(t => t.slaStatus === "amber").length;
+  const submittedTasks = tasks.filter(t => t.status === "submitted");
+  const automatedTasks = sortedQueueTasks.filter(t => t.triggerSource && t.triggerSource !== "MANUAL");
+
+  const getUserName = (userId: string) => {
+    const u = users.find(u => u.id === userId);
+    return u ? `${u.firstName || ""} ${u.lastName || ""}`.trim() || u.email : "Unknown";
+  };
+
+  const totalVolume = pipeline.reduce((sum, l) => sum + (parseFloat(l.loanAmount || "0") || 0), 0);
+  const complianceScore = complianceData
+    ? Math.round(((complianceData.gseReady + complianceData.ulddCompliant) / Math.max(complianceData.total, 1)) * 100)
+    : 0;
+
   if (authLoading || tasksLoading || applicationsLoading) {
     return (
       <div className="p-8">
         <Skeleton className="mb-8 h-8 w-48" />
-        <div className="space-y-6">
-          {[1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-32" />
-          ))}
+        <div className="grid gap-4 md:grid-cols-5 mb-6">
+          {[1, 2, 3, 4, 5].map((i) => (<Skeleton key={i} className="h-24" />))}
         </div>
+        <Skeleton className="h-96" />
       </div>
     );
   }
@@ -289,76 +539,49 @@ export default function StaffDashboard() {
           <CardContent className="p-8 text-center">
             <AlertCircle className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
             <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
-            <p className="text-muted-foreground">
-              You do not have permission to access the staff dashboard.
-            </p>
+            <p className="text-muted-foreground">You do not have permission to access the staff dashboard.</p>
           </CardContent>
         </Card>
       </div>
     );
   }
 
-  const tasks = tasksData || [];
-  const applications = applicationsData || [];
-  const users = usersData || [];
-
-  const filteredTasks = tasks.filter(task => {
-    const searchLower = searchTerm.toLowerCase();
-    return (
-      task.title.toLowerCase().includes(searchLower) ||
-      task.status.toLowerCase().includes(searchLower)
-    );
-  });
-
-  const pendingTasks = tasks.filter(t => t.status === "pending");
-  const submittedTasks = tasks.filter(t => t.status === "submitted");
-  const verifiedTasks = tasks.filter(t => t.status === "verified");
-
-  const sortedQueueTasks = (queueTasks || [])
-    .filter(t => t.status !== "COMPLETED" && t.status !== "EXPIRED")
-    .sort((a, b) => {
-      const slaOrder: Record<SlaStatus, number> = { red: 0, amber: 1, green: 2 };
-      const aOrder = slaOrder[a.slaStatus] ?? 2;
-      const bOrder = slaOrder[b.slaStatus] ?? 2;
-      if (aOrder !== bOrder) return aOrder - bOrder;
-      const aTime = a.timeRemaining ?? Infinity;
-      const bTime = b.timeRemaining ?? Infinity;
-      return aTime - bTime;
-    });
-
-  const queueBreached = sortedQueueTasks.filter(t => t.slaStatus === "red").length;
-  const queueAtRisk = sortedQueueTasks.filter(t => t.slaStatus === "amber").length;
-  const queueOnTrack = sortedQueueTasks.filter(t => t.slaStatus === "green").length;
-
-  const getUserName = (userId: string) => {
-    const u = users.find(u => u.id === userId);
-    return u ? `${u.firstName || ""} ${u.lastName || ""}`.trim() || u.email : "Unknown";
-  };
-
   return (
     <>
-      {/* Premium Staff Header */}
       <div className="relative overflow-hidden bg-gradient-to-br from-primary via-primary to-primary/90">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.1),transparent_50%)]" />
         <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-white/5 blur-3xl" />
-        
-        <div className="relative px-4 py-8 sm:px-6 lg:px-8">
+
+        <div className="relative px-4 py-6 sm:px-6 lg:px-8">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <div className="flex items-center gap-2 text-primary-foreground/80 mb-2">
-                <FileText className="h-4 w-4" />
-                <span className="text-sm font-medium">Loan Operations</span>
+              <div className="flex items-center gap-2 text-primary-foreground/80 mb-1">
+                <BarChart3 className="h-4 w-4" />
+                <span className="text-sm font-medium">Unified Command Center</span>
               </div>
               <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl" data-testid="text-staff-dashboard-title">
                 {ROLE_DISPLAY_NAMES[userRole as keyof typeof ROLE_DISPLAY_NAMES] || "Staff"} Dashboard
               </h1>
               <p className="mt-1 text-sm text-primary-foreground/80">
-                {sortedQueueTasks.length > 0
-                  ? `${sortedQueueTasks.length} open task${sortedQueueTasks.length !== 1 ? "s" : ""} in your queue`
-                  : "Manage borrower tasks and document verification"}
+                Pipeline, tasks, compliance, and activity in one view
               </p>
             </div>
-            <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="bg-white/10 border-white/20 text-white"
+                onClick={() => {
+                  queryClient.invalidateQueries({ queryKey: ["/api/pipeline/queue"] });
+                  queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+                  queryClient.invalidateQueries({ queryKey: ["/api/compliance/dashboard"] });
+                }}
+                data-testid="button-refresh-all"
+              >
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Refresh All
+              </Button>
+              <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
                 <DialogTrigger asChild>
                   <Button className="bg-white text-primary shadow-lg" data-testid="button-create-task">
                     <Plus className="mr-2 h-4 w-4" />
@@ -368,9 +591,7 @@ export default function StaffDashboard() {
                 <DialogContent className="max-w-lg">
                   <DialogHeader>
                     <DialogTitle>Create New Task</DialogTitle>
-                    <DialogDescription>
-                      Assign a task to a borrower for document collection or verification.
-                    </DialogDescription>
+                    <DialogDescription>Assign a task to a borrower for document collection or verification.</DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4 py-4">
                     <div className="space-y-2">
@@ -388,13 +609,9 @@ export default function StaffDashboard() {
                         </SelectContent>
                       </Select>
                     </div>
-
                     <div className="space-y-2">
                       <Label htmlFor="taskType">Task Type</Label>
-                      <Select
-                        value={newTask.taskType}
-                        onValueChange={(v) => setNewTask({ ...newTask, taskType: v })}
-                      >
+                      <Select value={newTask.taskType} onValueChange={(v) => setNewTask({ ...newTask, taskType: v })}>
                         <SelectTrigger data-testid="select-task-type">
                           <SelectValue />
                         </SelectTrigger>
@@ -406,51 +623,31 @@ export default function StaffDashboard() {
                         </SelectContent>
                       </Select>
                     </div>
-
                     {newTask.taskType === "document_request" && (
                       <>
                         <div className="grid grid-cols-2 gap-4">
                           <div className="space-y-2">
-                            <Label htmlFor="documentCategory">Document Type</Label>
-                            <Select
-                              value={newTask.documentCategory}
-                              onValueChange={(v) => setNewTask({ ...newTask, documentCategory: v })}
-                            >
-                              <SelectTrigger data-testid="select-document-category">
-                                <SelectValue placeholder="Select type" />
-                              </SelectTrigger>
+                            <Label>Document Type</Label>
+                            <Select value={newTask.documentCategory} onValueChange={(v) => setNewTask({ ...newTask, documentCategory: v })}>
+                              <SelectTrigger data-testid="select-document-category"><SelectValue placeholder="Select type" /></SelectTrigger>
                               <SelectContent>
-                                {documentCategories.map(cat => (
-                                  <SelectItem key={cat.value} value={cat.value}>
-                                    {cat.label}
-                                  </SelectItem>
-                                ))}
+                                {documentCategories.map(cat => (<SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>))}
                               </SelectContent>
                             </Select>
                           </div>
                           <div className="space-y-2">
-                            <Label htmlFor="documentYear">Year</Label>
-                            <Select
-                              value={newTask.documentYear}
-                              onValueChange={(v) => setNewTask({ ...newTask, documentYear: v })}
-                            >
-                              <SelectTrigger data-testid="select-document-year">
-                                <SelectValue placeholder="Select year" />
-                              </SelectTrigger>
+                            <Label>Year</Label>
+                            <Select value={newTask.documentYear} onValueChange={(v) => setNewTask({ ...newTask, documentYear: v })}>
+                              <SelectTrigger data-testid="select-document-year"><SelectValue placeholder="Select year" /></SelectTrigger>
                               <SelectContent>
-                                {documentYears.map(year => (
-                                  <SelectItem key={year} value={year}>
-                                    {year}
-                                  </SelectItem>
-                                ))}
+                                {documentYears.map(year => (<SelectItem key={year} value={year}>{year}</SelectItem>))}
                               </SelectContent>
                             </Select>
                           </div>
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="instructions">Instructions for Borrower</Label>
+                          <Label>Instructions for Borrower</Label>
                           <Textarea
-                            id="instructions"
                             placeholder="e.g., Please upload your complete tax return including all schedules..."
                             value={newTask.documentInstructions}
                             onChange={(e) => setNewTask({ ...newTask, documentInstructions: e.target.value })}
@@ -459,428 +656,706 @@ export default function StaffDashboard() {
                         </div>
                       </>
                     )}
-
                     {newTask.taskType !== "document_request" && (
                       <>
                         <div className="space-y-2">
-                          <Label htmlFor="title">Task Title</Label>
-                          <Input
-                            id="title"
-                            placeholder="Enter task title"
-                            value={newTask.title}
-                            onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
-                            data-testid="input-task-title"
-                          />
+                          <Label>Task Title</Label>
+                          <Input placeholder="Enter task title" value={newTask.title} onChange={(e) => setNewTask({ ...newTask, title: e.target.value })} data-testid="input-task-title" />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="description">Description</Label>
-                          <Textarea
-                            id="description"
-                            placeholder="Describe what needs to be done..."
-                            value={newTask.description}
-                            onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
-                            data-testid="input-task-description"
-                          />
+                          <Label>Description</Label>
+                          <Textarea placeholder="Describe what needs to be done..." value={newTask.description} onChange={(e) => setNewTask({ ...newTask, description: e.target.value })} data-testid="input-task-description" />
                         </div>
                       </>
                     )}
-
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="priority">Priority</Label>
-                        <Select
-                          value={newTask.priority}
-                          onValueChange={(v) => setNewTask({ ...newTask, priority: v })}
-                        >
-                          <SelectTrigger data-testid="select-priority">
-                            <SelectValue />
-                          </SelectTrigger>
+                        <Label>Priority</Label>
+                        <Select value={newTask.priority} onValueChange={(v) => setNewTask({ ...newTask, priority: v })}>
+                          <SelectTrigger data-testid="select-priority"><SelectValue /></SelectTrigger>
                           <SelectContent>
-                            {priorityOptions.map(opt => (
-                              <SelectItem key={opt.value} value={opt.value}>
-                                {opt.label}
-                              </SelectItem>
-                            ))}
+                            {priorityOptions.map(opt => (<SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>))}
                           </SelectContent>
                         </Select>
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="dueDate">Due Date</Label>
-                        <Input
-                          id="dueDate"
-                          type="date"
-                          value={newTask.dueDate}
-                          onChange={(e) => setNewTask({ ...newTask, dueDate: e.target.value })}
-                          data-testid="input-due-date"
-                        />
+                        <Label>Due Date</Label>
+                        <Input type="date" value={newTask.dueDate} onChange={(e) => setNewTask({ ...newTask, dueDate: e.target.value })} data-testid="input-due-date" />
                       </div>
                     </div>
                   </div>
                   <DialogFooter>
-                    <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
-                      Cancel
-                    </Button>
-                    <Button
-                      onClick={handleCreateTask}
-                      disabled={createTaskMutation.isPending}
-                      data-testid="button-submit-task"
-                    >
+                    <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>Cancel</Button>
+                    <Button onClick={handleCreateTask} disabled={createTaskMutation.isPending} data-testid="button-submit-task">
                       {createTaskMutation.isPending ? "Creating..." : "Create Task"}
                     </Button>
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="p-4 sm:p-6 lg:p-8">
-            <div className="grid gap-4 md:grid-cols-4 mb-8">
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center gap-4">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
-                      <Inbox className="h-6 w-6 text-primary" />
-                    </div>
-                    <div>
-                      <p className="text-2xl font-bold" data-testid="text-queue-count">{sortedQueueTasks.length}</p>
-                      <p className="text-sm text-muted-foreground">My Queue</p>
-                    </div>
+      <div className="p-4 sm:p-6 lg:p-8 space-y-6">
+        <div className="grid gap-4 grid-cols-2 md:grid-cols-5" data-testid="section-kpi-cards">
+          <Card data-testid="card-kpi-pipeline">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                  <FileText className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold" data-testid="text-pipeline-count">{pipeline.length}</p>
+                  <p className="text-xs text-muted-foreground">Active Loans</p>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">{formatCurrency(totalVolume)} volume</p>
+            </CardContent>
+          </Card>
+
+          <Card data-testid="card-kpi-queue">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/30">
+                  <Inbox className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold" data-testid="text-queue-count">{sortedQueueTasks.length}</p>
+                  <p className="text-xs text-muted-foreground">My Queue</p>
+                </div>
+              </div>
+              {queueBreached > 0 && (
+                <p className="text-xs text-red-600 dark:text-red-400 mt-2">{queueBreached} SLA breached</p>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card data-testid="card-kpi-review">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/30">
+                  <Eye className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold" data-testid="text-review-count">{submittedTasks.length}</p>
+                  <p className="text-xs text-muted-foreground">Awaiting Review</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card data-testid="card-kpi-compliance">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/30">
+                  <Shield className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold" data-testid="text-compliance-score">{complianceScore}%</p>
+                  <p className="text-xs text-muted-foreground">Compliance</p>
+                </div>
+              </div>
+              {(complianceData?.needsAttention || 0) > 0 && (
+                <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">{complianceData?.needsAttention} need attention</p>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card data-testid="card-kpi-automated">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-violet-100 dark:bg-violet-900/30">
+                  <Sparkles className="h-5 w-5 text-violet-600 dark:text-violet-400" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold" data-testid="text-automated-count">{automatedTasks.length}</p>
+                  <p className="text-xs text-muted-foreground">Auto-tasks</p>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">Rule engine triggered</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        <Card data-testid="card-stage-distribution">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Activity className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium">Pipeline Stage Distribution</span>
+            </div>
+            <div className="grid gap-2 grid-cols-3 sm:grid-cols-4 md:grid-cols-7">
+              {STAGE_ORDER.map((stage) => {
+                const count = byStage[stage]?.length || 0;
+                return (
+                  <div
+                    key={stage}
+                    className={`flex flex-col items-center justify-center rounded-lg border p-2.5 ${
+                      count > 0 ? "border-border" : "border-border opacity-50"
+                    }`}
+                    data-testid={`stage-count-${stage}`}
+                  >
+                    <span className="text-xl font-bold">{count}</span>
+                    <span className="text-[10px] text-muted-foreground text-center leading-tight">
+                      {formatStageLabel(stage)}
+                    </span>
                   </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="mb-4" data-testid="tabs-main">
+            <TabsTrigger value="pipeline" data-testid="tab-pipeline">
+              <FileText className="mr-1.5 h-4 w-4" />
+              Pipeline ({pipeline.length})
+            </TabsTrigger>
+            <TabsTrigger value="my-queue" data-testid="tab-my-queue">
+              <Inbox className="mr-1.5 h-4 w-4" />
+              My Queue ({sortedQueueTasks.length})
+            </TabsTrigger>
+            <TabsTrigger value="conditions" data-testid="tab-conditions">
+              <ClipboardCheck className="mr-1.5 h-4 w-4" />
+              Review ({submittedTasks.length})
+            </TabsTrigger>
+            <TabsTrigger value="compliance" data-testid="tab-compliance">
+              <Shield className="mr-1.5 h-4 w-4" />
+              Compliance
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="pipeline">
+            <div className="flex flex-col lg:flex-row gap-6">
+              <div className="flex-1 space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                  <h2 className="text-lg font-semibold" data-testid="text-pipeline-heading">Active Loans</h2>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      placeholder="Search loans..."
+                      className="pl-9 w-48"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      data-testid="input-search-pipeline"
+                    />
+                  </div>
+                </div>
+                {pipelineLoading ? (
+                  <div className="space-y-3">{[1, 2, 3].map(i => <Skeleton key={i} className="h-28" />)}</div>
+                ) : pipeline.length === 0 ? (
+                  <Card>
+                    <CardContent className="flex flex-col items-center justify-center py-12">
+                      <CheckCircle2 className="mb-4 h-12 w-12 text-muted-foreground" />
+                      <p className="text-lg font-medium">No active loans</p>
+                      <p className="text-muted-foreground">Pipeline is clear</p>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  pipeline
+                    .filter(item => {
+                      if (!searchTerm) return true;
+                      const s = searchTerm.toLowerCase();
+                      return (item.borrowerName || "").toLowerCase().includes(s) ||
+                        item.currentStage.toLowerCase().includes(s) ||
+                        item.applicationId.toLowerCase().includes(s);
+                    })
+                    .map((item) => {
+                      const compApp = complianceData?.applications?.find(a => a.applicationId === item.applicationId);
+                      const appTasks = sortedQueueTasks.filter(t => t.applicationId === item.applicationId);
+                      return (
+                        <Card
+                          key={item.applicationId}
+                          className={`${complianceDetailApp === item.applicationId ? "ring-2 ring-primary" : ""}`}
+                          data-testid={`card-loan-${item.applicationId}`}
+                        >
+                          <CardContent className="p-4">
+                            <div className="flex flex-wrap items-start gap-4">
+                              <div className={`mt-1.5 h-2 w-2 rounded-full shrink-0 ${
+                                item.priority === "urgent" ? "bg-red-500" : item.priority === "high" ? "bg-orange-500" : "bg-blue-500"
+                              }`} />
+
+                              <div className="flex-1 min-w-0">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <Link href={`/borrower-file/${item.applicationId}`}>
+                                    <span className="font-medium hover:underline cursor-pointer" data-testid={`link-loan-${item.applicationId}`}>
+                                      {item.borrowerName || `Loan #${item.applicationId.slice(0, 8)}`}
+                                    </span>
+                                  </Link>
+                                  <Badge variant="outline">{formatStageLabel(item.currentStage)}</Badge>
+                                  {compApp?.gseReady && (
+                                    <Badge variant="secondary" className="gap-1 text-xs bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300" data-testid={`badge-gse-${item.applicationId}`}>
+                                      <CheckCircle2 className="h-3 w-3" />
+                                      GSE Ready
+                                    </Badge>
+                                  )}
+                                  {(compApp?.criticalCount || 0) > 0 && (
+                                    <Badge variant="destructive" className="text-xs" data-testid={`badge-critical-${item.applicationId}`}>
+                                      {compApp?.criticalCount} critical
+                                    </Badge>
+                                  )}
+                                </div>
+
+                                <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                                  <span className="flex items-center gap-1">
+                                    <DollarSign className="h-3 w-3" />
+                                    {item.loanAmount ? formatCurrency(item.loanAmount) : "N/A"}
+                                  </span>
+                                  <span className="flex items-center gap-1">
+                                    <Timer className="h-3 w-3" />
+                                    Day {item.daysInPipeline}
+                                  </span>
+                                  <span className="flex items-center gap-1">
+                                    <ClipboardCheck className="h-3 w-3" />
+                                    {item.conditionsCleared}/{item.conditionsTotal} conditions
+                                  </span>
+                                  <span className="flex items-center gap-1">
+                                    <FileText className="h-3 w-3" />
+                                    {item.documentsReceived}/{item.documentsRequired} docs
+                                  </span>
+                                  {appTasks.length > 0 && (
+                                    <span className="flex items-center gap-1">
+                                      <Inbox className="h-3 w-3" />
+                                      {appTasks.length} open task{appTasks.length !== 1 ? "s" : ""}
+                                    </span>
+                                  )}
+                                </div>
+
+                                <div className="mt-2.5">
+                                  <Progress value={item.completionPercentage} className="h-1.5" />
+                                  <div className="flex items-center justify-between mt-1">
+                                    <p className="text-xs text-muted-foreground">{item.completionPercentage}% complete</p>
+                                    {compApp && (
+                                      <p className="text-xs text-muted-foreground">ULAD: {compApp.score}%</p>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="flex flex-col gap-1.5 shrink-0">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => navigate(`/borrower-file/${item.applicationId}`)}
+                                  data-testid={`button-view-file-${item.applicationId}`}
+                                >
+                                  <Eye className="mr-1 h-4 w-4" />
+                                  View
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => setComplianceDetailApp(
+                                    complianceDetailApp === item.applicationId ? null : item.applicationId
+                                  )}
+                                  data-testid={`button-compliance-${item.applicationId}`}
+                                >
+                                  <Shield className="mr-1 h-4 w-4" />
+                                  Checklist
+                                </Button>
+                              </div>
+                            </div>
+
+                            {complianceDetailApp === item.applicationId && (
+                              <div className="mt-4 pt-4 border-t">
+                                <ComplianceChecklistInline
+                                  stage={item.currentStage}
+                                  completionPct={item.completionPercentage}
+                                />
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
+                      );
+                    })
+                )}
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="my-queue">
+            <Card>
+              <CardHeader>
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <CardTitle data-testid="text-my-queue-title">My Queue</CardTitle>
+                    <CardDescription>Tasks assigned to your role, sorted by SLA urgency</CardDescription>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {queueBreached > 0 && (
+                      <Badge variant="destructive" data-testid="badge-breached-alert">
+                        <AlertCircle className="h-3 w-3 mr-1" />
+                        {queueBreached} SLA breached
+                      </Badge>
+                    )}
+                    {automatedTasks.length > 0 && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Badge variant="outline" className="gap-1 bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-900/30 dark:text-violet-300 dark:border-violet-800" data-testid="badge-auto-tasks-count">
+                            <Sparkles className="h-3 w-3" />
+                            {automatedTasks.length} automated
+                          </Badge>
+                        </TooltipTrigger>
+                        <TooltipContent className="text-xs">
+                          <p>{automatedTasks.length} tasks were auto-created by the rule engine or document processing</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {queueLoading ? (
+                  <div className="space-y-3">{[1, 2, 3].map(i => <Skeleton key={i} className="h-20" />)}</div>
+                ) : sortedQueueTasks.length === 0 ? (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <CheckCircle2 className="mx-auto h-12 w-12 mb-4" />
+                    <p className="font-medium">Queue is clear</p>
+                    <p className="text-sm mt-1">No open tasks assigned to your role</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {sortedQueueTasks.map(task => (
+                      <div
+                        key={task.id}
+                        className="flex items-center justify-between gap-4 rounded-lg border p-4 hover-elevate cursor-pointer"
+                        onClick={() => navigate(`/borrower-file/${task.applicationId}`)}
+                        data-testid={`queue-task-${task.id}`}
+                      >
+                        <div className="flex items-center gap-4 min-w-0 flex-1">
+                          <div className={`flex h-3 w-3 rounded-full shrink-0 ${SLA_DOT_COLORS[task.slaStatus]}`} />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <p className="font-medium truncate">{task.title}</p>
+                              {task.slaClass && (
+                                <Badge variant="outline" className="text-xs shrink-0">{task.slaClass}</Badge>
+                              )}
+                              <AutomationBadge source={task.triggerSource} />
+                            </div>
+                            <p className="text-sm text-muted-foreground truncate">
+                              {task.taskType === "document_request" ? "Document Request" : task.taskType}
+                              {task.triggerSource && task.triggerSource !== "MANUAL" && ` · ${task.triggerSource.replace(/_/g, " ").toLowerCase()}`}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3 shrink-0 flex-wrap">
+                          <span className={`text-sm font-medium ${SLA_STATUS_COLORS[task.slaStatus]}`} data-testid={`text-sla-status-${task.id}`}>
+                            {task.slaStatus === "red" ? (
+                              <span className="flex items-center gap-1">
+                                <ArrowUp className="h-3 w-3" />
+                                {formatTimeRemaining(task.timeRemaining)}
+                              </span>
+                            ) : formatTimeRemaining(task.timeRemaining)}
+                          </span>
+                          {(task.escalationLevel ?? 0) > 0 && (
+                            <Badge variant="destructive" className="text-xs" data-testid={`badge-escalation-${task.id}`}>
+                              L{task.escalationLevel}
+                            </Badge>
+                          )}
+                          <Badge variant={task.status === "OPEN" ? "outline" : "secondary"}>
+                            {task.status === "OPEN" ? "Open" : task.status === "IN_PROGRESS" ? "In Progress" : task.status}
+                          </Badge>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={(e) => { e.stopPropagation(); navigate(`/borrower-file/${task.applicationId}`); }}
+                            data-testid={`button-view-file-${task.id}`}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="conditions">
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Tasks Awaiting Review</CardTitle>
+                  <CardDescription>Review uploaded documents and verify borrower information</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {submittedTasks.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <CheckCircle2 className="mx-auto h-12 w-12 mb-4" />
+                      <p>No tasks awaiting review</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {submittedTasks.map(task => (
+                        <div
+                          key={task.id}
+                          className="flex items-center justify-between gap-4 rounded-lg border p-4 bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800"
+                          data-testid={`review-task-${task.id}`}
+                        >
+                          <div className="flex items-center gap-4">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-800">
+                              <Upload className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                            </div>
+                            <div>
+                              <p className="font-medium">{task.title}</p>
+                              <p className="text-sm text-muted-foreground">
+                                Submitted by: {getUserName(task.assignedToUserId ?? "")}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => updateTaskMutation.mutate({ id: task.id, data: { status: "rejected", verificationStatus: "rejected" } })}
+                              data-testid={`button-reject-${task.id}`}
+                            >
+                              <X className="mr-1 h-4 w-4" />
+                              Reject
+                            </Button>
+                            <Button
+                              size="sm"
+                              onClick={() => updateTaskMutation.mutate({ id: task.id, data: { status: "verified", verificationStatus: "verified" } })}
+                              data-testid={`button-verify-${task.id}`}
+                            >
+                              <CheckCircle2 className="mr-1 h-4 w-4" />
+                              Verify
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
+
               <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center gap-4">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-red-100 dark:bg-red-900/30">
-                      <AlertCircle className="h-6 w-6 text-red-600 dark:text-red-400" />
+                <CardHeader>
+                  <CardTitle>All Applications</CardTitle>
+                  <CardDescription>View borrower applications and assign tasks</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {applications.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <UserIcon className="mx-auto h-12 w-12 mb-4" />
+                      <p>No applications found</p>
                     </div>
-                    <div>
-                      <p className="text-2xl font-bold" data-testid="text-breached-count">{queueBreached}</p>
-                      <p className="text-sm text-muted-foreground">SLA Breached</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {applications.map(app => (
+                        <div
+                          key={app.id}
+                          className="flex items-center justify-between gap-4 rounded-lg border p-4 hover-elevate"
+                          data-testid={`application-row-${app.id}`}
+                        >
+                          <div className="flex items-center gap-4">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
+                              <UserIcon className="h-5 w-5" />
+                            </div>
+                            <div>
+                              <p className="font-medium">{getUserName(app.userId)}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {app.propertyState ? `Property in ${app.propertyState}` : "No property"}
+                                {app.purchasePrice ? ` - ${formatCurrency(app.purchasePrice)}` : ""}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3 flex-wrap">
+                            {getStatusBadge(app.status)}
+                            <span className="text-sm text-muted-foreground">
+                              {tasks.filter(t => t.applicationId === app.id).length} tasks
+                            </span>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => { setSelectedApplication(app.id); setCreateDialogOpen(true); }}
+                              data-testid={`button-add-task-${app.id}`}
+                            >
+                              <Plus className="mr-1 h-4 w-4" />
+                              Add Task
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  </div>
+                  )}
                 </CardContent>
               </Card>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="compliance">
+            <div className="space-y-6">
+              <div className="grid gap-4 md:grid-cols-3">
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-muted-foreground">GSE Ready</p>
+                        <p className="text-2xl font-bold text-emerald-600" data-testid="text-gse-ready">{complianceData?.gseReady || 0}</p>
+                      </div>
+                      <CheckCircle2 className="h-8 w-8 text-emerald-500/30" />
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">Ready for Fannie/Freddie</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-muted-foreground">ULDD Compliant</p>
+                        <p className="text-2xl font-bold text-blue-600" data-testid="text-uldd-compliant">{complianceData?.ulddCompliant || 0}</p>
+                      </div>
+                      <FileCheck className="h-8 w-8 text-blue-500/30" />
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">Minimum data met</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Needs Attention</p>
+                        <p className="text-2xl font-bold text-amber-600" data-testid="text-needs-attention">{complianceData?.needsAttention || 0}</p>
+                      </div>
+                      <AlertTriangle className="h-8 w-8 text-amber-500/30" />
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">Missing critical data</p>
+                  </CardContent>
+                </Card>
+              </div>
+
               <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center gap-4">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/30">
-                      <Clock className="h-6 w-6 text-amber-600 dark:text-amber-400" />
-                    </div>
+                <CardHeader>
+                  <div className="flex items-center justify-between gap-2">
                     <div>
-                      <p className="text-2xl font-bold" data-testid="text-atrisk-count">{queueAtRisk}</p>
-                      <p className="text-sm text-muted-foreground">At Risk</p>
+                      <CardTitle className="flex items-center gap-2">
+                        <Shield className="h-5 w-5" />
+                        Regulatory Compliance Overview
+                      </CardTitle>
+                      <CardDescription>TRID timing, MISMO validation, and document compliance per loan</CardDescription>
                     </div>
+                    <Button variant="outline" size="sm" asChild data-testid="link-full-compliance">
+                      <Link href="/compliance">
+                        Full Dashboard
+                        <ChevronRight className="ml-1 h-4 w-4" />
+                      </Link>
+                    </Button>
                   </div>
+                </CardHeader>
+                <CardContent>
+                  {(complianceData?.applications || []).length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <Shield className="mx-auto h-12 w-12 mb-4" />
+                      <p>No active loans to validate</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {(complianceData?.applications || []).map(app => (
+                        <div key={app.applicationId} className="rounded-lg border p-4" data-testid={`compliance-app-${app.applicationId}`}>
+                          <div className="flex items-center justify-between mb-2">
+                            <div>
+                              <p className="font-medium">{app.borrowerName}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {app.status?.toUpperCase().replace(/_/g, " ")} {app.loanAmount ? `- ${formatCurrency(app.loanAmount)}` : ""}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {app.gseReady ? (
+                                <Badge data-testid={`badge-gse-${app.applicationId}`}>GSE Ready</Badge>
+                              ) : app.ulddCompliant ? (
+                                <Badge variant="secondary">ULDD Compliant</Badge>
+                              ) : (
+                                <Badge variant="destructive">Incomplete</Badge>
+                              )}
+                              <Button size="sm" variant="outline" asChild>
+                                <Link href={`/borrower-file/${app.applicationId}`}>View</Link>
+                              </Button>
+                            </div>
+                          </div>
+                          <div className="space-y-1">
+                            <div className="flex justify-between text-xs">
+                              <span>ULAD Completeness</span>
+                              <span>{app.score}%</span>
+                            </div>
+                            <Progress value={app.score} className="h-1.5" />
+                          </div>
+                          {(app.criticalCount > 0 || app.missingDocsCount > 0) && (
+                            <div className="mt-2 flex flex-wrap gap-1">
+                              {app.criticalCount > 0 && (
+                                <Badge variant="outline" className="text-xs text-destructive">{app.criticalCount} critical errors</Badge>
+                              )}
+                              {app.missingDocsCount > 0 && (
+                                <Badge variant="outline" className="text-xs">{app.missingDocsCount} missing docs</Badge>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
+
               <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center gap-4">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/30">
-                      <Upload className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Zap className="h-5 w-5 text-violet-500" />
+                    Automation Activity
+                  </CardTitle>
+                  <CardDescription>Tasks and checks handled automatically by the platform</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex items-start gap-3 rounded-lg border p-3">
+                      <ScanLine className="h-5 w-5 text-violet-500 mt-0.5" />
+                      <div>
+                        <p className="font-medium text-sm">Document Classification</p>
+                        <p className="text-xs text-muted-foreground">
+                          Incoming documents are automatically classified (W-2, pay stub, bank statement) using AI. Up to 40% of manual document processing is eliminated.
+                        </p>
+                      </div>
+                      <Badge variant="outline" className="shrink-0 bg-violet-50 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300">Active</Badge>
                     </div>
-                    <div>
-                      <p className="text-2xl font-bold" data-testid="text-submitted-count">{submittedTasks.length}</p>
-                      <p className="text-sm text-muted-foreground">Awaiting Review</p>
+                    <div className="flex items-start gap-3 rounded-lg border p-3">
+                      <Brain className="h-5 w-5 text-violet-500 mt-0.5" />
+                      <div>
+                        <p className="font-medium text-sm">Income Verification</p>
+                        <p className="text-xs text-muted-foreground">
+                          AI extracts income data from uploaded documents, cross-references with application data, and flags discrepancies automatically.
+                        </p>
+                      </div>
+                      <Badge variant="outline" className="shrink-0 bg-violet-50 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300">Active</Badge>
+                    </div>
+                    <div className="flex items-start gap-3 rounded-lg border p-3">
+                      <Zap className="h-5 w-5 text-violet-500 mt-0.5" />
+                      <div>
+                        <p className="font-medium text-sm">Compliance Rule Engine</p>
+                        <p className="text-xs text-muted-foreground">
+                          TRID timelines, disclosure deadlines, and regulatory checklists are auto-tracked. Tasks are auto-generated when deadlines approach.
+                        </p>
+                      </div>
+                      <Badge variant="outline" className="shrink-0 bg-violet-50 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300">Active</Badge>
+                    </div>
+                    <div className="flex items-start gap-3 rounded-lg border p-3">
+                      <Bot className="h-5 w-5 text-violet-500 mt-0.5" />
+                      <div>
+                        <p className="font-medium text-sm">Form Pre-fill</p>
+                        <p className="text-xs text-muted-foreground">
+                          Borrower data from verified documents automatically pre-fills application fields, reducing data entry and errors across the lifecycle.
+                        </p>
+                      </div>
+                      <Badge variant="outline" className="shrink-0 bg-violet-50 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300">Active</Badge>
                     </div>
                   </div>
                 </CardContent>
               </Card>
             </div>
-
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="mb-6">
-                <TabsTrigger value="my-queue" data-testid="tab-my-queue">My Queue ({sortedQueueTasks.length})</TabsTrigger>
-                <TabsTrigger value="tasks" data-testid="tab-tasks">All Tasks</TabsTrigger>
-                <TabsTrigger value="review" data-testid="tab-review">Needs Review ({submittedTasks.length})</TabsTrigger>
-                <TabsTrigger value="applications" data-testid="tab-applications">Applications</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="my-queue">
-                <Card>
-                  <CardHeader>
-                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                      <div>
-                        <CardTitle data-testid="text-my-queue-title">My Queue</CardTitle>
-                        <CardDescription>
-                          Tasks assigned to your role, sorted by SLA urgency
-                        </CardDescription>
-                      </div>
-                      {queueBreached > 0 && (
-                        <Badge variant="destructive" data-testid="badge-breached-alert">
-                          <AlertCircle className="h-3 w-3 mr-1" />
-                          {queueBreached} SLA breached
-                        </Badge>
-                      )}
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    {queueLoading ? (
-                      <div className="space-y-3">
-                        {[1, 2, 3].map(i => (
-                          <Skeleton key={i} className="h-20" />
-                        ))}
-                      </div>
-                    ) : sortedQueueTasks.length === 0 ? (
-                      <div className="text-center py-12 text-muted-foreground">
-                        <CheckCircle2 className="mx-auto h-12 w-12 mb-4" />
-                        <p className="font-medium">Queue is clear</p>
-                        <p className="text-sm mt-1">No open tasks assigned to your role</p>
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        {sortedQueueTasks.map(task => (
-                          <div
-                            key={task.id}
-                            className="flex items-center justify-between gap-4 rounded-lg border p-4 hover-elevate cursor-pointer"
-                            onClick={() => navigate(`/task/${task.id}`)}
-                            data-testid={`queue-task-${task.id}`}
-                          >
-                            <div className="flex items-center gap-4 min-w-0 flex-1">
-                              <div className={`flex h-3 w-3 rounded-full shrink-0 ${SLA_DOT_COLORS[task.slaStatus]}`} />
-                              <div className="min-w-0 flex-1">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <p className="font-medium truncate">{task.title}</p>
-                                  {task.slaClass && (
-                                    <Badge variant="outline" className="text-xs shrink-0">{task.slaClass}</Badge>
-                                  )}
-                                </div>
-                                <p className="text-sm text-muted-foreground truncate">
-                                  {task.taskType === "document_request" ? "Document Request" : task.taskType}
-                                  {task.triggerSource && task.triggerSource !== "MANUAL" && ` · ${task.triggerSource}`}
-                                </p>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-3 shrink-0 flex-wrap">
-                              <span className={`text-sm font-medium ${SLA_STATUS_COLORS[task.slaStatus]}`} data-testid={`text-sla-status-${task.id}`}>
-                                {task.slaStatus === "red" ? (
-                                  <span className="flex items-center gap-1">
-                                    <ArrowUp className="h-3 w-3" />
-                                    {formatTimeRemaining(task.timeRemaining)}
-                                  </span>
-                                ) : (
-                                  formatTimeRemaining(task.timeRemaining)
-                                )}
-                              </span>
-                              {(task.escalationLevel ?? 0) > 0 && (
-                                <Badge variant="destructive" className="text-xs" data-testid={`badge-escalation-${task.id}`}>
-                                  L{task.escalationLevel}
-                                </Badge>
-                              )}
-                              <Badge variant={task.status === "OPEN" ? "outline" : "secondary"}>
-                                {task.status === "OPEN" ? "Open" : task.status === "IN_PROGRESS" ? "In Progress" : task.status}
-                              </Badge>
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  navigate(`/borrower-file/${task.applicationId}`);
-                                }}
-                                data-testid={`button-view-file-${task.id}`}
-                              >
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              <TabsContent value="tasks">
-                <Card>
-                  <CardHeader>
-                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                      <CardTitle>All Tasks</CardTitle>
-                      <div className="relative">
-                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                        <Input
-                          placeholder="Search tasks..."
-                          className="pl-9 w-64"
-                          value={searchTerm}
-                          onChange={(e) => setSearchTerm(e.target.value)}
-                          data-testid="input-search-tasks"
-                        />
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    {filteredTasks.length === 0 ? (
-                      <div className="text-center py-8 text-muted-foreground">
-                        <FileText className="mx-auto h-12 w-12 mb-4" />
-                        <p>No tasks found</p>
-                      </div>
-                    ) : (
-                      <div className="space-y-3">
-                        {filteredTasks.map(task => (
-                          <div
-                            key={task.id}
-                            className="flex items-center justify-between rounded-lg border p-4 hover-elevate"
-                            data-testid={`task-row-${task.id}`}
-                          >
-                            <div className="flex items-center gap-4">
-                              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
-                                <FileText className="h-5 w-5" />
-                              </div>
-                              <div>
-                                <p className="font-medium">{task.title}</p>
-                                <p className="text-sm text-muted-foreground">
-                                  Assigned to: {getUserName(task.assignedToUserId ?? "")}
-                                </p>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              {getPriorityBadge(task.priority || "normal")}
-                              {getStatusBadge(task.status)}
-                              {task.dueDate && (
-                                <span className="text-sm text-muted-foreground flex items-center gap-1">
-                                  <Calendar className="h-4 w-4" />
-                                  {format(new Date(task.dueDate), "MMM d")}
-                                </span>
-                              )}
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => navigate(`/task/${task.id}`)}
-                                data-testid={`button-view-task-${task.id}`}
-                              >
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              <TabsContent value="review">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Tasks Awaiting Review</CardTitle>
-                    <CardDescription>
-                      Review uploaded documents and verify borrower information
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {submittedTasks.length === 0 ? (
-                      <div className="text-center py-8 text-muted-foreground">
-                        <CheckCircle2 className="mx-auto h-12 w-12 mb-4" />
-                        <p>No tasks awaiting review</p>
-                      </div>
-                    ) : (
-                      <div className="space-y-3">
-                        {submittedTasks.map(task => (
-                          <div
-                            key={task.id}
-                            className="flex items-center justify-between rounded-lg border p-4 bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800"
-                            data-testid={`review-task-${task.id}`}
-                          >
-                            <div className="flex items-center gap-4">
-                              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-800">
-                                <Upload className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                              </div>
-                              <div>
-                                <p className="font-medium">{task.title}</p>
-                                <p className="text-sm text-muted-foreground">
-                                  Submitted by: {getUserName(task.assignedToUserId ?? "")}
-                                </p>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => updateTaskMutation.mutate({ id: task.id, data: { status: "rejected", verificationStatus: "rejected" } })}
-                                data-testid={`button-reject-${task.id}`}
-                              >
-                                <X className="mr-1 h-4 w-4" />
-                                Reject
-                              </Button>
-                              <Button
-                                size="sm"
-                                onClick={() => updateTaskMutation.mutate({ id: task.id, data: { status: "verified", verificationStatus: "verified" } })}
-                                data-testid={`button-verify-${task.id}`}
-                              >
-                                <CheckCircle2 className="mr-1 h-4 w-4" />
-                                Verify
-                              </Button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              <TabsContent value="applications">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>All Applications</CardTitle>
-                    <CardDescription>
-                      View borrower applications and assign tasks
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {applications.length === 0 ? (
-                      <div className="text-center py-8 text-muted-foreground">
-                        <UserIcon className="mx-auto h-12 w-12 mb-4" />
-                        <p>No applications found</p>
-                      </div>
-                    ) : (
-                      <div className="space-y-3">
-                        {applications.map(app => (
-                          <div
-                            key={app.id}
-                            className="flex items-center justify-between rounded-lg border p-4 hover-elevate"
-                            data-testid={`application-row-${app.id}`}
-                          >
-                            <div className="flex items-center gap-4">
-                              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
-                                <UserIcon className="h-5 w-5" />
-                              </div>
-                              <div>
-                                <p className="font-medium">{getUserName(app.userId)}</p>
-                                <p className="text-sm text-muted-foreground">
-                                  {app.propertyState ? `Property in ${app.propertyState}` : "No property"} 
-                                  {app.purchasePrice ? ` - $${Number(app.purchasePrice).toLocaleString()}` : ""}
-                                </p>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              {getStatusBadge(app.status)}
-                              <span className="text-sm text-muted-foreground">
-                                {tasks.filter(t => t.applicationId === app.id).length} tasks
-                              </span>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => {
-                                  setSelectedApplication(app.id);
-                                  setCreateDialogOpen(true);
-                                }}
-                                data-testid={`button-add-task-${app.id}`}
-                              >
-                                <Plus className="mr-1 h-4 w-4" />
-                                Add Task
-                              </Button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            </Tabs>
-          </div>
+          </TabsContent>
+        </Tabs>
+      </div>
     </>
   );
 }
