@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
-import { isStaffRole } from "@shared/schema";
+import { isStaffRole, ROLE_DISPLAY_NAMES } from "@shared/schema";
 import {
   LayoutDashboard,
   FileText,
@@ -66,16 +66,21 @@ function getStatusColor(status: string) {
   }
 }
 
-const ROLE_DISPLAY_NAMES: Record<string, string> = {
-  admin: "Tech/Ops Lead",
-  lo: "Loan Officer",
-  loa: "Loan Officer Assistant",
-  processor: "Processor",
-  underwriter: "Underwriter",
-  closer: "Closer/Funder",
-};
+interface NavItem {
+  title: string;
+  href: string;
+  icon: ComponentType<{ className?: string }>;
+  testId: string;
+  showBadge?: boolean;
+  showMessageBadge?: boolean;
+}
 
-const aspiringOwnerNavigation = [
+interface NavSection {
+  section: string;
+  items: NavItem[];
+}
+
+const aspiringOwnerNavigation: NavSection[] = [
   {
     section: "Explore",
     items: [
@@ -95,7 +100,7 @@ const aspiringOwnerNavigation = [
   },
 ];
 
-const activeBuyerNavigation = [
+const activeBuyerNavigation: NavSection[] = [
   {
     section: "My Mortgage",
     items: [
@@ -115,7 +120,7 @@ const activeBuyerNavigation = [
   },
 ];
 
-const staffNavigation = [
+const staffNavigation: NavSection[] = [
   {
     section: "Operations",
     items: [
@@ -136,7 +141,7 @@ const staffNavigation = [
   },
 ];
 
-const adminNavigation = [
+const adminNavigation: NavSection[] = [
   {
     section: "Administration",
     items: [
@@ -148,20 +153,6 @@ const adminNavigation = [
     ],
   },
 ];
-
-interface NavItem {
-  title: string;
-  href: string;
-  icon: ComponentType<{ className?: string }>;
-  testId: string;
-  showBadge?: boolean;
-  showMessageBadge?: boolean;
-}
-
-interface NavSection {
-  section: string;
-  items: NavItem[];
-}
 
 export function AppSidebar() {
   const [location] = useLocation();
