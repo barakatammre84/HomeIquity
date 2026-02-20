@@ -2,6 +2,7 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   ArrowRight,
   Upload,
@@ -42,6 +43,7 @@ interface NextAction {
   href: string;
   buttonLabel: string;
   priority: number;
+  whyNeeded?: string;
 }
 
 export function getNextActions(props: WhatsNextProps): NextAction[] {
@@ -102,6 +104,7 @@ export function getNextActions(props: WhatsNextProps): NextAction[] {
       href: "/tasks",
       buttonLabel: "View Tasks",
       priority: 2,
+      whyNeeded: "Completing tasks on time prevents delays in your approval.",
     });
   }
 
@@ -114,6 +117,7 @@ export function getNextActions(props: WhatsNextProps): NextAction[] {
       href: "/documents",
       buttonLabel: "Upload Documents",
       priority: 3,
+      whyNeeded: "Documents verify the information in your application and are required by federal regulations.",
     });
   }
 
@@ -126,6 +130,7 @@ export function getNextActions(props: WhatsNextProps): NextAction[] {
       href: "/dashboard?action=credit-consent",
       buttonLabel: "Authorize",
       priority: 2,
+      whyNeeded: "A credit report is required by law to evaluate your loan eligibility.",
     });
   }
 
@@ -138,6 +143,7 @@ export function getNextActions(props: WhatsNextProps): NextAction[] {
       href: "/dashboard?action=verify-id",
       buttonLabel: "Verify Now",
       priority: 3,
+      whyNeeded: "Identity verification is required under federal anti-fraud regulations.",
     });
   }
 
@@ -150,6 +156,7 @@ export function getNextActions(props: WhatsNextProps): NextAction[] {
       href: "/dashboard?action=connect-bank",
       buttonLabel: "Connect Bank",
       priority: 3,
+      whyNeeded: "Bank verification provides faster, more accurate income and asset confirmation.",
     });
   }
 
@@ -291,39 +298,71 @@ export function WhatsNext(props: WhatsNextProps) {
 
   if (actions.length === 0) return null;
 
+  const primary = actions[0];
+  const secondary = actions.slice(1);
+  const PrimaryIcon = primary.icon;
+
   return (
     <div className="space-y-3" data-testid="whats-next">
       <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
         What's Next
       </h3>
-      {actions.map((action, index) => {
-        const Icon = action.icon;
-        return (
-          <Card key={index} className="hover-elevate" data-testid={`card-next-action-${index}`}>
-            <CardContent className="p-4">
-              <div className="flex items-start gap-3">
-                <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border ${action.iconColor}`}>
-                  <Icon className="h-4 w-4" />
+
+      <Card className="shadow-md hover-elevate" data-testid="card-primary-action">
+        <CardContent className="p-5">
+          <div className="flex flex-col items-center text-center space-y-3">
+            <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 ${primary.iconColor}`} data-testid="icon-primary-action">
+              <PrimaryIcon className="h-5 w-5" />
+            </div>
+            <div className="space-y-1">
+              <p className="font-semibold text-sm" data-testid="text-primary-action-title">
+                {primary.title}
+              </p>
+              <p className="text-xs text-muted-foreground leading-relaxed max-w-xs mx-auto">
+                {primary.description}
+              </p>
+              {primary.whyNeeded && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button type="button" className="text-[11px] text-muted-foreground/70 hover:text-muted-foreground underline decoration-dotted underline-offset-2 cursor-help mt-1" data-testid="button-why-needed">
+                      Why is this needed?
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="max-w-xs text-xs">
+                    <p>{primary.whyNeeded}</p>
+                  </TooltipContent>
+                </Tooltip>
+              )}
+            </div>
+            <Link href={primary.href}>
+              <Button size="default" data-testid="button-primary-action">
+                {primary.buttonLabel}
+                <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
+              </Button>
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
+
+      {secondary.length > 0 && (
+        <div className="space-y-1.5" data-testid="section-secondary-actions">
+          <p className="text-[11px] text-muted-foreground uppercase tracking-wider font-medium px-1">
+            Also available
+          </p>
+          {secondary.map((action, index) => {
+            const Icon = action.icon;
+            return (
+              <Link key={index} href={action.href} data-testid={`link-secondary-action-${index}`}>
+                <div className="flex items-center gap-3 px-3 py-2.5 rounded-md hover-elevate cursor-pointer" data-testid={`row-secondary-action-${index}`}>
+                  <Icon className={`h-4 w-4 shrink-0 ${action.iconColor}`} />
+                  <span className="text-sm flex-1 min-w-0 truncate">{action.title}</span>
+                  <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0" />
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-sm" data-testid={`text-action-title-${index}`}>
-                    {action.title}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
-                    {action.description}
-                  </p>
-                </div>
-                <Link href={action.href} className="shrink-0">
-                  <Button variant="ghost" size="sm" data-testid={`button-action-${index}`}>
-                    {action.buttonLabel}
-                    <ArrowRight className="h-3 w-3 ml-1" />
-                  </Button>
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
-        );
-      })}
+              </Link>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -335,7 +374,7 @@ const ONBOARDING_STEPS = [
     iconColor: "text-purple-500",
     bgColor: "bg-purple-500",
     title: "Meet your AI Coach",
-    description: "Start a quick chat to understand your mortgage readiness and learn exactly what you'll need.",
+    description: "Start a quick chat to understand your mortgage readiness.",
     href: "/ai-coach",
     buttonLabel: "Start Chat",
   },
@@ -345,7 +384,7 @@ const ONBOARDING_STEPS = [
     iconColor: "text-amber-500",
     bgColor: "bg-amber-500",
     title: "Browse properties",
-    description: "Explore homes in your price range with instant mortgage estimates for each listing.",
+    description: "Explore homes with instant mortgage estimates.",
     href: "/properties",
     buttonLabel: "Browse Homes",
   },
@@ -355,7 +394,7 @@ const ONBOARDING_STEPS = [
     iconColor: "text-emerald-500",
     bgColor: "bg-emerald-500",
     title: "Get pre-approved",
-    description: "Apply in about 3 minutes. Your coach already prepared you, so this will feel easy.",
+    description: "Apply in about 3 minutes. No hard credit check.",
     href: "/apply",
     buttonLabel: "Start Application",
   },
@@ -365,7 +404,7 @@ const ONBOARDING_STEPS = [
     iconColor: "text-blue-500",
     bgColor: "bg-blue-500",
     title: "Upload your documents",
-    description: "Share pay stubs, bank statements, and tax returns to complete your verification.",
+    description: "Share pay stubs, bank statements, and tax returns.",
     href: "/documents",
     buttonLabel: "Upload Docs",
   },
@@ -389,106 +428,104 @@ export function FirstVisitWelcome({ userName, hasApplication = false, hasDocumen
 
   const firstIncompleteIndex = completedSteps.findIndex(s => !s);
   const completedCount = completedSteps.filter(Boolean).length;
+  const activeStep = firstIncompleteIndex >= 0 ? ONBOARDING_STEPS[firstIncompleteIndex] : null;
 
   return (
-    <div className="space-y-5" data-testid="first-visit-welcome">
-      <div className="text-center py-2">
+    <div className="space-y-6" data-testid="first-visit-welcome">
+      <div className="text-center py-3">
         <div className="mx-auto w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
           <Sparkles className="h-7 w-7 text-primary" />
         </div>
         <h2 className="text-xl font-bold text-foreground" data-testid="text-welcome-heading">
-          {userName ? `Welcome, ${userName}!` : "Welcome to Homiquity"}
+          {userName ? `Welcome, ${userName}` : "Welcome to Homiquity"}
         </h2>
-        <p className="text-sm text-muted-foreground mt-2 max-w-md mx-auto leading-relaxed">
-          Your path to homeownership starts here. We'll walk you through each step — beginning with a free chat with your AI Coach.
+        <p className="text-sm text-muted-foreground mt-2 max-w-sm mx-auto leading-relaxed">
+          Your path to homeownership starts here. Let's take it one step at a time.
         </p>
       </div>
 
-      <div className="flex items-center justify-center gap-2 pb-1">
-        <Badge variant="secondary" className="text-xs" data-testid="badge-progress">
-          {completedCount} of {ONBOARDING_STEPS.length} completed
-        </Badge>
+      <div className="flex items-center justify-center gap-3 pb-1" data-testid="section-onboarding-progress">
+        <div className="flex gap-1.5" data-testid="progress-dots">
+          {ONBOARDING_STEPS.map((_, i) => (
+            <div
+              key={i}
+              className={`h-1.5 rounded-full transition-all duration-300 ${
+                completedSteps[i]
+                  ? "w-8 bg-emerald-500"
+                  : i === firstIncompleteIndex
+                  ? "w-8 bg-primary"
+                  : "w-4 bg-muted"
+              }`}
+              data-testid={`progress-dot-${i}`}
+            />
+          ))}
+        </div>
+        <span className="text-xs text-muted-foreground" data-testid="text-step-count">
+          {completedCount}/{ONBOARDING_STEPS.length}
+        </span>
       </div>
 
-      <div className="space-y-3">
+      {activeStep && (
+        <Card className="shadow-md border-primary/20" data-testid="card-active-onboarding-step">
+          <CardContent className="p-5">
+            <div className="flex flex-col items-center text-center space-y-3">
+              <div className={`flex h-12 w-12 items-center justify-center rounded-full border-2 ${activeStep.iconColor}`}>
+                <activeStep.icon className="h-5 w-5" />
+              </div>
+              <div className="space-y-1">
+                <Badge variant="default" className="text-[10px] mb-1">
+                  Step {activeStep.step} of {ONBOARDING_STEPS.length}
+                </Badge>
+                <p className="font-semibold text-sm" data-testid="text-active-step-title">
+                  {activeStep.title}
+                </p>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  {activeStep.description}
+                </p>
+              </div>
+              <Link href={activeStep.href}>
+                <Button size="default" data-testid="button-active-step">
+                  {activeStep.buttonLabel}
+                  <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
+                </Button>
+              </Link>
+              {activeStep.step === 2 && (
+                <Link href="/apply" data-testid="link-skip-to-apply">
+                  <span className="text-xs text-muted-foreground hover:underline cursor-pointer">
+                    Already found a home? Skip to application
+                  </span>
+                </Link>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="space-y-1.5">
         {ONBOARDING_STEPS.map((step, index) => {
-          const Icon = step.icon;
           const isComplete = completedSteps[index];
           const isActive = index === firstIncompleteIndex;
+          if (isActive) return null;
 
+          const Icon = step.icon;
           return (
-            <Card
-              key={step.step}
-              className={isActive ? "border-primary/30 shadow-md" : ""}
-              data-testid={`card-onboarding-step-${step.step}`}
-            >
-              <CardContent className="p-4">
-                <div className="flex items-start gap-3">
-                  <div className="flex flex-col items-center gap-1">
-                    <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
-                      isComplete
-                        ? "border-emerald-500 bg-emerald-500 text-white"
-                        : isActive
-                        ? `border-primary bg-primary/10 ${step.iconColor}`
-                        : "border-border text-muted-foreground"
-                    }`}>
-                      {isComplete ? (
-                        <CheckCircle2 className="h-4 w-4" />
-                      ) : (
-                        <Icon className="h-4 w-4" />
-                      )}
-                    </div>
-                    {index < ONBOARDING_STEPS.length - 1 && (
-                      <div className={`w-0.5 h-4 rounded-full ${
-                        isComplete ? "bg-emerald-500" : "bg-border"
-                      }`} />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0 pt-0.5">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <p className={`text-sm font-medium ${
-                        isComplete ? "text-muted-foreground line-through" : "text-foreground"
-                      }`} data-testid={`text-step-title-${step.step}`}>
-                        {step.title}
-                      </p>
-                      {isComplete && (
-                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20">
-                          Done
-                        </Badge>
-                      )}
-                      {isActive && (
-                        <Badge variant="default" className="text-[10px] px-1.5 py-0">
-                          Next
-                        </Badge>
-                      )}
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
-                      {step.description}
-                    </p>
-                    {step.step === 2 && isActive && (
-                      <Link href="/apply" className="inline-flex items-center gap-1 mt-1" data-testid="link-have-property">
-                        <p className="text-xs text-primary hover:underline cursor-pointer" data-testid="text-have-property">
-                          Already found a home? Skip to application
-                        </p>
-                        <ArrowRight className="h-3 w-3 text-primary" />
-                      </Link>
-                    )}
-                  </div>
-                  {(isActive || isComplete) && (
-                    <Link href={step.href} className="shrink-0" data-testid={`link-step-${step.step}`}>
-                      <Button
-                        variant={isActive ? "default" : "ghost"}
-                        size="sm"
-                        data-testid={`button-step-${step.step}`}
-                      >
-                        {isActive ? step.buttonLabel : "View"}
-                        <ArrowRight className="h-3 w-3 ml-1" />
-                      </Button>
-                    </Link>
-                  )}
+            <Link key={step.step} href={step.href} data-testid={`link-onboarding-step-${step.step}`}>
+              <div className={`flex items-center gap-3 px-3 py-2.5 rounded-md ${isComplete ? "opacity-60" : "hover-elevate cursor-pointer"}`}>
+                <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border ${
+                  isComplete ? "border-emerald-500 bg-emerald-500 text-white" : "border-border text-muted-foreground"
+                }`}>
+                  {isComplete ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Icon className="h-3.5 w-3.5" />}
                 </div>
-              </CardContent>
-            </Card>
+                <span className={`text-sm flex-1 min-w-0 ${isComplete ? "line-through text-muted-foreground" : ""}`}>
+                  {step.title}
+                </span>
+                {isComplete && (
+                  <Badge variant="secondary" className="text-[10px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20">
+                    Done
+                  </Badge>
+                )}
+              </div>
+            </Link>
           );
         })}
       </div>
@@ -526,6 +563,13 @@ export function FirstVisitWelcome({ userName, hasApplication = false, hasDocumen
           </div>
         </CardContent>
       </Card>
+
+      <div className="flex items-center justify-center gap-2 py-2" data-testid="trust-footer">
+        <Shield className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+        <p className="text-[11px] text-muted-foreground">
+          Your data is encrypted and never shared without your consent.
+        </p>
+      </div>
     </div>
   );
 }

@@ -10,9 +10,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { BorrowerRequests } from "@/components/BorrowerRequests";
 import { ApplicationSwitcher } from "@/components/ApplicationSwitcher";
 import { JourneyTracker } from "@/components/JourneyTracker";
+import { TrustLayer } from "@/components/TrustLayer";
+import { FirstVisitWelcome } from "@/components/WhatsNext";
 import { isStaffRole } from "@shared/schema";
 import type { LoanApplication, DealActivity } from "@shared/schema";
 import {
@@ -184,7 +187,7 @@ function getDominantAction(
   unreadMessages: number,
   expirationInfo: { label: string; daysLeft: number; urgency: "expired" | "urgent" | "normal" } | null,
   activitySummary?: { totalPageViews: number; propertySearches: number; calculatorUses: number; coachChats: number; propertyViews: number } | null,
-): { icon: any; title: string; description: string; href: string; buttonLabel: string } {
+): { icon: any; title: string; description: string; href: string; buttonLabel: string; whyNeeded?: string } {
   if (!application) {
     if (activitySummary && activitySummary.propertySearches > 0) {
       return {
@@ -279,6 +282,7 @@ function getDominantAction(
       description: "These tasks are needed to move your application forward.",
       href: "/tasks",
       buttonLabel: "View Tasks",
+      whyNeeded: "Completing tasks on time prevents delays in your approval.",
     };
   }
 
@@ -289,6 +293,7 @@ function getDominantAction(
       description: "We need these documents to continue reviewing your application.",
       href: "/documents",
       buttonLabel: "Upload",
+      whyNeeded: "Documents verify the information in your application, as required by federal regulations.",
     };
   }
 
@@ -339,17 +344,6 @@ function getDominantAction(
     href: "/dashboard",
     buttonLabel: "View Status",
   };
-}
-
-function getProgressNudge(readiness: number, application: LoanApplication | null): string | null {
-  if (!application) {
-    if (readiness >= 25) return "Good start. Apply for pre-approval to jump to 50%.";
-    return null;
-  }
-  if (readiness >= 90) return "Almost done. A few final steps remain.";
-  if (readiness >= 70) return "Great progress. Keep it up.";
-  if (readiness >= 50) return "Halfway there. Each completed step moves you closer.";
-  return null;
 }
 
 interface BorrowerGraphData {
@@ -531,9 +525,67 @@ function FinancialSnapshot({ graph }: { graph: BorrowerGraphData }) {
   );
 }
 
-function CollapsibleInsights({
+function CollapsibleActivity({ activities }: { activities: DealActivity[] }) {
+  const [expanded, setExpanded] = useState(false);
+
+  if (activities.length === 0) return null;
+
+  return (
+    <div className="space-y-2" data-testid="section-activity">
+      <button
+        type="button"
+        onClick={() => setExpanded(!expanded)}
+        className="flex items-center gap-2 w-full text-left group"
+        data-testid="button-toggle-activity"
+      >
+        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+          Recent Activity
+        </h3>
+        {expanded ? (
+          <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" />
+        ) : (
+          <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+        )}
+        {!expanded && (
+          <Badge variant="secondary" className="text-[10px]" data-testid="badge-activity-count">
+            {Math.min(activities.length, 5)}
+          </Badge>
+        )}
+      </button>
+
+      {expanded && (
+        <Card className="animate-in fade-in slide-in-from-top-1 duration-200" data-testid="card-recent-activity">
+          <CardContent className="p-4">
+            <div className="space-y-2.5">
+              {activities.slice(0, 5).map((activity, index) => (
+                <div key={activity.id} className="flex items-start gap-2.5" data-testid={`row-activity-${index}`}>
+                  <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border mt-0.5">
+                    {!activity.performedBy ? (
+                      <Bot className="h-2.5 w-2.5 text-muted-foreground" />
+                    ) : (
+                      <User className="h-2.5 w-2.5 text-muted-foreground" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-foreground" data-testid={`text-activity-desc-${index}`}>
+                      {activity.description || activity.title}
+                    </p>
+                    <span className="text-[11px] text-muted-foreground" data-testid={`text-activity-time-${index}`}>
+                      {formatActivityTime(activity.createdAt!)}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+function LoanDetails({
   application,
-  activities,
   hasOffers,
   offerCount,
   rateRange,
@@ -542,7 +594,6 @@ function CollapsibleInsights({
   isPreApproved,
 }: {
   application: LoanApplication;
-  activities: DealActivity[];
   hasOffers: boolean;
   offerCount: number;
   rateRange: string | null;
@@ -552,26 +603,26 @@ function CollapsibleInsights({
 }) {
   const [expanded, setExpanded] = useState(false);
 
-  const insightItems: Array<{ icon: any; label: string; value: string; href?: string; color?: string; testId: string }> = [];
+  const items: Array<{ icon: any; label: string; value: string; href?: string; color?: string; testId: string }> = [];
 
   if (hasOffers) {
-    insightItems.push({
+    items.push({
       icon: TrendingUp,
       label: "Loan Offers",
       value: `${offerCount} available${rateRange ? ` (${rateRange})` : ""}`,
       href: `/pipeline/${application.id}/offers`,
       color: "text-emerald-600 dark:text-emerald-400",
-      testId: "insight-offers",
+      testId: "detail-offers",
     });
   }
 
   if (expirationInfo && expirationInfo.urgency !== "expired") {
-    insightItems.push({
+    items.push({
       icon: Calendar,
       label: "Pre-Approval Valid Until",
       value: expirationInfo.label,
       color: expirationInfo.urgency === "urgent" ? "text-amber-600 dark:text-amber-400" : undefined,
-      testId: "insight-expiration",
+      testId: "detail-expiration",
     });
   }
 
@@ -579,109 +630,74 @@ function CollapsibleInsights({
     const purchasePrice = formatCurrency(application.preApprovalAmount || application.purchasePrice || "0");
     const downPayment = formatCurrency(application.downPayment || "0");
     const loanType = application.preferredLoanType || "Conventional";
-    insightItems.push(
-      { icon: Home, label: "Purchase Price", value: purchasePrice, testId: "insight-purchase-price" },
-      { icon: DollarSign, label: "Down Payment", value: downPayment, testId: "insight-down-payment" },
-      { icon: Percent, label: "Loan Type", value: loanType, testId: "insight-loan-type" },
+    items.push(
+      { icon: Home, label: "Purchase Price", value: purchasePrice, testId: "detail-purchase-price" },
+      { icon: DollarSign, label: "Down Payment", value: downPayment, testId: "detail-down-payment" },
+      { icon: Percent, label: "Loan Type", value: loanType, testId: "detail-loan-type" },
     );
   }
 
   if (!hmdaCompleted) {
-    insightItems.push({
+    items.push({
       icon: Users,
       label: "Government Monitoring",
       value: "Not yet completed",
       href: `/hmda/${application.id}`,
-      testId: "insight-hmda",
+      testId: "detail-hmda",
     });
   }
 
-  if (insightItems.length === 0 && activities.length === 0) return null;
+  if (items.length === 0) return null;
 
   return (
-    <div className="space-y-2" data-testid="section-insights">
+    <div className="space-y-2" data-testid="section-loan-details">
       <button
         type="button"
         onClick={() => setExpanded(!expanded)}
         className="flex items-center gap-2 w-full text-left group"
-        data-testid="button-toggle-insights"
+        data-testid="button-toggle-details"
       >
         <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-          Details & Activity
+          Loan Details
         </h3>
         {expanded ? (
           <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" />
         ) : (
           <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
         )}
-        {!expanded && (insightItems.length + activities.length) > 0 && (
-          <Badge variant="secondary" className="text-[10px]" data-testid="badge-insight-count">
-            {insightItems.length + Math.min(activities.length, 3)}
+        {!expanded && (
+          <Badge variant="secondary" className="text-[10px]" data-testid="badge-detail-count">
+            {items.length}
           </Badge>
         )}
       </button>
 
       {expanded && (
-        <div className="space-y-3 animate-in fade-in slide-in-from-top-1 duration-200">
-          {insightItems.length > 0 && (
-            <Card data-testid="card-insights">
-              <CardContent className="p-4">
-                <div className="space-y-3">
-                  {insightItems.map((item) => (
-                    <div key={item.testId} className="flex items-center justify-between gap-3 flex-wrap" data-testid={item.testId}>
-                      <div className="flex items-center gap-2.5">
-                        <item.icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                        <span className="text-xs text-muted-foreground">{item.label}</span>
-                      </div>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className={`text-xs font-medium ${item.color || ""}`}>{item.value}</span>
-                        {item.href && (
-                          <Link href={item.href} data-testid={`link-${item.testId}`}>
-                            <Button variant="ghost" size="sm" data-testid={`button-${item.testId}`}>
-                              View
-                              <ArrowRight className="h-3 w-3 ml-0.5" />
-                            </Button>
-                          </Link>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+        <Card className="animate-in fade-in slide-in-from-top-1 duration-200" data-testid="card-loan-details">
+          <CardContent className="p-4">
+            <div className="space-y-3">
+              {items.map((item) => (
+                <div key={item.testId} className="flex items-center justify-between gap-3 flex-wrap" data-testid={item.testId}>
+                  <div className="flex items-center gap-2.5">
+                    <item.icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    <span className="text-xs text-muted-foreground">{item.label}</span>
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className={`text-xs font-medium ${item.color || ""}`}>{item.value}</span>
+                    {item.href && (
+                      <Link href={item.href} data-testid={`link-${item.testId}`}>
+                        <Button variant="ghost" size="sm" data-testid={`button-${item.testId}`}>
+                          View
+                          <ArrowRight className="h-3 w-3 ml-0.5" />
+                        </Button>
+                      </Link>
+                    )}
+                  </div>
                 </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {activities.length > 0 && (
-            <Card data-testid="card-recent-activity">
-              <CardContent className="p-4">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-                  Recent Activity
-                </p>
-                <div className="space-y-2.5">
-                  {activities.slice(0, 4).map((activity, index) => (
-                    <div key={activity.id} className="flex items-start gap-2.5" data-testid={`row-activity-${index}`}>
-                      <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border mt-0.5">
-                        {!activity.performedBy ? (
-                          <Bot className="h-2.5 w-2.5 text-muted-foreground" />
-                        ) : (
-                          <User className="h-2.5 w-2.5 text-muted-foreground" />
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs text-foreground" data-testid={`text-activity-desc-${index}`}>
-                          {activity.description || activity.title}
-                        </p>
-                        <span className="text-[11px] text-muted-foreground" data-testid={`text-activity-time-${index}`}>
-                          {formatActivityTime(activity.createdAt!)}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   );
@@ -800,6 +816,25 @@ export default function Dashboard() {
     browsedProperties,
   );
 
+  const hasApplication = !!activeApplication;
+  const isFirstVisit = !hasApplication && applications.length === 0;
+
+  if (isFirstVisit) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="mx-auto max-w-lg px-4 py-8 sm:px-6 sm:py-10">
+          <FirstVisitWelcome
+            userName={user?.firstName || undefined}
+            hasApplication={false}
+            hasDocuments={false}
+            hasCoachSession={hasCoachSession}
+            hasBrowsedProperties={browsedProperties}
+          />
+        </div>
+      </div>
+    );
+  }
+
   const { title: greetingTitle, subtitle: greetingSubtitle } = getPersonalizedGreeting(
     user,
     activeApplication || null,
@@ -816,16 +851,14 @@ export default function Dashboard() {
     activitySummary,
   );
 
-  const nudge = getProgressNudge(readiness, activeApplication || null);
-
   const DominantIcon = dominant.icon;
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="mx-auto max-w-xl px-4 py-8 sm:px-6 sm:py-10 space-y-8">
+      <div className="mx-auto max-w-xl px-4 py-8 sm:px-6 sm:py-10 space-y-6">
 
-        {/* Section 1: Greeting + Status */}
-        <div className="space-y-4">
+        {/* Section 1: Greeting */}
+        <div className="space-y-1">
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div>
               <h1 className="text-2xl font-bold" data-testid="text-dashboard-title">
@@ -835,93 +868,88 @@ export default function Dashboard() {
                 {greetingSubtitle}
               </p>
             </div>
-            <ApplicationSwitcher
-              applications={applications}
-              activeApplicationId={activeApplication?.id}
-              onSelectApplication={(app) => setSelectedAppId(app.id)}
-            />
+            {applications.length > 1 && (
+              <ApplicationSwitcher
+                applications={applications}
+                activeApplicationId={activeApplication?.id}
+                onSelectApplication={(app) => setSelectedAppId(app.id)}
+              />
+            )}
           </div>
-
-          {/* Quiet status line */}
-          <div className="flex items-center gap-3 flex-wrap" data-testid="section-status-line">
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2.5 flex-wrap">
-                <div className="h-2 flex-1 max-w-[180px] rounded-full bg-muted overflow-hidden" data-testid="progress-bar">
-                  <div
-                    className="h-full rounded-full bg-primary transition-all duration-500"
-                    style={{ width: `${readiness}%` }}
-                    data-testid="progress-bar-fill"
-                  />
-                </div>
-                <span className="text-sm text-muted-foreground" data-testid="text-readiness">
-                  You're {readiness}% ready to move forward.
-                </span>
-              </div>
-              {activeApplication && activeApplication.status !== "draft" && (
-                <div className="mt-2">
-                  <Link href="#" className="text-xs text-primary hover:underline" data-testid="link-view-details">
-                    View details
-                  </Link>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {nudge && (
-            <p className="text-xs text-muted-foreground italic" data-testid="text-nudge">
-              {nudge}
-            </p>
-          )}
         </div>
 
-        {/* Section 2: Dominant Next Step Card */}
-        <div className="space-y-3" data-testid="section-next-step">
-          <Card className="shadow-md hover-elevate" data-testid="card-dominant-action">
-            <CardContent className="p-6 sm:p-8">
-              <div className="flex flex-col items-center text-center space-y-4">
-                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
-                  <DominantIcon className="h-7 w-7 text-primary" />
+        {/* Section 2: Journey Progress (prominent, above action) */}
+        {activeApplication && activeApplication.status !== "draft" && (
+          <Card data-testid="card-journey">
+            <CardContent className="p-4 sm:p-5">
+              <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  Your Journey
+                </h3>
+                <div className="flex items-center gap-2">
+                  <div className="h-1.5 w-20 rounded-full bg-muted overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-primary transition-all duration-700"
+                      style={{ width: `${readiness}%` }}
+                      data-testid="progress-bar-fill"
+                    />
+                  </div>
+                  <span className="text-xs text-muted-foreground" data-testid="text-readiness">
+                    {readiness}%
+                  </span>
                 </div>
-                <div className="space-y-1.5">
-                  <h2 className="text-lg font-semibold" data-testid="text-dominant-title">
-                    {dominant.title}
-                  </h2>
-                  <p className="text-sm text-muted-foreground leading-relaxed max-w-sm mx-auto" data-testid="text-dominant-description">
-                    {dominant.description}
-                  </p>
-                </div>
-                <Link href={dominant.href} data-testid="link-dominant-action">
-                  <Button size="lg" data-testid="button-dominant-action">
-                    {dominant.buttonLabel}
-                    <ArrowRight className="h-4 w-4 ml-2" />
-                  </Button>
-                </Link>
-                <Link href="/onboarding" data-testid="link-view-journey">
-                  <Button variant="ghost" size="sm" className="text-muted-foreground gap-1">
-                    <Rocket className="h-3.5 w-3.5" />
-                    View full journey checklist
-                  </Button>
-                </Link>
               </div>
+              <JourneyTracker status={activeApplication.status} showEstimates />
             </CardContent>
           </Card>
-        </div>
-
-        {/* Journey tracker (inline, only for active applications) */}
-        {activeApplication && activeApplication.status !== "draft" && (
-          <div className="space-y-3" data-testid="section-journey">
-            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              Your Journey
-            </h3>
-            <Card data-testid="card-journey">
-              <CardContent className="p-4">
-                <JourneyTracker status={activeApplication.status} />
-              </CardContent>
-            </Card>
-          </div>
         )}
 
-        {/* Borrower requests (pending tasks from staff) */}
+        {/* Section 3: One dominant action */}
+        <Card className="shadow-md hover-elevate" data-testid="card-dominant-action">
+          <CardContent className="p-5 sm:p-6">
+            <div className="flex flex-col items-center text-center space-y-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+                <DominantIcon className="h-6 w-6 text-primary" />
+              </div>
+              <div className="space-y-1">
+                <h2 className="text-base font-semibold" data-testid="text-dominant-title">
+                  {dominant.title}
+                </h2>
+                <p className="text-sm text-muted-foreground leading-relaxed max-w-sm mx-auto" data-testid="text-dominant-description">
+                  {dominant.description}
+                </p>
+                {dominant.whyNeeded && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button type="button" className="text-[11px] text-muted-foreground/70 hover:text-muted-foreground underline decoration-dotted underline-offset-2 cursor-help" data-testid="button-why-needed">
+                        Why is this needed?
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="max-w-xs text-xs">
+                      <p>{dominant.whyNeeded}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+              </div>
+              <Link href={dominant.href} data-testid="link-dominant-action">
+                <Button size="lg" data-testid="button-dominant-action">
+                  {dominant.buttonLabel}
+                  <ArrowRight className="h-4 w-4 ml-2" />
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Section 4: Trust Layer (who's handling your file + timeline + security) */}
+        {activeApplication && activeApplication.status !== "draft" && (
+          <TrustLayer
+            applicationId={activeApplication.id}
+            status={activeApplication.status}
+          />
+        )}
+
+        {/* Section 5: Borrower requests (pending tasks from staff) */}
         {activeApplication && (
           <BorrowerRequests
             applicationId={activeApplication.id}
@@ -929,21 +957,20 @@ export default function Dashboard() {
           />
         )}
 
-        {/* Pre-qual letter for submitted apps */}
+        {/* Section 6: Pre-qual letter for submitted apps */}
         {activeApplication && ["submitted", "analyzing"].includes(activeApplication.status) && (
           <PreQualLetterCard applicationId={activeApplication.id} />
         )}
 
-        {/* Financial Snapshot - powered by Borrower Graph */}
+        {/* Section 7: Financial Snapshot (collapsed by default) */}
         {borrowerGraph && !graphError && (
           <FinancialSnapshot graph={borrowerGraph} />
         )}
 
-        {/* Section 4: Collapsible Insights */}
+        {/* Section 8: Loan Details (collapsed by default) */}
         {activeApplication && (
-          <CollapsibleInsights
+          <LoanDetails
             application={activeApplication}
-            activities={activities}
             hasOffers={hasOffers}
             offerCount={offerCount}
             rateRange={rateRange}
@@ -951,6 +978,21 @@ export default function Dashboard() {
             expirationInfo={expirationInfo}
             isPreApproved={isPreApproved}
           />
+        )}
+
+        {/* Section 9: Recent Activity (collapsed by default) */}
+        <CollapsibleActivity activities={activities} />
+
+        {/* Section 10: Journey checklist link */}
+        {activeApplication && (
+          <div className="flex justify-center pt-2">
+            <Link href="/onboarding" data-testid="link-view-journey">
+              <Button variant="ghost" size="sm" className="text-muted-foreground gap-1.5">
+                <Rocket className="h-3.5 w-3.5" />
+                View full journey checklist
+              </Button>
+            </Link>
+          </div>
         )}
 
       </div>

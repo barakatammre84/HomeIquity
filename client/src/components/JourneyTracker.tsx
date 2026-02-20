@@ -7,6 +7,7 @@ const JOURNEY_STEPS = [
     shortLabel: "Applied",
     icon: FileText,
     statuses: ["submitted", "analyzing"],
+    estimate: "Minutes",
   },
   { 
     id: "pre_approved", 
@@ -14,6 +15,7 @@ const JOURNEY_STEPS = [
     shortLabel: "Pre-Approved",
     icon: Shield,
     statuses: ["pre_approved"],
+    estimate: "Same day",
   },
   { 
     id: "processing", 
@@ -21,6 +23,7 @@ const JOURNEY_STEPS = [
     shortLabel: "Processing",
     icon: Search,
     statuses: ["doc_collection", "processing"],
+    estimate: "3-5 days",
   },
   { 
     id: "underwriting", 
@@ -28,6 +31,7 @@ const JOURNEY_STEPS = [
     shortLabel: "UW Review",
     icon: ClipboardCheck,
     statuses: ["underwriting", "conditional"],
+    estimate: "1-3 days",
   },
   { 
     id: "clear_to_close", 
@@ -35,6 +39,7 @@ const JOURNEY_STEPS = [
     shortLabel: "CTC",
     icon: Key,
     statuses: ["clear_to_close", "closing"],
+    estimate: "1-2 days",
   },
   { 
     id: "funded", 
@@ -42,6 +47,7 @@ const JOURNEY_STEPS = [
     shortLabel: "Funded",
     icon: Banknote,
     statuses: ["funded"],
+    estimate: "",
   },
 ];
 
@@ -53,16 +59,17 @@ function getStepIndex(status: string): number {
 interface JourneyTrackerProps {
   status: string;
   className?: string;
+  showEstimates?: boolean;
 }
 
-export function JourneyTracker({ status, className = "" }: JourneyTrackerProps) {
+export function JourneyTracker({ status, className = "", showEstimates = false }: JourneyTrackerProps) {
   if (status === "draft" || status === "denied") return null;
 
   const currentIndex = getStepIndex(status);
 
   return (
     <div className={`w-full ${className}`} data-testid="journey-tracker">
-      <div className="flex items-start justify-between gap-0 relative">
+      <div className="flex items-start justify-between gap-1 relative">
         {JOURNEY_STEPS.map((step, index) => {
           const isCompleted = index < currentIndex;
           const isCurrent = index === currentIndex;
@@ -78,7 +85,7 @@ export function JourneyTracker({ status, className = "" }: JourneyTrackerProps) 
             >
               {index > 0 && (
                 <div
-                  className={`absolute top-4 right-1/2 w-full h-0.5 -z-10 ${
+                  className={`absolute top-4 right-1/2 w-full h-0.5 -z-10 transition-colors duration-500 ${
                     isCompleted ? "bg-emerald-500" : "bg-border"
                   }`}
                   data-testid={`journey-line-${step.id}`}
@@ -86,7 +93,7 @@ export function JourneyTracker({ status, className = "" }: JourneyTrackerProps) 
               )}
 
               <div
-                className={`relative z-10 flex h-8 w-8 items-center justify-center rounded-full border-2 transition-all ${
+                className={`relative z-10 flex h-8 w-8 items-center justify-center rounded-full border-2 transition-all duration-300 ${
                   isCompleted
                     ? "border-emerald-500 bg-emerald-500 text-white"
                     : isCurrent
@@ -97,7 +104,10 @@ export function JourneyTracker({ status, className = "" }: JourneyTrackerProps) 
                 {isCompleted ? (
                   <CheckCircle2 className="h-4 w-4" />
                 ) : isCurrent ? (
-                  <StepIcon className="h-4 w-4" />
+                  <>
+                    <StepIcon className="h-4 w-4" />
+                    <span className="absolute inset-0 rounded-full border-2 border-primary animate-ping opacity-20" />
+                  </>
                 ) : (
                   <Circle className="h-3 w-3" />
                 )}
@@ -116,6 +126,15 @@ export function JourneyTracker({ status, className = "" }: JourneyTrackerProps) 
                 <span className="hidden sm:inline">{step.label}</span>
                 <span className="sm:hidden">{step.shortLabel}</span>
               </span>
+
+              {showEstimates && isCurrent && step.estimate && (
+                <span
+                  className="mt-0.5 text-[9px] sm:text-[10px] text-muted-foreground"
+                  data-testid={`journey-estimate-${step.id}`}
+                >
+                  ~{step.estimate}
+                </span>
+              )}
             </div>
           );
         })}
