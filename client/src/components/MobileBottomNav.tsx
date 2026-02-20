@@ -8,9 +8,7 @@ import {
   Upload,
   MessageCircle,
   FileText,
-  GitBranch,
   ListTodo,
-  BarChart3,
   Menu,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -57,9 +55,8 @@ export function MobileBottomNav() {
 
   const staffItems: NavItem[] = [
     { href: "/staff-dashboard", label: "Home", icon: LayoutDashboard, testId: "mobile-nav-staff-dashboard" },
-    { href: "/pipeline-queue", label: "Pipeline", icon: GitBranch, testId: "mobile-nav-pipeline" },
     { href: "/task-operations", label: "Tasks", icon: ListTodo, testId: "mobile-nav-task-ops" },
-    { href: "/analytics", label: "Analytics", icon: BarChart3, testId: "mobile-nav-analytics" },
+    { href: "/messages", label: "Messages", icon: MessageCircle, testId: "mobile-nav-messages", badge: unreadCount },
   ];
 
   const items = isStaff ? staffItems : borrowerItems;

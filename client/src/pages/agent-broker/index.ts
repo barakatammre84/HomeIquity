@@ -5,7 +5,6 @@ export { default as AgentPipeline } from "./AgentPipeline";
 export { default as AgentProfile } from "./AgentProfile";
 export { default as BrokerDashboard } from "./BrokerDashboard";
 export { default as InviteGenerator } from "./InviteGenerator";
-export { default as AnalyticsDashboard } from "./AnalyticsDashboard";
 export { default as PartnerServices } from "./PartnerServices";
 export { default as ReferralLanding } from "./ReferralLanding";
 export { default as PartnerLanding } from "./PartnerLanding";

@@ -26,7 +26,6 @@ import {
   Upload,
   Users,
   LogOut,
-  GitBranch,
   Shield,
   Home,
   DollarSign,
@@ -35,7 +34,6 @@ import {
   Star,
   Calculator,
   Link2,
-  BarChart3,
   Scale,
   ChevronDown,
   ChevronRight,
@@ -121,10 +119,9 @@ const staffNavigation = [
   {
     section: "Operations",
     items: [
-      { title: "Overview", href: "/staff-dashboard", icon: LayoutDashboard, testId: "link-staff-overview" },
-      { title: "Pipeline Queue", href: "/pipeline-queue", icon: GitBranch, testId: "link-pipeline-queue" },
+      { title: "Dashboard", href: "/staff-dashboard", icon: LayoutDashboard, testId: "link-staff-overview" },
       { title: "Task Operations", href: "/task-operations", icon: ListTodo, testId: "link-task-operations" },
-      { title: "Analytics", href: "/analytics", icon: BarChart3, testId: "link-analytics" },
+      { title: "Policy Operations", href: "/policy-ops", icon: Scale, testId: "link-policy-ops" },
       { title: "Messages", href: "/messages", icon: MessageCircle, testId: "link-messages", showMessageBadge: true },
     ],
   },
@@ -135,13 +132,6 @@ const staffNavigation = [
       { title: "Client Pipeline", href: "/agent-pipeline", icon: ClipboardList, testId: "link-agent-pipeline" },
       { title: "Invite Clients", href: "/invite-clients", icon: Link2, testId: "link-invite-clients" },
       { title: "Co-Branding", href: "/co-branding", icon: Palette, testId: "link-co-branding" },
-    ],
-  },
-  {
-    section: "Compliance",
-    items: [
-      { title: "TRID & MISMO", href: "/compliance", icon: Shield, testId: "link-compliance" },
-      { title: "Policy Operations", href: "/policy-ops", icon: Scale, testId: "link-policy-ops" },
     ],
   },
 ];

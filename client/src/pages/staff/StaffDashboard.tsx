@@ -53,6 +53,9 @@ import {
   Sparkles,
   ScanLine,
   Brain,
+  Database,
+  Archive,
+  Bell,
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -125,6 +128,25 @@ interface ComplianceData {
     warningCount: number;
     missingDocsCount: number;
   }[];
+}
+
+interface RetentionPolicy {
+  dataType: string;
+  retentionPeriodDays: number;
+  archiveAfterDays: number;
+  deleteAfterDays: number | null;
+  legalBasis: string;
+  regulatoryReference: string;
+}
+
+interface RetentionReport {
+  generatedAt: string;
+  policies: RetentionPolicy[];
+  recordCounts: Record<string, number>;
+  archiveEligibleCounts: Record<string, number>;
+  deleteEligibleCounts: Record<string, number>;
+  retentionReviewCounts: Record<string, number>;
+  recommendations: string[];
 }
 
 const SLA_STATUS_COLORS: Record<SlaStatus, string> = {
@@ -416,6 +438,16 @@ export default function StaffDashboard() {
 
   const { data: complianceData } = useQuery<ComplianceData>({
     queryKey: ["/api/compliance/dashboard"],
+    enabled: !authLoading && !!user && isStaff,
+  });
+
+  const { data: retentionReport, isLoading: retentionLoading, refetch: refetchRetention } = useQuery<RetentionReport>({
+    queryKey: ["/api/credit/retention-report"],
+    enabled: !authLoading && !!user && isStaff,
+  });
+
+  const { data: retentionPoliciesData } = useQuery<{ policies: Record<string, RetentionPolicy> }>({
+    queryKey: ["/api/credit/retention-policies"],
     enabled: !authLoading && !!user && isStaff,
   });
 
@@ -1234,21 +1266,11 @@ export default function StaffDashboard() {
 
               <Card>
                 <CardHeader>
-                  <div className="flex items-center justify-between gap-2">
-                    <div>
-                      <CardTitle className="flex items-center gap-2">
-                        <Shield className="h-5 w-5" />
-                        Regulatory Compliance Overview
-                      </CardTitle>
-                      <CardDescription>TRID timing, MISMO validation, and document compliance per loan</CardDescription>
-                    </div>
-                    <Button variant="outline" size="sm" asChild data-testid="link-full-compliance">
-                      <Link href="/compliance">
-                        Full Dashboard
-                        <ChevronRight className="ml-1 h-4 w-4" />
-                      </Link>
-                    </Button>
-                  </div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Shield className="h-5 w-5" />
+                    Regulatory Compliance Overview
+                  </CardTitle>
+                  <CardDescription>TRID timing, MISMO validation, and document compliance per loan</CardDescription>
                 </CardHeader>
                 <CardContent>
                   {(complianceData?.applications || []).length === 0 ? (
@@ -1301,6 +1323,183 @@ export default function StaffDashboard() {
                       ))}
                     </div>
                   )}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <div>
+                      <CardTitle className="flex items-center gap-2">
+                        <Database className="h-5 w-5" />
+                        Data Retention & Archival
+                      </CardTitle>
+                      <CardDescription>FCRA, ECOA, and GLBA compliance tracking</CardDescription>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => refetchRetention()}
+                      data-testid="button-refresh-retention"
+                    >
+                      <RefreshCw className="mr-2 h-4 w-4" />
+                      Refresh
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {retentionLoading ? (
+                    <div className="grid gap-4 md:grid-cols-4">
+                      {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-20" />)}
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="grid gap-4 md:grid-cols-4">
+                        <div className="rounded-lg border p-3">
+                          <div className="flex items-center justify-between mb-1">
+                            <p className="text-sm text-muted-foreground">Total Records</p>
+                            <Database className="h-4 w-4 text-muted-foreground" />
+                          </div>
+                          <p className="text-2xl font-bold" data-testid="text-total-records">
+                            {Object.values(retentionReport?.recordCounts || {}).reduce((a, b) => a + b, 0)}
+                          </p>
+                        </div>
+                        <div className="rounded-lg border p-3">
+                          <div className="flex items-center justify-between mb-1">
+                            <p className="text-sm text-muted-foreground">Archive Eligible</p>
+                            <Archive className="h-4 w-4 text-amber-500" />
+                          </div>
+                          <p className="text-2xl font-bold text-amber-600" data-testid="text-archive-eligible">
+                            {Object.values(retentionReport?.archiveEligibleCounts || {}).reduce((a, b) => a + b, 0)}
+                          </p>
+                        </div>
+                        <div className="rounded-lg border p-3">
+                          <div className="flex items-center justify-between mb-1">
+                            <p className="text-sm text-muted-foreground">Retention Review</p>
+                            <Clock className="h-4 w-4 text-blue-500" />
+                          </div>
+                          <p className="text-2xl font-bold text-blue-600" data-testid="text-retention-review">
+                            {Object.values(retentionReport?.retentionReviewCounts || {}).reduce((a, b) => a + b, 0)}
+                          </p>
+                        </div>
+                        <div className="rounded-lg border p-3">
+                          <div className="flex items-center justify-between mb-1">
+                            <p className="text-sm text-muted-foreground">Delete Eligible</p>
+                            <AlertTriangle className="h-4 w-4 text-red-500" />
+                          </div>
+                          <p className="text-2xl font-bold text-red-600" data-testid="text-delete-eligible">
+                            {Object.values(retentionReport?.deleteEligibleCounts || {}).reduce((a, b) => a + b, 0)}
+                          </p>
+                        </div>
+                      </div>
+
+                      {retentionReport?.recommendations && retentionReport.recommendations.length > 0 && (
+                        <div className="space-y-2">
+                          {retentionReport.recommendations.map((rec, idx) => (
+                            <div
+                              key={idx}
+                              className="flex items-start gap-3 p-3 rounded-lg bg-muted/50"
+                              data-testid={`alert-recommendation-${idx}`}
+                            >
+                              {rec.includes("No action") ? (
+                                <CheckCircle2 className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
+                              ) : (
+                                <AlertTriangle className="h-5 w-5 text-amber-500 mt-0.5 flex-shrink-0" />
+                              )}
+                              <span className="text-sm">{rec}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <div>
+                          <p className="text-sm font-medium mb-2">Record Counts by Type</p>
+                          <div className="space-y-2">
+                            {Object.entries(retentionReport?.recordCounts || {}).map(([type, count]) => (
+                              <div
+                                key={type}
+                                className="flex items-center justify-between p-2 rounded-lg border"
+                                data-testid={`row-record-${type}`}
+                              >
+                                <div>
+                                  <p className="text-sm font-medium capitalize">{type.replace(/_/g, " ")}</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {retentionPoliciesData?.policies?.[type]?.regulatoryReference || "N/A"}
+                                  </p>
+                                </div>
+                                <Badge variant="secondary">{count}</Badge>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium mb-2">Retention Policies</p>
+                          <ScrollArea className="h-[250px]">
+                            <div className="space-y-2">
+                              {Object.entries(retentionPoliciesData?.policies || {}).map(([type, policy]) => (
+                                <div
+                                  key={type}
+                                  className="p-2 rounded-lg border"
+                                  data-testid={`row-policy-${type}`}
+                                >
+                                  <div className="flex items-center justify-between mb-1">
+                                    <p className="text-sm font-medium capitalize">{type.replace(/_/g, " ")}</p>
+                                    <Badge variant="outline">
+                                      {Math.round(policy.retentionPeriodDays / 365)} years
+                                    </Badge>
+                                  </div>
+                                  <p className="text-xs text-muted-foreground mb-1">{policy.legalBasis}</p>
+                                  <div className="flex gap-2 text-xs">
+                                    <span className="text-muted-foreground">Archive: {policy.archiveAfterDays} days</span>
+                                    <span className="text-muted-foreground">Delete: {policy.deleteAfterDays ? `${policy.deleteAfterDays} days` : "Never"}</span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </ScrollArea>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Shield className="h-5 w-5" />
+                    Compliance Audit Log
+                  </CardTitle>
+                  <CardDescription>Track all compliance-related activities with cryptographic verification</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid gap-4 md:grid-cols-3 mb-6">
+                    <div className="p-4 rounded-lg bg-muted/50">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Shield className="h-5 w-5 text-green-500" />
+                        <span className="font-medium text-sm">Hash Chain Verified</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">All audit entries are cryptographically linked</p>
+                    </div>
+                    <div className="p-4 rounded-lg bg-muted/50">
+                      <div className="flex items-center gap-2 mb-2">
+                        <FileCheck className="h-5 w-5 text-blue-500" />
+                        <span className="font-medium text-sm">Export Ready</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">CSV and JSON formats for regulatory exams</p>
+                    </div>
+                    <div className="p-4 rounded-lg bg-muted/50">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Clock className="h-5 w-5 text-amber-500" />
+                        <span className="font-medium text-sm">7-Year Retention</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">FCRA compliant data retention</p>
+                    </div>
+                  </div>
+                  <div className="text-center text-muted-foreground py-4">
+                    <p className="text-sm">Access individual loan audit logs from the Borrower File page.</p>
+                  </div>
                 </CardContent>
               </Card>
 

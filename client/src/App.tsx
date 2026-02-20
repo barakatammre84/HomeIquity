@@ -1,5 +1,5 @@
-import { lazy, Suspense } from "react";
-import { Switch, Route } from "wouter";
+import { lazy, Suspense, useEffect } from "react";
+import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -39,12 +39,9 @@ const BuyerProperties = lazy(() => import("@/pages/borrower/BuyerProperties"));
 const HmdaDemographics = lazy(() => import("@/pages/borrower/HmdaDemographics"));
 
 const StaffDashboard = lazy(() => import("@/pages/staff/StaffDashboard"));
-const PipelineQueue = lazy(() => import("@/pages/staff/PipelineQueue"));
 const BorrowerFile = lazy(() => import("@/pages/staff/BorrowerFile"));
-const ComplianceDashboard = lazy(() => import("@/pages/staff/ComplianceDashboard"));
 const PolicyOps = lazy(() => import("@/pages/staff/PolicyOps"));
 const TaskOperations = lazy(() => import("@/pages/staff/TaskOperations"));
-const Staff = lazy(() => import("@/pages/staff/Staff"));
 
 const AgentCoBranding = lazy(() => import("@/pages/agent-broker/AgentCoBranding"));
 const AgentDashboard = lazy(() => import("@/pages/agent-broker/AgentDashboard"));
@@ -52,7 +49,6 @@ const AgentEdit = lazy(() => import("@/pages/agent-broker/AgentEdit"));
 const AgentPipeline = lazy(() => import("@/pages/agent-broker/AgentPipeline"));
 const BrokerDashboard = lazy(() => import("@/pages/agent-broker/BrokerDashboard"));
 const InviteGenerator = lazy(() => import("@/pages/agent-broker/InviteGenerator"));
-const AnalyticsDashboard = lazy(() => import("@/pages/agent-broker/AnalyticsDashboard"));
 const PartnerServices = lazy(() => import("@/pages/agent-broker/PartnerServices"));
 const ReferralLanding = lazy(() => import("@/pages/agent-broker/ReferralLanding"));
 const PartnerLanding = lazy(() => import("@/pages/agent-broker/PartnerLanding"));
@@ -125,6 +121,12 @@ function AdminPage({ children }: { children: React.ReactNode }) {
 
 function AnyAuthPage({ children }: { children: React.ReactNode }) {
   return <PrivateLayout>{children}</PrivateLayout>;
+}
+
+function Redirect({ to }: { to: string }) {
+  const [, navigate] = useLocation();
+  useEffect(() => { navigate(to, { replace: true }); }, [to, navigate]);
+  return null;
 }
 
 function Router() {
@@ -276,7 +278,7 @@ function Router() {
           <StaffPage><StaffDashboard /></StaffPage>
         </Route>
         <Route path="/pipeline-queue">
-          <StaffPage><PipelineQueue /></StaffPage>
+          <Redirect to="/staff-dashboard" />
         </Route>
         <Route path="/borrower-file/:id">
           {(params) => <StaffPage><BorrowerFile /></StaffPage>}
@@ -285,10 +287,10 @@ function Router() {
           {(params) => <StaffPage><LoanEstimate /></StaffPage>}
         </Route>
         <Route path="/compliance">
-          <StaffPage><ComplianceDashboard /></StaffPage>
+          <Redirect to="/staff-dashboard" />
         </Route>
         <Route path="/staff">
-          <StaffPage><Staff /></StaffPage>
+          <Redirect to="/staff-dashboard" />
         </Route>
         <Route path="/broker-dashboard">
           <StaffPage><BrokerDashboard /></StaffPage>
@@ -297,7 +299,7 @@ function Router() {
           <StaffPage><InviteGenerator /></StaffPage>
         </Route>
         <Route path="/analytics">
-          <StaffPage><AnalyticsDashboard /></StaffPage>
+          <Redirect to="/staff-dashboard" />
         </Route>
         <Route path="/partner-services">
           <StaffPage><PartnerServices /></StaffPage>

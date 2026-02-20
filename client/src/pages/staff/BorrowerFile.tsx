@@ -296,7 +296,7 @@ export default function BorrowerFile() {
           </CardHeader>
           <CardContent>
             <Button asChild>
-              <Link href="/pipeline-queue">Back to Pipeline</Link>
+              <Link href="/staff-dashboard">Back to Dashboard</Link>
             </Button>
           </CardContent>
         </Card>
@@ -313,9 +313,9 @@ export default function BorrowerFile() {
       <div className="flex items-center justify-between border-b bg-background px-6 py-3">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="sm" asChild>
-            <Link href="/pipeline-queue">
+            <Link href="/staff-dashboard">
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Pipeline Queue
+              Dashboard
             </Link>
           </Button>
         </div>
