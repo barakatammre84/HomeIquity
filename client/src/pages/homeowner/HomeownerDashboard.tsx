@@ -10,20 +10,16 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { useToast } from "@/hooks/use-toast";
 import {
   Home,
-  DollarSign,
   TrendingUp,
   Calendar,
   Bell,
   BarChart3,
-  ArrowDownRight,
   CheckCircle2,
   XCircle,
   Plus,
-  RefreshCw,
   CalendarClock,
   Wallet,
   Building2,
-  Percent,
   CreditCard,
   MapPin,
 } from "lucide-react";

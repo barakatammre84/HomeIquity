@@ -2,13 +2,12 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams, Link } from "wouter";
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { formatCurrency, getStatusColor } from "@/lib/formatters";
+import { formatCurrency } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
-import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import {
@@ -30,7 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { LoanApplication, LoanCondition, Document, ApplicationProperty } from "@shared/schema";
+import type { LoanApplication, LoanCondition, Document, ApplicationProperty, LoanOption } from "@shared/schema";
 import {
   CheckCircle2,
   Circle,
@@ -41,12 +40,9 @@ import {
   ArrowRight,
   Phone,
   Calendar,
-  FileCheck,
   ShieldCheck,
   Home,
   Banknote,
-  ChevronRight,
-  CircleDot,
   ClipboardList,
   Timer,
   CheckCheck,
@@ -88,11 +84,19 @@ interface PipelineData {
   conditions: LoanCondition[];
 }
 
+interface ActivityItem {
+  id: string;
+  type: string;
+  description: string;
+  timestamp: string;
+  userId?: string;
+}
+
 interface ApplicationData {
   application: LoanApplication;
-  options: any[];
+  options: LoanOption[];
   documents: Document[];
-  activities: any[];
+  activities: ActivityItem[];
 }
 
 const STAGE_ORDER = [

@@ -22,7 +22,6 @@ import {
   CheckCircle,
   XCircle,
   AlertTriangle,
-  DollarSign,
   TrendingUp,
   Calculator,
   Phone,

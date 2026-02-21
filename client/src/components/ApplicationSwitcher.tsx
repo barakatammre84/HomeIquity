@@ -263,7 +263,7 @@ export function ApplicationSwitcher({
                     </p>
                     <div className="flex items-center justify-between gap-2 flex-wrap">
                       <p className="text-xs text-muted-foreground truncate" data-testid={`text-app-location-${app.id}`}>
-                        {appLocation} · {getOccupancyLabel((app as any).occupancyType)}
+                        {appLocation} · {getOccupancyLabel((app as unknown as { occupancyType?: string }).occupancyType)}
                       </p>
                       {canWithdraw && (
                         <Button

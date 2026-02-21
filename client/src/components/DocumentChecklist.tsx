@@ -12,7 +12,6 @@ import {
   AlertCircle,
   Upload,
   ArrowRight,
-  FileCheck,
   FileX,
   Loader2,
 } from "lucide-react";

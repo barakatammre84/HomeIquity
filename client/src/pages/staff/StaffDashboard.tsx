@@ -20,7 +20,7 @@ import { useLocation } from "wouter";
 import { Link } from "wouter";
 import { isStaffRole, ROLE_DISPLAY_NAMES } from "@shared/schema";
 import IntelligenceTab from "./IntelligenceTab";
-import type { Task, LoanApplication, User, LoanCondition } from "@shared/schema";
+import type { Task, LoanApplication, User } from "@shared/schema";
 import {
   Plus,
   CheckCircle2,
@@ -28,9 +28,7 @@ import {
   AlertCircle,
   FileText,
   User as UserIcon,
-  ChevronRight,
   Search,
-  Calendar,
   Upload,
   Eye,
   X,
@@ -43,7 +41,6 @@ import {
   ClipboardCheck,
   DollarSign,
   Timer,
-  TrendingUp,
   AlertTriangle,
   ArrowRight,
   RefreshCw,
@@ -55,9 +52,7 @@ import {
   Brain,
   Database,
   Archive,
-  Bell,
 } from "lucide-react";
-import { format } from "date-fns";
 import { formatCurrency, formatTimeRemaining } from "@/lib/formatters";
 import { type SlaStatus, SLA_STATUS_COLORS, SLA_DOT_COLORS, SLA_SORT_ORDER } from "@/lib/sla";
 
@@ -422,7 +417,7 @@ export default function StaffDashboard() {
   });
 
   const createTaskMutation = useMutation({
-    mutationFn: async (taskData: { applicationId: string; assignedToUserId: string; title: string; description: string; taskType: string; priority: string; dueDate: string }) => {
+    mutationFn: async (taskData: { applicationId: string; assignedToUserId: string; title: string; description: string; taskType: string; priority: string; dueDate: Date | string | null; documentCategory?: string | null; documentYear?: string | null; documentInstructions?: string | null }) => {
       const response = await apiRequest("POST", "/api/tasks", taskData);
       return await response.json();
     },

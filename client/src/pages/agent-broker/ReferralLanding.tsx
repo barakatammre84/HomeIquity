@@ -34,12 +34,16 @@ export default function ReferralLanding() {
     enabled: !!code,
   });
 
+  interface ApplyReferralResponse {
+    message?: string;
+  }
+
   const applyMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("POST", "/api/apply-referral", { referralCode: code });
       return res.json();
     },
-    onSuccess: (data: any) => {
+    onSuccess: (data: ApplyReferralResponse) => {
       setApplied(true);
       toast({
         title: "Connected",
@@ -47,7 +51,7 @@ export default function ReferralLanding() {
       });
       localStorage.removeItem("pendingReferralCode");
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: "Error",
         description: error.message || "Failed to apply referral code",

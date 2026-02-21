@@ -1,14 +1,12 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { formatCurrency, getStatusLabel, getStatusColor } from "@/lib/formatters";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
 import type { LoanApplication, BrokerCommission, User } from "@shared/schema";
 import {
   Users,
@@ -17,10 +15,6 @@ import {
   Clock,
   CheckCircle2,
   Wallet,
-  FileText,
-  BarChart3,
-  ArrowUpRight,
-  Calendar,
   Briefcase,
 } from "lucide-react";
 import { format } from "date-fns";

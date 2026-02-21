@@ -51,7 +51,15 @@ interface UseUploadOptions {
  * }
  * ```
  */
-export function useUpload(options: UseUploadOptions = {}) {
+interface UseUploadReturn {
+  uploadFile: (file: File) => Promise<UploadResponse | null>;
+  getUploadParameters: (file: UppyFile<Record<string, unknown>, Record<string, unknown>>) => Promise<{ method: "PUT"; url: string; headers?: Record<string, string> }>;
+  isUploading: boolean;
+  error: Error | null;
+  progress: number;
+}
+
+export function useUpload(options: UseUploadOptions = {}): UseUploadReturn {
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [progress, setProgress] = useState(0);

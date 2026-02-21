@@ -5,7 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { usePageView } from "@/hooks/useActivityTracker";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { formatCurrency, getStatusLabel } from "@/lib/formatters";
+import { formatCurrency } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -134,7 +134,7 @@ function getReadinessPercent(
   return Math.min(base, 100);
 }
 
-function getPersonalizedGreeting(user: any, application: LoanApplication | null, goal: string | null): { title: string; subtitle: string } {
+function getPersonalizedGreeting(user: { firstName?: string | null } | null | undefined, application: LoanApplication | null, goal: string | null): { title: string; subtitle: string } {
   const name = user?.firstName || "";
   const greeting = name ? `Hi, ${name}` : "Welcome back";
 
@@ -189,7 +189,7 @@ function getDominantAction(
   unreadMessages: number,
   expirationInfo: { label: string; daysLeft: number; urgency: "expired" | "urgent" | "normal" } | null,
   activitySummary?: { totalPageViews: number; propertySearches: number; calculatorUses: number; coachChats: number; propertyViews: number } | null,
-): { icon: any; title: string; description: string; href: string; buttonLabel: string; whyNeeded?: string } {
+): { icon: React.ElementType; title: string; description: string; href: string; buttonLabel: string; whyNeeded?: string } {
   if (!application) {
     if (activitySummary && activitySummary.propertySearches > 0) {
       return {
@@ -402,7 +402,7 @@ function FinancialSnapshot({ graph }: { graph: BorrowerGraphData }) {
       : "text-red-600 dark:text-red-400"
     : "text-muted-foreground";
 
-  const signals: Array<{ icon: any; label: string; value: string; color: string; testId: string }> = [];
+  const signals: Array<{ icon: React.ElementType; label: string; value: string; color: string; testId: string }> = [];
 
   if (eligibility.creditScore) {
     signals.push({
@@ -605,7 +605,7 @@ function LoanDetails({
 }) {
   const [expanded, setExpanded] = useState(false);
 
-  const items: Array<{ icon: any; label: string; value: string; href?: string; color?: string; testId: string }> = [];
+  const items: Array<{ icon: React.ElementType; label: string; value: string; href?: string; color?: string; testId: string }> = [];
 
   if (hasOffers) {
     items.push({
@@ -790,10 +790,10 @@ export default function Dashboard() {
   const offerCount = activeApplication ? (data?.loanOptionCounts?.[activeApplication.id] || 0) : 0;
   const hasOffers = offerCount > 0;
   const appOptions = (data?.recentOptions || []).filter(
-    (opt: any) => activeApplication && opt.applicationId === activeApplication.id
+    (opt) => activeApplication && opt.applicationId === activeApplication.id
   );
   const sortedRates = appOptions
-    .map((o: any) => parseFloat(o.interestRate))
+    .map((o) => parseFloat(o.interestRate))
     .filter((r: number) => !isNaN(r))
     .sort((a: number, b: number) => a - b);
   const rateRange = hasOffers && sortedRates.length >= 2
@@ -1023,7 +1023,7 @@ function PreQualLetterCard({ applicationId }: { applicationId: string }) {
       const res = await apiRequest("POST", `/api/loan-applications/${applicationId}/generate-prequal`);
       return res.json();
     },
-    onSuccess: (data: any) => {
+    onSuccess: (data: { letterNumber: string }) => {
       toast({ title: "Letter Ready", description: `Your pre-qualification letter #${data.letterNumber} has been generated.` });
       queryClient.invalidateQueries({ queryKey: ["/api/loan-applications", applicationId, "prequal-status"] });
     },

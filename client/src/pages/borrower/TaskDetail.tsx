@@ -15,15 +15,11 @@ import type { Task, Document, TaskDocument } from "@shared/schema";
 import {
   ArrowLeft,
   CheckCircle2,
-  Clock,
   AlertCircle,
   FileText,
   Upload,
   Calendar,
-  User,
   X,
-  Download,
-  Eye,
   Loader2,
 } from "lucide-react";
 import { format } from "date-fns";
@@ -105,7 +101,7 @@ export default function TaskDetail() {
       });
       setIsUploading(false);
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: "Upload Failed",
         description: error.message || "Failed to upload document",

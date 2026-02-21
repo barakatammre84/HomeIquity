@@ -23,7 +23,6 @@ import {
   Clock,
   CheckCircle2,
   XCircle,
-  Send,
   Users,
   Mail,
   Phone,

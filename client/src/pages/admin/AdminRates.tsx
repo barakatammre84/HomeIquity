@@ -44,7 +44,6 @@ import {
   TrendingUp,
   MapPin,
   Percent,
-  DollarSign,
   Shield,
 } from "lucide-react";
 
@@ -79,6 +78,32 @@ interface MortgageRate {
   program: MortgageRateProgram;
 }
 
+interface RateFormData {
+  programId: string;
+  state: string | null;
+  zipcode: string | null;
+  rate: string;
+  apr: string;
+  points: string;
+  pointsCost: string;
+  loanAmount: string;
+  downPaymentPercent: number | string;
+  creditScoreMin: number | string;
+  isActive: boolean;
+}
+
+interface ProgramFormData {
+  name: string;
+  slug: string;
+  description: string | null;
+  termYears: number | null | string;
+  isAdjustable: boolean;
+  adjustmentPeriod: string | null;
+  loanType: string;
+  displayOrder: number | string;
+  isActive: boolean;
+}
+
 export default function AdminRates() {
   const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
@@ -99,7 +124,7 @@ export default function AdminRates() {
   });
 
   const createRateMutation = useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: RateFormData) => {
       const res = await apiRequest("POST", "/api/admin/mortgage-rates", data);
       return res.json();
     },
@@ -115,7 +140,7 @@ export default function AdminRates() {
   });
 
   const updateRateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+    mutationFn: async ({ id, data }: { id: string; data: RateFormData }) => {
       const res = await apiRequest("PATCH", `/api/admin/mortgage-rates/${id}`, data);
       return res.json();
     },
@@ -144,7 +169,7 @@ export default function AdminRates() {
   });
 
   const createProgramMutation = useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: ProgramFormData) => {
       const res = await apiRequest("POST", "/api/admin/mortgage-rate-programs", data);
       return res.json();
     },
@@ -160,7 +185,7 @@ export default function AdminRates() {
   });
 
   const updateProgramMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+    mutationFn: async ({ id, data }: { id: string; data: ProgramFormData }) => {
       const res = await apiRequest("PATCH", `/api/admin/mortgage-rate-programs/${id}`, data);
       return res.json();
     },
@@ -507,7 +532,7 @@ function RateDialog({
 }: {
   rate: MortgageRate | null;
   programs: MortgageRateProgram[];
-  onSave: (data: any) => void;
+  onSave: (data: RateFormData) => void;
   isPending: boolean;
 }) {
   const [formData, setFormData] = useState({
@@ -670,7 +695,7 @@ function ProgramDialog({
   isPending,
 }: {
   program: MortgageRateProgram | null;
-  onSave: (data: any) => void;
+  onSave: (data: ProgramFormData) => void;
   isPending: boolean;
 }) {
   const [formData, setFormData] = useState({

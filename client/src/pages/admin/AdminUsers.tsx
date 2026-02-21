@@ -66,12 +66,9 @@ import { format } from "date-fns";
 import { 
   ALL_ROLES, 
   STAFF_ROLES, 
-  CLIENT_ROLES,
-  ROLE_DISPLAY_NAMES, 
-  ROLE_DESCRIPTIONS,
   isStaffRole,
-  type UserRole 
 } from "@shared/schema";
+import type { StaffInvite } from "@shared/schema";
 
 interface User {
   id: string;
@@ -121,7 +118,7 @@ export default function AdminUsers() {
     enabled: !!currentUser && currentUser.role === "admin",
   });
 
-  const { data: invitesData, isLoading: invitesLoading } = useQuery<{ invites: any[] }>({
+  const { data: invitesData, isLoading: invitesLoading } = useQuery<{ invites: StaffInvite[] }>({
     queryKey: ["/api/staff-invites"],
     enabled: !!currentUser && currentUser.role === "admin",
   });
@@ -542,7 +539,7 @@ export default function AdminUsers() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {invitesData.invites.map((invite: any) => {
+                {invitesData.invites.map((invite: StaffInvite) => {
                   const isUsed = !!invite.usedAt;
                   const isExpired = invite.expiresAt && new Date(invite.expiresAt) < new Date();
                   return (

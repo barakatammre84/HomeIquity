@@ -14,7 +14,6 @@ import {
   Home,
   FileText,
   TrendingUp,
-  Percent,
   Scale,
   Bot,
   Users,

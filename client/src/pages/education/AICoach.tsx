@@ -37,11 +37,15 @@ import {
   Home,
 } from "lucide-react";
 
+interface StructuredData {
+  borrowerPackage?: Record<string, unknown>;
+}
+
 interface CoachMessage {
   id: string;
   role: string;
   content: string;
-  structuredData?: any;
+  structuredData?: StructuredData;
   createdAt: string;
 }
 
@@ -50,9 +54,9 @@ interface CoachConversation {
   title: string;
   readinessTier: string | null;
   completionPercentage: number | null;
-  financialProfile: any;
-  actionPlan: any;
-  documentChecklist: any;
+  financialProfile: CoachProfile | null;
+  actionPlan: ActionPlanItem[] | null;
+  documentChecklist: DocumentRequirement[] | null;
   status: string;
   createdAt: string;
   updatedAt: string;

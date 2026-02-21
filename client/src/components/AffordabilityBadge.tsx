@@ -75,7 +75,11 @@ export function AffordabilityBadge({ price, compact = false }: AffordabilityBadg
   return null;
 }
 
-export function AffordabilityDetail({ price }: { price: number }) {
+interface AffordabilityDetailProps {
+  price: number;
+}
+
+export function AffordabilityDetail({ price }: AffordabilityDetailProps) {
   const { data, isLoading, isError } = useAffordability(price);
 
   if (isLoading || isError || !data) return null;

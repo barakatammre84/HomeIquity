@@ -17,20 +17,27 @@ import {
   UserCheck,
   Lock,
   ChevronRight,
-  RefreshCw,
   AlertTriangle,
   CircleDot,
   XCircle,
   Loader2,
 } from "lucide-react";
-import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 
+interface KycStatus {
+  overallStatus: string;
+  riskScore: number;
+  ofacStatus?: string;
+  sanctionsStatus?: string;
+  pepStatus?: string;
+  adverseMediaStatus?: string;
+}
+
 interface OnboardingStatus {
-  profile: any;
+  profile: Record<string, unknown> | null;
   kba: { id: string; status: string; score: number; attemptNumber: number; maxAttempts: number } | null;
-  kyc: any;
-  verifications: any[];
+  kyc: KycStatus | null;
+  verifications: Array<{ verificationType: string; status: string }>;
   borrowerType: string;
   applicationId: string | null;
   applicationStatus: string | null;
@@ -76,12 +83,19 @@ function getStatusBadge(status: string) {
   return <Badge variant={c.variant} data-testid={`badge-status-${status}`}>{c.label}</Badge>;
 }
 
-function KBAFlow({ kbaStatus, applicationId, onComplete }: { kbaStatus: any; applicationId: string | null; onComplete: () => void }) {
+interface KbaResult {
+  passed: boolean;
+  score: number;
+  totalQuestions: number;
+  remainingAttempts?: number;
+}
+
+function KBAFlow({ kbaStatus, applicationId, onComplete }: { kbaStatus: OnboardingStatus["kba"]; applicationId: string | null; onComplete: () => void }) {
   const [questions, setQuestions] = useState<KbaQuestion[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<{ questionId: string; selectedIndex: number }[]>([]);
   const [sessionId, setSessionId] = useState<string | null>(null);
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<KbaResult | null>(null);
   const { toast } = useToast();
 
   const startMutation = useMutation({
@@ -142,9 +156,9 @@ function KBAFlow({ kbaStatus, applicationId, onComplete }: { kbaStatus: any; app
         <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-3" />
         <p className="font-semibold text-foreground">Verification Unsuccessful</p>
         <p className="text-sm text-muted-foreground mt-1">
-          You answered {result.score} of {result.totalQuestions} correctly. {result.remainingAttempts > 0 ? `You have ${result.remainingAttempts} attempt(s) remaining.` : "Maximum attempts reached."}
+          You answered {result.score} of {result.totalQuestions} correctly. {(result.remainingAttempts ?? 0) > 0 ? `You have ${result.remainingAttempts} attempt(s) remaining.` : "Maximum attempts reached."}
         </p>
-        {result.remainingAttempts > 0 && (
+        {(result.remainingAttempts ?? 0) > 0 && (
           <Button onClick={() => { setResult(null); startMutation.mutate(); }} className="mt-4" data-testid="button-kba-retry">
             Try Again
           </Button>
@@ -221,7 +235,7 @@ function KBAFlow({ kbaStatus, applicationId, onComplete }: { kbaStatus: any; app
   );
 }
 
-function KYCAMLStatus({ kyc, applicationId }: { kyc: any; applicationId: string | null }) {
+function KYCAMLStatus({ kyc, applicationId }: { kyc: KycStatus | null; applicationId: string | null }) {
   const { toast } = useToast();
 
   const screenMutation = useMutation({
@@ -373,7 +387,7 @@ export default function IdentityVerification() {
           </CardHeader>
           <CardContent>
             <KBAFlow
-              kbaStatus={kbaStatus}
+              kbaStatus={kbaStatus ?? null}
               applicationId={applicationId}
               onComplete={() => queryClient.invalidateQueries({ queryKey: ["/api/onboarding/status"] })}
             />
@@ -392,7 +406,7 @@ export default function IdentityVerification() {
             <CardDescription>Automated compliance and anti-money laundering checks</CardDescription>
           </CardHeader>
           <CardContent>
-            <KYCAMLStatus kyc={kycData} applicationId={applicationId} />
+            <KYCAMLStatus kyc={kycData ?? null} applicationId={applicationId} />
           </CardContent>
         </Card>
 

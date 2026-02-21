@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { usePageView, useTrackActivity } from "@/hooks/useActivityTracker";
@@ -17,12 +17,9 @@ import { ConversionCTA } from "@/components/ConversionCTA";
 import {
   Home,
   DollarSign,
-  TrendingUp,
-  Calculator,
   ArrowRight,
   CheckCircle2,
   AlertTriangle,
-  Percent,
   Wallet,
   CreditCard,
   Briefcase,

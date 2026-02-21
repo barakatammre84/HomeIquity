@@ -15,8 +15,6 @@ import {
   Star,
   Lock,
   TrendingUp,
-  Calendar,
-  DollarSign,
   Percent,
   FileText,
   ArrowRight,
@@ -382,7 +380,7 @@ function PreQualLetterButton({ applicationId, status }: { applicationId: string;
       const res = await apiRequest("POST", `/api/loan-applications/${applicationId}/generate-prequal`);
       return res.json();
     },
-    onSuccess: (data: any) => {
+    onSuccess: (data: { letterNumber: string }) => {
       toast({ title: "Letter Generated", description: `Pre-qualification letter #${data.letterNumber} is ready.` });
       queryClient.invalidateQueries({ queryKey: ["/api/loan-applications", applicationId, "prequal-status"] });
     },
@@ -454,7 +452,7 @@ function GenerateLetterButton({ applicationId, status }: { applicationId: string
       const res = await apiRequest("POST", `/api/loan-applications/${applicationId}/generate-letter`);
       return res.json();
     },
-    onSuccess: (data: any) => {
+    onSuccess: (data: { letterNumber: string }) => {
       toast({ title: "Letter Generated", description: `Pre-approval letter #${data.letterNumber} is ready.` });
       queryClient.invalidateQueries({ queryKey: ["/api/loan-applications", applicationId, "letter-status"] });
     },

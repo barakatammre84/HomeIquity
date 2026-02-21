@@ -21,7 +21,6 @@ import {
   Square,
   Heart,
   DollarSign,
-  Filter,
   Grid,
   List,
   Home,

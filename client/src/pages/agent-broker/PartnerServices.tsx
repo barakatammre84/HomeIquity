@@ -13,13 +13,8 @@ import {
   CreditCard, 
   FileCheck, 
   Home, 
-  CheckCircle,
-  Clock,
-  AlertCircle,
   Plus,
   Building,
-  ExternalLink,
-  RefreshCw
 } from "lucide-react";
 
 interface PartnerProvider {
@@ -47,6 +42,11 @@ interface PartnerOrder {
   appraisedValue: string | null;
   titleStatus: string | null;
   errorMessage: string | null;
+}
+
+interface PartnerApplication {
+  id: string;
+  propertyAddress: string | null;
 }
 
 const serviceTypeIcons: Record<string, typeof CreditCard> = {
@@ -87,7 +87,7 @@ export default function PartnerServices() {
     queryKey: ["/api/partner-providers"],
   });
 
-  const { data: applications } = useQuery<any[]>({
+  const { data: applications } = useQuery<PartnerApplication[]>({
     queryKey: ["/api/loan-applications"],
   });
 
@@ -176,7 +176,7 @@ export default function PartnerServices() {
                     <SelectValue placeholder="Select application" />
                   </SelectTrigger>
                   <SelectContent>
-                    {applications?.map((app: any) => (
+                    {applications?.map((app: PartnerApplication) => (
                       <SelectItem key={app.id} value={app.id}>
                         {app.propertyAddress || `Application ${app.id.slice(0, 8)}`}
                       </SelectItem>

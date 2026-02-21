@@ -8,8 +8,8 @@ function getSessionId(): string {
   return sessionId;
 }
 
-export function useTrackActivity() {
-  const track = useCallback((activityType: string, page?: string, metadata?: Record<string, any>) => {
+export function useTrackActivity(): (activityType: string, page?: string, metadata?: Record<string, unknown>) => void {
+  const track = useCallback((activityType: string, page?: string, metadata?: Record<string, unknown>) => {
     try {
       fetch("/api/track", {
         method: "POST",
@@ -27,7 +27,7 @@ export function useTrackActivity() {
   return track;
 }
 
-export function usePageView(pageName?: string) {
+export function usePageView(pageName?: string): void {
   const track = useTrackActivity();
   const tracked = useRef(false);
 
@@ -39,21 +39,21 @@ export function usePageView(pageName?: string) {
   }, [track, pageName]);
 }
 
-export function useTrackFormStep() {
+export function useTrackFormStep(): (formName: string, stepId: string, stepNumber: number, totalSteps: number) => void {
   const track = useTrackActivity();
   return useCallback((formName: string, stepId: string, stepNumber: number, totalSteps: number) => {
     track("form_step_complete", undefined, { form: formName, step_id: stepId, step: stepNumber, total: totalSteps });
   }, [track]);
 }
 
-export function useTrackCta() {
+export function useTrackCta(): (ctaName: string, sourcePage?: string, metadata?: Record<string, unknown>) => void {
   const track = useTrackActivity();
-  return useCallback((ctaName: string, sourcePage?: string, metadata?: Record<string, any>) => {
+  return useCallback((ctaName: string, sourcePage?: string, metadata?: Record<string, unknown>) => {
     track("cta_click", sourcePage, { cta: ctaName, ...metadata });
   }, [track]);
 }
 
-export function useTrackFormStart() {
+export function useTrackFormStart(): (formName: string) => void {
   const track = useTrackActivity();
   const tracked = useRef(false);
   return useCallback((formName: string) => {
@@ -64,7 +64,7 @@ export function useTrackFormStart() {
   }, [track]);
 }
 
-export function useTrackFormAbandon(formName: string, isActive: boolean) {
+export function useTrackFormAbandon(formName: string, isActive: boolean): void {
   const track = useTrackActivity();
   const activeRef = useRef(isActive);
   activeRef.current = isActive;
@@ -88,23 +88,23 @@ export function useTrackFormAbandon(formName: string, isActive: boolean) {
   }, [formName, track]);
 }
 
-export function useTrackPropertyInteraction() {
+export function useTrackPropertyInteraction(): (action: "property_click" | "property_save" | "property_search", metadata?: Record<string, unknown>) => void {
   const track = useTrackActivity();
-  return useCallback((action: "property_click" | "property_save" | "property_search", metadata?: Record<string, any>) => {
+  return useCallback((action: "property_click" | "property_save" | "property_search", metadata?: Record<string, unknown>) => {
     track(action, "/properties", metadata);
   }, [track]);
 }
 
-export function useTrackCoachSession() {
+export function useTrackCoachSession(): (action: "coach_session_start" | "coach_message_sent" | "coach_session_complete", metadata?: Record<string, unknown>) => void {
   const track = useTrackActivity();
-  return useCallback((action: "coach_session_start" | "coach_message_sent" | "coach_session_complete", metadata?: Record<string, any>) => {
+  return useCallback((action: "coach_session_start" | "coach_message_sent" | "coach_session_complete", metadata?: Record<string, unknown>) => {
     track(action, "/ai-coach", metadata);
   }, [track]);
 }
 
-export function useTrackAccountEvent() {
+export function useTrackAccountEvent(): (action: "account_created" | "login" | "doc_uploaded" | "rate_viewed", metadata?: Record<string, unknown>) => void {
   const track = useTrackActivity();
-  return useCallback((action: "account_created" | "login" | "doc_uploaded" | "rate_viewed", metadata?: Record<string, any>) => {
+  return useCallback((action: "account_created" | "login" | "doc_uploaded" | "rate_viewed", metadata?: Record<string, unknown>) => {
     track(action, undefined, metadata);
   }, [track]);
 }

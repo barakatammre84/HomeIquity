@@ -20,8 +20,6 @@ import {
   FileText,
   DollarSign,
   TrendingUp,
-  CheckCircle2,
-  Clock,
   AlertCircle,
   BarChart3,
   Shield,

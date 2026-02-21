@@ -10,7 +10,6 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { 
   TrendingDown, 
-  TrendingUp, 
   Clock, 
   Info, 
   MapPin, 

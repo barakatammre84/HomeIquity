@@ -12,7 +12,6 @@ import {
   Activity,
   AlertTriangle,
   CheckCircle2,
-  Clock,
   Zap,
   Target,
 } from "lucide-react";

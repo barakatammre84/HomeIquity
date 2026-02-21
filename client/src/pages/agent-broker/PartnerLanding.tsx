@@ -2,7 +2,6 @@ import { useQuery } from "@tanstack/react-query";
 import { useRoute, Link } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Mail,
@@ -10,12 +9,8 @@ import {
   Globe,
   Shield,
   ArrowRight,
-  CheckCircle2,
-  Star,
   Home,
-  DollarSign,
   Calculator,
-  FileText,
   Clock,
   Award,
 } from "lucide-react";

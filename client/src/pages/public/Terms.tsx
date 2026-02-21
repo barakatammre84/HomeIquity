@@ -2,7 +2,7 @@ import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
 import { SEOHead } from "@/components/SEOHead";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { FileText, Scale, AlertCircle, CheckCircle2 } from "lucide-react";
+import { FileText, Scale, AlertCircle } from "lucide-react";
 
 const SECTIONS = [
   {

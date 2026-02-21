@@ -39,6 +39,15 @@ interface UrlaData {
   propertyInfo: UrlaPropertyInfo | null;
 }
 
+interface UrlaSavePayload {
+  personalInfo: Partial<UrlaPersonalInfo>;
+  employmentHistory: Partial<EmploymentHistory>[];
+  assets: Partial<UrlaAsset>[];
+  liabilities: Partial<UrlaLiability>[];
+  otherIncomeSources: Partial<OtherIncomeSource>[];
+  propertyInfo: Partial<UrlaPropertyInfo>;
+}
+
 const US_STATES = [
   "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA",
   "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD",
@@ -108,7 +117,7 @@ export default function URLAForm() {
   }, [urlaData, activeApplication?.id]);
 
   const saveMutation = useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: UrlaSavePayload) => {
       const response = await apiRequest("POST", `/api/urla/${activeApplication?.id}/save`, data);
       return response.json();
     },

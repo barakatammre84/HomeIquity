@@ -6,7 +6,6 @@ import { Badge } from "@/components/ui/badge";
 import { 
   FileSignature, 
   CheckCircle2, 
-  AlertCircle,
   ChevronRight,
   Clock,
   Shield

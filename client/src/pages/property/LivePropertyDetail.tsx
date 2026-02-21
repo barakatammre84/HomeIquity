@@ -30,7 +30,6 @@ import {
   GraduationCap,
   History,
   Star,
-  Ruler,
   Car,
   Layers,
   TreePine,
@@ -135,7 +134,7 @@ interface LivePropertyDetail {
     fundingType: string | null;
     studentCount: number | null;
   }[];
-  estimates: any;
+  estimates: Record<string, unknown>;
   branding: { type: string; name: string; phone: string | null }[];
 }
 

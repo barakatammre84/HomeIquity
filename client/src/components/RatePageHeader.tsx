@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "wouter";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -368,6 +368,15 @@ export default function RatePageHeader({
   );
 }
 
+interface RateRowProps {
+  term: string;
+  rate: string;
+  apr: string;
+  points: string;
+  pointsCost: string;
+  ctaHref?: string;
+}
+
 export function RateRow({ 
   term, 
   rate, 
@@ -375,14 +384,7 @@ export function RateRow({
   points, 
   pointsCost,
   ctaHref = "/apply"
-}: { 
-  term: string;
-  rate: string;
-  apr: string;
-  points: string;
-  pointsCost: string;
-  ctaHref?: string;
-}) {
+}: RateRowProps) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-4 p-6 bg-background border rounded-lg mb-4 hover-elevate" data-testid={`rate-row-${term.replace(/\s+/g, "-").toLowerCase()}`}>
       <div className="min-w-[140px]">

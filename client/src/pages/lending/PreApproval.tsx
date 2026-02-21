@@ -1,11 +1,11 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
-import { useForm, UseFormReturn } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocation, Link } from "wouter";
 import { SEOHead } from "@/components/SEOHead";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { preApprovalFormSchema, type PreApprovalFormData, type RentalPropertyEntry } from "@shared/schema";
+import { preApprovalFormSchema, type PreApprovalFormData, type RentalPropertyEntry, type IncomeSourceEntry } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
@@ -28,7 +28,6 @@ import {
   Loader2,
   Check,
   AlertCircle,
-  ThumbsUp,
   Info,
   Plus,
   Trash2,
@@ -839,10 +838,10 @@ export default function PreApproval() {
 
     if (currentQ.id === "incomeSources") {
       const sources = form.getValues("incomeSources") || [];
-      const allValid = sources.length > 0 && sources.every((s: any) => {
+      const allValid = sources.length > 0 && sources.every((s: IncomeSourceEntry) => {
         if (s.type === "rental") {
           const props = s.rentalProperties || [];
-          return props.length > 0 && props.every((p: any) => p.address && p.monthlyRentalIncome && parseFloat(String(p.monthlyRentalIncome).replace(/,/g, "")) > 0);
+          return props.length > 0 && props.every((p: RentalPropertyEntry) => p.address && p.monthlyRentalIncome && parseFloat(String(p.monthlyRentalIncome).replace(/,/g, "")) > 0);
         }
         return s.annualAmount && s.annualAmount.length > 0;
       });
@@ -1082,8 +1081,8 @@ export default function PreApproval() {
         const buildFormEntries = (types: string[], details: typeof incomeDetails, rentals: RentalPropertyEntry[]) => {
           return types.map((t) => {
             const d = details[t] || { annualAmount: "", employerName: "", yearsInRole: "" };
-            const entry: any = {
-              type: t,
+            const entry: IncomeSourceEntry & { rentalProperties?: RentalPropertyEntry[] } = {
+              type: t as IncomeSourceEntry["type"],
               annualAmount: d.annualAmount || "",
               employerName: d.employerName || "",
               yearsInRole: d.yearsInRole || "",

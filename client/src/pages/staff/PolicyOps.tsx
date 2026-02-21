@@ -19,7 +19,6 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import {
-  AlertTriangle,
   Bell,
   Check,
   ChevronRight,
@@ -27,12 +26,10 @@ import {
   CreditCard,
   DollarSign,
   Edit,
-  Eye,
   FileText,
   History,
   Home,
   Info,
-  Lock,
   Percent,
   RefreshCw,
   Save,
@@ -40,11 +37,8 @@ import {
   Shield,
   TrendingDown,
   User,
-  Users,
   Briefcase,
   Building,
-  Scale,
-  AlertCircle,
   CheckCircle2,
   XCircle,
   Loader2,

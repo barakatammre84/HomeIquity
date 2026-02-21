@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -21,22 +21,20 @@ import {
   ChevronRight,
   Star,
   MessageSquare,
-  Clock,
   Target,
   BookOpen,
   Calculator,
   Users,
-  AlertCircle,
   TrendingUp,
   ClipboardCheck,
   CreditCard,
 } from "lucide-react";
 
 interface OnboardingStatus {
-  profile: any;
-  kba: any;
-  kyc: any;
-  verifications: any[];
+  profile: Record<string, unknown> | null;
+  kba: { status: string } | null;
+  kyc: { overallStatus: string } | null;
+  verifications: Array<{ verificationType: string; status: string }>;
   borrowerType: string;
   applicationId: string | null;
   applicationStatus: string | null;
@@ -46,7 +44,7 @@ interface JourneyStep {
   id: string;
   title: string;
   description: string;
-  icon: any;
+  icon: React.ElementType;
   href?: string;
   complete: boolean;
   active: boolean;

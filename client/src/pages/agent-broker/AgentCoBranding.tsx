@@ -15,24 +15,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import {
   Palette,
-  Link2,
   Users,
   MessageSquare,
   Copy,
-  ExternalLink,
   Plus,
   Send,
-  CheckCircle2,
-  Clock,
-  Eye,
-  XCircle,
-  Building2,
   Phone,
   Mail,
-  Globe,
   Shield,
   ChevronRight,
-  ArrowUpRight,
 } from "lucide-react";
 import { format } from "date-fns";
 

@@ -1,7 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import type { User } from "@shared/schema";
 
-export function useAuth() {
+interface UseAuthReturn {
+  user: User | undefined;
+  isLoading: boolean;
+  isAuthenticated: boolean;
+}
+
+export function useAuth(): UseAuthReturn {
   const { data: user, isLoading } = useQuery<User>({
     queryKey: ["/api/auth/user"],
     retry: false,

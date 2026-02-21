@@ -1,20 +1,16 @@
 import { Link } from "wouter";
 import { usePageView } from "@/hooks/useActivityTracker";
 import { SEOHead } from "@/components/SEOHead";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   GraduationCap,
   Home,
   Calculator,
-  DollarSign,
-  FileText,
   Shield,
-  CheckCircle2,
   ChevronRight,
   Lightbulb,
-  TrendingUp,
   PiggyBank,
   ArrowRight,
   BookOpen,
