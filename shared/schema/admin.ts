@@ -163,6 +163,38 @@ export const insertCalculatorResultSchema = createInsertSchema(calculatorResults
 export type InsertCalculatorResult = z.infer<typeof insertCalculatorResultSchema>;
 export type CalculatorResult = typeof calculatorResults.$inferSelect;
 
+export const calculatorProfiles = pgTable("calculator_profiles", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  email: varchar("email", { length: 255 }).unique().notNull(),
+  firstName: varchar("first_name", { length: 100 }),
+  lastName: varchar("last_name", { length: 100 }),
+  phone: varchar("phone", { length: 20 }),
+  annualIncome: integer("annual_income"),
+  monthlyDebts: integer("monthly_debts"),
+  creditScore: integer("credit_score"),
+  downPaymentSaved: integer("down_payment_saved"),
+  debts: jsonb("debts"),
+  calculatorInputs: jsonb("calculator_inputs"),
+  calculatorResults: jsonb("calculator_results"),
+  maxHomePrice: integer("max_home_price"),
+  zipCode: varchar("zip_code", { length: 10 }),
+  convertedToUser: boolean("converted_to_user").default(false),
+  userId: varchar("user_id").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_calculator_profiles_email").on(table.email),
+]);
+
+export const insertCalculatorProfileSchema = createInsertSchema(calculatorProfiles).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertCalculatorProfile = z.infer<typeof insertCalculatorProfileSchema>;
+export type CalculatorProfile = typeof calculatorProfiles.$inferSelect;
+
 // ===== PARTNER API INTEGRATIONS =====
 
 export const PARTNER_SERVICE_TYPES = [

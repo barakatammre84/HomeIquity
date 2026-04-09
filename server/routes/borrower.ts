@@ -74,6 +74,60 @@ export function registerBorrowerRoutes(
     }
   });
 
+  app.post("/api/calculator-profiles", async (req, res) => {
+    try {
+      const schema = z.object({
+        email: z.string().email(),
+        firstName: z.string().optional(),
+        lastName: z.string().optional(),
+        phone: z.string().optional(),
+        annualIncome: z.number().optional(),
+        monthlyDebts: z.number().optional(),
+        creditScore: z.number().optional(),
+        downPaymentSaved: z.number().optional(),
+        debts: z.array(z.object({
+          type: z.string(),
+          name: z.string(),
+          monthlyPayment: z.number(),
+        })).optional(),
+        calculatorInputs: z.record(z.unknown()).optional(),
+        calculatorResults: z.record(z.unknown()).optional(),
+        maxHomePrice: z.number().optional(),
+        zipCode: z.string().optional(),
+      });
+
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid input", details: parsed.error.format() });
+      }
+
+      const { email, ...rest } = parsed.data;
+      const profile = await storage.upsertCalculatorProfile(email, rest as Record<string, unknown>);
+      res.json({ id: profile.id, email: profile.email, saved: true });
+    } catch (error) {
+      console.error("Upsert calculator profile error:", error);
+      res.status(500).json({ error: "Failed to save profile" });
+    }
+  });
+
+  app.get("/api/calculator-profiles/check/:email", async (req, res) => {
+    try {
+      const { email } = req.params;
+      const profile = await storage.getCalculatorProfileByEmail(email);
+      if (!profile) {
+        return res.status(404).json({ exists: false });
+      }
+      res.json({
+        exists: true,
+        maxHomePrice: profile.maxHomePrice,
+        updatedAt: profile.updatedAt,
+      });
+    } catch (error) {
+      console.error("Check calculator profile error:", error);
+      res.status(500).json({ error: "Failed to check profile" });
+    }
+  });
+
   // Application Properties Routes - multi-property support
   app.get("/api/loan-applications/:id/properties", isAuthenticated, async (req, res) => {
     try {

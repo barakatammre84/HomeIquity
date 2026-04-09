@@ -110,6 +110,9 @@ import {
   type InsertBrokerCommission,
   type CalculatorResult,
   type InsertCalculatorResult,
+  type CalculatorProfile,
+  type InsertCalculatorProfile,
+  calculatorProfiles,
   type HomeownershipGoal,
   type InsertHomeownershipGoal,
   type CreditAction,
@@ -511,6 +514,10 @@ export interface IStorage {
   createCalculatorResult(data: InsertCalculatorResult): Promise<CalculatorResult>;
   getCalculatorResultsByUser(userId: string): Promise<CalculatorResult[]>;
   getLatestCalculatorResult(userId: string, type: string): Promise<CalculatorResult | undefined>;
+
+  // Calculator Profiles (Lead Capture)
+  upsertCalculatorProfile(email: string, data: Partial<InsertCalculatorProfile>): Promise<CalculatorProfile>;
+  getCalculatorProfileByEmail(email: string): Promise<CalculatorProfile | undefined>;
 
   // Homeownership Goals (Aspiring Owner Journey)
   getHomeownershipGoal(userId: string): Promise<HomeownershipGoal | undefined>;
@@ -2652,6 +2659,33 @@ export class DatabaseStorage implements IStorage {
       .from(calculatorResults)
       .where(and(eq(calculatorResults.userId, userId), eq(calculatorResults.calculatorType, type)))
       .orderBy(desc(calculatorResults.createdAt))
+      .limit(1);
+    return result;
+  }
+
+  // Calculator Profiles (Lead Capture)
+  async upsertCalculatorProfile(email: string, data: Partial<InsertCalculatorProfile>): Promise<CalculatorProfile> {
+    const existing = await this.getCalculatorProfileByEmail(email);
+    if (existing) {
+      const [updated] = await db
+        .update(calculatorProfiles)
+        .set({ ...data, updatedAt: new Date() })
+        .where(eq(calculatorProfiles.email, email))
+        .returning();
+      return updated;
+    }
+    const [created] = await db
+      .insert(calculatorProfiles)
+      .values({ ...data, email } as InsertCalculatorProfile)
+      .returning();
+    return created;
+  }
+
+  async getCalculatorProfileByEmail(email: string): Promise<CalculatorProfile | undefined> {
+    const [result] = await db
+      .select()
+      .from(calculatorProfiles)
+      .where(eq(calculatorProfiles.email, email))
       .limit(1);
     return result;
   }
