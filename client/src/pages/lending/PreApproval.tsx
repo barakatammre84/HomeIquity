@@ -1485,7 +1485,7 @@ export default function PreApproval() {
 
   // The Conversational Form Steps
   return (
-    <div className="min-h-screen flex flex-col bg-background overflow-hidden">
+    <div className="min-h-screen flex flex-col bg-background overflow-x-hidden">
       <SEOHead title="Get Pre-Approved in 3 Minutes" description="Start your mortgage pre-approval application. Answer a few questions about your income and finances to get a clear, confident approval decision." />
       {restoreBanner}
       
@@ -1530,7 +1530,7 @@ export default function PreApproval() {
       <AdvisoryPanel formValues={watchedValues} currentStepId={currentQ.id} />
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col items-center justify-center p-6 pt-20 w-full max-w-4xl mx-auto relative lg:pr-96">
+      <div className="flex-1 flex flex-col items-center justify-center p-6 pt-20 pb-0 w-full max-w-4xl mx-auto relative lg:pr-96">
         <AnimatePresence mode="wait" custom={direction}>
           <motion.div
             key={currentStep}
@@ -1636,13 +1636,69 @@ export default function PreApproval() {
         </motion.div>
       )}
 
-      {/* Footer */}
-      <div className="p-4 sm:p-6 text-center border-t border-muted">
-        <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-          <Shield className="h-4 w-4" />
-          <span>Soft credit check only - won't affect your score</span>
+      {/* Compliance Footer */}
+      <footer className="border-t border-muted bg-muted/30 mt-auto" data-testid="footer-compliance">
+        <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 space-y-6">
+          <div className="text-xs text-muted-foreground leading-relaxed space-y-4">
+            <p>
+              <sup>1</sup> Homiquity&apos;s pre-approval process uses self-reported information and a soft credit inquiry to provide an initial determination. A soft credit check will not affect your credit score. Final loan approval is subject to full underwriting review, including verification of income, assets, employment, and property appraisal. Pre-approval is not a commitment to lend and does not guarantee final approval. All loans are subject to credit and property approval. Terms and conditions apply.
+            </p>
+          </div>
+
+          <div className="border-t border-muted pt-6">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-sm">
+              <div>
+                <p className="font-semibold text-foreground text-base mb-3">Homiquity</p>
+                <p className="text-muted-foreground text-xs leading-relaxed">
+                  Homiquity Mortgage Corporation is a direct lender dedicated to providing a fast, transparent digital mortgage experience backed by superior customer support.
+                </p>
+              </div>
+              <div>
+                <p className="font-medium text-foreground mb-2">Contact Us</p>
+                <div className="space-y-1 text-xs text-muted-foreground">
+                  <p>support@homiquity.com</p>
+                  <p>(555) 123-4567</p>
+                </div>
+                <div className="mt-3 space-y-1">
+                  <p className="font-medium text-foreground text-xs">Resources</p>
+                  <div className="text-xs text-muted-foreground space-y-0.5">
+                    <p>FAQ</p>
+                    <p>Privacy Policy</p>
+                    <p>Terms of Use</p>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <p className="font-medium text-foreground mb-2">Legal</p>
+                <div className="text-xs text-muted-foreground space-y-0.5">
+                  <p>NMLS Consumer Access</p>
+                  <p>Disclosures & Licensing</p>
+                  <p>Equal Housing Lender</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="border-t border-muted pt-4 text-xs text-muted-foreground leading-relaxed space-y-3">
+            <p>
+              &copy; {new Date().getFullYear()} Homiquity Mortgage Corporation. All rights reserved. Homiquity is a family of companies serving the homeownership ecosystem including mortgage lending, property search, and AI-powered guidance.
+            </p>
+            <p>
+              Home lending products offered by Homiquity Mortgage Corporation. NMLS #PENDING. Loans made or arranged pursuant to applicable state licensing. Not available in all states. Equal Housing Lender. NMLS Consumer Access.
+            </p>
+            <div className="flex items-center justify-center gap-4 pt-2">
+              <div className="flex items-center gap-1">
+                <Shield className="h-3.5 w-3.5" />
+                <span>Soft credit check only</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <Home className="h-3.5 w-3.5" />
+                <span>Equal Housing Lender</span>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+      </footer>
     </div>
   );
 }
