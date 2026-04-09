@@ -3,6 +3,13 @@
 ## Overview
 Homiquity is a mortgage platform designed to automate and streamline the mortgage process, aiming for 3-minute pre-approvals. It provides clear mortgage decisions and trustworthy pre-approvals through a conversational pre-approval form, a properties marketplace with affordability checks, and comprehensive tools for borrowers and staff. The platform leverages graph-based underwriting logic and document intelligence for data extraction, ensuring deterministic underwriting rules for regulatory compliance and Fair Lending risk mitigation. Homiquity is envisioned as a full-stack homeownership ecosystem with modules for mortgage origination (Homiquity Lend), property search (Homiquity Listings), and AI guidance (Homiquity Coach), with future plans for Title, Protect, and Invest modules.
 
+### Redfin Listings Integration
+`server/routes/listings.ts` provides three endpoints using Redfin's unofficial API (no API key needed):
+- `GET /api/listings/search?city=&stateCode=&minPrice=&maxPrice=&beds=&baths=&homeType=&limit=20` — Search listings by city/state with optional filters
+- `GET /api/listings/:id` — Full listing detail by Redfin property ID (includes all photos, amenities, tax/price history)
+- `GET /api/listings/nearby?lat=&lng=&radiusMiles=5&limit=20` — Nearby listings by coordinates
+All routes use in-memory caching with 60-minute TTL. Responses use `{error: boolean, listings: [...]}` or `{error: boolean, listing: {...}}` format. The API strips Redfin's `)]}\'` prefix before JSON parsing. Note: Redfin may block server-side requests via CloudFront; the API works best from environments that allow outbound HTTP to redfin.com.
+
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
