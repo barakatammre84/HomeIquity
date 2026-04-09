@@ -5,6 +5,7 @@ import { z } from "zod";
 import crypto from "crypto";
 import {
   type User,
+  insertAgentReferralRequestSchema,
 } from "@shared/schema";
 
 export function registerAgentBrokerRoutes(
@@ -19,6 +20,101 @@ export function registerAgentBrokerRoutes(
     } catch (error) {
       console.error("Get agents error:", error);
       res.status(500).json({ error: "Failed to get agents" });
+    }
+  });
+
+  app.get("/api/agents/search", async (req, res) => {
+    try {
+      const { location, specialty } = req.query;
+      const agents = await storage.searchAgentProfiles({
+        location: location as string | undefined,
+        specialty: specialty as string | undefined,
+      });
+      const enriched = await Promise.all(
+        agents.map(async (agent) => {
+          const user = await storage.getUser(agent.userId);
+          return {
+            id: agent.id,
+            firstName: user?.firstName || "Agent",
+            lastName: user?.lastName || "",
+            bio: agent.bio,
+            brokerage: agent.brokerage,
+            specialties: agent.specialties,
+            serviceArea: agent.serviceArea,
+            photoUrl: agent.photoUrl,
+            averageRating: agent.averageRating,
+            totalReviews: agent.totalReviews,
+            propertiesSold: agent.propertiesSold,
+            activeListings: agent.activeListings,
+            yearsInBusiness: agent.yearsInBusiness,
+            isVerified: agent.isVerified,
+          };
+        })
+      );
+      res.json(enriched);
+    } catch (error) {
+      console.error("Search agents error:", error);
+      res.status(500).json({ error: "Failed to search agents" });
+    }
+  });
+
+  app.post("/api/agent-referral-requests", async (req, res) => {
+    try {
+      const parsed = insertAgentReferralRequestSchema.parse(req.body);
+      const request = await storage.createAgentReferralRequest(parsed);
+
+      let matchedAgent = null;
+      let bestMatch = null;
+
+      if (parsed.preferredAgentId) {
+        bestMatch = await storage.getAgentProfile(parsed.preferredAgentId);
+      }
+
+      if (!bestMatch) {
+        const agents = await storage.searchAgentProfiles({
+          location: parsed.location,
+        });
+        if (agents.length > 0) {
+          bestMatch = agents[0];
+        }
+      }
+
+      if (bestMatch) {
+        await storage.updateAgentReferralRequest(request.id, {
+          matchedAgentId: bestMatch.id,
+          status: "matched",
+          referralSentAt: new Date(),
+        });
+        const user = await storage.getUser(bestMatch.userId);
+        matchedAgent = {
+          firstName: user?.firstName || "Agent",
+          lastName: user?.lastName || "",
+          brokerage: bestMatch.brokerage,
+          photoUrl: bestMatch.photoUrl,
+        };
+      }
+
+      res.json({
+        id: request.id,
+        status: matchedAgent ? "matched" : "pending",
+        matchedAgent,
+      });
+    } catch (error) {
+      console.error("Create referral request error:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid request data", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to submit referral request" });
+    }
+  });
+
+  app.get("/api/agent-referral-requests", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
+    try {
+      const requests = await storage.getAgentReferralRequests();
+      res.json(requests);
+    } catch (error) {
+      console.error("Get referral requests error:", error);
+      res.status(500).json({ error: "Failed to get referral requests" });
     }
   });
 

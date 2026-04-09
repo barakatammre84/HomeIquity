@@ -14,6 +14,7 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { users } from "./core";
 import { loanApplications } from "./lending";
+import { agentProfiles } from "./property";
 
 // ================================
 // Learning Center & FAQ System
@@ -781,3 +782,40 @@ export const emailCaptures = pgTable("email_captures", {
 }, (table) => [
   index("idx_email_captures_email").on(table.email),
 ]);
+
+export const agentReferralRequests = pgTable("agent_referral_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  firstName: varchar("first_name", { length: 100 }).notNull(),
+  lastName: varchar("last_name", { length: 100 }).notNull(),
+  email: varchar("email", { length: 255 }).notNull(),
+  phone: varchar("phone", { length: 20 }),
+  location: varchar("location", { length: 255 }).notNull(),
+  buyingTimeline: varchar("buying_timeline", { length: 50 }).notNull(),
+  priceRange: varchar("price_range", { length: 50 }),
+  propertyType: varchar("property_type", { length: 50 }),
+  specialNeeds: text("special_needs"),
+  preApproved: boolean("pre_approved").default(false),
+  preferredAgentId: varchar("preferred_agent_id").references(() => agentProfiles.id),
+  matchedAgentId: varchar("matched_agent_id").references(() => agentProfiles.id),
+  status: varchar("status", { length: 30 }).default("pending"),
+  referralSentAt: timestamp("referral_sent_at"),
+  agentRespondedAt: timestamp("agent_responded_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_agent_referral_status").on(table.status),
+  index("idx_agent_referral_agent").on(table.matchedAgentId),
+  index("idx_agent_referral_email").on(table.email),
+]);
+
+export const insertAgentReferralRequestSchema = createInsertSchema(agentReferralRequests).omit({
+  id: true,
+  matchedAgentId: true,
+  status: true,
+  referralSentAt: true,
+  agentRespondedAt: true,
+  createdAt: true,
+}).extend({
+  preferredAgentId: z.string().optional().nullable(),
+});
+export type InsertAgentReferralRequest = z.infer<typeof insertAgentReferralRequestSchema>;
+export type AgentReferralRequest = typeof agentReferralRequests.$inferSelect;

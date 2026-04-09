@@ -249,6 +249,9 @@ import {
   type InsertLenderPricingAdjustment,
   type LenderOffer,
   type InsertLenderOffer,
+  agentReferralRequests,
+  type AgentReferralRequest,
+  type InsertAgentReferralRequest,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -305,6 +308,10 @@ export interface IStorage {
   getAgentProfileByUserId(userId: string): Promise<AgentProfile | undefined>;
   updateAgentProfile(id: string, data: Partial<AgentProfile>): Promise<AgentProfile | undefined>;
   getAllAgentProfiles(): Promise<AgentProfile[]>;
+  searchAgentProfiles(filters: { location?: string; specialty?: string }): Promise<AgentProfile[]>;
+  createAgentReferralRequest(data: InsertAgentReferralRequest): Promise<AgentReferralRequest>;
+  getAgentReferralRequests(agentId?: string): Promise<AgentReferralRequest[]>;
+  updateAgentReferralRequest(id: string, data: Partial<AgentReferralRequest>): Promise<AgentReferralRequest | undefined>;
 
   // Stats
   getAdminStats(): Promise<{
@@ -1734,6 +1741,44 @@ export class DatabaseStorage implements IStorage {
 
   async getAllAgentProfiles(): Promise<AgentProfile[]> {
     return await db.select().from(agentProfiles).orderBy(desc(agentProfiles.createdAt));
+  }
+
+  async searchAgentProfiles(filters: { location?: string; specialty?: string }): Promise<AgentProfile[]> {
+    let query = db.select().from(agentProfiles);
+    const conditions = [];
+    if (filters.location) {
+      conditions.push(sql`${agentProfiles.serviceArea} && ARRAY[${filters.location}]::text[]`);
+    }
+    if (filters.specialty) {
+      conditions.push(sql`${agentProfiles.specialties} && ARRAY[${filters.specialty}]::text[]`);
+    }
+    if (conditions.length > 0) {
+      return await (query as any).where(and(...conditions)).orderBy(desc(agentProfiles.averageRating));
+    }
+    return await query.orderBy(desc(agentProfiles.averageRating));
+  }
+
+  async createAgentReferralRequest(data: InsertAgentReferralRequest): Promise<AgentReferralRequest> {
+    const [request] = await db.insert(agentReferralRequests).values(data).returning();
+    return request;
+  }
+
+  async getAgentReferralRequests(agentId?: string): Promise<AgentReferralRequest[]> {
+    if (agentId) {
+      return await db.select().from(agentReferralRequests)
+        .where(eq(agentReferralRequests.matchedAgentId, agentId))
+        .orderBy(desc(agentReferralRequests.createdAt));
+    }
+    return await db.select().from(agentReferralRequests).orderBy(desc(agentReferralRequests.createdAt));
+  }
+
+  async updateAgentReferralRequest(id: string, data: Partial<AgentReferralRequest>): Promise<AgentReferralRequest | undefined> {
+    const { id: _id, createdAt, ...cleanData } = data as any;
+    const [updated] = await db.update(agentReferralRequests)
+      .set(cleanData)
+      .where(eq(agentReferralRequests.id, id))
+      .returning();
+    return updated;
   }
 
   // Property CRUD extensions

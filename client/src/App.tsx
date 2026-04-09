@@ -53,6 +53,7 @@ const PartnerServices = lazy(() => import("@/pages/agent-broker/PartnerServices"
 const ReferralLanding = lazy(() => import("@/pages/agent-broker/ReferralLanding"));
 const PartnerLanding = lazy(() => import("@/pages/agent-broker/PartnerLanding"));
 const ApplyInvite = lazy(() => import("@/pages/agent-broker/ApplyInvite"));
+const FindAnAgent = lazy(() => import("@/pages/agent-broker/FindAnAgent"));
 
 const ScenarioDesk = lazy(() => import("@/pages/realtor-engine/ScenarioDesk"));
 const DealRescue = lazy(() => import("@/pages/realtor-engine/DealRescue"));
@@ -147,6 +148,9 @@ function Router() {
         </Route>
         <Route path="/partner/:profileId">
           {(params) => <PartnerLanding />}
+        </Route>
+        <Route path="/find-an-agent">
+          <PublicPage><FindAnAgent /></PublicPage>
         </Route>
         <Route path="/resources">
           <PublicPage><Resources /></PublicPage>

@@ -10,7 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LayoutDashboard, Menu, X, Phone, ChevronDown, Home, Calculator, FileText, Percent, Bot, ArrowRight } from "lucide-react";
+import { LayoutDashboard, Menu, X, Phone, ChevronDown, Home, Calculator, FileText, Percent, Bot, ArrowRight, Users } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 
@@ -26,6 +26,7 @@ const buyMenuItems: NavItem[] = [
   { href: "/rates/purchase", label: "Today's Rates", description: "Current purchase rates", icon: Percent },
   { href: "/calculators/affordability", label: "Affordability Calculator", description: "See what fits your budget", icon: Calculator },
   { href: "/properties", label: "Browse Homes", description: "Search available listings", icon: Home },
+  { href: "/find-an-agent", label: "Find an Agent", description: "Get matched with a local expert", icon: Users },
 ];
 
 const refinanceMenuItems: NavItem[] = [
