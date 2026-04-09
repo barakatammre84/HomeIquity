@@ -483,6 +483,33 @@ export default function PreApproval() {
     enabled: isAuthenticated,
   });
 
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem("calculatorPrefill");
+      if (!raw) return;
+      const prefill = JSON.parse(raw);
+      sessionStorage.removeItem("calculatorPrefill");
+      const current = form.getValues();
+      if (prefill.annualIncome && !current.annualIncome) {
+        form.setValue("annualIncome", String(prefill.annualIncome));
+      }
+      if (prefill.monthlyDebts && !current.monthlyDebts) {
+        form.setValue("monthlyDebts", String(prefill.monthlyDebts));
+      }
+      if (prefill.downPayment && !current.downPayment) {
+        form.setValue("downPayment", String(prefill.downPayment));
+      }
+      if (prefill.creditScore && !current.creditScore) {
+        const score = prefill.creditScore;
+        const bucket = score >= 740 ? "excellent" : score >= 700 ? "good" : score >= 660 ? "fair" : "poor";
+        form.setValue("creditScore", bucket);
+      }
+      if (prefill.purchasePrice && !current.purchasePrice) {
+        form.setValue("purchasePrice", String(prefill.purchasePrice));
+      }
+    } catch {}
+  }, []);
+
   const AUTOSAVE_KEY = "homiquity_preapproval_draft";
   const AUTOSAVE_STEP_KEY = "homiquity_preapproval_step";
   const PENDING_SUBMIT_KEY = "homiquity_preapproval_pending_submit";

@@ -35,6 +35,7 @@ import {
   Mail,
   Shield,
   MapPin,
+  Pencil,
 } from "lucide-react";
 
 interface DebtItem {
@@ -199,6 +200,7 @@ export default function AffordabilityCalculator() {
   const [newDebtType, setNewDebtType] = useState("auto_loan");
   const [newDebtName, setNewDebtName] = useState("");
   const [newDebtAmount, setNewDebtAmount] = useState("");
+  const [editingDebtId, setEditingDebtId] = useState<string | null>(null);
 
   usePageView("/calculators/affordability");
   const trackActivity = useTrackActivity();
@@ -226,22 +228,55 @@ export default function AffordabilityCalculator() {
     if (amount <= 0) return;
 
     const typeInfo = DEBT_TYPES.find((t) => t.value === newDebtType);
-    setDebts((prev) => [
-      ...prev,
-      {
-        id: crypto.randomUUID(),
-        type: newDebtType,
-        name: newDebtName || typeInfo?.label || "Debt",
-        monthlyPayment: amount,
-      },
-    ]);
+
+    if (editingDebtId) {
+      setDebts((prev) =>
+        prev.map((d) =>
+          d.id === editingDebtId
+            ? { ...d, type: newDebtType, name: newDebtName || typeInfo?.label || "Debt", monthlyPayment: amount }
+            : d
+        )
+      );
+      setEditingDebtId(null);
+    } else {
+      setDebts((prev) => [
+        ...prev,
+        {
+          id: crypto.randomUUID(),
+          type: newDebtType,
+          name: newDebtName || typeInfo?.label || "Debt",
+          monthlyPayment: amount,
+        },
+      ]);
+    }
     setNewDebtName("");
     setNewDebtAmount("");
-  }, [newDebtType, newDebtName, newDebtAmount]);
+    setNewDebtType("auto_loan");
+  }, [newDebtType, newDebtName, newDebtAmount, editingDebtId]);
+
+  const startEditDebt = useCallback((debt: DebtItem) => {
+    setEditingDebtId(debt.id);
+    setNewDebtType(debt.type);
+    setNewDebtName(debt.name);
+    setNewDebtAmount(String(debt.monthlyPayment));
+  }, []);
+
+  const cancelEditDebt = useCallback(() => {
+    setEditingDebtId(null);
+    setNewDebtName("");
+    setNewDebtAmount("");
+    setNewDebtType("auto_loan");
+  }, []);
 
   const removeDebt = useCallback((id: string) => {
     setDebts((prev) => prev.filter((d) => d.id !== id));
-  }, []);
+    if (editingDebtId === id) {
+      setEditingDebtId(null);
+      setNewDebtName("");
+      setNewDebtAmount("");
+      setNewDebtType("auto_loan");
+    }
+  }, [editingDebtId]);
 
   const saveResultsMutation = useMutation({
     mutationFn: async (data: { inputs: AffordabilityInputs; results: AffordabilityResults }) => {
@@ -294,7 +329,16 @@ export default function AffordabilityCalculator() {
     if (user) {
       saveResultsMutation.mutate({ inputs, results });
     }
-    navigate(`/apply?price=${Math.round(results.maxHomePrice)}`);
+    try {
+      sessionStorage.setItem("calculatorPrefill", JSON.stringify({
+        annualIncome: inputs.annualIncome,
+        monthlyDebts: inputs.monthlyDebts,
+        downPayment: inputs.downPaymentSaved,
+        creditScore: inputs.creditScore,
+        purchasePrice: Math.round(results.maxHomePrice),
+      }));
+    } catch {}
+    navigate(`/apply?price=${Math.round(results.maxHomePrice)}&source=calculator`);
   };
 
   const updateInput = (field: keyof AffordabilityInputs, value: number | string) => {
@@ -387,10 +431,11 @@ export default function AffordabilityCalculator() {
                           <div className="space-y-2 max-h-48 overflow-y-auto">
                             {debts.map((debt) => {
                               const Icon = debtTypeIcon(debt.type);
+                              const isEditing = editingDebtId === debt.id;
                               return (
                                 <div
                                   key={debt.id}
-                                  className="flex items-center justify-between gap-2 rounded-lg bg-muted/50 p-3"
+                                  className={`flex items-center justify-between gap-2 rounded-lg p-3 ${isEditing ? "bg-primary/10 ring-1 ring-primary/30" : "bg-muted/50"}`}
                                   data-testid={`debt-item-${debt.id}`}
                                 >
                                   <div className="flex items-center gap-2 min-w-0">
@@ -401,6 +446,14 @@ export default function AffordabilityCalculator() {
                                     <span className="text-sm font-medium whitespace-nowrap">
                                       {formatCurrency(debt.monthlyPayment)}/mo
                                     </span>
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      onClick={() => startEditDebt(debt)}
+                                      data-testid={`button-edit-debt-${debt.id}`}
+                                    >
+                                      <Pencil className="h-4 w-4" />
+                                    </Button>
                                     <Button
                                       size="icon"
                                       variant="ghost"
@@ -417,6 +470,14 @@ export default function AffordabilityCalculator() {
                         )}
 
                         <div className="space-y-3 border-t pt-4">
+                          {editingDebtId && (
+                            <div className="flex items-center justify-between">
+                              <p className="text-sm font-medium text-primary">Editing debt</p>
+                              <Button variant="ghost" size="sm" onClick={cancelEditDebt} data-testid="button-cancel-edit-debt">
+                                Cancel
+                              </Button>
+                            </div>
+                          )}
                           <div>
                             <Label>Debt Type</Label>
                             <Select value={newDebtType} onValueChange={setNewDebtType}>
@@ -467,8 +528,17 @@ export default function AffordabilityCalculator() {
                             className="w-full"
                             data-testid="button-confirm-add-debt"
                           >
-                            <Plus className="h-4 w-4 mr-1" />
-                            Add This Debt
+                            {editingDebtId ? (
+                              <>
+                                <CheckCircle2 className="h-4 w-4 mr-1" />
+                                Update Debt
+                              </>
+                            ) : (
+                              <>
+                                <Plus className="h-4 w-4 mr-1" />
+                                Add This Debt
+                              </>
+                            )}
                           </Button>
                         </div>
                       </div>
