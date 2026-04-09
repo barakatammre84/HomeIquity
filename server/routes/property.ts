@@ -734,7 +734,7 @@ export function registerPropertyRoutes(
       const searchData = await searchResponse.json();
       const searchResults = searchData?.data?.results || [];
 
-      const normalize = (s: string) => (s || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+      const normalize = (s: any) => String(s || "").toLowerCase().replace(/[^a-z0-9]/g, "");
       const inputNorm = normalize(fullAddress);
       const bestMatch = searchResults.find((r: any) => {
         const rAddr = r?.location?.address;
