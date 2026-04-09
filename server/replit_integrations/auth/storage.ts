@@ -4,12 +4,19 @@ import { eq } from "drizzle-orm";
 
 export interface IAuthStorage {
   getUser(id: string): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
   upsertUser(userData: { id: string; email?: string | null; firstName?: string | null; lastName?: string | null; profileImageUrl?: string | null }): Promise<User>;
+  createUserWithPassword(userData: { email: string; passwordHash: string; firstName?: string | null; lastName?: string | null }): Promise<User>;
 }
 
 class AuthStorage implements IAuthStorage {
   async getUser(id: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
     return user;
   }
 
@@ -33,6 +40,20 @@ class AuthStorage implements IAuthStorage {
           profileImageUrl: userData.profileImageUrl ?? undefined,
           updatedAt: new Date(),
         },
+      })
+      .returning();
+    return user;
+  }
+
+  async createUserWithPassword(userData: { email: string; passwordHash: string; firstName?: string | null; lastName?: string | null }): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values({
+        email: userData.email,
+        passwordHash: userData.passwordHash,
+        firstName: userData.firstName ?? null,
+        lastName: userData.lastName ?? null,
+        role: "aspiring_owner",
       })
       .returning();
     return user;

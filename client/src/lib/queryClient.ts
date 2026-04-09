@@ -7,10 +7,10 @@ function handleSessionExpired() {
   sessionExpiredHandled = true;
   
   const currentPath = window.location.pathname;
-  if (currentPath === "/" || currentPath === "/api/login") return;
+  if (currentPath === "/" || currentPath === "/login" || currentPath === "/signup") return;
   
   setTimeout(() => {
-    window.location.href = "/api/login";
+    window.location.href = "/login";
   }, 100);
 }
 

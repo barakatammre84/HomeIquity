@@ -44,7 +44,7 @@ export default function RedeemInvite() {
 
   const handleRedeem = async () => {
     if (!isAuthenticated) {
-      window.location.href = "/api/login";
+      window.location.href = "/login";
       return;
     }
     setRedeeming(true);

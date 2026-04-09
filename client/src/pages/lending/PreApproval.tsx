@@ -1467,7 +1467,7 @@ export default function PreApproval() {
           </Button>
           <p className="mt-8 text-sm text-muted-foreground">
             Have a saved application?{" "}
-            <a href="/api/login" className="text-primary hover:underline">
+            <a href="/login" className="text-primary hover:underline">
               Sign in to resume
             </a>
           </p>
@@ -1613,7 +1613,7 @@ export default function PreApproval() {
               Sign in to see your pre-approval results. Your answers are already saved.
             </p>
             <div className="space-y-3">
-              <a href="/api/login" className="block">
+              <a href="/login" className="block">
                 <Button size="lg" className="w-full" data-testid="button-auth-gate-login">
                   Sign In
                   <ArrowRight className="ml-2 h-4 w-4" />

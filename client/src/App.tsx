@@ -15,6 +15,8 @@ const Terms = lazy(() => import("@/pages/public/Terms"));
 const Disclosures = lazy(() => import("@/pages/public/Disclosures"));
 const TestLogin = lazy(() => import("@/pages/public/TestLogin"));
 const RedeemInvite = lazy(() => import("@/pages/public/RedeemInvite"));
+const Login = lazy(() => import("@/pages/public/Login"));
+const Signup = lazy(() => import("@/pages/public/Signup"));
 
 const PreApproval = lazy(() => import("@/pages/lending/PreApproval"));
 const LoanOptions = lazy(() => import("@/pages/lending/LoanOptions"));
@@ -136,6 +138,8 @@ function Router() {
       <Switch>
         {/* Public Pages - Anyone can access */}
         <Route path="/" component={Landing} />
+        <Route path="/login" component={Login} />
+        <Route path="/signup" component={Signup} />
         {!isProduction && <Route path="/test-login" component={TestLogin} />}
         <Route path="/redeem-invite" component={RedeemInvite} />
         <Route path="/redeem-invite/:code" component={RedeemInvite} />

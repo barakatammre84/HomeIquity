@@ -76,7 +76,7 @@ export default function ReferralLanding() {
     if (user) {
       setLocation("/dashboard");
     } else {
-      window.location.href = "/api/login";
+      window.location.href = "/login";
     }
   };
 

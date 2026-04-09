@@ -2,6 +2,7 @@ import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
+import { queryClient } from "@/lib/queryClient";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -260,16 +261,24 @@ export function Navigation() {
                     </>
                   )}
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild>
-                    <a href="/api/logout" className="w-full cursor-pointer text-destructive" data-testid="button-logout">
-                      Sign out
-                    </a>
+                  <DropdownMenuItem
+                    className="w-full cursor-pointer text-destructive"
+                    data-testid="button-logout"
+                    onClick={async () => {
+                      try {
+                        await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+                      } catch {}
+                      queryClient.clear();
+                      window.location.href = "/";
+                    }}
+                  >
+                    Sign out
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
               <div className="flex items-center gap-2">
-                <a href="/api/login">
+                <Link href="/login">
                   <Button
                     variant="ghost"
                     size="sm"
@@ -278,7 +287,7 @@ export function Navigation() {
                   >
                     Sign in
                   </Button>
-                </a>
+                </Link>
                 <Link href="/apply">
                   <Button
                     size="sm"
@@ -334,20 +343,31 @@ export function Navigation() {
                     </button>
                   </Link>
                   <div className="mt-2 border-t pt-3">
-                    <a href="/api/logout">
-                      <Button variant="outline" size="lg" className="w-full text-destructive" onClick={() => setMobileMenuOpen(false)} data-testid="mobile-button-logout">
-                        Sign out
-                      </Button>
-                    </a>
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      className="w-full text-destructive"
+                      data-testid="mobile-button-logout"
+                      onClick={async () => {
+                        setMobileMenuOpen(false);
+                        try {
+                          await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+                        } catch {}
+                        queryClient.clear();
+                        window.location.href = "/";
+                      }}
+                    >
+                      Sign out
+                    </Button>
                   </div>
                 </div>
               ) : (
                 <div className="mt-4 flex flex-col gap-3">
-                  <a href="/api/login">
+                  <Link href="/login">
                     <Button variant="outline" size="lg" className="w-full" onClick={() => setMobileMenuOpen(false)} data-testid="mobile-button-login">
                       Sign in
                     </Button>
-                  </a>
+                  </Link>
                   <Link href="/apply">
                     <Button size="lg" className="w-full bg-emerald-500 font-semibold" onClick={() => setMobileMenuOpen(false)} data-testid="mobile-button-apply">
                       Get Pre-Approved

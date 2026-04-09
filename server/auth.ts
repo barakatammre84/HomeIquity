@@ -2,10 +2,13 @@ import type { Express, RequestHandler } from "express";
 import { storage } from "./storage";
 import {
   setupAuth as setupOIDCAuth,
-  isAuthenticated as oidcIsAuthenticated,
   registerAuthRoutes,
 } from "./replit_integrations/auth";
 import { authStorage } from "./replit_integrations/auth/storage";
+import { scrypt, randomBytes, timingSafeEqual } from "crypto";
+import { promisify } from "util";
+
+const scryptAsync = promisify(scrypt);
 
 declare global {
   namespace Express {
@@ -32,14 +35,27 @@ declare global {
   }
 }
 
-const isProduction =
-  process.env.NODE_ENV === "production" || !!process.env.REPL_DEPLOYMENT;
+async function hashPassword(password: string): Promise<string> {
+  const salt = randomBytes(16).toString("hex");
+  const buf = (await scryptAsync(password, salt, 64)) as Buffer;
+  return `${buf.toString("hex")}.${salt}`;
+}
+
+async function comparePasswords(supplied: string, stored: string): Promise<boolean> {
+  const [hashedPassword, salt] = stored.split(".");
+  const hashedPasswordBuf = Buffer.from(hashedPassword, "hex");
+  const suppliedPasswordBuf = (await scryptAsync(supplied, salt, 64)) as Buffer;
+  return timingSafeEqual(hashedPasswordBuf, suppliedPasswordBuf);
+}
 
 export async function setupAuth(app: Express) {
   await setupOIDCAuth(app);
 
   registerAuthRoutes(app);
 
+  setupEmailPasswordAuth(app);
+
+  const isProduction = process.env.NODE_ENV === "production" || !!process.env.REPL_DEPLOYMENT;
   if (isProduction) {
     app.post("/api/test-login", (_req, res) => {
       res.status(404).json({ error: "Not found" });
@@ -47,6 +63,138 @@ export async function setupAuth(app: Express) {
   } else {
     setupDevTestLogin(app);
   }
+}
+
+function setupEmailPasswordAuth(app: Express) {
+  app.post("/api/auth/register", async (req, res) => {
+    try {
+      const { email: rawEmail, password, firstName, lastName } = req.body;
+
+      if (!rawEmail || !password) {
+        return res.status(400).json({ error: "Email and password are required" });
+      }
+
+      const email = rawEmail.trim().toLowerCase();
+
+      if (password.length < 8) {
+        return res.status(400).json({ error: "Password must be at least 8 characters" });
+      }
+
+      const existingUser = await authStorage.getUserByEmail(email);
+      if (existingUser) {
+        return res.status(409).json({ error: "An account with this email already exists" });
+      }
+
+      const passwordHash = await hashPassword(password);
+
+      let user;
+      try {
+        user = await authStorage.createUserWithPassword({
+          email,
+          passwordHash,
+          firstName: firstName || null,
+          lastName: lastName || null,
+        });
+      } catch (dbError: any) {
+        if (dbError?.code === "23505") {
+          return res.status(409).json({ error: "An account with this email already exists" });
+        }
+        throw dbError;
+      }
+
+      req.login(
+        {
+          id: user.id,
+          email: user.email || undefined,
+          firstName: user.firstName || undefined,
+          lastName: user.lastName || undefined,
+          profileImageUrl: user.profileImageUrl || undefined,
+          role: user.role,
+        },
+        (err) => {
+          if (err) {
+            return res.status(500).json({ error: "Registration succeeded but login failed" });
+          }
+          res.json({
+            success: true,
+            user: {
+              id: user.id,
+              email: user.email,
+              role: user.role,
+              firstName: user.firstName,
+              lastName: user.lastName,
+            },
+          });
+        }
+      );
+    } catch (error) {
+      console.error("Registration error:", error);
+      res.status(500).json({ error: "Registration failed" });
+    }
+  });
+
+  app.post("/api/auth/login", async (req, res) => {
+    try {
+      const { email: rawEmail, password } = req.body;
+
+      if (!rawEmail || !password) {
+        return res.status(400).json({ error: "Email and password are required" });
+      }
+
+      const email = rawEmail.trim().toLowerCase();
+
+      const user = await authStorage.getUserByEmail(email);
+      if (!user || !user.passwordHash) {
+        return res.status(401).json({ error: "Invalid email or password" });
+      }
+
+      const isValid = await comparePasswords(password, user.passwordHash);
+      if (!isValid) {
+        return res.status(401).json({ error: "Invalid email or password" });
+      }
+
+      req.login(
+        {
+          id: user.id,
+          email: user.email || undefined,
+          firstName: user.firstName || undefined,
+          lastName: user.lastName || undefined,
+          profileImageUrl: user.profileImageUrl || undefined,
+          role: user.role,
+        },
+        (err) => {
+          if (err) {
+            return res.status(500).json({ error: "Login failed" });
+          }
+          res.json({
+            success: true,
+            user: {
+              id: user.id,
+              email: user.email,
+              role: user.role,
+              firstName: user.firstName,
+              lastName: user.lastName,
+            },
+          });
+        }
+      );
+    } catch (error) {
+      console.error("Login error:", error);
+      res.status(500).json({ error: "Login failed" });
+    }
+  });
+
+  app.post("/api/auth/logout", (req, res) => {
+    req.logout(() => {
+      req.session.destroy((err) => {
+        if (err) {
+          return res.status(500).json({ error: "Logout failed" });
+        }
+        res.clearCookie("connect.sid");
+        res.json({ success: true });
+      });
+    });
+  });
 }
 
 function setupDevTestLogin(app: Express) {
@@ -144,6 +292,7 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
     });
   };
 
+  const { isAuthenticated: oidcIsAuthenticated } = await import("./replit_integrations/auth");
   (oidcIsAuthenticated as any)(req, res, oidcNext);
 };
 

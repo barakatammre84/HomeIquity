@@ -351,11 +351,18 @@ export function AppSidebar() {
         )}
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton asChild>
-              <a href="/api/logout" className="cursor-pointer" data-testid="link-logout">
-                <LogOut className="h-4 w-4" />
-                <span>Log Out</span>
-              </a>
+            <SidebarMenuButton
+              className="cursor-pointer"
+              data-testid="link-logout"
+              onClick={async () => {
+                try {
+                  await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+                } catch {}
+                window.location.href = "/";
+              }}
+            >
+              <LogOut className="h-4 w-4" />
+              <span>Log Out</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
