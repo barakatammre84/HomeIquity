@@ -452,6 +452,22 @@ export function registerLendingRoutes(
       const application = await storage.createLoanApplication(applicationData);
       logAudit(req, "loan_application.created", "loan_application", application.id);
 
+      const inviteId = req.body.inviteId;
+      if (inviteId && typeof inviteId === "string") {
+        try {
+          const invite = await storage.updateApplicationInvite(inviteId, {
+            status: "applied",
+            appliedAt: new Date(),
+            loanApplicationId: application.id,
+          });
+          if (invite) {
+            console.log(`[Invite] Linked invite ${inviteId} to application ${application.id}`);
+          }
+        } catch (inviteErr) {
+          console.warn(`[Invite] Failed to link invite ${inviteId}:`, inviteErr);
+        }
+      }
+
       await storage.createDealActivity({
         applicationId: application.id,
         activityType: "status_change",

@@ -347,11 +347,20 @@ export function registerAgentBrokerRoutes(
     }
   });
 
-  // Mark invite as applied (called when client submits application)
   app.post("/api/application-invites/:id/applied", isAuthenticated, async (req, res) => {
     try {
+      const user = req.user as User;
       const { id } = req.params;
       const { loanApplicationId } = req.body;
+
+      if (!loanApplicationId || typeof loanApplicationId !== "string") {
+        return res.status(400).json({ error: "loanApplicationId is required" });
+      }
+
+      const loanApp = await storage.getLoanApplication(loanApplicationId);
+      if (!loanApp || loanApp.userId !== user.id) {
+        return res.status(403).json({ error: "You can only link your own application" });
+      }
 
       const updated = await storage.updateApplicationInvite(id, {
         status: "applied",
@@ -367,6 +376,64 @@ export function registerAgentBrokerRoutes(
     } catch (error) {
       console.error("Mark invite applied error:", error);
       res.status(500).json({ error: "Failed to update invite" });
+    }
+  });
+
+  app.post("/api/application-invites/:id/resend", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const { id } = req.params;
+      const { expiresInDays } = req.body;
+
+      const invites = await storage.getApplicationInvitesByReferrer(user.id);
+      const invite = invites.find(i => i.id === id);
+
+      if (!invite) {
+        return res.status(404).json({ error: "Invite not found" });
+      }
+      if (invite.status === "applied") {
+        return res.status(400).json({ error: "This invite has already been used" });
+      }
+
+      const newExpiry = new Date();
+      newExpiry.setDate(newExpiry.getDate() + (expiresInDays || 30));
+
+      const updated = await storage.updateApplicationInvite(id, {
+        status: "pending",
+        expiresAt: newExpiry,
+        clickedAt: null,
+      });
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Resend invite error:", error);
+      res.status(500).json({ error: "Failed to resend invite" });
+    }
+  });
+
+  app.post("/api/application-invites/:id/revoke", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const { id } = req.params;
+
+      const invites = await storage.getApplicationInvitesByReferrer(user.id);
+      const invite = invites.find(i => i.id === id);
+
+      if (!invite) {
+        return res.status(404).json({ error: "Invite not found" });
+      }
+      if (invite.status === "applied") {
+        return res.status(400).json({ error: "Cannot revoke an applied invite" });
+      }
+
+      const updated = await storage.updateApplicationInvite(id, {
+        expiresAt: new Date(),
+      });
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Revoke invite error:", error);
+      res.status(500).json({ error: "Failed to revoke invite" });
     }
   });
 

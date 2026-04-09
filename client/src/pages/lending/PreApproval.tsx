@@ -455,6 +455,8 @@ export default function PreApproval() {
   const urlSource = urlParams.get("source");
   const defaultLoanPurpose = urlType === "refinance" ? "refinance" : urlType === "heloc" ? "cash_out" : "purchase";
 
+  const inviteId = useRef(sessionStorage.getItem("inviteId"));
+
   const form = useForm<PreApprovalFormData>({
     resolver: zodResolver(preApprovalFormSchema),
     mode: "onChange",
@@ -767,13 +769,17 @@ export default function PreApproval() {
   // Create/update application mutation
   const submitMutation = useMutation({
     mutationFn: async (data: PreApprovalFormData) => {
-      const payload = {
+      const payload: Record<string, unknown> = {
         ...data,
         annualIncome: data.annualIncome.replace(/,/g, ""),
         purchasePrice: data.purchasePrice.replace(/,/g, ""),
         downPayment: data.downPayment.replace(/,/g, ""),
         monthlyDebts: data.monthlyDebts.replace(/,/g, ""),
       };
+
+      if (inviteId.current) {
+        payload.inviteId = inviteId.current;
+      }
 
       if (applicationId) {
         const response = await apiRequest("PATCH", `/api/loan-applications/${applicationId}`, payload);
@@ -783,10 +789,17 @@ export default function PreApproval() {
         return response.json();
       }
     },
-    onSuccess: (result) => {
+    onSuccess: async (result) => {
       clearAutosave();
       queryClient.invalidateQueries({ queryKey: ["/api/loan-applications"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
+
+      if (inviteId.current) {
+        sessionStorage.removeItem("inviteId");
+        sessionStorage.removeItem("prefillName");
+        sessionStorage.removeItem("prefillEmail");
+      }
+
       toast({
         title: "Pre-Approval Complete!",
         description: "Analyzing your profile with AI...",
