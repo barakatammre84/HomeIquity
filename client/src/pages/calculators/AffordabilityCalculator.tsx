@@ -15,7 +15,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { ConversionCTA } from "@/components/ConversionCTA";
 import {
   Home,
   DollarSign,
@@ -654,32 +653,163 @@ export default function AffordabilityCalculator() {
           </div>
 
           <div className="lg:col-span-2 space-y-6">
-            <Card className="border-2 border-primary bg-primary/5 lg:sticky lg:top-4" style={{ zIndex: 10 }}>
+            <Card className="border-2 border-primary lg:sticky lg:top-4" style={{ zIndex: 10 }}>
               <CardHeader className="pb-2">
                 <CardTitle className="flex items-center gap-2 text-base">
                   <Home className="h-5 w-5" />
                   You can afford up to
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <p className="text-4xl font-bold text-primary" data-testid="text-max-price">
-                  {formatCurrency(results.maxHomePrice)}
-                </p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Estimated monthly: <span className="font-semibold text-foreground">{formatCurrency(results.monthlyPITI)}/mo</span>
-                </p>
-                <div className="mt-4">
-                  {results.withinGuidelines ? (
-                    <Badge variant="secondary">
-                      <CheckCircle2 className="h-3 w-3 mr-1" />
-                      Within lending guidelines
-                    </Badge>
-                  ) : (
-                    <Badge variant="secondary">
-                      <AlertTriangle className="h-3 w-3 mr-1" />
-                      DTI may require review
-                    </Badge>
+              <CardContent className="space-y-4">
+                <div>
+                  <p className="text-4xl font-bold text-primary" data-testid="text-max-price">
+                    {formatCurrency(results.maxHomePrice)}
+                  </p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Estimated monthly: <span className="font-semibold text-foreground">{formatCurrency(results.monthlyPITI)}/mo</span>
+                  </p>
+                  <div className="mt-3">
+                    {results.withinGuidelines ? (
+                      <Badge variant="secondary">
+                        <CheckCircle2 className="h-3 w-3 mr-1" />
+                        Within lending guidelines
+                      </Badge>
+                    ) : (
+                      <Badge variant="secondary">
+                        <AlertTriangle className="h-3 w-3 mr-1" />
+                        DTI may require review
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-2 border-t pt-4">
+                  <Button
+                    size="lg"
+                    className="w-full"
+                    onClick={handleStartPreApproval}
+                    data-testid="button-start-preapproval"
+                  >
+                    Get Pre-Approved Now
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+
+                  <Dialog open={isSaveDialogOpen} onOpenChange={setIsSaveDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" className="w-full" data-testid="button-save-profile">
+                        <Save className="h-4 w-4 mr-2" />
+                        Save My Results
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[420px]">
+                      <DialogHeader>
+                        <DialogTitle>Save Your Results</DialogTitle>
+                        <DialogDescription>
+                          Enter your email to save your affordability profile. When you're ready to apply, your information will be pre-filled — no re-entering data.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <div>
+                          <Label htmlFor="save-email">Email</Label>
+                          <div className="relative mt-1">
+                            <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                            <Input
+                              id="save-email"
+                              type="email"
+                              placeholder="you@example.com"
+                              value={saveEmail}
+                              onChange={(e) => setSaveEmail(e.target.value)}
+                              className="pl-9"
+                              data-testid="input-save-email"
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <Label htmlFor="save-first">First Name</Label>
+                            <Input
+                              id="save-first"
+                              placeholder="John"
+                              value={saveFirstName}
+                              onChange={(e) => setSaveFirstName(e.target.value)}
+                              data-testid="input-save-first-name"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="save-last">Last Name</Label>
+                            <Input
+                              id="save-last"
+                              placeholder="Smith"
+                              value={saveLastName}
+                              onChange={(e) => setSaveLastName(e.target.value)}
+                              data-testid="input-save-last-name"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <Label htmlFor="save-phone">Phone (Optional)</Label>
+                          <Input
+                            id="save-phone"
+                            type="tel"
+                            placeholder="(555) 123-4567"
+                            value={savePhone}
+                            onChange={(e) => setSavePhone(e.target.value)}
+                            data-testid="input-save-phone"
+                          />
+                        </div>
+
+                        <div className="rounded-lg bg-muted/50 p-3 text-sm text-muted-foreground space-y-1">
+                          <p className="font-medium text-foreground">What we'll save:</p>
+                          <p>Max home price: {formatCurrency(results.maxHomePrice)}</p>
+                          <p>Income: {formatCurrency(inputs.annualIncome)}/yr</p>
+                          <p>Monthly debts: {formatCurrency(inputs.monthlyDebts)}</p>
+                          <p>Down payment: {formatCurrency(inputs.downPaymentSaved)}</p>
+                        </div>
+
+                        <div className="flex items-start gap-2 text-xs text-muted-foreground">
+                          <Shield className="h-4 w-4 shrink-0 mt-0.5" />
+                          <p>Your information is encrypted and will only be used to pre-fill your application when you're ready.</p>
+                        </div>
+                      </div>
+                      <DialogFooter>
+                        <Button
+                          onClick={() => saveProfileMutation.mutate()}
+                          disabled={!saveEmail || saveProfileMutation.isPending}
+                          className="w-full"
+                          data-testid="button-confirm-save"
+                        >
+                          {saveProfileMutation.isPending ? "Saving..." : "Save Profile"}
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+
+                  {user && (
+                    <Button
+                      variant="ghost"
+                      className="w-full"
+                      onClick={() => saveResultsMutation.mutate({ inputs, results })}
+                      disabled={saveResultsMutation.isPending}
+                      data-testid="button-save-results"
+                    >
+                      Save to My Account
+                    </Button>
                   )}
+                </div>
+
+                <div className="flex items-center justify-center gap-4 border-t pt-3 text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1">
+                    <Shield className="h-3 w-3" />
+                    Encrypted
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <CheckCircle2 className="h-3 w-3" />
+                    No Credit Impact
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Home className="h-3 w-3" />
+                    Equal Housing
+                  </span>
                 </div>
               </CardContent>
             </Card>
@@ -769,141 +899,6 @@ export default function AffordabilityCalculator() {
                   </div>
                   <Progress value={Math.min(results.backEndDTI, 50)} max={50} />
                   <p className="text-xs text-muted-foreground mt-0.5">Target: 43% or less</p>
-                </div>
-              </CardContent>
-            </Card>
-
-            <div className="space-y-3">
-              <Button
-                size="lg"
-                className="w-full"
-                onClick={handleStartPreApproval}
-                data-testid="button-start-preapproval"
-              >
-                Get Pre-Approved Now
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-
-              <Dialog open={isSaveDialogOpen} onOpenChange={setIsSaveDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button variant="outline" className="w-full" data-testid="button-save-profile">
-                    <Save className="h-4 w-4 mr-2" />
-                    Save My Results
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-[420px]">
-                  <DialogHeader>
-                    <DialogTitle>Save Your Results</DialogTitle>
-                    <DialogDescription>
-                      Enter your email to save your affordability profile. When you're ready to apply, your information will be pre-filled — no re-entering data.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="save-email">Email</Label>
-                      <div className="relative mt-1">
-                        <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                        <Input
-                          id="save-email"
-                          type="email"
-                          placeholder="you@example.com"
-                          value={saveEmail}
-                          onChange={(e) => setSaveEmail(e.target.value)}
-                          className="pl-9"
-                          data-testid="input-save-email"
-                        />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <Label htmlFor="save-first">First Name</Label>
-                        <Input
-                          id="save-first"
-                          placeholder="John"
-                          value={saveFirstName}
-                          onChange={(e) => setSaveFirstName(e.target.value)}
-                          data-testid="input-save-first-name"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="save-last">Last Name</Label>
-                        <Input
-                          id="save-last"
-                          placeholder="Smith"
-                          value={saveLastName}
-                          onChange={(e) => setSaveLastName(e.target.value)}
-                          data-testid="input-save-last-name"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <Label htmlFor="save-phone">Phone (Optional)</Label>
-                      <Input
-                        id="save-phone"
-                        type="tel"
-                        placeholder="(555) 123-4567"
-                        value={savePhone}
-                        onChange={(e) => setSavePhone(e.target.value)}
-                        data-testid="input-save-phone"
-                      />
-                    </div>
-
-                    <div className="rounded-lg bg-muted/50 p-3 text-sm text-muted-foreground space-y-1">
-                      <p className="font-medium text-foreground">What we'll save:</p>
-                      <p>Max home price: {formatCurrency(results.maxHomePrice)}</p>
-                      <p>Income: {formatCurrency(inputs.annualIncome)}/yr</p>
-                      <p>Monthly debts: {formatCurrency(inputs.monthlyDebts)}</p>
-                      <p>Down payment: {formatCurrency(inputs.downPaymentSaved)}</p>
-                    </div>
-
-                    <div className="flex items-start gap-2 text-xs text-muted-foreground">
-                      <Shield className="h-4 w-4 shrink-0 mt-0.5" />
-                      <p>Your information is encrypted and will only be used to pre-fill your application when you're ready.</p>
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button
-                      onClick={() => saveProfileMutation.mutate()}
-                      disabled={!saveEmail || saveProfileMutation.isPending}
-                      className="w-full"
-                      data-testid="button-confirm-save"
-                    >
-                      {saveProfileMutation.isPending ? "Saving..." : "Save Profile"}
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-
-              {user && (
-                <Button
-                  variant="ghost"
-                  className="w-full"
-                  onClick={() => saveResultsMutation.mutate({ inputs, results })}
-                  disabled={saveResultsMutation.isPending}
-                  data-testid="button-save-results"
-                >
-                  Save to My Account
-                </Button>
-              )}
-
-              <ConversionCTA context="calculator" purchasePrice={String(results.maxHomePrice)} />
-            </div>
-
-            <Card>
-              <CardContent className="pt-6">
-                <div className="grid grid-cols-3 gap-4 text-center">
-                  <div>
-                    <Shield className="h-5 w-5 text-muted-foreground mx-auto mb-1" />
-                    <p className="text-xs font-medium">Encrypted</p>
-                  </div>
-                  <div>
-                    <CheckCircle2 className="h-5 w-5 text-muted-foreground mx-auto mb-1" />
-                    <p className="text-xs font-medium">No Credit Impact</p>
-                  </div>
-                  <div>
-                    <Home className="h-5 w-5 text-muted-foreground mx-auto mb-1" />
-                    <p className="text-xs font-medium">Equal Housing</p>
-                  </div>
                 </div>
               </CardContent>
             </Card>
