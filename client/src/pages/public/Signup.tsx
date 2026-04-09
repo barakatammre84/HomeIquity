@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Loader2, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { SocialLoginButtons } from "@/components/SocialLoginButtons";
 
 export default function Signup() {
   const [firstName, setFirstName] = useState("");
@@ -80,6 +81,8 @@ export default function Signup() {
             <CardDescription>Get started on your homeownership journey</CardDescription>
           </CardHeader>
           <CardContent>
+            <SocialLoginButtons mode="signup" />
+
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">

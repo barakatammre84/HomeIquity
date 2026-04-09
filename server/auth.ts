@@ -5,6 +5,7 @@ import {
   registerAuthRoutes,
 } from "./replit_integrations/auth";
 import { authStorage } from "./replit_integrations/auth/storage";
+import { setupSocialAuth } from "./socialAuth";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 
@@ -54,6 +55,7 @@ export async function setupAuth(app: Express) {
   registerAuthRoutes(app);
 
   setupEmailPasswordAuth(app);
+  setupSocialAuth(app);
 
   const isProduction = process.env.NODE_ENV === "production" || !!process.env.REPL_DEPLOYMENT;
   if (isProduction) {

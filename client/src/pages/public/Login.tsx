@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Loader2, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { isStaffRole } from "@shared/schema";
+import { SocialLoginButtons } from "@/components/SocialLoginButtons";
 
 function getRoleHomeRoute(role: string): string {
   if (role === "admin") return "/admin";
@@ -24,6 +25,16 @@ export default function Login() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const { isAuthenticated, user } = useAuth();
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const error = params.get("error");
+    if (error === "auth_failed") {
+      toast({ title: "Sign in failed", description: "Authentication failed. Please try again.", variant: "destructive" });
+    } else if (error === "no_email") {
+      toast({ title: "Sign in failed", description: "No email was provided by the sign-in provider.", variant: "destructive" });
+    }
+  }, [toast]);
 
   if (isAuthenticated && user) {
     navigate(getRoleHomeRoute(user.role));
@@ -71,6 +82,8 @@ export default function Login() {
             <CardDescription>Sign in to your account to continue</CardDescription>
           </CardHeader>
           <CardContent>
+            <SocialLoginButtons mode="login" />
+
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
