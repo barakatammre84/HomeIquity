@@ -48,3 +48,4 @@ integrations = ["javascript_log_in_with_replit:2.0.0", "javascript_gemini_ai_int
 VITE_REPL_DEPLOYMENT = "1"
 
 [userenv.shared]
+GOOGLE_PLACES_API_KEY = "AIzaSyBAkHBipMPuFgDBHBnZzhw0jbhEvipQ-MI"
