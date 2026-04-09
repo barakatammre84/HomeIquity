@@ -648,4 +648,210 @@ export function registerPropertyRoutes(
       res.status(500).json({ error: "Failed to delete property" });
     }
   });
+
+  app.post("/api/properties/lookup", async (req, res) => {
+    try {
+      let { query } = req.body;
+      if (!query || typeof query !== "string" || query.trim().length < 3) {
+        return res.status(400).json({ error: "Please provide an address or listing URL" });
+      }
+
+      query = query.trim();
+
+      let address = query;
+      try {
+        const url = new URL(query);
+        const pathParts = url.pathname.split("/").filter(Boolean);
+        if (pathParts.length >= 1) {
+          const addressPart = pathParts.find((p) =>
+            /^\d+/.test(p) || p.includes("-")
+          );
+          if (addressPart) {
+            address = addressPart.replace(/-/g, " ");
+          } else {
+            address = pathParts.slice(-3).join(" ").replace(/-/g, " ");
+          }
+        }
+      } catch {
+        // Not a URL — treat as raw address
+      }
+
+      const apiKey = process.env.RAPIDAPI_KEY;
+      if (!apiKey) {
+        return res.status(503).json({ error: "Property lookup service unavailable" });
+      }
+
+      const acResponse = await fetch(
+        `https://realty-us.p.rapidapi.com/properties/auto-complete?input=${encodeURIComponent(address)}`,
+        {
+          headers: {
+            "x-rapidapi-host": "realty-us.p.rapidapi.com",
+            "x-rapidapi-key": apiKey,
+          },
+        }
+      );
+
+      if (!acResponse.ok) {
+        return res.status(502).json({ error: "Failed to look up address" });
+      }
+
+      const acData = await acResponse.json();
+      const suggestions = acData?.data?.autocomplete || [];
+      const addressMatch = suggestions.find((s: any) => s.area_type === "address");
+      if (!addressMatch) {
+        return res.json({
+          found: false,
+          message: "No property found at that address. Try entering the full street address with city and state.",
+          suggestions: suggestions
+            .filter((s: any) => s.area_type === "address")
+            .slice(0, 5)
+            .map((s: any) => ({
+              label: s.full_address || s.line || "",
+              city: s.city || "",
+              stateCode: s.state_code || "",
+            })),
+        });
+      }
+
+      const fullAddress = addressMatch.full_address || addressMatch.line || address;
+
+      const searchParams = new URLSearchParams({ location: fullAddress });
+      const searchResponse = await fetch(
+        `https://realty-us.p.rapidapi.com/properties/search-buy?${searchParams.toString()}`,
+        {
+          headers: {
+            "x-rapidapi-host": "realty-us.p.rapidapi.com",
+            "x-rapidapi-key": apiKey,
+          },
+        }
+      );
+
+      if (!searchResponse.ok) {
+        console.error("Property lookup search error:", searchResponse.status);
+        return res.status(502).json({ error: "Failed to look up property" });
+      }
+
+      const searchData = await searchResponse.json();
+      const searchResults = searchData?.data?.results || [];
+
+      const normalize = (s: string) => (s || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+      const inputNorm = normalize(fullAddress);
+      const bestMatch = searchResults.find((r: any) => {
+        const rAddr = r?.location?.address;
+        if (!rAddr) return false;
+        const rLine = normalize(rAddr.line || "");
+        const rCity = normalize(rAddr.city || "");
+        return inputNorm.includes(rLine) && rLine.length > 3 && inputNorm.includes(rCity);
+      }) || searchResults[0];
+
+      const firstResult = bestMatch;
+      const propertyId = firstResult?.property_id;
+
+      if (!propertyId) {
+        return res.json({
+          found: false,
+          message: "Property found but no details available. The property may not be currently listed.",
+        });
+      }
+
+      const detailParams = new URLSearchParams({ propertyId });
+      const detailResponse = await fetch(
+        `https://realty-us.p.rapidapi.com/properties/detail?${detailParams.toString()}`,
+        {
+          headers: {
+            "x-rapidapi-host": "realty-us.p.rapidapi.com",
+            "x-rapidapi-key": apiKey,
+          },
+        }
+      );
+
+      if (!detailResponse.ok) {
+        const errBody = await detailResponse.text().catch(() => "");
+        console.error("Property lookup detail error:", detailResponse.status, errBody.slice(0, 300));
+
+        const addr2 = firstResult?.location?.address || {};
+        const desc2 = firstResult?.description || {};
+        return res.json({
+          found: true,
+          property: {
+            propertyId,
+            price: firstResult.list_price || firstResult.list_price_min || 0,
+            address: addr2.line || "",
+            city: addr2.city || "",
+            state: addr2.state || "",
+            stateCode: addr2.state_code || "",
+            zipcode: addr2.postal_code || "",
+            beds: desc2.beds ?? null,
+            baths: desc2.baths ?? null,
+            sqft: desc2.sqft ?? null,
+            lotSqft: desc2.lot_sqft || null,
+            yearBuilt: desc2.year_built || null,
+            propertyType: desc2.type || "single_family",
+            description: null,
+            photo: firstResult.primary_photo?.href || null,
+            photos: (firstResult.photos || []).slice(0, 8).map((ph: any) => ph.href),
+            status: firstResult.status || "unknown",
+            coordinate: addr2.coordinate || null,
+            propertyTaxRate: 1.2,
+            hoaMonthly: 0,
+            mortgage: null,
+            neighborhoods: [],
+          },
+        });
+      }
+
+      const raw = await detailResponse.json();
+      const p = raw?.data;
+      if (!p) {
+        return res.json({ found: false, message: "Property details not available" });
+      }
+
+      const addr = p.location?.address || {};
+      const desc = p.description || {};
+      const mortgage = p.mortgage?.estimate || null;
+      const hoa = p.hoa || null;
+      const taxHistory = p.tax_history || [];
+      const latestTax = taxHistory.length > 0 ? taxHistory[0] : null;
+      const propertyTaxRate = latestTax && p.list_price
+        ? ((latestTax.tax / p.list_price) * 100)
+        : 1.2;
+
+      res.json({
+        found: true,
+        property: {
+          propertyId: p.property_id,
+          price: p.list_price || p.list_price_min || p.last_sold_price || 0,
+          address: addr.line || "",
+          city: addr.city || "",
+          state: addr.state || "",
+          stateCode: addr.state_code || "",
+          zipcode: addr.postal_code || "",
+          beds: desc.beds ?? null,
+          baths: desc.baths ?? null,
+          sqft: desc.sqft ?? null,
+          lotSqft: desc.lot_sqft || null,
+          yearBuilt: desc.year_built || null,
+          propertyType: desc.type || "single_family",
+          description: desc.text || null,
+          photo: p.primary_photo?.href || (p.photos?.[0]?.href) || null,
+          photos: (p.photos || []).slice(0, 8).map((ph: any) => ph.href),
+          status: p.status || "unknown",
+          coordinate: addr.coordinate || null,
+          propertyTaxRate: Math.round(propertyTaxRate * 100) / 100,
+          hoaMonthly: hoa?.fee && hoa?.frequency === "monthly" ? hoa.fee : (hoa?.fee ? Math.round(hoa.fee / 12) : 0),
+          mortgage: mortgage ? {
+            monthlyPayment: mortgage.monthly_payment,
+            rate: mortgage.average_rate?.rate || null,
+          } : null,
+          neighborhoods: (p.location?.neighborhoods || []).slice(0, 2).map((n: any) => ({
+            name: n.name,
+            medianPrice: n.geo_statistics?.housing_market?.median_sold_price || null,
+          })),
+        },
+      });
+    } catch (error) {
+      console.error("Property lookup error:", error);
+      res.status(500).json({ error: "Failed to look up property" });
+    }
+  });
 }

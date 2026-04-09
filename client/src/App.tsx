@@ -17,6 +17,7 @@ const TestLogin = lazy(() => import("@/pages/public/TestLogin"));
 const RedeemInvite = lazy(() => import("@/pages/public/RedeemInvite"));
 const Login = lazy(() => import("@/pages/public/Login"));
 const Signup = lazy(() => import("@/pages/public/Signup"));
+const AffordabilityCheck = lazy(() => import("@/pages/public/AffordabilityCheck"));
 
 const PreApproval = lazy(() => import("@/pages/lending/PreApproval"));
 const LoanOptions = lazy(() => import("@/pages/lending/LoanOptions"));
@@ -225,6 +226,9 @@ function Router() {
         <Route path="/calculators/mortgage">
           <PublicPage><MortgageCalculator /></PublicPage>
         </Route>
+
+        {/* Affordability Check - "Can I Afford This Home?" */}
+        <Route path="/afford" component={AffordabilityCheck} />
 
         {/* Private Pages - Any authenticated user (role-aware content) */}
         <Route path="/dashboard">
