@@ -5,6 +5,7 @@ import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { AddressInput } from "@/components/AddressInput";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
@@ -342,16 +343,14 @@ export default function BuyerProperties() {
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end">
               <div className="flex-1">
                 <label className="mb-2 block text-sm font-medium">Search Location</label>
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    placeholder="City, address, or ZIP code"
-                    className="pl-10"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    data-testid="input-search"
-                  />
-                </div>
+                <AddressInput
+                  placeholder="City, address, or ZIP code"
+                  defaultValue={searchQuery}
+                  onSelect={(result) => {
+                    const loc = result.city && result.state ? `${result.city}, ${result.state}` : result.formattedAddress;
+                    setSearchQuery(loc);
+                  }}
+                />
               </div>
 
               <div className="w-full lg:w-48">

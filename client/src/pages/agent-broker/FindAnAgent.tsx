@@ -24,6 +24,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { AddressInput } from "@/components/AddressInput";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -129,17 +130,16 @@ function HeroSection({ onSearch }: { onSearch: (loc: string) => void }) {
             </p>
 
             <div className="flex gap-2 max-w-md">
-              <div className="relative flex-1">
-                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
+              <div className="flex-1">
+                <AddressInput
                   placeholder="City, state, or ZIP code"
-                  className="pl-9"
-                  value={searchLoc}
-                  onChange={(e) => setSearchLoc(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && searchLoc.trim()) onSearch(searchLoc.trim());
+                  mode="location"
+                  onChange={(val) => setSearchLoc(val)}
+                  onSelect={(result) => {
+                    const loc = result.city && result.state ? `${result.city}, ${result.state}` : result.formattedAddress;
+                    setSearchLoc(loc);
+                    onSearch(loc);
                   }}
-                  data-testid="input-hero-location"
                 />
               </div>
               <Button
@@ -515,13 +515,15 @@ function ReferralRequestDialog({
 
               <div>
                 <Label htmlFor="ref-location">Where are you looking to buy? *</Label>
-                <Input
-                  id="ref-location"
+                <AddressInput
                   placeholder="City, state, or neighborhood"
-                  value={formData.location}
-                  onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                  required
-                  data-testid="input-referral-location"
+                  defaultValue={formData.location}
+                  mode="location"
+                  onChange={(val) => setFormData({ ...formData, location: val })}
+                  onSelect={(result) => {
+                    const loc = result.city && result.state ? `${result.city}, ${result.state}` : result.formattedAddress;
+                    setFormData({ ...formData, location: loc });
+                  }}
                 />
               </div>
 
@@ -829,17 +831,17 @@ export default function FindAnAgent() {
             )}
           </div>
           <div className="flex gap-2 flex-wrap">
-            <div className="relative">
-              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Location"
-                className="pl-9 w-44"
-                value={searchLocation}
-                onChange={(e) => setSearchLocation(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") setHasSearched(true);
+            <div className="w-52">
+              <AddressInput
+                placeholder="City, state, or ZIP"
+                defaultValue={searchLocation}
+                mode="location"
+                onChange={(val) => setSearchLocation(val)}
+                onSelect={(result) => {
+                  const loc = result.city && result.state ? `${result.city}, ${result.state}` : result.formattedAddress;
+                  setSearchLocation(loc);
+                  setHasSearched(true);
                 }}
-                data-testid="input-search-location"
               />
             </div>
             <Select

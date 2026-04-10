@@ -20,14 +20,18 @@ export interface AddressResult {
   county?: string;
 }
 
+type SearchMode = "address" | "location";
+
 interface AddressInputProps {
   onSelect: (result: AddressResult) => void;
+  onChange?: (value: string) => void;
   placeholder?: string;
   className?: string;
   defaultValue?: string;
+  mode?: SearchMode;
 }
 
-export function AddressInput({ onSelect, placeholder = "Enter an address...", className, defaultValue }: AddressInputProps) {
+export function AddressInput({ onSelect, onChange, placeholder = "Enter an address...", className, defaultValue, mode = "address" }: AddressInputProps) {
   const [value, setValue] = useState(defaultValue || "");
   const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
   const [isOpen, setIsOpen] = useState(false);
@@ -38,7 +42,7 @@ export function AddressInput({ onSelect, placeholder = "Enter an address...", cl
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
   const fetchSuggestions = useCallback(async (input: string) => {
-    if (input.length < 4) {
+    if (input.length < 3) {
       setSuggestions([]);
       setIsOpen(false);
       return;
@@ -46,7 +50,8 @@ export function AddressInput({ onSelect, placeholder = "Enter an address...", cl
 
     setIsLoading(true);
     try {
-      const res = await fetch(`/api/geocode/autocomplete?input=${encodeURIComponent(input)}`);
+      const modeParam = mode === "location" ? "&mode=location" : "";
+      const res = await fetch(`/api/geocode/autocomplete?input=${encodeURIComponent(input)}${modeParam}`);
       if (res.ok) {
         const data = await res.json();
         setSuggestions(data);
@@ -58,11 +63,12 @@ export function AddressInput({ onSelect, placeholder = "Enter an address...", cl
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [mode]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
     setValue(newValue);
+    onChange?.(newValue);
 
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => fetchSuggestions(newValue), 300);
@@ -70,6 +76,7 @@ export function AddressInput({ onSelect, placeholder = "Enter an address...", cl
 
   const handleSelect = async (suggestion: AddressSuggestion) => {
     setValue(suggestion.description);
+    onChange?.(suggestion.description);
     setIsOpen(false);
     setSuggestions([]);
     setIsFetchingDetails(true);
@@ -80,6 +87,7 @@ export function AddressInput({ onSelect, placeholder = "Enter an address...", cl
         const details = await res.json();
         if (details.formattedAddress) {
           setValue(details.formattedAddress);
+          onChange?.(details.formattedAddress);
           onSelect({
             formattedAddress: details.formattedAddress,
             lat: details.lat,
@@ -93,7 +101,6 @@ export function AddressInput({ onSelect, placeholder = "Enter an address...", cl
         }
       }
     } catch {
-      // silently fail — user can retry
     } finally {
       setIsFetchingDetails(false);
     }

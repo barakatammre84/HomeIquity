@@ -20,6 +20,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { AddressInput } from "@/components/AddressInput";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -400,13 +401,16 @@ export default function LoanPipeline() {
                       </DialogHeader>
                       <div className="space-y-4 py-4">
                         <div>
-                          <Label htmlFor="address">Street Address</Label>
-                          <Input
-                            id="address"
-                            placeholder="123 Main St"
-                            value={newProperty.address}
-                            onChange={(e) => setNewProperty({ ...newProperty, address: e.target.value })}
-                            data-testid="input-property-address"
+                          <Label>Search Address</Label>
+                          <AddressInput
+                            placeholder="Start typing an address..."
+                            onSelect={(result) => setNewProperty({
+                              ...newProperty,
+                              address: result.streetAddress || result.formattedAddress,
+                              city: result.city,
+                              state: result.state,
+                              zipCode: result.zip,
+                            })}
                           />
                         </div>
                         <div className="grid grid-cols-2 gap-4">

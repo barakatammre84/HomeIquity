@@ -6,6 +6,9 @@ import { formatCurrency } from "@/lib/formatters";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { AddressInput, type AddressResult } from "@/components/AddressInput";
+import { PropertyMap } from "@/components/PropertyMap";
+import { StreetView } from "@/components/StreetView";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
@@ -299,7 +302,7 @@ export default function AffordabilityCheck() {
           <Card>
             <CardContent className="p-0">
               <div className="flex flex-col md:flex-row">
-                {property.photo && (
+                {property.photo ? (
                   <div className="md:w-80 h-56 md:h-auto flex-shrink-0">
                     <img
                       src={property.photo}
@@ -307,6 +310,10 @@ export default function AffordabilityCheck() {
                       className="w-full h-full object-cover rounded-t-lg md:rounded-l-lg md:rounded-tr-none"
                       data-testid="img-property-photo"
                     />
+                  </div>
+                ) : property.coordinate && (
+                  <div className="md:w-80 h-56 md:h-auto flex-shrink-0 rounded-t-lg md:rounded-l-lg md:rounded-tr-none overflow-hidden">
+                    <StreetView lat={property.coordinate.lat} lng={property.coordinate.lon || property.coordinate.lng} height={224} />
                   </div>
                 )}
                 <div className="flex-1 p-6">
@@ -351,6 +358,18 @@ export default function AffordabilityCheck() {
               </div>
             </CardContent>
           </Card>
+
+          {property.coordinate && (
+            <Card>
+              <CardContent className="p-0 overflow-hidden rounded-lg">
+                <PropertyMap
+                  lat={property.coordinate.lat}
+                  lng={property.coordinate.lon || property.coordinate.lng}
+                  address={`${property.address}, ${property.city}, ${property.stateCode}`}
+                />
+              </CardContent>
+            </Card>
+          )}
 
           <div className="grid md:grid-cols-2 gap-6">
             <Card>

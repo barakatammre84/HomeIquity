@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { AddressInput } from "@/components/AddressInput";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Property } from "@shared/schema";
@@ -116,16 +117,20 @@ export default function PropertyForm() {
               <div className="space-y-4">
                 <h3 className="font-semibold">Address</h3>
                 <div>
-                  <label className="text-sm font-medium">Street Address *</label>
-                  <Input
-                    required
-                    value={formData.address}
-                    onChange={(e) =>
-                      setFormData({ ...formData, address: e.target.value })
-                    }
-                    placeholder="123 Main Street"
+                  <label className="text-sm font-medium">Search Address *</label>
+                  <AddressInput
+                    placeholder="Start typing an address..."
                     className="mt-1"
-                    data-testid="input-address"
+                    defaultValue={formData.address ? `${formData.address}, ${formData.city}, ${formData.state} ${formData.zipCode}` : ""}
+                    onSelect={(result) => {
+                      setFormData({
+                        ...formData,
+                        address: result.streetAddress || result.formattedAddress,
+                        city: result.city,
+                        state: result.state,
+                        zipCode: result.zip,
+                      });
+                    }}
                   />
                 </div>
 

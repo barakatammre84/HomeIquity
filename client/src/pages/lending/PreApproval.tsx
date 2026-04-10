@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { preApprovalFormSchema, type PreApprovalFormData, type RentalPropertyEntry, type IncomeSourceEntry } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { AddressInput } from "@/components/AddressInput";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
@@ -1262,11 +1263,10 @@ export default function PreApproval() {
                             </div>
                             <div>
                               <label className="text-sm text-muted-foreground mb-1 block">Property Address</label>
-                              <Input
-                                data-testid={`input-rental-address-${idx}`}
-                                value={prop.address}
-                                onChange={(e) => updateRentalProperty(idx, "address", e.target.value)}
-                                placeholder="123 Main St, City, State"
+                              <AddressInput
+                                placeholder="Start typing a property address..."
+                                defaultValue={prop.address}
+                                onSelect={(result) => updateRentalProperty(idx, "address", result.formattedAddress)}
                               />
                             </div>
                             <div className="grid grid-cols-2 gap-3">

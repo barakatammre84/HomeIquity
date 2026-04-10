@@ -3,6 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { AddressInput } from "@/components/AddressInput";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -419,6 +420,20 @@ export default function URLAForm() {
                     <hr />
 
                     <h4 className="font-semibold">Current Address</h4>
+                    <div className="mb-3">
+                      <Label>Search Address</Label>
+                      <AddressInput
+                        placeholder="Start typing your current address..."
+                        defaultValue={personalInfo.currentStreet || ""}
+                        onSelect={(result) => setPersonalInfo({
+                          ...personalInfo,
+                          currentStreet: result.streetAddress || result.formattedAddress,
+                          currentCity: result.city,
+                          currentState: result.state,
+                          currentZip: result.zip,
+                        })}
+                      />
+                    </div>
                     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                       <div className="sm:col-span-2 space-y-2">
                         <Label htmlFor="current-street">Street Address</Label>
@@ -1125,6 +1140,21 @@ export default function URLAForm() {
                   </CardHeader>
                   <CardContent className="space-y-6">
                     <h4 className="font-semibold">Property Address</h4>
+                    <div className="mb-3">
+                      <Label>Search Address</Label>
+                      <AddressInput
+                        placeholder="Start typing the property address..."
+                        defaultValue={propertyInfo.propertyStreet || app.propertyAddress || ""}
+                        onSelect={(result) => setPropertyInfo({
+                          ...propertyInfo,
+                          propertyStreet: result.streetAddress || result.formattedAddress,
+                          propertyCity: result.city,
+                          propertyState: result.state,
+                          propertyZip: result.zip,
+                          propertyCounty: result.county || propertyInfo.propertyCounty,
+                        })}
+                      />
+                    </div>
                     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                       <div className="sm:col-span-2 space-y-2">
                         <Label htmlFor="property-street">Street Address</Label>

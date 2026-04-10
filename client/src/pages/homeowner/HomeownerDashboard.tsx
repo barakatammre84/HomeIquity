@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { AddressInput } from "@/components/AddressInput";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
@@ -117,12 +118,11 @@ function SetupForm() {
         <CardContent className="space-y-4">
           <div>
             <label className="text-sm font-medium text-foreground">Property Address</label>
-            <Input
-              value={formData.propertyAddress}
-              onChange={(e) => update("propertyAddress", e.target.value)}
-              placeholder="123 Main St, City, State 12345"
+            <AddressInput
+              placeholder="Start typing your property address..."
               className="mt-1"
-              data-testid="input-property-address"
+              defaultValue={formData.propertyAddress}
+              onSelect={(result) => update("propertyAddress", result.formattedAddress)}
             />
           </div>
 

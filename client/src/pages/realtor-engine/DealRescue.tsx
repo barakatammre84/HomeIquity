@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { AddressInput } from "@/components/AddressInput";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -219,12 +220,11 @@ function CreateEscalationDialog({ open, onOpenChange }: { open: boolean; onOpenC
             </div>
             <div>
               <label className="text-sm font-medium">Property Address <span className="text-muted-foreground">(optional)</span></label>
-              <Input
-                value={form.propertyAddress}
-                onChange={(e) => setForm({ ...form, propertyAddress: e.target.value })}
-                placeholder="123 Main St"
+              <AddressInput
+                placeholder="Start typing a property address..."
                 className="mt-1"
-                data-testid="input-escalation-address"
+                defaultValue={form.propertyAddress}
+                onSelect={(result) => setForm({ ...form, propertyAddress: result.formattedAddress })}
               />
             </div>
           </div>

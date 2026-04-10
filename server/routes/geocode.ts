@@ -25,16 +25,21 @@ export function registerGeocodeRoutes(app: Express) {
 
   app.get("/api/geocode/autocomplete", async (req: Request, res: Response) => {
     const input = (req.query.input as string || "").trim();
-    if (input.length < 4) {
+    const mode = (req.query.mode as string || "address").trim();
+    if (input.length < 3) {
       return res.json([]);
     }
     if (!apiKey) {
       return res.status(503).json({ error: "Google Maps API key not configured" });
     }
 
-    const cacheKey = input.toLowerCase();
+    const cacheKey = `${mode}:${input.toLowerCase()}`;
     const cached = getCached(autocompleteCache, cacheKey);
     if (cached) return res.json(cached);
+
+    const primaryTypes = mode === "location"
+      ? ["locality", "administrative_area_level_1", "postal_code", "sublocality"]
+      : ["street_address", "premise"];
 
     try {
       const response = await fetch("https://places.googleapis.com/v1/places:autocomplete", {
@@ -45,7 +50,7 @@ export function registerGeocodeRoutes(app: Express) {
         },
         body: JSON.stringify({
           input,
-          includedPrimaryTypes: ["street_address", "premise"],
+          includedPrimaryTypes: primaryTypes,
           includedRegionCodes: ["us"],
         }),
       });

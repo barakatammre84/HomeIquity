@@ -4,6 +4,8 @@ import { Link, useSearch } from "wouter";
 import { SEOHead } from "@/components/SEOHead";
 
 import { Footer } from "@/components/Footer";
+import { PropertyMap } from "@/components/PropertyMap";
+import { StreetView } from "@/components/StreetView";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -571,6 +573,26 @@ export default function LivePropertyDetailPage() {
                       <p className="text-xs text-muted-foreground">{b.type}</p>
                     </div>
                   ))}
+                </CardContent>
+              </Card>
+            )}
+
+            {property.coordinate && (
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">Location</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3 p-0 pb-4">
+                  <div className="overflow-hidden rounded-md mx-4">
+                    <PropertyMap
+                      lat={property.coordinate.lat}
+                      lng={property.coordinate.lon}
+                      address={fullAddress}
+                    />
+                  </div>
+                  <div className="overflow-hidden rounded-md mx-4">
+                    <StreetView lat={property.coordinate.lat} lng={property.coordinate.lon} />
+                  </div>
                 </CardContent>
               </Card>
             )}
