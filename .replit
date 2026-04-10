@@ -53,3 +53,7 @@ GOOGLE_GEOCODING_API_KEY = "AIzaSyBAkHBipMPuFgDBHBnZzhw0jbhEvipQ-MI"
 GOOGLE_CLIENT_ID = "871300849974-mijd2b0ll4qb8od4rdu4phh4svq646qn.apps.googleusercontent.com"
 GOOGLE_CLIENT_SECRET = "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"
 GOOGLE_MAPS_API_KEY = "AIzaSyBAkHBipMPuFgDBHBnZzhw0jbhEvipQ-MI"
+
+[postMerge]
+path = "scripts/post-merge.sh"
+timeoutMs = 120000
